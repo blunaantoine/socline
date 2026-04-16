@@ -7,14 +7,15 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  MapPin, Search, Filter, Star, Clock, Car, Navigation, 
+import {
+  MapPin, Search, Filter, Star, Clock, Car, Navigation,
   CheckCircle, Phone, MessageCircle, ChevronRight, Loader2,
-  Zap, Droplets, Sparkles, Crown
+  Zap, Droplets, Sparkles, Crown, Map
 } from 'lucide-react';
 import { ClientOrderFlow } from './ClientOrderFlow';
 import { OrderTracking } from './OrderTracking';
 import { OrderHistory } from './OrderHistory';
+import { GoogleMap, MapLegend } from '@/components/map/GoogleMap';
 
 export function ClientApp() {
   const { userLocation, setUserLocation } = useAppStore();
@@ -155,19 +156,57 @@ export function ClientApp() {
 }
 
 // Client Home Component
-function ClientHome({ 
-  services, 
-  nearbyWashers, 
+function ClientHome({
+  services,
+  nearbyWashers,
   stations,
-  onStartOrder 
-}: { 
-  services: any[]; 
+  onStartOrder
+}: {
+  services: any[];
   nearbyWashers: any[];
   stations: any[];
   onStartOrder: () => void;
 }) {
+  // Prepare map markers
+  const mapMarkers = [
+    ...nearbyWashers
+      .filter(w => w.isAvailable && w.latitude && w.longitude)
+      .map(washer => ({
+        id: `washer-${washer.id}`,
+        type: 'WASHER' as const,
+        position: { lat: washer.latitude, lng: washer.longitude },
+        label: washer.user.name,
+        data: washer,
+      })),
+    ...stations
+      .filter(s => s.latitude && s.longitude)
+      .map(station => ({
+        id: `station-${station.id}`,
+        type: 'STATION' as const,
+        position: { lat: station.latitude, lng: station.longitude },
+        label: station.name,
+        data: station,
+      })),
+  ];
+
   return (
     <div className="p-4 space-y-6">
+      {/* Map Section */}
+      <div className="space-y-3">
+        <div className="flex justify-between items-center">
+          <h2 className="text-lg font-semibold">Carte</h2>
+          <MapLegend />
+        </div>
+        <GoogleMap
+          center={{ lat: 6.1725, lng: 1.2314 }}
+          zoom={14}
+          markers={mapMarkers}
+          showUserLocation={true}
+          height="250px"
+          className="shadow-md"
+        />
+      </div>
+
       {/* Search Bar */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />

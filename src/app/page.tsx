@@ -10,6 +10,20 @@ import { RoleSelector } from '@/components/washgo/RoleSelector';
 import { Header } from '@/components/washgo/Header';
 import { Toaster } from '@/components/ui/sonner';
 import { MapPin, Calendar, Sparkles, Car, Clock, Shield, Phone, Mail, ChevronRight } from 'lucide-react';
+import dynamic from 'next/dynamic';
+
+// Dynamically import GoogleMap to avoid SSR issues
+const GoogleMapPreview = dynamic(
+  () => import('@/components/map/GoogleMap').then(mod => mod.GoogleMap),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-full bg-slate-700 rounded-2xl animate-pulse flex items-center justify-center">
+        <div className="text-slate-500">Chargement de la carte...</div>
+      </div>
+    )
+  }
+);
 
 export default function WashGoApp() {
   const { isAuthenticated, user, isLoading, setLoading } = useAuthStore();
@@ -167,35 +181,71 @@ function LandingPage({ onLogin }: { onLogin: () => void }) {
             </div>
             <div className="relative hidden lg:block">
               <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/20 to-slate-900 rounded-3xl blur-3xl"></div>
-              <div className="relative bg-slate-800 rounded-3xl p-8 border border-slate-700">
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="w-12 h-12 bg-emerald-500/20 rounded-full flex items-center justify-center">
-                    <Car className="w-6 h-6 text-emerald-400" />
-                  </div>
-                  <div>
-                    <div className="text-white font-semibold">Lavage en cours</div>
-                    <div className="text-slate-500 text-sm">Arrivée dans 12 min</div>
-                  </div>
+              <div className="relative bg-slate-800 rounded-3xl overflow-hidden border border-slate-700">
+                {/* Map Preview */}
+                <div className="h-64 relative">
+                  <GoogleMapPreview
+                    center={{ lat: 6.1725, lng: 1.2314 }}
+                    zoom={15}
+                    markers={[
+                      {
+                        id: 'washer-1',
+                        type: 'WASHER',
+                        position: { lat: 6.1735, lng: 1.2324 },
+                        label: 'Kofi Mensah',
+                        data: { rating: 4.9, completedJobs: 156 }
+                      },
+                      {
+                        id: 'washer-2',
+                        type: 'WASHER',
+                        position: { lat: 6.1715, lng: 1.2304 },
+                        label: 'Yaw Adzimah',
+                        data: { rating: 4.7, completedJobs: 120 }
+                      },
+                      {
+                        id: 'station-1',
+                        type: 'STATION',
+                        position: { lat: 6.1745, lng: 1.2294 },
+                        label: 'Auto Shine Lomé',
+                        data: { rating: 4.8, totalRatings: 156 }
+                      },
+                    ]}
+                    showUserLocation={true}
+                    height="100%"
+                    className="rounded-none"
+                  />
                 </div>
-                <div className="h-2 bg-slate-700 rounded-full overflow-hidden mb-6">
-                  <div className="h-full w-3/4 bg-emerald-500 rounded-full"></div>
-                </div>
-                <div className="flex items-center justify-between p-4 bg-slate-700/50 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-slate-600 rounded-full flex items-center justify-center text-white font-medium">
-                      MD
+                {/* Order Card Overlay */}
+                <div className="p-6 bg-slate-800">
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="w-12 h-12 bg-emerald-500/20 rounded-full flex items-center justify-center">
+                      <Car className="w-6 h-6 text-emerald-400" />
                     </div>
                     <div>
-                      <div className="text-white font-medium">Mamadou Diop</div>
-                      <div className="flex items-center gap-1 text-sm text-amber-400">
-                        <Sparkles className="w-3 h-3 fill-current" />
-                        4.9
-                      </div>
+                      <div className="text-white font-semibold">Lavage en cours</div>
+                      <div className="text-slate-500 text-sm">Arrivée dans 12 min</div>
                     </div>
                   </div>
-                  <button className="bg-emerald-500 hover:bg-emerald-600 text-white p-2 rounded-lg transition-colors">
-                    <Phone className="w-5 h-5" />
-                  </button>
+                  <div className="h-2 bg-slate-700 rounded-full overflow-hidden mb-4">
+                    <div className="h-full w-3/4 bg-emerald-500 rounded-full"></div>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-slate-700/50 rounded-xl">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-emerald-600 rounded-full flex items-center justify-center text-white font-medium">
+                        KM
+                      </div>
+                      <div>
+                        <div className="text-white font-medium">Kofi Mensah</div>
+                        <div className="flex items-center gap-1 text-sm text-amber-400">
+                          <Sparkles className="w-3 h-3 fill-current" />
+                          4.9
+                        </div>
+                      </div>
+                    </div>
+                    <button className="bg-emerald-500 hover:bg-emerald-600 text-white p-2 rounded-lg transition-colors">
+                      <Phone className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
