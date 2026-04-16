@@ -152,15 +152,15 @@ function LandingPage({ onLogin }: { onLogin: () => void }) {
               </div>
               <div className="flex items-center gap-8 mt-10 pt-10 border-t border-slate-800">
                 <div>
-                  <div className="text-3xl font-bold text-white">5000+</div>
+                  <div className="text-3xl font-bold text-white">2000+</div>
                   <div className="text-slate-500">Clients satisfaits</div>
                 </div>
                 <div>
-                  <div className="text-3xl font-bold text-white">50+</div>
+                  <div className="text-3xl font-bold text-white">30+</div>
                   <div className="text-slate-500">Laveurs certifiés</div>
                 </div>
                 <div>
-                  <div className="text-3xl font-bold text-white">4.9</div>
+                  <div className="text-3xl font-bold text-white">4.8</div>
                   <div className="text-slate-500">Note moyenne</div>
                 </div>
               </div>
@@ -380,11 +380,11 @@ function LandingPage({ onLogin }: { onLogin: () => void }) {
               <ul className="space-y-2 text-slate-500 text-sm">
                 <li className="flex items-center gap-2">
                   <Phone className="w-4 h-4" />
-                  +221 77 123 45 67
+                  +228 90 12 34 56
                 </li>
                 <li className="flex items-center gap-2">
                   <Mail className="w-4 h-4" />
-                  contact@washgo.sn
+                  contact@washgo.tg
                 </li>
               </ul>
             </div>

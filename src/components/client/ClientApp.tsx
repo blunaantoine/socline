@@ -38,14 +38,14 @@ export function ClientApp() {
 
     // Load demo stations
     setStations([
-      { id: '1', name: 'Auto Shine Dakar', address: 'Plateau, Dakar', latitude: 14.6937, longitude: -17.4441, rating: 4.8, totalRatings: 156, isActive: true, createdAt: '', updatedAt: '' },
-      { id: '2', name: 'Car Wash Medina', address: 'Medina, Dakar', latitude: 14.6857, longitude: -17.4522, rating: 4.5, totalRatings: 89, isActive: true, createdAt: '', updatedAt: '' },
+      { id: '1', name: 'Auto Shine Lomé', address: 'Centre-ville, Lomé', latitude: 6.1725, longitude: 1.2314, rating: 4.8, totalRatings: 156, isActive: true, createdAt: '', updatedAt: '' },
+      { id: '2', name: 'Car Wash Bè', address: 'Bè, Lomé', latitude: 6.1685, longitude: 1.2252, rating: 4.5, totalRatings: 89, isActive: true, createdAt: '', updatedAt: '' },
     ]);
 
     // Load demo nearby washers
     setNearbyWashers([
-      { id: '1', userId: 'w1', user: { id: 'w1', phone: '771234567', name: 'Mamadou Diop', role: 'WASHER', isActive: true, createdAt: '', updatedAt: '' }, isAvailable: true, isVerified: true, rating: 4.9, totalRatings: 234, totalEarnings: 150000, completedJobs: 156, latitude: 14.692, longitude: -17.445, address: 'Plateau', createdAt: '', updatedAt: '' },
-      { id: '2', userId: 'w2', user: { id: 'w2', phone: '772345678', name: 'Ibrahima Sow', role: 'WASHER', isActive: true, createdAt: '', updatedAt: '' }, isAvailable: true, isVerified: true, rating: 4.7, totalRatings: 189, totalEarnings: 120000, completedJobs: 120, latitude: 14.694, longitude: -17.443, address: 'Dakar Centre', createdAt: '', updatedAt: '' },
+      { id: '1', userId: 'w1', user: { id: 'w1', phone: '90123456', name: 'Kofi Mensah', role: 'WASHER', isActive: true, createdAt: '', updatedAt: '' }, isAvailable: true, isVerified: true, rating: 4.9, totalRatings: 234, totalEarnings: 150000, completedJobs: 156, latitude: 6.172, longitude: 1.230, address: 'Centre-ville', createdAt: '', updatedAt: '' },
+      { id: '2', userId: 'w2', user: { id: 'w2', phone: '90234567', name: 'Yaw Adzimah', role: 'WASHER', isActive: true, createdAt: '', updatedAt: '' }, isAvailable: true, isVerified: true, rating: 4.7, totalRatings: 189, totalEarnings: 120000, completedJobs: 120, latitude: 6.175, longitude: 1.233, address: 'Hedzranawoé', createdAt: '', updatedAt: '' },
     ]);
   }, [setServices, setStations, setNearbyWashers]);
 
@@ -63,20 +63,20 @@ export function ClientApp() {
           setIsLoadingLocation(false);
         },
         () => {
-          // Default to Dakar
+          // Default to Lomé
           setUserLocation({
-            latitude: 14.6937,
-            longitude: -17.4441,
-            address: 'Dakar, Sénégal',
+            latitude: 6.1725,
+            longitude: 1.2314,
+            address: 'Lomé, Togo',
           });
           setIsLoadingLocation(false);
         }
       );
     } else {
       setUserLocation({
-        latitude: 14.6937,
-        longitude: -17.4441,
-        address: 'Dakar, Sénégal',
+        latitude: 6.1725,
+        longitude: 1.2314,
+        address: 'Lomé, Togo',
       });
       setIsLoadingLocation(false);
     }
@@ -289,7 +289,7 @@ function ClientProfile() {
             </div>
             <div>
               <h2 className="text-xl font-semibold">Utilisateur</h2>
-              <p className="text-gray-500">+221 77 123 45 67</p>
+              <p className="text-gray-500">+228 90 12 34 56</p>
             </div>
           </div>
         </CardContent>

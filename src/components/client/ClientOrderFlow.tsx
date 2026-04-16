@@ -222,8 +222,8 @@ export function ClientOrderFlow({ onBack }: ClientOrderFlowProps) {
                 ) : (
                   <div className="space-y-3">
                     {[
-                      { name: 'Auto Shine Dakar', address: 'Plateau, Dakar', distance: '1.2 km' },
-                      { name: 'Car Wash Medina', address: 'Medina, Dakar', distance: '2.5 km' },
+                      { name: 'Auto Shine Lomé', address: 'Centre-ville, Lomé', distance: '1.2 km' },
+                      { name: 'Car Wash Bè', address: 'Bè, Lomé', distance: '2.5 km' },
                     ].map((station, i) => (
                       <button
                         key={i}
