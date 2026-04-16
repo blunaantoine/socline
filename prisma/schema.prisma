@@ -1,0 +1,347 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// User roles enum
+enum UserRole {
+  CLIENT
+  WASHER
+  ADMIN
+}
+
+// Order status enum
+enum OrderStatus {
+  PENDING       // Waiting for washer
+  ACCEPTED      // Washer accepted
+  EN_ROUTE      // Washer on the way
+  ARRIVED       // Washer arrived
+  IN_PROGRESS   // Wash in progress
+  COMPLETED     // Wash completed
+  CANCELLED     // Order cancelled
+}
+
+// Payment status enum
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+// Payment method enum
+enum PaymentMethod {
+  MOBILE_MONEY
+  CASH
+  CARD
+}
+
+// Promotion type enum
+enum PromotionType {
+  GLOBAL
+  TARGETED
+  PROMO_CODE
+}
+
+// Main User model
+model User {
+  id            String    @id @default(cuid())
+  phone         String    @unique
+  email         String?
+  name          String?
+  avatar        String?
+  role          UserRole  @default(CLIENT)
+  isActive      Boolean   @default(true)
+  fcmToken      String?   // For push notifications
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  clientOrders  Order[]   @relation("ClientOrders")
+  washer        Washer?
+  reviews       Review[]
+  payments      Payment[]
+  notifications Notification[]
+
+  @@map("users")
+}
+
+// Washer model (extends User)
+model Washer {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Washer specific fields
+  isAvailable    Boolean  @default(false)
+  isVerified     Boolean  @default(false)
+  rating         Float    @default(0)
+  totalRatings   Int      @default(0)
+  totalEarnings  Float    @default(0)
+  completedJobs  Int      @default(0)
+  
+  // Location
+  latitude       Float?
+  longitude      Float?
+  address        String?
+  
+  // Documents
+  idDocument     String?
+  vehiclePlate   String?
+  vehicleModel   String?
+  
+  // Bank info for payments
+  bankName       String?
+  bankAccount    String?
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  orders         Order[]
+  stationId      String?
+  station        Station? @relation(fields: [stationId], references: [id])
+
+  @@map("washers")
+}
+
+// Station model
+model Station {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  address     String
+  latitude    Float
+  longitude   Float
+  phone       String?
+  email       String?
+  images      String?  // JSON array of image URLs
+  rating      Float    @default(0)
+  totalRatings Int     @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  washers     Washer[]
+  services    Service[]
+  orders      Order[]
+
+  @@map("stations")
+}
+
+// Service model (types of wash services)
+model Service {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  price       Float
+  duration    Int      // Duration in minutes
+  image       String?
+  category    String   // e.g., "basic", "premium", "deluxe"
+  isActive    Boolean  @default(true)
+  stationId   String?
+  station     Station? @relation(fields: [stationId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  orders      Order[]
+
+  @@map("services")
+}
+
+// Order model
+model Order {
+  id              String       @id @default(cuid())
+  orderNumber     String       @unique
+  
+  // Client info
+  clientId        String
+  client          User         @relation("ClientOrders", fields: [clientId], references: [id])
+  
+  // Washer info
+  washerId        String?
+  washer          Washer?      @relation(fields: [washerId], references: [id], onDelete: SetNull)
+  
+  // Service info
+  serviceId       String
+  service         Service      @relation(fields: [serviceId], references: [id])
+  
+  // Station info (for station wash)
+  stationId       String?
+  station         Station?     @relation(fields: [stationId], references: [id], onDelete: SetNull)
+  
+  // Order type
+  isHomeService   Boolean      @default(true)  // true = home, false = station
+  
+  // Location
+  address         String
+  latitude        Float?
+  longitude       Float?
+  
+  // Pricing
+  basePrice       Float
+  discount        Float        @default(0)
+  promoCode       String?
+  totalPrice      Float
+  commission      Float        @default(0)  // Platform commission
+  
+  // Status
+  status          OrderStatus  @default(PENDING)
+  
+  // Scheduling
+  scheduledAt     DateTime?    // For scheduled orders
+  estimatedArrival DateTime?   // Estimated arrival time
+  
+  // Timestamps
+  acceptedAt      DateTime?
+  startedAt       DateTime?    // When washer starts journey
+  arrivedAt       DateTime?
+  completedAt     DateTime?
+  cancelledAt     DateTime?
+  cancelReason    String?
+  
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  // Relations
+  payment         Payment?
+  review          Review?
+  tracking        TrackingEvent[]
+
+  @@map("orders")
+}
+
+// Payment model
+model Payment {
+  id              String        @id @default(cuid())
+  orderId         String        @unique
+  order           Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  userId          String
+  user            User          @relation(fields: [userId], references: [id])
+  
+  amount          Float
+  method          PaymentMethod @default(MOBILE_MONEY)
+  status          PaymentStatus @default(PENDING)
+  
+  // Transaction details
+  transactionId   String?       // External transaction ID
+  phoneNumber     String?       // For mobile money
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@map("payments")
+}
+
+// Review model
+model Review {
+  id          String   @id @default(cuid())
+  orderId     String   @unique
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  clientId    String
+  client      User     @relation(fields: [clientId], references: [id])
+  
+  washerId    String?
+  stationId   String?
+  
+  rating      Int      // 1-5
+  comment     String?
+  
+  // Photos before/after
+  beforePhotos String? // JSON array
+  afterPhotos  String? // JSON array
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("reviews")
+}
+
+// Tracking events for real-time order tracking
+model TrackingEvent {
+  id          String   @id @default(cuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  event       String   // e.g., "WASHER_ACCEPTED", "WASHER_EN_ROUTE", "WASHER_ARRIVED"
+  latitude    Float?
+  longitude   Float?
+  message     String?
+  
+  createdAt   DateTime @default(now())
+
+  @@map("tracking_events")
+}
+
+// Promotion model
+model Promotion {
+  id              String         @id @default(cuid())
+  name            String
+  description     String?
+  type            PromotionType  @default(GLOBAL)
+  
+  // Discount value
+  discountType    String         @default("PERCENTAGE") // PERCENTAGE or FIXED
+  discountValue   Float
+  
+  // Promo code (if type is PROMO_CODE)
+  code            String?        @unique
+  
+  // Validity
+  startDate       DateTime
+  endDate         DateTime
+  
+  // Usage limits
+  maxUses         Int?
+  currentUses     Int            @default(0)
+  maxUsesPerUser  Int            @default(1)
+  
+  // Targeting
+  targetUserIds   String?        // JSON array of user IDs for targeted promotions
+  minOrderAmount  Float?
+  
+  isActive        Boolean        @default(true)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@map("promotions")
+}
+
+// Notification model
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  title       String
+  message     String
+  type        String   // e.g., "ORDER_UPDATE", "PROMOTION", "PAYMENT"
+  data        String?  // JSON additional data
+  
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@map("notifications")
+}
+
+// Settings model (for admin-configurable settings)
+model Setting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+
+  @@map("settings")
+}
