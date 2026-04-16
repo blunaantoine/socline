@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useAuthStore, useAppStore } from '@/store';
 import { ClientApp } from '@/components/client/ClientApp';
 import { WasherApp } from '@/components/washer/WasherApp';
@@ -15,6 +15,15 @@ export default function WashGoApp() {
   const { currentView, setView } = useAppStore();
   const [showAuth, setShowAuth] = useState(false);
   const [showRoleSelector, setShowRoleSelector] = useState(false);
+  const [initialized, setInitialized] = useState(false);
+
+  // Derive the default view based on user role
+  const defaultView = useMemo(() => {
+    if (!user) return 'client';
+    if (user.role === 'ADMIN') return 'admin';
+    if (user.role === 'WASHER') return 'washer';
+    return 'client';
+  }, [user]);
 
   useEffect(() => {
     // Simulate checking auth status
@@ -23,24 +32,22 @@ export default function WashGoApp() {
       // In a real app, this would verify the token with the backend
       await new Promise((resolve) => setTimeout(resolve, 500));
       setLoading(false);
+      setInitialized(true);
     };
     checkAuth();
   }, [setLoading]);
 
+  // Set default view when user authenticates
   useEffect(() => {
-    // Show role selector when authenticated but no view selected
-    if (isAuthenticated && user) {
-      setShowRoleSelector(true);
-      // Set default view based on user role
-      if (user.role === 'ADMIN') {
-        setView('admin');
-      } else if (user.role === 'WASHER') {
-        setView('washer');
-      } else {
-        setView('client');
-      }
+    if (initialized && isAuthenticated && user) {
+      // Use setTimeout to defer state updates
+      const timer = setTimeout(() => {
+        setShowRoleSelector(true);
+        setView(defaultView);
+      }, 0);
+      return () => clearTimeout(timer);
     }
-  }, [isAuthenticated, user, setView]);
+  }, [initialized, isAuthenticated, user, defaultView, setView]);
 
   const handleRoleSelect = (view: 'client' | 'washer' | 'admin') => {
     setView(view);
@@ -53,7 +60,7 @@ export default function WashGoApp() {
         <div className="text-center">
           <div className="w-16 h-16 mx-auto mb-4">
             <svg className="animate-spin" viewBox="0 0 24 24" fill="none">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="text-blue-500" />
+              <circle className="opacity-25 text-blue-500" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
             </svg>
           </div>
@@ -231,4 +238,3 @@ function LandingPage({ onLogin }: { onLogin: () => void }) {
     </div>
   );
 }
-x

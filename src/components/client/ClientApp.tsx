@@ -82,7 +82,11 @@ export function ClientApp() {
   };
 
   useEffect(() => {
-    getUserLocation();
+    // Use setTimeout to defer state updates outside the effect
+    const timer = setTimeout(() => {
+      getUserLocation();
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   // If there's an active order, show tracking

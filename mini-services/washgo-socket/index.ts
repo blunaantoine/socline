@@ -1,4 +1,5 @@
 import { Server } from 'socket.io';
+import http from 'http';
 
 const PORT = 3003;
 
@@ -195,7 +196,6 @@ io.on('connection', (socket) => {
 });
 
 // Health check endpoint (simple HTTP server for status)
-const http = require('http');
 const healthServer = http.createServer((req, res) => {
   if (req.url === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });

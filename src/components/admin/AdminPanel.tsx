@@ -296,7 +296,7 @@ function AdminOrders() {
             <SelectItem value="IN_PROGRESS">En cours</SelectItem>
             <SelectItem value="COMPLETED">Terminées</SelectItem>
             <SelectItem value="CANCELLED">Annulées</SelectItem>
-          </SelectTrigger>
+          </SelectContent>
         </Select>
         <Button variant="outline">
           <Download className="w-4 h-4 mr-2" />
