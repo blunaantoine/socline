@@ -21,26 +21,6 @@ export function useGooglePlaces() {
   const [stations, setStations] = useState<GooglePlaceStation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const placesServiceRef = useRef<google.maps.places.PlacesService | null>(null);
-  const mapRef = useRef<google.maps.Map | null>(null);
-
-  // Initialize Google Places service
-  const initPlacesService = useCallback(() => {
-    if (typeof window !== 'undefined' && window.google && window.google.maps && window.google.maps.places) {
-      if (!mapRef.current) {
-        // Create a hidden map div for the places service
-        const mapDiv = document.createElement('div');
-        mapDiv.style.display = 'none';
-        document.body.appendChild(mapDiv);
-        mapRef.current = new google.maps.Map(mapDiv, { center: { lat: 6.1725, lng: 1.2314 }, zoom: 14 });
-      }
-      if (!placesServiceRef.current && mapRef.current) {
-        placesServiceRef.current = new google.maps.places.PlacesService(mapRef.current);
-      }
-      return true;
-    }
-    return false;
-  }, []);
 
   // Wait for Google Maps to be loaded
   const waitForGoogleMaps = useCallback(() => {
@@ -48,20 +28,20 @@ export function useGooglePlaces() {
       let attempts = 0;
       const maxAttempts = 100;
       const check = () => {
-        if (window.google && window.google.maps && window.google.maps.places) {
+        if (window.google && window.google.maps && window.google.maps.places && window.google.maps.places.Place) {
           resolve();
         } else if (attempts < maxAttempts) {
           attempts++;
           setTimeout(check, 100);
         } else {
-          reject(new Error('Google Maps not loaded after ' + maxAttempts + ' attempts'));
+          reject(new Error('Google Maps Places API (New) not loaded after ' + maxAttempts + ' attempts'));
         }
       };
       check();
     });
   }, []);
 
-  // Search for car wash stations
+  // Search for car wash stations using the NEW Places API
   const searchCarWashes = useCallback(async (lat: number, lng: number, radius: number = 10000) => {
     setIsLoading(true);
     setError(null);
@@ -69,57 +49,88 @@ export function useGooglePlaces() {
     try {
       await waitForGoogleMaps();
       
-      if (!initPlacesService()) {
-        throw new Error('Failed to initialize Places service');
-      }
-
-      if (!placesServiceRef.current) {
-        throw new Error('Places service not initialized');
-      }
-
-      const location = new google.maps.LatLng(lat, lng);
+      // Use the new Places API
+      const { Place } = google.maps.places;
       
-      // Search for car wash stations using various keywords
-      const searchKeywords = ['car wash', 'lavage auto', 'station de lavage', 'car wash lome togo'];
       const allResults: GooglePlaceStation[] = [];
       const seenPlaceIds = new Set<string>();
 
+      // Search using the new API with text search
+      const searchKeywords = ['car wash', 'lavage auto', 'station de lavage', 'car wash lome'];
+      
       for (const keyword of searchKeywords) {
-        const request: google.maps.places.TextSearchRequest = {
-          query: keyword,
-          location: location,
-          radius: radius,
+        try {
+          const request = {
+            textQuery: keyword,
+            fields: ['displayName', 'formattedAddress', 'location', 'rating', 'userRatingCount', 'photos', 'businessStatus', 'openingHours', 'id'],
+            locationBias: { lat, lng },
+            maxResultCount: 20,
+          };
+
+          const { places } = await Place.searchByText(request);
+          
+          if (places) {
+            for (const place of places) {
+              const placeId = place.id;
+              if (placeId && !seenPlaceIds.has(placeId) && place.location) {
+                seenPlaceIds.add(placeId);
+                allResults.push({
+                  id: placeId,
+                  placeId: placeId,
+                  name: place.displayName || 'Unknown',
+                  address: place.formattedAddress || 'Address not available',
+                  latitude: place.location.lat(),
+                  longitude: place.location.lng(),
+                  rating: place.rating || 0,
+                  totalRatings: place.userRatingCount || 0,
+                  isOpen: place.openingHours?.isOpen() ?? null,
+                  businessStatus: place.businessStatus || 'OPERATIONAL',
+                  types: [],
+                  photo: place.photos && place.photos[0] ? place.photos[0].getURI() : null,
+                });
+              }
+            }
+          }
+        } catch (searchError) {
+          console.warn(`Search for "${keyword}" failed:`, searchError);
+        }
+      }
+
+      // Also try nearby search for car_wash type
+      try {
+        const nearbyRequest = {
+          fields: ['displayName', 'formattedAddress', 'location', 'rating', 'userRatingCount', 'photos', 'businessStatus', 'openingHours', 'id'],
+          location: { lat, lng },
+          includedPrimaryTypes: ['car_wash'],
+          maxResultCount: 20,
         };
 
-        const results = await new Promise<google.maps.places.PlaceResult[]>((resolve) => {
-          placesServiceRef.current!.textSearch(request, (results, status) => {
-            if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-              resolve(results);
-            } else {
-              resolve([]);
+        const { places } = await Place.searchNearby(nearbyRequest);
+        
+        if (places) {
+          for (const place of places) {
+            const placeId = place.id;
+            if (placeId && !seenPlaceIds.has(placeId) && place.location) {
+              seenPlaceIds.add(placeId);
+              allResults.push({
+                id: placeId,
+                placeId: placeId,
+                name: place.displayName || 'Unknown',
+                address: place.formattedAddress || 'Address not available',
+                latitude: place.location.lat(),
+                longitude: place.location.lng(),
+                rating: place.rating || 0,
+                totalRatings: place.userRatingCount || 0,
+                isOpen: place.openingHours?.isOpen() ?? null,
+                businessStatus: place.businessStatus || 'OPERATIONAL',
+                types: [],
+                photo: place.photos && place.photos[0] ? place.photos[0].getURI() : null,
+              });
             }
-          });
-        });
-
-        for (const place of results) {
-          if (place.place_id && !seenPlaceIds.has(place.place_id) && place.geometry?.location) {
-            seenPlaceIds.add(place.place_id);
-            allResults.push({
-              id: place.place_id,
-              placeId: place.place_id,
-              name: place.name || 'Unknown',
-              address: place.formatted_address || place.vicinity || 'Address not available',
-              latitude: place.geometry.location.lat(),
-              longitude: place.geometry.location.lng(),
-              rating: place.rating || 0,
-              totalRatings: place.user_ratings_total || 0,
-              isOpen: place.opening_hours?.isOpen() ?? null,
-              businessStatus: place.business_status || 'OPERATIONAL',
-              types: place.types || [],
-              photo: place.photos && place.photos[0] ? place.photos[0].getUrl({ maxWidth: 400 }) : null,
-            });
           }
         }
+      } catch (nearbyError) {
+        console.warn('Nearby search failed:', nearbyError);
       }
 
       // Sort by rating
@@ -136,37 +147,26 @@ export function useGooglePlaces() {
     } finally {
       setIsLoading(false);
     }
-  }, [waitForGoogleMaps, initPlacesService]);
+  }, [waitForGoogleMaps]);
 
-  // Get place details
+  // Get place details using the new API
   const getPlaceDetails = useCallback(async (placeId: string) => {
     try {
       await waitForGoogleMaps();
       
-      if (!initPlacesService() || !placesServiceRef.current) {
-        throw new Error('Places service not initialized');
-      }
-
-      return new Promise<google.maps.places.PlaceResult | null>((resolve) => {
-        placesServiceRef.current!.getDetails(
-          {
-            placeId,
-            fields: ['name', 'formatted_address', 'formatted_phone_number', 'opening_hours', 'photos', 'rating', 'user_ratings_total', 'reviews', 'website'],
-          },
-          (place, status) => {
-            if (status === google.maps.places.PlacesServiceStatus.OK && place) {
-              resolve(place);
-            } else {
-              resolve(null);
-            }
-          }
-        );
+      const { Place } = google.maps.places;
+      
+      const place = new Place({ id: placeId });
+      await place.fetchFields({
+        fields: ['displayName', 'formattedAddress', 'nationalPhoneNumber', 'internationalPhoneNumber', 'openingHours', 'photos', 'rating', 'userRatingCount', 'reviews', 'websiteURI'],
       });
+      
+      return place;
     } catch (err) {
       console.error('Error getting place details:', err);
       return null;
     }
-  }, [waitForGoogleMaps, initPlacesService]);
+  }, [waitForGoogleMaps]);
 
   return {
     stations,
