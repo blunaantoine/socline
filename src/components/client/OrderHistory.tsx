@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Clock, CheckCircle, X, ChevronRight, Star } from 'lucide-react';
+import { Clock, CheckCircle, X, ChevronRight, Star, Zap, Droplets, Sparkles, Crown } from 'lucide-react';
 import type { Order, OrderStatus } from '@/types';
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
@@ -114,11 +114,11 @@ function OrderCard({ order }: { order: Order }) {
       <CardContent className="p-0">
         <div className="flex items-center gap-4 p-4">
           {/* Service Icon */}
-          <div className="w-14 h-14 bg-gradient-to-br from-blue-100 to-green-100 rounded-lg flex items-center justify-center text-2xl">
-            {order.service.category === 'basic' && '🚗'}
-            {order.service.category === 'standard' && '🧽'}
-            {order.service.category === 'premium' && '✨'}
-            {order.service.category === 'deluxe' && '💎'}
+          <div className="w-14 h-14 bg-slate-100 rounded-lg flex items-center justify-center">
+            {order.service.category === 'basic' && <Zap className="w-6 h-6 text-emerald-600" />}
+            {order.service.category === 'standard' && <Droplets className="w-6 h-6 text-emerald-600" />}
+            {order.service.category === 'premium' && <Sparkles className="w-6 h-6 text-emerald-600" />}
+            {order.service.category === 'deluxe' && <Crown className="w-6 h-6 text-emerald-600" />}
           </div>
 
           {/* Details */}

@@ -9,7 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   MapPin, Search, Filter, Star, Clock, Car, Navigation, 
-  CheckCircle, Phone, MessageCircle, ChevronRight, Loader2 
+  CheckCircle, Phone, MessageCircle, ChevronRight, Loader2,
+  Zap, Droplets, Sparkles, Crown
 } from 'lucide-react';
 import { ClientOrderFlow } from './ClientOrderFlow';
 import { OrderTracking } from './OrderTracking';
@@ -190,14 +191,14 @@ function ClientHome({
               onClick={onStartOrder}
             >
               <CardContent className="p-4 text-center">
-                <div className="text-3xl mb-2">
-                  {service.category === 'basic' && '🚗'}
-                  {service.category === 'standard' && '🧽'}
-                  {service.category === 'premium' && '✨'}
-                  {service.category === 'deluxe' && '💎'}
+                <div className="w-10 h-10 mx-auto mb-2 bg-slate-100 rounded-xl flex items-center justify-center">
+                  {service.category === 'basic' && <Zap className="w-5 h-5 text-emerald-600" />}
+                  {service.category === 'standard' && <Droplets className="w-5 h-5 text-emerald-600" />}
+                  {service.category === 'premium' && <Sparkles className="w-5 h-5 text-emerald-600" />}
+                  {service.category === 'deluxe' && <Crown className="w-5 h-5 text-emerald-600" />}
                 </div>
                 <h3 className="font-medium text-sm">{service.name}</h3>
-                <p className="text-blue-600 font-bold mt-1">
+                <p className="text-emerald-600 font-bold mt-1">
                   {service.price.toLocaleString()} FCFA
                 </p>
                 <p className="text-xs text-gray-500">{service.duration} min</p>

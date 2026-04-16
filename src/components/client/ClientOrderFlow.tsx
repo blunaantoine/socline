@@ -11,7 +11,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Switch } from '@/components/ui/switch';
 import { 
   ArrowLeft, MapPin, Clock, CreditCard, Wallet, 
-  CheckCircle, Star, AlertCircle, Loader2 
+  CheckCircle, Star, AlertCircle, Loader2,
+  Zap, Droplets, Sparkles, Crown
 } from 'lucide-react';
 import type { Service, Order } from '@/types';
 
@@ -142,11 +143,11 @@ export function ClientOrderFlow({ onBack }: ClientOrderFlowProps) {
               >
                 <CardContent className="p-4">
                   <div className="flex items-start gap-4">
-                    <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-green-100 rounded-lg flex items-center justify-center text-3xl">
-                      {service.category === 'basic' && '🚗'}
-                      {service.category === 'standard' && '🧽'}
-                      {service.category === 'premium' && '✨'}
-                      {service.category === 'deluxe' && '💎'}
+                    <div className="w-16 h-16 bg-slate-100 rounded-lg flex items-center justify-center">
+                      {service.category === 'basic' && <Zap className="w-7 h-7 text-emerald-600" />}
+                      {service.category === 'standard' && <Droplets className="w-7 h-7 text-emerald-600" />}
+                      {service.category === 'premium' && <Sparkles className="w-7 h-7 text-emerald-600" />}
+                      {service.category === 'deluxe' && <Crown className="w-7 h-7 text-emerald-600" />}
                     </div>
                     <div className="flex-1">
                       <div className="flex justify-between items-start">
@@ -155,7 +156,7 @@ export function ClientOrderFlow({ onBack }: ClientOrderFlowProps) {
                       </div>
                       <p className="text-sm text-gray-500 mt-1">{service.description}</p>
                       <div className="flex justify-between items-center mt-3">
-                        <span className="text-xl font-bold text-blue-600">
+                        <span className="text-xl font-bold text-emerald-600">
                           {service.price.toLocaleString()} FCFA
                         </span>
                         <Button size="sm">Choisir</Button>
