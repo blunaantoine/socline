@@ -60,6 +60,12 @@ model User {
   role          UserRole  @default(CLIENT)
   isActive      Boolean   @default(true)
   fcmToken      String?   // For push notifications
+  
+  // Client specific fields (for car identification)
+  plateNumber   String?   // Numéro de plaque
+  carColor      String?   // Couleur de la voiture
+  pin           String?   // 4-digit PIN code
+  
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -69,6 +75,8 @@ model User {
   reviews       Review[]
   payments      Payment[]
   notifications Notification[]
+  sentMessages  Message[] @relation("SentMessages")
+  receivedMessages Message[] @relation("ReceivedMessages")
 
   @@map("users")
 }
@@ -216,6 +224,7 @@ model Order {
   payment         Payment?
   review          Review?
   tracking        TrackingEvent[]
+  conversation    Conversation?
 
   @@map("orders")
 }
@@ -344,4 +353,75 @@ model Setting {
   updatedAt   DateTime @updatedAt
 
   @@map("settings")
+}
+
+// Message type enum
+enum MessageType {
+  TEXT
+  IMAGE
+  LOCATION
+  QUICK_MESSAGE
+  SYSTEM
+}
+
+// Conversation model (1 order = 1 conversation)
+model Conversation {
+  id          String   @id @default(cuid())
+  orderId     String   @unique
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  // Participants
+  clientId    String
+  washerId    String?
+  
+  // Status
+  isActive    Boolean  @default(true)    // Can send messages
+  isLocked    Boolean  @default(false)   // Read-only after 24h
+  
+  // Last message preview
+  lastMessage String?
+  lastMessageAt DateTime?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  messages    Message[]
+  
+  @@map("conversations")
+}
+
+// Message model
+model Message {
+  id             String      @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  
+  // Sender
+  senderId       String
+  sender         User        @relation("SentMessages", fields: [senderId], references: [id])
+  receiverId     String
+  receiver       User        @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  
+  // Content
+  type           MessageType @default(TEXT)
+  content        String      // Text content or JSON for location/image
+  
+  // For images
+  imageUrl       String?
+  
+  // For location
+  latitude       Float?
+  longitude      Float?
+  
+  // For quick messages
+  quickType      String?     // "ARRIVING", "ON_SITE", "DELAY"
+  
+  // Status
+  isRead         Boolean     @default(false)
+  readAt         DateTime?
+  
+  createdAt      DateTime    @default(now())
+  
+  @@map("messages")
 }

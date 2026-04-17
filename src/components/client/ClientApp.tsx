@@ -10,13 +10,15 @@ import {
   MapPin, Search, Star, Clock, Car,
   CheckCircle, Phone, Loader2,
   Zap, Droplets, Sparkles, Crown, RefreshCw, ExternalLink,
-  Home, Calendar, MessageCircle, User, Bell, Settings
+  Home, Calendar, MessageCircle, User, Bell, Settings, LogOut
 } from 'lucide-react';
 import { ClientOrderFlow } from './ClientOrderFlow';
 import { OrderTracking } from './OrderTracking';
 import { OrderHistory } from './OrderHistory';
 import { GoogleMap } from '@/components/map/GoogleMap';
 import { useGooglePlaces, GooglePlaceStation } from '@/hooks/useGooglePlaces';
+import { AuthScreen } from './AuthScreen';
+import { ChatList } from '@/components/chat/ChatList';
 
 const navItems = [
   { id: 'home', icon: Home, label: 'Accueil' },
@@ -26,7 +28,21 @@ const navItems = [
   { id: 'profile', icon: User, label: 'Profil' },
 ];
 
+const CAR_COLORS: Record<string, string> = {
+  'Noir': 'bg-gray-900',
+  'Blanc': 'bg-white border border-gray-300',
+  'Gris': 'bg-gray-500',
+  'Argent': 'bg-gray-400',
+  'Bleu': 'bg-blue-500',
+  'Rouge': 'bg-red-500',
+  'Vert': 'bg-green-500',
+  'Marron': 'bg-amber-800',
+  'Beige': 'bg-amber-200',
+  'Jaune': 'bg-yellow-400',
+};
+
 export function ClientApp() {
+  const { user, isAuthenticated, isLoading, logout, setLoading } = useAuthStore();
   const { userLocation, setUserLocation } = useAppStore();
   const { services, setServices } = useServicesStore();
   const { currentOrder } = useOrdersStore();
@@ -39,6 +55,12 @@ export function ClientApp() {
   
   const { stations: googleStations, isLoading: isLoadingStations, searchCarWashes } = useGooglePlaces();
 
+  // Initialize auth state
+  useEffect(() => {
+    setLoading(false);
+  }, [setLoading]);
+
+  // Initialize services and washers
   useEffect(() => {
     setServices([
       { id: '1', name: 'Express', description: 'Lavage extérieur rapide', price: 5000, duration: 20, category: 'basic', isActive: true, createdAt: '', updatedAt: '' },
@@ -48,11 +70,12 @@ export function ClientApp() {
     ]);
 
     setNearbyWashers([
-      { id: '1', userId: 'w1', user: { id: 'w1', phone: '90123456', name: 'Kofi Mensah', role: 'WASHER', isActive: true, createdAt: '', updatedAt: '' }, isAvailable: true, isVerified: true, rating: 4.9, totalRatings: 234, totalEarnings: 150000, completedJobs: 156, latitude: 6.172, longitude: 1.230, address: 'Centre-ville', createdAt: '', updatedAt: '' },
-      { id: '2', userId: 'w2', user: { id: 'w2', phone: '90234567', name: 'Yaw Adzimah', role: 'WASHER', isActive: true, createdAt: '', updatedAt: '' }, isAvailable: true, isVerified: true, rating: 4.7, totalRatings: 189, totalEarnings: 120000, completedJobs: 120, latitude: 6.175, longitude: 1.233, address: 'Hedzranawoé', createdAt: '', updatedAt: '' },
+      { id: '1', userId: 'w1', user: { id: 'w1', phone: '90123456', name: 'Kofi Mensah', role: 'CLIENT', isActive: true, createdAt: '', updatedAt: '' }, isAvailable: true, isVerified: true, rating: 4.9, totalRatings: 234, totalEarnings: 150000, completedJobs: 156, latitude: 6.172, longitude: 1.230, address: 'Centre-ville', createdAt: '', updatedAt: '' },
+      { id: '2', userId: 'w2', user: { id: 'w2', phone: '90234567', name: 'Yaw Adzimah', role: 'CLIENT', isActive: true, createdAt: '', updatedAt: '' }, isAvailable: true, isVerified: true, rating: 4.7, totalRatings: 189, totalEarnings: 120000, completedJobs: 120, latitude: 6.175, longitude: 1.233, address: 'Hedzranawoé', createdAt: '', updatedAt: '' },
     ]);
   }, [setServices, setNearbyWashers]);
 
+  // Search Google car washes
   useEffect(() => {
     if (userLocation) {
       searchCarWashes(userLocation.latitude, userLocation.longitude);
@@ -71,6 +94,7 @@ export function ClientApp() {
     }
   }, [googleStations, setStations]);
 
+  // Get user location
   const getUserLocation = useCallback(() => {
     setIsLoadingLocation(true);
     if (navigator.geolocation) {
@@ -95,77 +119,122 @@ export function ClientApp() {
     return () => clearTimeout(timer);
   }, [getUserLocation]);
 
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="w-[390px] h-[844px] bg-[#FFF8F0] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[#FF9800]" />
+      </div>
+    );
+  }
+
+  // Show auth screen if not authenticated
+  if (!isAuthenticated || !user) {
+    return (
+      <div className="w-[390px] h-[844px] bg-[#FFF8F0] flex flex-col overflow-hidden relative">
+        <AuthScreen onComplete={() => {}} />
+      </div>
+    );
+  }
+
+  // Show order tracking if active order
   if (currentOrder && ['ACCEPTED', 'EN_ROUTE', 'ARRIVED', 'IN_PROGRESS'].includes(currentOrder.status)) {
     return <OrderTracking order={currentOrder} />;
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-[#FFF8F0] overflow-hidden">
-      {/* Header */}
-      <header className="bg-white px-4 py-3 flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <button onClick={getUserLocation} className="flex items-center gap-2">
-            {isLoadingLocation ? (
-              <Loader2 className="w-5 h-5 text-[#FF9800] animate-spin" />
-            ) : (
-              <MapPin className="w-5 h-5 text-[#FF9800]" />
-            )}
-            <div className="text-left">
-              <p className="text-xs text-[#757575]">Position</p>
-              <p className="text-sm font-medium text-[#212121] truncate max-w-[140px]">{userLocation?.address || 'Lomé'}</p>
-            </div>
-          </button>
+    <div className="w-[390px] h-[844px] bg-[#FFF8F0] flex flex-col overflow-hidden relative">
+      {/* iOS Status Bar */}
+      <div className="h-11 bg-[#FFF8F0] flex items-end justify-between px-6 pb-1 flex-shrink-0">
+        <span className="text-sm font-semibold">9:41</span>
+        <div className="flex items-center gap-1">
+          <div className="w-4 h-4 flex items-end justify-between">
+            <div className="w-0.5 h-1.5 bg-black rounded-sm"></div>
+            <div className="w-0.5 h-2.5 bg-black rounded-sm"></div>
+            <div className="w-0.5 h-3.5 bg-black rounded-sm"></div>
+            <div className="w-0.5 h-4 bg-black rounded-sm"></div>
+          </div>
+          <div className="w-6 h-3 border border-black rounded-sm relative">
+            <div className="absolute inset-0.5 bg-black rounded-sm" style={{ width: '80%' }}></div>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button className="w-10 h-10 bg-[#FFF3E0] rounded-full flex items-center justify-center">
-            <Bell className="w-5 h-5 text-[#FF9800]" />
-          </button>
-        </div>
-      </header>
-
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto pb-20">
-        {activeTab === 'home' && (
-          <HomeContent
-            services={services}
-            nearbyWashers={nearbyWashers}
-            googleStations={googleStations}
-            isLoadingStations={isLoadingStations}
-            userLocation={userLocation}
-            onRefresh={() => userLocation && searchCarWashes(userLocation.latitude, userLocation.longitude)}
-            onStartOrder={() => setActiveTab('booking')}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            activeFilter={activeFilter}
-            setActiveFilter={setActiveFilter}
-          />
-        )}
-        {activeTab === 'booking' && <ClientOrderFlow onBack={() => setActiveTab('home')} />}
-        {activeTab === 'activity' && <OrderHistory />}
-        {activeTab === 'chat' && <ChatContent />}
-        {activeTab === 'profile' && <ProfileContent />}
       </div>
 
-      {/* Bottom Navigation */}
-      <nav className="absolute bottom-0 left-0 right-0 bg-white border-t border-[#F5F5F5] flex justify-around items-center py-2 px-2 z-50">
-        {navItems.map((item) => {
-          const isActive = activeTab === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl transition-all ${
-                isActive ? 'text-[#FF9800]' : 'text-[#9E9E9E]'
-              }`}
-            >
-              <div className={`w-6 h-6 flex items-center justify-center ${isActive ? 'bg-[#FFF3E0] rounded-lg' : ''}`}>
-                <item.icon className="w-5 h-5" />
-              </div>
-              <span className="text-[10px] font-medium">{item.label}</span>
-            </button>
-          );
-        })}
-      </nav>
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header (not shown on chat tab) */}
+        {activeTab !== 'chat' && (
+          <header className="bg-white px-4 py-3 flex items-center justify-between flex-shrink-0">
+            <div className="flex items-center gap-3">
+              <button onClick={getUserLocation} className="flex items-center gap-2">
+                {isLoadingLocation ? (
+                  <Loader2 className="w-5 h-5 text-[#FF9800] animate-spin" />
+                ) : (
+                  <MapPin className="w-5 h-5 text-[#FF9800]" />
+                )}
+                <div className="text-left">
+                  <p className="text-xs text-[#757575]">Position</p>
+                  <p className="text-sm font-medium text-[#212121] truncate max-w-[140px]">{userLocation?.address || 'Lomé'}</p>
+                </div>
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <button className="w-10 h-10 bg-[#FFF3E0] rounded-full flex items-center justify-center">
+                <Bell className="w-5 h-5 text-[#FF9800]" />
+              </button>
+            </div>
+          </header>
+        )}
+
+        {/* Content */}
+        <div className={`flex-1 ${activeTab !== 'chat' ? 'overflow-y-auto pb-20' : ''}`}>
+          {activeTab === 'home' && (
+            <HomeContent
+              services={services}
+              nearbyWashers={nearbyWashers}
+              googleStations={googleStations}
+              isLoadingStations={isLoadingStations}
+              userLocation={userLocation}
+              onRefresh={() => userLocation && searchCarWashes(userLocation.latitude, userLocation.longitude)}
+              onStartOrder={() => setActiveTab('booking')}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              activeFilter={activeFilter}
+              setActiveFilter={setActiveFilter}
+            />
+          )}
+          {activeTab === 'booking' && <ClientOrderFlow onBack={() => setActiveTab('home')} />}
+          {activeTab === 'activity' && <OrderHistory />}
+          {activeTab === 'chat' && <ChatList />}
+          {activeTab === 'profile' && <ProfileContent user={user} onLogout={logout} />}
+        </div>
+
+        {/* Bottom Navigation (not shown on chat tab) */}
+        {activeTab !== 'chat' && (
+          <nav className="absolute bottom-0 left-0 right-0 bg-white border-t border-[#F5F5F5] flex justify-around items-center py-2 px-2 z-50">
+            {navItems.map((item) => {
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl transition-all ${
+                    isActive ? 'text-[#FF9800]' : 'text-[#9E9E9E]'
+                  }`}
+                >
+                  <div className={`w-6 h-6 flex items-center justify-center ${isActive ? 'bg-[#FFF3E0] rounded-lg' : ''}`}>
+                    <item.icon className="w-5 h-5" />
+                  </div>
+                  <span className="text-[10px] font-medium">{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+        )}
+      </div>
+
+      {/* iOS Home Indicator */}
+      <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-32 h-1 bg-black rounded-full"></div>
     </div>
   );
 }
@@ -344,25 +413,10 @@ function HomeContent({
   );
 }
 
-// Chat Content
-function ChatContent() {
-  return (
-    <div className="flex-1 flex flex-col items-center justify-center p-4">
-      <div className="w-16 h-16 bg-[#FFF3E0] rounded-full flex items-center justify-center mb-4">
-        <MessageCircle className="w-8 h-8 text-[#FF9800]" />
-      </div>
-      <h3 className="text-lg font-semibold text-[#212121] mb-1">Aucun message</h3>
-      <p className="text-[#757575] text-sm text-center">Vos conversations apparaîtront ici</p>
-    </div>
-  );
-}
-
 // Profile Content
-function ProfileContent() {
-  const { user } = useAuthStore();
-  
+function ProfileContent({ user, onLogout }: { user: any; onLogout: () => void }) {
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-4 space-y-4 pb-24">
       {/* Profile Card */}
       <div className="bg-white rounded-2xl p-4">
         <div className="flex items-center gap-3">
@@ -371,7 +425,7 @@ function ProfileContent() {
           </div>
           <div className="flex-1">
             <h2 className="font-bold text-[#212121]">{user?.name || 'Utilisateur'}</h2>
-            <p className="text-sm text-[#757575]">{user?.phone || '+228 90 12 34 56'}</p>
+            <p className="text-sm text-[#757575]">+228 {user?.phone || '90 12 34 56'}</p>
           </div>
           <button className="w-8 h-8 bg-[#FFF3E0] rounded-lg flex items-center justify-center">
             <Settings className="w-4 h-4 text-[#FF9800]" />
@@ -392,20 +446,13 @@ function ProfileContent() {
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-sm text-[#757575]">Plaque:</span>
-              <span className="font-bold text-[#212121]">{user?.vehicle?.plateNumber || 'TG 1234 A'}</span>
+              <span className="font-bold text-[#212121]">{user?.plateNumber || 'TG 1234 A'}</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-sm text-[#757575]">Couleur:</span>
               <div className="flex items-center gap-1">
-                <div className={`w-4 h-4 rounded-full ${
-                  user?.vehicle?.color === 'Noir' ? 'bg-gray-900' :
-                  user?.vehicle?.color === 'Blanc' ? 'bg-white border border-gray-300' :
-                  user?.vehicle?.color === 'Bleu' ? 'bg-blue-500' :
-                  user?.vehicle?.color === 'Rouge' ? 'bg-red-500' :
-                  user?.vehicle?.color === 'Gris' ? 'bg-gray-500' :
-                  'bg-[#FF9800]'
-                }`} />
-                <span className="font-medium text-[#212121]">{user?.vehicle?.color || 'Non définie'}</span>
+                <div className={`w-4 h-4 rounded-full ${CAR_COLORS[user?.carColor] || 'bg-gray-400'}`} />
+                <span className="font-medium text-[#212121]">{user?.carColor || 'Non définie'}</span>
               </div>
             </div>
           </div>
@@ -417,15 +464,15 @@ function ProfileContent() {
         <h3 className="font-semibold text-[#212121] mb-3">Statistiques</h3>
         <div className="grid grid-cols-3 gap-4">
           <div className="text-center">
-            <div className="text-xl font-bold text-[#FF9800]">12</div>
+            <div className="text-xl font-bold text-[#FF9800]">0</div>
             <div className="text-xs text-[#757575]">Lavages</div>
           </div>
           <div className="text-center">
-            <div className="text-xl font-bold text-[#4CAF50]">4.8</div>
+            <div className="text-xl font-bold text-[#4CAF50]">-</div>
             <div className="text-xs text-[#757575]">Note</div>
           </div>
           <div className="text-center">
-            <div className="text-xl font-bold text-[#2196F3]">15K</div>
+            <div className="text-xl font-bold text-[#2196F3]">0F</div>
             <div className="text-xs text-[#757575]">Économisé</div>
           </div>
         </div>
@@ -451,6 +498,16 @@ function ProfileContent() {
           </button>
         ))}
       </div>
+
+      {/* Logout Button */}
+      <Button
+        onClick={onLogout}
+        variant="outline"
+        className="w-full h-12 border-red-200 text-red-500 hover:bg-red-50 rounded-xl font-semibold"
+      >
+        <LogOut className="w-5 h-5 mr-2" />
+        Déconnexion
+      </Button>
     </div>
   );
 }

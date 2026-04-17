@@ -16,6 +16,8 @@ export interface User {
   role: UserRole;
   isActive: boolean;
   vehicle?: Vehicle;
+  plateNumber?: string;
+  carColor?: string;
   pin?: string;
   createdAt: string;
   updatedAt: string;
@@ -228,4 +230,51 @@ export interface MapMarker {
   longitude: number;
   label?: string;
   data?: Washer | Station;
+}
+
+// Message types
+export type MessageType = 'TEXT' | 'IMAGE' | 'LOCATION' | 'QUICK_MESSAGE' | 'SYSTEM';
+
+export interface Message {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  sender: User;
+  receiverId: string;
+  receiver: User;
+  type: MessageType;
+  content: string;
+  imageUrl?: string;
+  latitude?: number;
+  longitude?: number;
+  quickType?: string; // "ARRIVING", "ON_SITE", "DELAY"
+  isRead: boolean;
+  readAt?: string;
+  createdAt: string;
+}
+
+export interface Conversation {
+  id: string;
+  orderId: string;
+  order: Order;
+  clientId: string;
+  washerId?: string;
+  isActive: boolean;
+  isLocked: boolean;
+  lastMessage?: string;
+  lastMessageAt?: string;
+  messages?: Message[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Chat store types
+export interface ChatState {
+  conversations: Conversation[];
+  currentConversation: Conversation | null;
+  messages: Message[];
+  setConversations: (conversations: Conversation[]) => void;
+  setCurrentConversation: (conversation: Conversation | null) => void;
+  addMessage: (message: Message) => void;
+  setMessages: (messages: Message[]) => void;
 }

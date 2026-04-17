@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { User, Washer, Order, Station, Service, Notification, Location, MapMarker } from '@/types';
+import type { User, Washer, Order, Station, Service, Notification, Location, MapMarker, Message, Conversation } from '@/types';
 
 // Auth Store
 interface AuthState {
@@ -165,4 +165,35 @@ export const useWashersStore = create<WashersState>()((set) => ({
   nearbyWashers: [],
   setWashers: (washers) => set({ washers }),
   setNearbyWashers: (washers) => set({ nearbyWashers: washers }),
+}));
+
+// Chat Store
+interface ChatState {
+  conversations: Conversation[];
+  currentConversation: Conversation | null;
+  messages: Message[];
+  isConnected: boolean;
+  setConversations: (conversations: Conversation[]) => void;
+  setCurrentConversation: (conversation: Conversation | null) => void;
+  addConversation: (conversation: Conversation) => void;
+  setMessages: (messages: Message[]) => void;
+  addMessage: (message: Message) => void;
+  setConnected: (connected: boolean) => void;
+}
+
+export const useChatStore = create<ChatState>()((set) => ({
+  conversations: [],
+  currentConversation: null,
+  messages: [],
+  isConnected: false,
+  setConversations: (conversations) => set({ conversations }),
+  setCurrentConversation: (conversation) => set({ currentConversation: conversation, messages: [] }),
+  addConversation: (conversation) => set((state) => ({ 
+    conversations: [conversation, ...state.conversations] 
+  })),
+  setMessages: (messages) => set({ messages }),
+  addMessage: (message) => set((state) => ({ 
+    messages: [...state.messages, message] 
+  })),
+  setConnected: (connected) => set({ isConnected: connected }),
 }));
