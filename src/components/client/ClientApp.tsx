@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useAppStore, useServicesStore, useOrdersStore, useStationsStore, useWashersStore } from '@/store';
+import { useAppStore, useServicesStore, useOrdersStore, useStationsStore, useWashersStore, useAuthStore } from '@/store';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -359,21 +359,56 @@ function ChatContent() {
 
 // Profile Content
 function ProfileContent() {
+  const { user } = useAuthStore();
+  
   return (
     <div className="p-4 space-y-4">
       {/* Profile Card */}
       <div className="bg-white rounded-2xl p-4">
         <div className="flex items-center gap-3">
           <div className="w-14 h-14 bg-gradient-to-br from-[#FF9800] to-[#F57C00] rounded-full flex items-center justify-center text-white text-xl font-bold">
-            U
+            {user?.name?.charAt(0) || 'U'}
           </div>
           <div className="flex-1">
-            <h2 className="font-bold text-[#212121]">Utilisateur</h2>
-            <p className="text-sm text-[#757575]">+228 90 12 34 56</p>
+            <h2 className="font-bold text-[#212121]">{user?.name || 'Utilisateur'}</h2>
+            <p className="text-sm text-[#757575]">{user?.phone || '+228 90 12 34 56'}</p>
           </div>
           <button className="w-8 h-8 bg-[#FFF3E0] rounded-lg flex items-center justify-center">
             <Settings className="w-4 h-4 text-[#FF9800]" />
           </button>
+        </div>
+      </div>
+
+      {/* Vehicle Card */}
+      <div className="bg-white rounded-2xl p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold text-[#212121]">Ma voiture</h3>
+          <button className="text-xs text-[#FF9800] font-medium">Modifier</button>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 bg-[#FFF3E0] rounded-xl flex items-center justify-center">
+            <Car className="w-8 h-8 text-[#FF9800]" />
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-sm text-[#757575]">Plaque:</span>
+              <span className="font-bold text-[#212121]">{user?.vehicle?.plateNumber || 'TG 1234 A'}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-[#757575]">Couleur:</span>
+              <div className="flex items-center gap-1">
+                <div className={`w-4 h-4 rounded-full ${
+                  user?.vehicle?.color === 'Noir' ? 'bg-gray-900' :
+                  user?.vehicle?.color === 'Blanc' ? 'bg-white border border-gray-300' :
+                  user?.vehicle?.color === 'Bleu' ? 'bg-blue-500' :
+                  user?.vehicle?.color === 'Rouge' ? 'bg-red-500' :
+                  user?.vehicle?.color === 'Gris' ? 'bg-gray-500' :
+                  'bg-[#FF9800]'
+                }`} />
+                <span className="font-medium text-[#212121]">{user?.vehicle?.color || 'Non définie'}</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

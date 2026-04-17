@@ -1,6 +1,12 @@
 // User types
 export type UserRole = 'CLIENT' | 'WASHER' | 'ADMIN';
 
+export interface Vehicle {
+  plateNumber: string;
+  color: string;
+  model?: string;
+}
+
 export interface User {
   id: string;
   phone: string;
@@ -9,6 +15,8 @@ export interface User {
   avatar?: string;
   role: UserRole;
   isActive: boolean;
+  vehicle?: Vehicle;
+  pin?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -87,6 +95,8 @@ export interface Order {
   address: string;
   latitude?: number;
   longitude?: number;
+  vehiclePlate?: string;
+  vehicleColor?: string;
   basePrice: number;
   discount: number;
   promoCode?: string;
