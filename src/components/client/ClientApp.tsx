@@ -63,16 +63,22 @@ export function ClientApp() {
   // Initialize auth state and verify session
   useEffect(() => {
     const verifySession = async () => {
+      // Migration: remove old washgo-auth data
+      const oldAuth = localStorage.getItem('washgo-auth');
+      if (oldAuth) {
+        localStorage.removeItem('washgo-auth');
+      }
+
       const storedAuth = localStorage.getItem('socline-auth');
       if (storedAuth) {
         try {
           const parsed = JSON.parse(storedAuth);
           const userId = parsed?.state?.user?.id;
-          
+
           if (userId) {
             const res = await fetch(`/api/auth/me?userId=${userId}`);
             const data = await res.json();
-            
+
             if (!data.valid) {
               // Session invalid, clear storage
               console.log('Session invalid, clearing auth');

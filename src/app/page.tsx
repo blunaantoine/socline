@@ -23,6 +23,14 @@ export default function SoclineApp() {
 
   useEffect(() => {
     const checkAuth = async () => {
+      // Migration: remove old washgo-auth data
+      if (typeof window !== 'undefined') {
+        const oldAuth = localStorage.getItem('washgo-auth');
+        if (oldAuth) {
+          localStorage.removeItem('washgo-auth');
+        }
+      }
+
       setLoading(true);
       await new Promise((resolve) => setTimeout(resolve, 500));
       setLoading(false);
