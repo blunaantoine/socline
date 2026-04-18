@@ -281,62 +281,17 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
 
   if (isLoadingServices) {
     return (
-      <div className="flex-1 flex flex-col bg-[#FAFAFA]">
-        {/* Android Status Bar */}
-        <div className="h-6 bg-[#FF9800] flex items-center justify-between px-4 flex-shrink-0 sticky top-0 z-50">
-          <span className="text-white text-xs font-medium">9:41</span>
-          <div className="flex items-center gap-1">
-            <div className="flex items-end gap-0.5">
-              <div className="w-1 h-1 bg-white rounded-sm"></div>
-              <div className="w-1 h-2 bg-white rounded-sm"></div>
-              <div className="w-1 h-3 bg-white rounded-sm"></div>
-              <div className="w-1 h-4 bg-white rounded-sm"></div>
-            </div>
-            <div className="w-5 h-2.5 border border-white rounded-sm ml-1 relative">
-              <div className="absolute inset-0.5 bg-white rounded-sm" style={{ width: '70%' }}></div>
-            </div>
-          </div>
-        </div>
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <Loader2 className="w-8 h-8 animate-spin mx-auto text-[#FF9800]" />
-            <p className="mt-4 text-[#757575]">Chargement des services...</p>
-          </div>
-        </div>
-        {/* Android Navigation Bar */}
-        <div className="fixed bottom-0 left-0 right-0 h-10 bg-black flex items-center justify-center gap-16 z-50">
-          <button className="w-8 h-8 flex items-center justify-center">
-            <div className="w-5 h-5 border-2 border-white rounded-full"></div>
-          </button>
-          <button className="w-8 h-8 flex items-center justify-center">
-            <div className="w-5 h-5 border-2 border-white rounded"></div>
-          </button>
-          <button className="w-8 h-8 flex items-center justify-center">
-            <div className="w-4 h-4 border-2 border-white rotate-45"></div>
-          </button>
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto text-[#FF9800]" />
+          <p className="mt-4 text-[#757575]">Chargement des services...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-[#FAFAFA]">
-      {/* Android Status Bar */}
-      <div className="h-6 bg-[#FF9800] flex items-center justify-between px-4 flex-shrink-0 sticky top-0 z-50">
-        <span className="text-white text-xs font-medium">9:41</span>
-        <div className="flex items-center gap-1">
-          <div className="flex items-end gap-0.5">
-            <div className="w-1 h-1 bg-white rounded-sm"></div>
-            <div className="w-1 h-2 bg-white rounded-sm"></div>
-            <div className="w-1 h-3 bg-white rounded-sm"></div>
-            <div className="w-1 h-4 bg-white rounded-sm"></div>
-          </div>
-          <div className="w-5 h-2.5 border border-white rounded-sm ml-1 relative">
-            <div className="absolute inset-0.5 bg-white rounded-sm" style={{ width: '70%' }}></div>
-          </div>
-        </div>
-      </div>
-
+    <div className="flex-1 flex flex-col">
       {/* Header */}
       <div className="bg-white border-b border-[#E0E0E0] px-4 py-3 flex-shrink-0 sticky top-6 z-40">
         <div className="flex items-center gap-3">
@@ -852,19 +807,6 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
             </Button>
           </div>
         )}
-      </div>
-
-      {/* Android Navigation Bar - FIXED at very bottom */}
-      <div className="fixed bottom-0 left-0 right-0 h-10 bg-black flex items-center justify-center gap-16 z-50">
-        <button className="w-8 h-8 flex items-center justify-center">
-          <div className="w-5 h-5 border-2 border-white rounded-full"></div>
-        </button>
-        <button className="w-8 h-8 flex items-center justify-center">
-          <div className="w-5 h-5 border-2 border-white rounded"></div>
-        </button>
-        <button className="w-8 h-8 flex items-center justify-center">
-          <div className="w-4 h-4 border-2 border-white rotate-45"></div>
-        </button>
       </div>
     </div>
   );
