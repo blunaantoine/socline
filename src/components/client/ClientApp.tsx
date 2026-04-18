@@ -45,13 +45,14 @@ export function ClientApp() {
   const { user, isAuthenticated, isLoading, logout, setLoading } = useAuthStore();
   const { userLocation, setUserLocation } = useAppStore();
   const { services, setServices } = useServicesStore();
-  const { currentOrder } = useOrdersStore();
+  const { currentOrder, setCurrentOrder } = useOrdersStore();
   const { nearbyWashers, setNearbyWashers } = useWashersStore();
   const { stations, setStations } = useStationsStore();
   const [activeTab, setActiveTab] = useState('home');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [showTracking, setShowTracking] = useState(true);
   
   const { stations: googleStations, isLoading: isLoadingStations, searchCarWashes } = useGooglePlaces();
 
@@ -175,8 +176,18 @@ export function ClientApp() {
   }
 
   // Show order tracking if active order
-  if (currentOrder && ['ACCEPTED', 'EN_ROUTE', 'ARRIVED', 'IN_PROGRESS'].includes(currentOrder.status)) {
-    return <OrderTracking order={currentOrder} />;
+  if (currentOrder && showTracking && ['ACCEPTED', 'EN_ROUTE', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED'].includes(currentOrder.status)) {
+    return (
+      <OrderTracking 
+        order={currentOrder} 
+        onBack={() => {
+          setShowTracking(false);
+          if (currentOrder.status === 'COMPLETED') {
+            setCurrentOrder(null);
+          }
+        }} 
+      />
+    );
   }
 
   return (

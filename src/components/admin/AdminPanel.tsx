@@ -1,13 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import { useAppStore } from '@/store';
+import { useState, useEffect, useCallback } from 'react';
+import { useAuthStore, useAppStore } from '@/store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -35,237 +34,490 @@ import {
 import { 
   LayoutDashboard, Users, Car, MapPin, DollarSign, 
   TrendingUp, Clock, Star, Settings, Bell, Plus,
-  CheckCircle, XCircle, AlertCircle, Search, Filter,
-  ChevronDown, Download, Eye, Edit, Trash2, Tag
+  CheckCircle, XCircle, AlertCircle, Search,
+  ChevronDown, Download, Eye, Edit, Trash2, Tag,
+  RefreshCw, Loader2, ArrowLeft, LogOut
 } from 'lucide-react';
+import { toast } from 'sonner';
+
+interface Order {
+  id: string;
+  orderNumber: string;
+  client: string;
+  clientPhone?: string;
+  washer: string;
+  service: string;
+  amount: number;
+  status: string;
+  createdAt: string;
+  address?: string;
+}
+
+interface User {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  orders: number;
+  status: string;
+  createdAt: string;
+}
+
+interface Washer {
+  id: string;
+  name: string;
+  phone: string;
+  rating: number;
+  completedJobs: number;
+  earnings: number;
+  isAvailable: boolean;
+  isVerified: boolean;
+}
+
+interface Stats {
+  totalOrders: number;
+  todayOrders: number;
+  totalUsers: number;
+  totalWashers: number;
+  activeWashers: number;
+  totalServices: number;
+  totalRevenue: number;
+  todayRevenue: number;
+  monthRevenue: number;
+  pendingOrders: number;
+  inProgressOrders: number;
+  completedOrders: number;
+}
 
 export function AdminPanel() {
-  const { sidebarOpen, toggleSidebar } = useAppStore();
+  const { user, logout } = useAuthStore();
+  const { setView } = useAppStore();
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [isLoading, setIsLoading] = useState(false);
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [revenueByDay, setRevenueByDay] = useState<{day: string, revenue: number}[]>([]);
+  const [ordersByService, setOrdersByService] = useState<{name: string, count: number}[]>([]);
+  const [recentOrders, setRecentOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [washers, setWashers] = useState<Washer[]>([]);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Fetch dashboard stats
+  const fetchStats = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/admin/stats');
+      const data = await res.json();
+      
+      if (data.success) {
+        setStats(data.stats);
+        setRevenueByDay(data.charts.revenueByDay);
+        setOrdersByService(data.charts.ordersByService);
+        setRecentOrders(data.recentOrders);
+      }
+    } catch (error) {
+      console.error('Fetch stats error:', error);
+      toast.error('Erreur lors du chargement des statistiques');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Fetch orders
+  const fetchOrders = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const params = new URLSearchParams({
+        status: statusFilter,
+        search: searchQuery,
+      });
+      const res = await fetch(`/api/admin/orders?${params}`);
+      const data = await res.json();
+      
+      if (data.success) {
+        setOrders(data.orders);
+      }
+    } catch (error) {
+      console.error('Fetch orders error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [statusFilter, searchQuery]);
+
+  // Fetch users
+  const fetchUsers = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const params = new URLSearchParams({ search: searchQuery });
+      const res = await fetch(`/api/admin/users?${params}`);
+      const data = await res.json();
+      
+      if (data.success) {
+        setUsers(data.users);
+      }
+    } catch (error) {
+      console.error('Fetch users error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [searchQuery]);
+
+  // Fetch washers
+  const fetchWashers = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/admin/washers');
+      const data = await res.json();
+      
+      if (data.success) {
+        setWashers(data.washers);
+      }
+    } catch (error) {
+      console.error('Fetch washers error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Load data based on active tab
+  useEffect(() => {
+    if (activeTab === 'dashboard') {
+      fetchStats();
+    } else if (activeTab === 'orders') {
+      fetchOrders();
+    } else if (activeTab === 'users') {
+      fetchUsers();
+    } else if (activeTab === 'washers') {
+      fetchWashers();
+    }
+  }, [activeTab, fetchStats, fetchOrders, fetchUsers, fetchWashers]);
+
+  // Handle washer verification
+  const handleVerifyWasher = async (washerId: string, action: 'verify' | 'reject') => {
+    try {
+      const res = await fetch('/api/admin/washers', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ washerId, action }),
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        toast.success(action === 'verify' ? 'Laveur vérifié' : 'Laveur rejeté');
+        fetchWashers();
+      }
+    } catch (error) {
+      toast.error('Erreur lors de la mise à jour');
+    }
+  };
+
+  // Get status badge style
+  const getStatusBadge = (status: string) => {
+    const styles: Record<string, string> = {
+      PENDING: 'bg-yellow-100 text-yellow-800',
+      ACCEPTED: 'bg-blue-100 text-blue-800',
+      EN_ROUTE: 'bg-blue-100 text-blue-800',
+      ARRIVED: 'bg-purple-100 text-purple-800',
+      IN_PROGRESS: 'bg-purple-100 text-purple-800',
+      COMPLETED: 'bg-green-100 text-green-800',
+      CANCELLED: 'bg-red-100 text-red-800',
+    };
+    
+    const labels: Record<string, string> = {
+      PENDING: 'En attente',
+      ACCEPTED: 'Acceptée',
+      EN_ROUTE: 'En route',
+      ARRIVED: 'Arrivé',
+      IN_PROGRESS: 'En cours',
+      COMPLETED: 'Terminée',
+      CANCELLED: 'Annulée',
+    };
+    
+    return <Badge className={styles[status] || 'bg-gray-100 text-gray-800'}>{labels[status] || status}</Badge>;
+  };
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-gray-900 text-white transition-all duration-300 flex-shrink-0 hidden lg:block`}>
-        <div className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-green-400 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-              </svg>
-            </div>
-            {sidebarOpen && <span className="font-bold text-xl">WashGo</span>}
+    <div className="flex-1 flex flex-col bg-[#FFF8F0] overflow-hidden">
+      {/* iOS Status Bar */}
+      <div className="h-11 bg-transparent flex items-end justify-between px-6 pb-1 flex-shrink-0 absolute top-0 left-0 right-0 z-50">
+        <span className="text-sm font-semibold text-[#212121]">9:41</span>
+        <div className="flex items-center gap-1">
+          <div className="w-4 h-4 flex items-end justify-between">
+            <div className="w-0.5 h-1.5 bg-[#212121] rounded-sm"></div>
+            <div className="w-0.5 h-2.5 bg-[#212121] rounded-sm"></div>
+            <div className="w-0.5 h-3.5 bg-[#212121] rounded-sm"></div>
+            <div className="w-0.5 h-4 bg-[#212121] rounded-sm"></div>
+          </div>
+          <div className="w-6 h-3 border border-[#212121] rounded-sm relative">
+            <div className="absolute inset-0.5 bg-[#212121] rounded-sm" style={{ width: '80%' }}></div>
           </div>
         </div>
+      </div>
 
-        <nav className="mt-4 px-2">
-          {[
-            { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-            { id: 'orders', icon: Clock, label: 'Commandes' },
-            { id: 'users', icon: Users, label: 'Utilisateurs' },
-            { id: 'washers', icon: Car, label: 'Laveurs' },
-            { id: 'stations', icon: MapPin, label: 'Stations' },
-            { id: 'promotions', icon: Tag, label: 'Promotions' },
-            { id: 'finances', icon: DollarSign, label: 'Finances' },
-            { id: 'settings', icon: Settings, label: 'Paramètres' },
-          ].map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                activeTab === item.id
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-300 hover:bg-gray-800'
-              }`}
-            >
-              <item.icon className="w-5 h-5" />
-              {sidebarOpen && <span>{item.label}</span>}
-            </button>
-          ))}
-        </nav>
-      </aside>
+      {/* Header */}
+      <div className="bg-white border-b px-4 py-3 pt-12 flex-shrink-0">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-[#FF9800] to-[#F57C00] rounded-full flex items-center justify-center text-white text-lg font-bold">
+              A
+            </div>
+            <div>
+              <div className="font-semibold text-[#212121]">Admin</div>
+              <div className="text-xs text-[#757575]">{user?.name || 'WashGo'}</div>
+            </div>
+          </div>
+          <Button variant="outline" size="icon" onClick={logout} className="text-red-500">
+            <LogOut className="w-5 h-5" />
+          </Button>
+        </div>
+      </div>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto">
-        {/* Top Bar */}
-        <header className="bg-white border-b px-6 py-4 sticky top-16 z-20">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">
-                {activeTab === 'dashboard' && 'Dashboard'}
-                {activeTab === 'orders' && 'Commandes'}
-                {activeTab === 'users' && 'Utilisateurs'}
-                {activeTab === 'washers' && 'Laveurs'}
-                {activeTab === 'stations' && 'Stations'}
-                {activeTab === 'promotions' && 'Promotions'}
-                {activeTab === 'finances' && 'Finances'}
-                {activeTab === 'settings' && 'Paramètres'}
-              </h1>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <Input placeholder="Rechercher..." className="pl-10 w-64" />
-              </div>
-              <Button variant="outline" size="icon">
-                <Bell className="w-5 h-5" />
-              </Button>
-            </div>
-          </div>
-        </header>
+      <div className="flex-1 overflow-y-auto pb-20">
+        {activeTab === 'dashboard' && (
+          <AdminDashboard 
+            stats={stats}
+            revenueByDay={revenueByDay}
+            ordersByService={ordersByService}
+            recentOrders={recentOrders}
+            isLoading={isLoading}
+            onRefresh={fetchStats}
+          />
+        )}
+        {activeTab === 'orders' && (
+          <AdminOrders 
+            orders={orders}
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            isLoading={isLoading}
+            onRefresh={fetchOrders}
+            getStatusBadge={getStatusBadge}
+          />
+        )}
+        {activeTab === 'users' && (
+          <AdminUsers 
+            users={users}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            isLoading={isLoading}
+            onRefresh={fetchUsers}
+          />
+        )}
+        {activeTab === 'washers' && (
+          <AdminWashers 
+            washers={washers}
+            isLoading={isLoading}
+            onRefresh={fetchWashers}
+            onVerify={handleVerifyWasher}
+          />
+        )}
+        {activeTab === 'services' && <AdminServices />}
+        {activeTab === 'finances' && <AdminFinances stats={stats} />}
+        {activeTab === 'settings' && <AdminSettings />}
+      </div>
 
-        {/* Content */}
-        <div className="p-6">
-          {activeTab === 'dashboard' && <AdminDashboard />}
-          {activeTab === 'orders' && <AdminOrders />}
-          {activeTab === 'users' && <AdminUsers />}
-          {activeTab === 'washers' && <AdminWashers />}
-          {activeTab === 'stations' && <AdminStations />}
-          {activeTab === 'promotions' && <AdminPromotions />}
-          {activeTab === 'finances' && <AdminFinances />}
-          {activeTab === 'settings' && <AdminSettings />}
-        </div>
-      </main>
+      {/* Bottom Navigation */}
+      <nav className="absolute bottom-0 left-0 right-0 bg-white border-t border-[#F5F5F5] flex justify-around items-center py-2 px-1 z-50">
+        {[
+          { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+          { id: 'orders', icon: Clock, label: 'Commandes' },
+          { id: 'users', icon: Users, label: 'Clients' },
+          { id: 'washers', icon: Car, label: 'Laveurs' },
+          { id: 'settings', icon: Settings, label: 'Plus' },
+        ].map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-xl transition-all ${
+                isActive ? 'text-[#FF9800]' : 'text-[#9E9E9E]'
+              }`}
+            >
+              <div className={`w-6 h-6 flex items-center justify-center ${isActive ? 'bg-[#FFF3E0] rounded-lg' : ''}`}>
+                <tab.icon className="w-5 h-5" />
+              </div>
+              <span className="text-[9px] font-medium">{tab.label}</span>
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* Home Indicator */}
+      <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-32 h-1 bg-black rounded-full"></div>
     </div>
   );
 }
 
 // Admin Dashboard
-function AdminDashboard() {
-  const stats = [
-    { label: 'Commandes aujourd\'hui', value: '156', change: '+12%', icon: Clock, color: 'text-blue-600', bg: 'bg-blue-100' },
-    { label: 'Revenus aujourd\'hui', value: '1.2M FCFA', change: '+8%', icon: DollarSign, color: 'text-green-600', bg: 'bg-green-100' },
-    { label: 'Laveurs actifs', value: '42', change: '+5', icon: Car, color: 'text-purple-600', bg: 'bg-purple-100' },
-    { label: 'Note moyenne', value: '4.8', change: '+0.2', icon: Star, color: 'text-yellow-600', bg: 'bg-yellow-100' },
-  ];
-
-  const recentOrders = [
-    { id: 'WG12345678', client: 'Amadou Fall', service: 'Lavage Premium', amount: 15000, status: 'COMPLETED', time: '14:30' },
-    { id: 'WG12345679', client: 'Fatou Sow', service: 'Lavage Express', amount: 5000, status: 'IN_PROGRESS', time: '14:25' },
-    { id: 'WG12345680', client: 'Ibrahima Diallo', service: 'Lavage Complet', amount: 10000, status: 'EN_ROUTE', time: '14:20' },
-    { id: 'WG12345681', client: 'Awa Ndiaye', service: 'Lavage Deluxe', amount: 25000, status: 'PENDING', time: '14:15' },
-  ];
+function AdminDashboard({ stats, revenueByDay, ordersByService, recentOrders, isLoading, onRefresh }: { 
+  stats: Stats | null;
+  revenueByDay: {day: string, revenue: number}[];
+  ordersByService: {name: string, count: number}[];
+  recentOrders: Order[];
+  isLoading: boolean;
+  onRefresh: () => void;
+}) {
+  if (isLoading || !stats) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="p-4 space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h2 className="font-semibold text-lg text-[#212121]">Dashboard</h2>
+        <button onClick={onRefresh} disabled={isLoading} className="text-[#FF9800]">
+          <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+        </button>
+      </div>
+
       {/* Stats Grid */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat, i) => (
-          <Card key={i}>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500">{stat.label}</p>
-                  <p className="text-2xl font-bold mt-1">{stat.value}</p>
-                  <p className={`text-sm mt-1 ${stat.color}`}>{stat.change}</p>
-                </div>
-                <div className={`w-12 h-12 ${stat.bg} rounded-full flex items-center justify-center`}>
-                  <stat.icon className={`w-6 h-6 ${stat.color}`} />
-                </div>
+      <div className="grid grid-cols-2 gap-3">
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-[#E3F2FD] rounded-full flex items-center justify-center">
+                <Clock className="w-5 h-5 text-[#2196F3]" />
               </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Charts Row */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Revenue Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Revenus de la semaine</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64 flex items-end justify-between gap-2">
-              {[65, 80, 45, 90, 75, 85, 95].map((height, i) => (
-                <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                  <div
-                    className="w-full bg-gradient-to-t from-blue-600 to-blue-400 rounded-t"
-                    style={{ height: `${height}%` }}
-                  />
-                  <span className="text-xs text-gray-500">
-                    {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'][i]}
-                  </span>
-                </div>
-              ))}
+              <div>
+                <p className="text-xs text-[#757575]">Commandes aujourd&apos;hui</p>
+                <p className="text-xl font-bold text-[#212121]">{stats.todayOrders}</p>
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Orders by Service */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Commandes par service</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {[
-                { name: 'Lavage Express', count: 45, percent: 35 },
-                { name: 'Lavage Complet', count: 62, percent: 48 },
-                { name: 'Lavage Premium', count: 18, percent: 14 },
-                { name: 'Lavage Deluxe', count: 5, percent: 4 },
-              ].map((service, i) => (
-                <div key={i}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span>{service.name}</span>
-                    <span className="text-gray-500">{service.count} commandes</span>
-                  </div>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-blue-600 rounded-full"
-                      style={{ width: `${service.percent}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-[#E8F5E9] rounded-full flex items-center justify-center">
+                <DollarSign className="w-5 h-5 text-[#4CAF50]" />
+              </div>
+              <div>
+                <p className="text-xs text-[#757575]">Revenus aujourd&apos;hui</p>
+                <p className="text-xl font-bold text-[#4CAF50]">{stats.todayRevenue.toLocaleString()} F</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-[#FFF3E0] rounded-full flex items-center justify-center">
+                <Car className="w-5 h-5 text-[#FF9800]" />
+              </div>
+              <div>
+                <p className="text-xs text-[#757575]">Laveurs actifs</p>
+                <p className="text-xl font-bold text-[#212121]">{stats.activeWashers}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-[#FCE4EC] rounded-full flex items-center justify-center">
+                <Users className="w-5 h-5 text-[#E91E63]" />
+              </div>
+              <div>
+                <p className="text-xs text-[#757575]">Clients</p>
+                <p className="text-xl font-bold text-[#212121]">{stats.totalUsers}</p>
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Recent Orders */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Commandes récentes</CardTitle>
-          <Button variant="outline" size="sm">Voir tout</Button>
+      {/* Quick Stats */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm">
+        <h3 className="font-semibold text-sm text-[#212121] mb-3">Aperçu rapide</h3>
+        <div className="grid grid-cols-3 gap-4">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-yellow-600">{stats.pendingOrders}</div>
+            <div className="text-xs text-[#757575]">En attente</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-blue-600">{stats.inProgressOrders}</div>
+            <div className="text-xs text-[#757575]">En cours</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-green-600">{stats.completedOrders}</div>
+            <div className="text-xs text-[#757575]">Terminées</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Revenue Chart */}
+      <Card className="border-0 shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">Revenus de la semaine</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Client</TableHead>
-                <TableHead>Service</TableHead>
-                <TableHead>Montant</TableHead>
-                <TableHead>Statut</TableHead>
-                <TableHead>Heure</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {recentOrders.map((order) => (
-                <TableRow key={order.id}>
-                  <TableCell className="font-mono text-sm">{order.id}</TableCell>
-                  <TableCell>{order.client}</TableCell>
-                  <TableCell>{order.service}</TableCell>
-                  <TableCell className="font-medium">{order.amount.toLocaleString()} FCFA</TableCell>
-                  <TableCell>
+          <div className="h-32 flex items-end justify-between gap-1">
+            {revenueByDay.map((item, i) => {
+              const maxRevenue = Math.max(...revenueByDay.map(d => d.revenue), 1);
+              const height = item.revenue > 0 ? (item.revenue / maxRevenue) * 100 : 5;
+              return (
+                <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                  <div
+                    className="w-full bg-gradient-to-t from-[#FF9800] to-[#FFB74D] rounded-t"
+                    style={{ height: `${height}%`, minHeight: '4px' }}
+                  />
+                  <span className="text-[10px] text-[#757575]">{item.day}</span>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Recent Orders */}
+      <Card className="border-0 shadow-sm">
+        <CardHeader className="pb-2 flex flex-row items-center justify-between">
+          <CardTitle className="text-sm">Commandes récentes</CardTitle>
+          <span className="text-xs text-[#FF9800]">{recentOrders.length} commandes</span>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="divide-y divide-[#F5F5F5]">
+            {recentOrders.slice(0, 5).map((order) => (
+              <div key={order.id} className="flex items-center justify-between p-3">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs text-[#757575]">{order.id}</span>
                     <Badge className={
                       order.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
                       order.status === 'IN_PROGRESS' ? 'bg-purple-100 text-purple-800' :
-                      order.status === 'EN_ROUTE' ? 'bg-blue-100 text-blue-800' :
-                      'bg-yellow-100 text-yellow-800'
+                      order.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-gray-100 text-gray-800'
                     }>
                       {order.status === 'COMPLETED' && 'Terminée'}
                       {order.status === 'IN_PROGRESS' && 'En cours'}
-                      {order.status === 'EN_ROUTE' && 'En route'}
                       {order.status === 'PENDING' && 'En attente'}
+                      {order.status === 'ACCEPTED' && 'Acceptée'}
+                      {order.status === 'EN_ROUTE' && 'En route'}
                     </Badge>
-                  </TableCell>
-                  <TableCell>{order.time}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                  </div>
+                  <p className="text-sm font-medium text-[#212121] mt-1">{order.client}</p>
+                  <p className="text-xs text-[#757575]">{order.service}</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-bold text-[#FF9800]">{order.amount.toLocaleString()} F</p>
+                  <p className="text-xs text-[#757575]">{order.time}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
     </div>
@@ -273,489 +525,371 @@ function AdminDashboard() {
 }
 
 // Admin Orders
-function AdminOrders() {
-  const [statusFilter, setStatusFilter] = useState('all');
-
-  const orders = [
-    { id: 'WG12345678', client: 'Amadou Fall', washer: 'Mamadou Diop', service: 'Lavage Premium', amount: 15000, status: 'COMPLETED', date: '2024-01-15 14:30' },
-    { id: 'WG12345679', client: 'Fatou Sow', washer: 'Ibrahima Sow', service: 'Lavage Express', amount: 5000, status: 'IN_PROGRESS', date: '2024-01-15 14:25' },
-    { id: 'WG12345680', client: 'Ibrahima Diallo', washer: '-', service: 'Lavage Complet', amount: 10000, status: 'PENDING', date: '2024-01-15 14:20' },
-  ];
-
+function AdminOrders({ orders, statusFilter, setStatusFilter, searchQuery, setSearchQuery, isLoading, onRefresh, getStatusBadge }: { 
+  orders: Order[];
+  statusFilter: string;
+  setStatusFilter: (v: string) => void;
+  searchQuery: string;
+  setSearchQuery: (v: string) => void;
+  isLoading: boolean;
+  onRefresh: () => void;
+  getStatusBadge: (status: string) => JSX.Element;
+}) {
   return (
-    <div className="space-y-6">
-      {/* Filters */}
-      <div className="flex gap-4">
+    <div className="p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="font-semibold text-lg text-[#212121]">Commandes</h2>
+        <button onClick={onRefresh} disabled={isLoading} className="text-[#FF9800]">
+          <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+        </button>
+      </div>
+
+      {/* Search & Filter */}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#9E9E9E]" />
+          <Input
+            placeholder="Rechercher..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 bg-white"
+          />
+        </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Filtrer par statut" />
+          <SelectTrigger className="w-32 bg-white">
+            <SelectValue placeholder="Statut" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Tous les statuts</SelectItem>
+            <SelectItem value="all">Tous</SelectItem>
             <SelectItem value="PENDING">En attente</SelectItem>
             <SelectItem value="IN_PROGRESS">En cours</SelectItem>
             <SelectItem value="COMPLETED">Terminées</SelectItem>
             <SelectItem value="CANCELLED">Annulées</SelectItem>
           </SelectContent>
         </Select>
-        <Button variant="outline">
-          <Download className="w-4 h-4 mr-2" />
-          Exporter
-        </Button>
       </div>
 
-      {/* Orders Table */}
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID Commande</TableHead>
-                <TableHead>Client</TableHead>
-                <TableHead>Laveur</TableHead>
-                <TableHead>Service</TableHead>
-                <TableHead>Montant</TableHead>
-                <TableHead>Statut</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {orders.map((order) => (
-                <TableRow key={order.id}>
-                  <TableCell className="font-mono">{order.id}</TableCell>
-                  <TableCell>{order.client}</TableCell>
-                  <TableCell>{order.washer}</TableCell>
-                  <TableCell>{order.service}</TableCell>
-                  <TableCell className="font-medium">{order.amount.toLocaleString()} FCFA</TableCell>
-                  <TableCell>
-                    <Badge className={
-                      order.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
-                      order.status === 'IN_PROGRESS' ? 'bg-purple-100 text-purple-800' :
-                      order.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }>
-                      {order.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-sm text-gray-500">{order.date}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button size="icon" variant="ghost"><Eye className="w-4 h-4" /></Button>
-                      <Button size="icon" variant="ghost"><Edit className="w-4 h-4" /></Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      {/* Orders List */}
+      {isLoading ? (
+        <div className="flex justify-center py-8">
+          <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+        </div>
+      ) : orders.length > 0 ? (
+        <div className="space-y-3">
+          {orders.map((order) => (
+            <Card key={order.id} className="border-0 shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <span className="font-mono text-xs text-[#757575]">{order.orderNumber}</span>
+                    <h3 className="font-medium text-[#212121]">{order.client}</h3>
+                    <p className="text-xs text-[#757575]">{order.service}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-[#FF9800]">{order.amount.toLocaleString()} F</p>
+                    {getStatusBadge(order.status)}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-[#757575]">
+                  <span>Laveur: {order.washer}</span>
+                  <span>•</span>
+                  <span>{new Date(order.createdAt).toLocaleDateString('fr-FR')}</span>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl p-8 text-center">
+          <Clock className="w-12 h-12 text-[#9E9E9E] mx-auto mb-3" />
+          <p className="text-[#757575]">Aucune commande trouvée</p>
+        </div>
+      )}
     </div>
   );
 }
 
 // Admin Users
-function AdminUsers() {
-  const users = [
-    { id: '1', name: 'Amadou Fall', phone: '77 123 45 67', email: 'amadou@email.com', orders: 12, status: 'active' },
-    { id: '2', name: 'Fatou Sow', phone: '77 234 56 78', email: 'fatou@email.com', orders: 8, status: 'active' },
-    { id: '3', name: 'Ibrahima Diallo', phone: '77 345 67 89', email: 'ibrahim@email.com', orders: 5, status: 'inactive' },
-  ];
-
+function AdminUsers({ users, searchQuery, setSearchQuery, isLoading, onRefresh }: { 
+  users: User[];
+  searchQuery: string;
+  setSearchQuery: (v: string) => void;
+  isLoading: boolean;
+  onRefresh: () => void;
+}) {
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between">
-        <Input placeholder="Rechercher un utilisateur..." className="max-w-sm" />
-        <Button>
-          <Plus className="w-4 h-4 mr-2" />
-          Ajouter
-        </Button>
+    <div className="p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="font-semibold text-lg text-[#212121]">Clients</h2>
+        <button onClick={onRefresh} disabled={isLoading} className="text-[#FF9800]">
+          <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+        </button>
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Utilisateur</TableHead>
-                <TableHead>Téléphone</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Commandes</TableHead>
-                <TableHead>Statut</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar>
-                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <span className="font-medium">{user.name}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>{user.phone}</TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>{user.orders}</TableCell>
-                  <TableCell>
+      {/* Search */}
+      <div className="relative">
+        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#9E9E9E]" />
+        <Input
+          placeholder="Rechercher un client..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10 bg-white"
+        />
+      </div>
+
+      {/* Users List */}
+      {isLoading ? (
+        <div className="flex justify-center py-8">
+          <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+        </div>
+      ) : users.length > 0 ? (
+        <div className="space-y-3">
+          {users.map((user) => (
+            <Card key={user.id} className="border-0 shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <Avatar className="w-10 h-10">
+                    <AvatarFallback className="bg-[#E3F2FD] text-[#2196F3]">
+                      {user.name.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <h3 className="font-medium text-[#212121]">{user.name}</h3>
+                    <p className="text-xs text-[#757575]">{user.phone}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-medium">{user.orders} commandes</p>
                     <Badge className={user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
                       {user.status === 'active' ? 'Actif' : 'Inactif'}
                     </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button size="icon" variant="ghost"><Eye className="w-4 h-4" /></Button>
-                      <Button size="icon" variant="ghost"><Edit className="w-4 h-4" /></Button>
-                      <Button size="icon" variant="ghost" className="text-red-600"><Trash2 className="w-4 h-4" /></Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl p-8 text-center">
+          <Users className="w-12 h-12 text-[#9E9E9E] mx-auto mb-3" />
+          <p className="text-[#757575]">Aucun client trouvé</p>
+        </div>
+      )}
     </div>
   );
 }
 
 // Admin Washers
-function AdminWashers() {
-  const washers = [
-    { id: '1', name: 'Mamadou Diop', phone: '77 123 45 67', rating: 4.9, jobs: 156, earnings: 156000, status: 'verified', available: true },
-    { id: '2', name: 'Ibrahima Sow', phone: '77 234 56 78', rating: 4.7, jobs: 120, earnings: 120000, status: 'verified', available: false },
-    { id: '3', name: 'Ousmane Ba', phone: '77 345 67 89', rating: 0, jobs: 0, earnings: 0, status: 'pending', available: false },
-  ];
+function AdminWashers({ washers, isLoading, onRefresh, onVerify }: { 
+  washers: Washer[];
+  isLoading: boolean;
+  onRefresh: () => void;
+  onVerify: (id: string, action: 'verify' | 'reject') => void;
+}) {
+  const pendingWashers = washers.filter(w => !w.isVerified);
+  const verifiedWashers = washers.filter(w => w.isVerified);
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between">
-        <Input placeholder="Rechercher un laveur..." className="max-w-sm" />
-        <Button>
-          <Plus className="w-4 h-4 mr-2" />
-          Ajouter un laveur
-        </Button>
+    <div className="p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="font-semibold text-lg text-[#212121]">Laveurs</h2>
+        <button onClick={onRefresh} disabled={isLoading} className="text-[#FF9800]">
+          <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+        </button>
       </div>
 
       {/* Pending Verifications */}
-      <Card className="border-yellow-200 bg-yellow-50">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-yellow-800">
-            <AlertCircle className="w-5 h-5" />
-            En attente de vérification (1)
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Avatar className="w-12 h-12">
-                <AvatarFallback>O</AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="font-medium">Ousmane Ba</p>
-                <p className="text-sm text-gray-500">77 345 67 89 • Nouveau laveur</p>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm">Voir dossier</Button>
-              <Button size="sm" className="bg-green-600 hover:bg-green-700">
-                <CheckCircle className="w-4 h-4 mr-1" />
-                Valider
-              </Button>
-              <Button size="sm" variant="destructive">
-                <XCircle className="w-4 h-4 mr-1" />
-                Refuser
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Washers Table */}
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Laveur</TableHead>
-                <TableHead>Note</TableHead>
-                <TableHead>Jobs</TableHead>
-                <TableHead>Gains</TableHead>
-                <TableHead>Disponibilité</TableHead>
-                <TableHead>Statut</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {washers.filter(w => w.status === 'verified').map((washer) => (
-                <TableRow key={washer.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar>
-                        <AvatarFallback>{washer.name.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <span className="font-medium">{washer.name}</span>
-                        <p className="text-xs text-gray-500">{washer.phone}</p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                      {washer.rating}
-                    </div>
-                  </TableCell>
-                  <TableCell>{washer.jobs}</TableCell>
-                  <TableCell>{washer.earnings.toLocaleString()} FCFA</TableCell>
-                  <TableCell>
-                    <Badge className={washer.available ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
-                      {washer.available ? 'En ligne' : 'Hors ligne'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className="bg-blue-100 text-blue-800">Vérifié</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button size="icon" variant="ghost"><Eye className="w-4 h-4" /></Button>
-                      <Button size="icon" variant="ghost"><Edit className="w-4 h-4" /></Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-// Admin Stations
-function AdminStations() {
-  const stations = [
-    { id: '1', name: 'Auto Shine Dakar', address: 'Plateau, Dakar', washers: 8, rating: 4.8, status: 'active' },
-    { id: '2', name: 'Car Wash Medina', address: 'Medina, Dakar', washers: 5, rating: 4.5, status: 'active' },
-  ];
-
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between">
-        <Input placeholder="Rechercher une station..." className="max-w-sm" />
-        <Button>
-          <Plus className="w-4 h-4 mr-2" />
-          Ajouter une station
-        </Button>
-      </div>
-
-      <div className="grid md:grid-cols-2 gap-4">
-        {stations.map((station) => (
-          <Card key={station.id}>
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-semibold text-lg">{station.name}</h3>
-                  <p className="text-gray-500">{station.address}</p>
-                  <div className="flex items-center gap-4 mt-3">
-                    <div className="flex items-center gap-1">
-                      <Car className="w-4 h-4 text-gray-400" />
-                      <span className="text-sm">{station.washers} laveurs</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                      <span className="text-sm">{station.rating}</span>
-                    </div>
+      {pendingWashers.length > 0 && (
+        <Card className="border-yellow-200 bg-yellow-50">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-yellow-800 text-sm">
+              <AlertCircle className="w-4 h-4" />
+              En attente de vérification ({pendingWashers.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {pendingWashers.map((washer) => (
+              <div key={washer.id} className="flex items-center justify-between bg-white p-3 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <Avatar>
+                    <AvatarFallback className="bg-[#FFF3E0] text-[#FF9800]">
+                      {washer.name.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="font-medium text-[#212121]">{washer.name}</p>
+                    <p className="text-xs text-[#757575]">{washer.phone}</p>
                   </div>
                 </div>
-                <Badge className="bg-green-100 text-green-800">Active</Badge>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700"
+                    onClick={() => onVerify(washer.id, 'verify')}
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => onVerify(washer.id, 'reject')}
+                  >
+                    <XCircle className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
-              <div className="flex gap-2 mt-4">
-                <Button variant="outline" size="sm">Gérer</Button>
-                <Button variant="outline" size="sm">Services</Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Verified Washers */}
+      {isLoading ? (
+        <div className="flex justify-center py-8">
+          <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+        </div>
+      ) : verifiedWashers.length > 0 ? (
+        <div className="space-y-3">
+          {verifiedWashers.map((washer) => (
+            <Card key={washer.id} className="border-0 shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <Avatar className="w-10 h-10">
+                    <AvatarFallback className="bg-[#E8F5E9] text-[#4CAF50]">
+                      {washer.name.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <h3 className="font-medium text-[#212121]">{washer.name}</h3>
+                    <p className="text-xs text-[#757575]">{washer.phone}</p>
+                  </div>
+                  <div className="text-right">
+                    <div className="flex items-center gap-1 justify-end">
+                      <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                      <span className="text-sm font-medium">{washer.rating > 0 ? washer.rating.toFixed(1) : '-'}</span>
+                    </div>
+                    <Badge className={washer.isAvailable ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
+                      {washer.isAvailable ? 'En ligne' : 'Hors ligne'}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="flex justify-between mt-3 pt-3 border-t border-[#F5F5F5] text-xs text-[#757575]">
+                  <span>{washer.completedJobs} jobs</span>
+                  <span className="font-medium text-[#4CAF50]">{washer.earnings.toLocaleString()} F gagnés</span>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl p-8 text-center">
+          <Car className="w-12 h-12 text-[#9E9E9E] mx-auto mb-3" />
+          <p className="text-[#757575]">Aucun laveur vérifié</p>
+        </div>
+      )}
     </div>
   );
 }
 
-// Admin Promotions
-function AdminPromotions() {
-  const [showCreatePromo, setShowCreatePromo] = useState(false);
-  
-  const promotions = [
-    { id: '1', name: 'Nouvel An', code: 'WELCOME20', discount: '20%', uses: '45/100', status: 'active', endDate: '2024-02-01' },
-    { id: '2', name: 'Weekend Special', code: 'WEEKEND15', discount: '15%', uses: '78/200', status: 'active', endDate: '2024-01-31' },
-    { id: '3', name: 'Premier Lavage', code: 'FIRST10', discount: '10%', uses: '150/∞', status: 'expired', endDate: '2024-01-01' },
-  ];
+// Admin Services
+function AdminServices() {
+  const [services, setServices] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchServices = async () => {
+      setIsLoading(true);
+      try {
+        const res = await fetch('/api/services');
+        const data = await res.json();
+        if (data.success) {
+          setServices(data.services);
+        }
+      } catch (error) {
+        console.error('Fetch services error:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchServices();
+  }, []);
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">Promotions actives</h2>
-          <p className="text-gray-500">Gérez vos codes promo et offres spéciales</p>
-        </div>
-        <Button onClick={() => setShowCreatePromo(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Créer une promotion
+    <div className="p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="font-semibold text-lg text-[#212121]">Services</h2>
+        <Button size="sm" className="bg-[#FF9800] hover:bg-[#F57C00]">
+          <Plus className="w-4 h-4 mr-1" />
+          Ajouter
         </Button>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-4">
-        {promotions.map((promo) => (
-          <Card key={promo.id} className={promo.status === 'expired' ? 'opacity-60' : ''}>
-            <CardContent className="p-6">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="font-semibold">{promo.name}</h3>
-                  <code className="text-sm bg-gray-100 px-2 py-1 rounded">{promo.code}</code>
+      {isLoading ? (
+        <div className="flex justify-center py-8">
+          <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {services.map((service) => (
+            <Card key={service.id} className="border-0 shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-medium text-[#212121]">{service.name}</h3>
+                    <p className="text-xs text-[#757575]">{service.description}</p>
+                    <p className="text-xs text-[#757575] mt-1">{service.duration} min</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-[#FF9800]">{service.price.toLocaleString()} F</p>
+                    <Badge className={service.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
+                      {service.isActive ? 'Actif' : 'Inactif'}
+                    </Badge>
+                  </div>
                 </div>
-                <Badge className={promo.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
-                  {promo.status === 'active' ? 'Active' : 'Expirée'}
-                </Badge>
-              </div>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Réduction</span>
-                  <span className="font-medium text-blue-600">{promo.discount}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Utilisations</span>
-                  <span>{promo.uses}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Expiration</span>
-                  <span>{promo.endDate}</span>
-                </div>
-              </div>
-              <div className="flex gap-2 mt-4">
-                <Button variant="outline" size="sm" className="flex-1">Modifier</Button>
-                <Button variant="outline" size="sm" className="text-red-600">Supprimer</Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Create Promotion Dialog */}
-      <Dialog open={showCreatePromo} onOpenChange={setShowCreatePromo}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Créer une promotion</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Nom de la promotion</Label>
-              <Input placeholder="ex: Nouvel An" />
-            </div>
-            <div>
-              <Label>Code promo</Label>
-              <Input placeholder="ex: WELCOME20" />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Type de réduction</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pourcentage" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="percentage">Pourcentage</SelectItem>
-                    <SelectItem value="fixed">Montant fixe</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Valeur</Label>
-                <Input placeholder="20" />
-              </div>
-            </div>
-            <div>
-              <Label>Date d&apos;expiration</Label>
-              <Input type="date" />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreatePromo(false)}>Annuler</Button>
-            <Button onClick={() => setShowCreatePromo(false)}>Créer</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
 // Admin Finances
-function AdminFinances() {
+function AdminFinances({ stats }: { stats: Stats | null }) {
   return (
-    <div className="space-y-6">
-      <div className="grid sm:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-6">
-            <p className="text-sm text-gray-500">Revenus totaux</p>
-            <p className="text-3xl font-bold text-green-600">2.5M FCFA</p>
-            <p className="text-sm text-green-600 mt-1">+12% ce mois</p>
+    <div className="p-4 space-y-4">
+      <h2 className="font-semibold text-lg text-[#212121]">Finances</h2>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4">
+            <p className="text-xs text-[#757575]">Revenus totaux</p>
+            <p className="text-xl font-bold text-[#4CAF50]">
+              {stats?.totalRevenue?.toLocaleString() || 0} F
+            </p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-6">
-            <p className="text-sm text-gray-500">Commissions</p>
-            <p className="text-3xl font-bold text-blue-600">375K FCFA</p>
-            <p className="text-sm text-gray-500 mt-1">15% de commission</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <p className="text-sm text-gray-500">Paiements en attente</p>
-            <p className="text-3xl font-bold text-yellow-600">45K FCFA</p>
-            <p className="text-sm text-gray-500 mt-1">3 transactions</p>
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4">
+            <p className="text-xs text-[#757575]">Ce mois</p>
+            <p className="text-xl font-bold text-[#2196F3]">
+              {stats?.monthRevenue?.toLocaleString() || 0} F
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Transactions récentes</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Montant</TableHead>
-                <TableHead>Méthode</TableHead>
-                <TableHead>Statut</TableHead>
-                <TableHead>Date</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {[
-                { id: 'TRX001', type: 'Paiement commande', amount: 15000, method: 'Mixx by Yas', status: 'completed', date: '2024-01-15 14:30' },
-                { id: 'TRX002', type: 'Retrait laveur', amount: 50000, method: 'T-Money', status: 'pending', date: '2024-01-15 12:00' },
-              ].map((tx) => (
-                <TableRow key={tx.id}>
-                  <TableCell className="font-mono">{tx.id}</TableCell>
-                  <TableCell>{tx.type}</TableCell>
-                  <TableCell className="font-medium">{tx.amount.toLocaleString()} FCFA</TableCell>
-                  <TableCell>{tx.method}</TableCell>
-                  <TableCell>
-                    <Badge className={tx.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}>
-                      {tx.status === 'completed' ? 'Complété' : 'En attente'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-sm text-gray-500">{tx.date}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+      <Card className="border-0 shadow-sm">
+        <CardContent className="p-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <p className="text-xs text-[#757575]">Commissions (15%)</p>
+              <p className="text-xl font-bold text-[#FF9800]">
+                {((stats?.totalRevenue || 0) * 0.15).toLocaleString()} F
+              </p>
+            </div>
+            <TrendingUp className="w-8 h-8 text-[#FF9800]" />
+          </div>
         </CardContent>
       </Card>
     </div>
@@ -764,68 +898,41 @@ function AdminFinances() {
 
 // Admin Settings
 function AdminSettings() {
+  const { logout } = useAuthStore();
+  
   return (
-    <div className="space-y-6 max-w-2xl">
-      <Card>
-        <CardHeader>
-          <CardTitle>Paramètres généraux</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
+    <div className="p-4 space-y-4">
+      <h2 className="font-semibold text-lg text-[#212121]">Paramètres</h2>
+
+      <Card className="border-0 shadow-sm">
+        <CardContent className="p-4 space-y-4">
           <div>
-            <Label>Nom de l&apos;entreprise</Label>
-            <Input defaultValue="WashGo" />
+            <Label className="text-xs text-[#757575]">Nom de l&apos;entreprise</Label>
+            <Input defaultValue="WashGo" className="mt-1" />
           </div>
           <div>
-            <Label>Email de contact</Label>
-            <Input defaultValue="contact@washgo.tg" />
+            <Label className="text-xs text-[#757575]">Téléphone</Label>
+            <Input defaultValue="+228 90 12 34 56" className="mt-1" />
           </div>
           <div>
-            <Label>Téléphone</Label>
-            <Input defaultValue="+228 90 12 34 56" />
+            <Label className="text-xs text-[#757575]">Commission (%)</Label>
+            <Input type="number" defaultValue="15" className="mt-1" />
           </div>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Commission</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Taux de commission</p>
-              <p className="text-sm text-gray-500">Pourcentage prélevé sur chaque commande</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Input type="number" defaultValue="15" className="w-20" />
-              <span>%</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <Button className="w-full bg-[#FF9800] hover:bg-[#F57C00]">
+        Enregistrer
+      </Button>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Notifications</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {[
-            { label: 'Nouvelles commandes', desc: 'Recevoir une notification pour chaque nouvelle commande' },
-            { label: 'Nouveaux laveurs', desc: 'Recevoir une notification quand un laveur s\'inscrit' },
-            { label: 'Rapports quotidiens', desc: 'Recevoir un résumé quotidien par email' },
-          ].map((notif, i) => (
-            <div key={i} className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">{notif.label}</p>
-                <p className="text-sm text-gray-500">{notif.desc}</p>
-              </div>
-              <Switch defaultChecked />
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-
-      <Button className="bg-blue-600 hover:bg-blue-700">Enregistrer les modifications</Button>
+      <Button
+        onClick={logout}
+        variant="outline"
+        className="w-full border-red-200 text-red-500 hover:bg-red-50"
+      >
+        <LogOut className="w-4 h-4 mr-2" />
+        Déconnexion
+      </Button>
     </div>
   );
 }

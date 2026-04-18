@@ -7,76 +7,156 @@ export async function POST() {
     // Check if services already exist
     const existingServices = await db.service.findMany();
     
-    if (existingServices.length > 0) {
-      return NextResponse.json({ 
-        success: true, 
-        message: 'Database already seeded',
-        services: existingServices 
+    let services = existingServices;
+    
+    if (existingServices.length === 0) {
+      // Create default services
+      services = await Promise.all([
+        db.service.create({
+          data: {
+            name: 'Lavage Simple',
+            description: 'Lavage extérieur complet avec rinçage et séchage',
+            price: 2500,
+            duration: 20,
+            category: 'basic',
+            isActive: true,
+          },
+        }),
+        db.service.create({
+          data: {
+            name: 'Lavage Standard',
+            description: 'Lavage extérieur + intérieur, tableau de bord nettoyé',
+            price: 4000,
+            duration: 35,
+            category: 'standard',
+            isActive: true,
+          },
+        }),
+        db.service.create({
+          data: {
+            name: 'Lavage Premium',
+            description: 'Lavage complet extérieur + intérieur + aspiration + shampoing sièges',
+            price: 6500,
+            duration: 50,
+            category: 'premium',
+            isActive: true,
+          },
+        }),
+        db.service.create({
+          data: {
+            name: 'Lavage Deluxe',
+            description: 'Service VIP: Lavage complet + polish + cire + nettoyant pneus + désodorisant',
+            price: 10000,
+            duration: 75,
+            category: 'deluxe',
+            isActive: true,
+          },
+        }),
+      ]);
+    }
+
+    // Check if stations exist
+    const existingStations = await db.station.count();
+    
+    let station = null;
+    if (existingStations === 0) {
+      // Create a default station
+      station = await db.station.create({
+        data: {
+          name: 'WashGo Centre-Ville',
+          description: 'Station principale WashGo au centre-ville de Lomé',
+          address: 'Centre-ville, Lomé, Togo',
+          latitude: 6.1725,
+          longitude: 1.2314,
+          phone: '+228 90 00 00 00',
+          isActive: true,
+        },
       });
     }
 
-    // Create default services
-    const services = await Promise.all([
-      db.service.create({
+    // Create test users if they don't exist
+    let clientUser = await db.user.findUnique({ where: { phone: '90123456' } });
+    if (!clientUser) {
+      clientUser = await db.user.create({
         data: {
-          name: 'Lavage Simple',
-          description: 'Lavage extérieur complet avec rinçage et séchage',
-          price: 2500,
-          duration: 20,
-          category: 'basic',
+          phone: '90123456',
+          name: 'Client Test',
+          role: 'CLIENT',
+          pin: '1234',
+          plateNumber: 'TG-1234-A',
+          carColor: 'Blanc',
           isActive: true,
         },
-      }),
-      db.service.create({
-        data: {
-          name: 'Lavage Standard',
-          description: 'Lavage extérieur + intérieur, tableau de bord nettoyé',
-          price: 4000,
-          duration: 35,
-          category: 'standard',
-          isActive: true,
-        },
-      }),
-      db.service.create({
-        data: {
-          name: 'Lavage Premium',
-          description: 'Lavage complet extérieur + intérieur + aspiration + shampoing sièges',
-          price: 6500,
-          duration: 50,
-          category: 'premium',
-          isActive: true,
-        },
-      }),
-      db.service.create({
-        data: {
-          name: 'Lavage Deluxe',
-          description: 'Service VIP: Lavage complet + polish + cire + nettoyant pneus + désodorisant',
-          price: 10000,
-          duration: 75,
-          category: 'deluxe',
-          isActive: true,
-        },
-      }),
-    ]);
+      });
+    }
 
-    // Create a default station
-    const station = await db.station.create({
-      data: {
-        name: 'WashGo Centre-Ville',
-        description: 'Station principale WashGo au centre-ville de Lomé',
-        address: 'Centre-ville, Lomé, Togo',
-        latitude: 6.1725,
-        longitude: 1.2314,
-        phone: '+228 90 00 00 00',
-        isActive: true,
-      },
-    });
+    // Create washer user with washer profile
+    let washerUser = await db.user.findUnique({ where: { phone: '90234567' } });
+    if (!washerUser) {
+      washerUser = await db.user.create({
+        data: {
+          phone: '90234567',
+          name: 'Laveur Test',
+          role: 'WASHER',
+          pin: '1234',
+          isActive: true,
+        },
+      });
+
+      // Create washer profile
+      await db.washer.create({
+        data: {
+          userId: washerUser.id,
+          isAvailable: true,
+          isVerified: true,
+          rating: 0,
+          totalRatings: 0,
+          totalEarnings: 0,
+          completedJobs: 0,
+        },
+      });
+    } else {
+      // Check if washer profile exists
+      const existingWasher = await db.washer.findUnique({ where: { userId: washerUser.id } });
+      if (!existingWasher) {
+        await db.washer.create({
+          data: {
+            userId: washerUser.id,
+            isAvailable: true,
+            isVerified: true,
+            rating: 0,
+            totalRatings: 0,
+            totalEarnings: 0,
+            completedJobs: 0,
+          },
+        });
+      }
+    }
+
+    // Create admin user if doesn't exist
+    let adminUser = await db.user.findUnique({ where: { phone: '90345678' } });
+    if (!adminUser) {
+      adminUser = await db.user.create({
+        data: {
+          phone: '90345678',
+          name: 'Admin WashGo',
+          role: 'ADMIN',
+          pin: '1234',
+          isActive: true,
+        },
+      });
+    }
 
     return NextResponse.json({ 
       success: true, 
       message: 'Database seeded successfully',
       services,
-      station
+      station,
+      testUsers: {
+        client: { phone: '90123456', pin: '1234', role: 'CLIENT' },
+        washer: { phone: '90234567', pin: '1234', role: 'WASHER' },
+        admin: { phone: '90345678', pin: '1234', role: 'ADMIN' },
+      }
     });
   } catch (error) {
     console.error('Seed error:', error);
@@ -89,11 +169,15 @@ export async function GET() {
   try {
     const servicesCount = await db.service.count();
     const stationsCount = await db.station.count();
+    const usersCount = await db.user.count();
+    const washersCount = await db.washer.count();
     
     return NextResponse.json({ 
       seeded: servicesCount > 0,
       servicesCount,
-      stationsCount
+      stationsCount,
+      usersCount,
+      washersCount
     });
   } catch (error) {
     console.error('Check seed error:', error);

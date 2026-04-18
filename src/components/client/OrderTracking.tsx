@@ -9,12 +9,13 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { 
   MapPin, Phone, MessageCircle, Clock, Star, 
-  CheckCircle, Navigation, AlertCircle, X 
+  CheckCircle, Navigation, AlertCircle, X, ArrowLeft, Home
 } from 'lucide-react';
 import type { Order, OrderStatus } from '@/types';
 
 interface OrderTrackingProps {
   order: Order;
+  onBack?: () => void;
 }
 
 const STATUS_CONFIG: Record<OrderStatus, { label: string; color: string; icon: typeof CheckCircle; progress: number }> = {
@@ -27,8 +28,8 @@ const STATUS_CONFIG: Record<OrderStatus, { label: string; color: string; icon: t
   CANCELLED: { label: 'Annulée', color: 'bg-red-100 text-red-800', icon: X, progress: 0 },
 };
 
-export function OrderTracking({ order }: OrderTrackingProps) {
-  const { updateOrder } = useOrdersStore();
+export function OrderTracking({ order, onBack }: OrderTrackingProps) {
+  const { updateOrder, setCurrentOrder } = useOrdersStore();
   const [estimatedTime, setEstimatedTime] = useState(12);
   const [washerLocation, setWasherLocation] = useState({ lat: 14.692, lng: -17.445 });
 
@@ -75,11 +76,22 @@ export function OrderTracking({ order }: OrderTrackingProps) {
   const StatusIcon = config.icon;
 
   if (order.status === 'COMPLETED') {
-    return <OrderCompleted order={order} />;
+    return <OrderCompleted order={order} onBack={onBack} onGoHome={() => setCurrentOrder(null)} />;
   }
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
+      {/* Header with Back Button */}
+      <div className="bg-white border-b px-4 py-3 flex items-center gap-3 sticky top-0 z-10">
+        <button onClick={onBack} className="p-1">
+          <ArrowLeft className="w-5 h-5 text-[#212121]" />
+        </button>
+        <div className="flex-1">
+          <h1 className="font-semibold text-[#212121]">Suivi de commande</h1>
+          <p className="text-xs text-[#757575]">{order.orderNumber}</p>
+        </div>
+      </div>
+      
       {/* Map Placeholder */}
       <div className="h-64 bg-gradient-to-br from-blue-100 to-green-100 relative">
         <div className="absolute inset-0 flex items-center justify-center">
@@ -223,7 +235,7 @@ export function OrderTracking({ order }: OrderTrackingProps) {
 }
 
 // Order Completed Component
-function OrderCompleted({ order }: { order: Order }) {
+function OrderCompleted({ order, onBack, onGoHome }: { order: Order; onBack?: () => void; onGoHome: () => void }) {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [submitted, setSubmitted] = useState(false);
@@ -244,7 +256,8 @@ function OrderCompleted({ order }: { order: Order }) {
             <p className="text-gray-600 mb-4">
               Votre avis a été enregistré. À bientôt sur WashGo!
             </p>
-            <Button className="bg-blue-600 hover:bg-blue-700">
+            <Button onClick={onGoHome} className="bg-[#FF9800] hover:bg-[#F57C00]">
+              <Home className="w-4 h-4 mr-2" />
               Retour à l&apos;accueil
             </Button>
           </CardContent>
@@ -256,6 +269,14 @@ function OrderCompleted({ order }: { order: Order }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4">
       <div className="max-w-md mx-auto space-y-6 pt-8">
+        {/* Back Button */}
+        {onBack && (
+          <button onClick={onBack} className="flex items-center gap-2 text-[#757575] mb-2">
+            <ArrowLeft className="w-5 h-5" />
+            <span>Retour</span>
+          </button>
+        )}
+        
         {/* Success Card */}
         <Card>
           <CardContent className="p-8 text-center">
