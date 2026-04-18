@@ -17,6 +17,12 @@ interface ChatViewProps {
   onBack: () => void;
 }
 
+// Extended message type with isRead property for local updates
+interface MessageWithRead extends Message {
+  isRead: boolean;
+  readAt?: string;
+}
+
 const QUICK_MESSAGES = [
   { id: 'ARRIVING', label: 'J\'arrive', icon: '🚗' },
   { id: 'ON_SITE', label: 'Je suis sur place', icon: '📍' },
@@ -27,7 +33,7 @@ const QUICK_MESSAGES = [
 
 export function ChatView({ conversation, onBack }: ChatViewProps) {
   const { user } = useAuthStore();
-  const { messages, setMessages, addMessage, isConnected, setConnected } = useChatStore();
+  const { messages, setMessages, addMessage, isConnected, setConnected, updateMessageReadStatus } = useChatStore();
   
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -203,12 +209,69 @@ export function ChatView({ conversation, onBack }: ChatViewProps) {
     return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
   };
 
+  // Mark messages as read when viewing
+  const markMessagesAsRead = useCallback(async () => {
+    if (!user?.id || messages.length === 0) return;
+
+    const unreadMessages = messages.filter(
+      (m) => m.senderId !== user.id && !m.isRead
+    );
+
+    if (unreadMessages.length === 0) return;
+
+    try {
+      // Mark messages as read via API
+      await fetch(`/api/conversations/${conversation.id}/read`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id }),
+      });
+
+      // Emit read event via socket
+      if (socketRef.current) {
+        socketRef.current.emit('mark-read', {
+          conversationId: conversation.id,
+          userId: user.id,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to mark messages as read:', error);
+    }
+  }, [conversation.id, messages, user?.id]);
+
+  // Mark messages as read when viewing
+  useEffect(() => {
+    if (messages.length > 0 && user?.id) {
+      markMessagesAsRead();
+    }
+  }, [messages, markMessagesAsRead, user?.id]);
+
+  // Listen for messages-read event
+  useEffect(() => {
+    if (!socketRef.current) return;
+
+    const handleMessagesRead = (data: { conversationId: string; readBy: string }) => {
+      // Update local messages to show read status
+      updateMessageReadStatus(data.conversationId, data.readBy);
+    };
+
+    socketRef.current.on('messages-read', handleMessagesRead);
+
+    return () => {
+      socketRef.current?.off('messages-read', handleMessagesRead);
+    };
+  }, [updateMessageReadStatus]);
+
   return (
     <div className="flex-1 flex flex-col bg-[#FFF8F0]">
       {/* Header */}
       <header className="bg-white px-4 py-3 flex items-center gap-3 border-b border-[#F5F5F5] flex-shrink-0">
-        <button onClick={onBack} className="text-[#757575]">
-          <ArrowLeft className="w-6 h-6" />
+        <button
+          onClick={onBack}
+          className="flex items-center gap-1 text-[#FF9800] font-medium hover:bg-[#FFF3E0] px-2 py-1 rounded-lg transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          <span className="text-sm">Retour</span>
         </button>
         <div className="w-10 h-10 bg-gradient-to-br from-[#FF9800] to-[#F57C00] rounded-full flex items-center justify-center text-white font-bold">
           {otherUser?.name?.charAt(0) || '?'}
@@ -299,12 +362,16 @@ export function ChatView({ conversation, onBack }: ChatViewProps) {
                   )}
                   
                   {/* Time and status */}
-                  <div className={`flex items-center gap-1 mt-1 ${isOwn ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`flex items-center gap-1.5 mt-1 ${isOwn ? 'justify-end' : 'justify-start'}`}>
                     <span className="text-[10px] text-[#9E9E9E]">{formatTime(message.createdAt)}</span>
                     {isOwn && (
-                      message.isRead 
-                        ? <CheckCheck className="w-3 h-3 text-[#2196F3]" />
-                        : <Check className="w-3 h-3 text-[#9E9E9E]" />
+                      <span className="flex items-center">
+                        {message.isRead ? (
+                          <CheckCheck className="w-4 h-4 text-[#4FC3F7]" strokeWidth={2.5} />
+                        ) : (
+                          <Check className="w-4 h-4 text-[#BDBDBD]" strokeWidth={2} />
+                        )}
+                      </span>
                     )}
                   </div>
                 </div>

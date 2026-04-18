@@ -178,6 +178,7 @@ interface ChatState {
   addConversation: (conversation: Conversation) => void;
   setMessages: (messages: Message[]) => void;
   addMessage: (message: Message) => void;
+  updateMessageReadStatus: (conversationId: string, readBy: string) => void;
   setConnected: (connected: boolean) => void;
 }
 
@@ -188,12 +189,19 @@ export const useChatStore = create<ChatState>()((set) => ({
   isConnected: false,
   setConversations: (conversations) => set({ conversations }),
   setCurrentConversation: (conversation) => set({ currentConversation: conversation, messages: [] }),
-  addConversation: (conversation) => set((state) => ({ 
-    conversations: [conversation, ...state.conversations] 
+  addConversation: (conversation) => set((state) => ({
+    conversations: [conversation, ...state.conversations]
   })),
   setMessages: (messages) => set({ messages }),
-  addMessage: (message) => set((state) => ({ 
-    messages: [...state.messages, message] 
+  addMessage: (message) => set((state) => ({
+    messages: [...state.messages, message]
+  })),
+  updateMessageReadStatus: (conversationId, readBy) => set((state) => ({
+    messages: state.messages.map((m) =>
+      m.conversationId === conversationId && m.senderId !== readBy
+        ? { ...m, isRead: true, readAt: new Date().toISOString() }
+        : m
+    ),
   })),
   setConnected: (connected) => set({ isConnected: connected }),
 }));
