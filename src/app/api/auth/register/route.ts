@@ -14,11 +14,11 @@ export async function POST(request: NextRequest) {
     const { name, phone, plateNumber, carColor, pin } = body;
 
     // Validate required fields
-    if (!name || !phone || !plateNumber || !carColor || !pin) {
+    if (!name || !phone || !pin) {
       return NextResponse.json(
         { 
           success: false, 
-          error: 'Tous les champs sont requis: nom, téléphone, plaque, couleur, PIN' 
+          error: 'Nom, téléphone et PIN sont requis' 
         },
         { status: 400 }
       );
@@ -33,14 +33,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate phone format (Togo: 8 digits starting with 9)
-    if (!/^9\d{7}$/.test(phone.replace(/\s/g, ''))) {
+    const cleanPhone = phone.replace(/\s/g, '');
+    if (!/^9\d{7}$/.test(cleanPhone)) {
       return NextResponse.json(
-        { success: false, error: 'Numéro de téléphone invalide' },
+        { success: false, error: 'Numéro de téléphone invalide (8 chiffres commençant par 9)' },
         { status: 400 }
       );
     }
-
-    const cleanPhone = phone.replace(/\s/g, '');
 
     // Check if user already exists
     const existingUser = await db.user.findUnique({
@@ -59,8 +58,8 @@ export async function POST(request: NextRequest) {
       data: {
         phone: cleanPhone,
         name,
-        plateNumber: plateNumber.toUpperCase(),
-        carColor,
+        plateNumber: plateNumber?.toUpperCase() || 'NON DEFINI',
+        carColor: carColor || 'Non défini',
         pin, // In production, hash this!
         role: 'CLIENT',
       },
