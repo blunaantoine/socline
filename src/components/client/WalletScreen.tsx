@@ -216,7 +216,7 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
       </div>
 
       {/* Transactions */}
-      <div className="flex-1 overflow-y-auto p-4 pb-20">
+      <div className="flex-1 overflow-y-auto p-4 pb-28">
         <h2 className="font-semibold text-[#212121] mb-3">Transactions récentes</h2>
 
         {!wallet?.transactions || wallet.transactions.length === 0 ? (

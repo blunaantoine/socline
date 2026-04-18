@@ -212,9 +212,9 @@ export function ClientApp() {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-[#FAFAFA]">
+    <div className="flex-1 flex flex-col bg-[#FAFAFA] relative">
       {/* Android Status Bar */}
-      <div className="h-6 bg-[#FF9800] flex items-center justify-between px-4 flex-shrink-0">
+      <div className="h-6 bg-[#FF9800] flex items-center justify-between px-4 flex-shrink-0 sticky top-0 z-50">
         <span className="text-white text-xs font-medium">9:41</span>
         <div className="flex items-center gap-1">
           {/* Signal Network Bars - de petite à grande */}
@@ -235,7 +235,7 @@ export function ClientApp() {
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* App Bar (not shown on chat tab) */}
         {activeTab !== 'chat' && (
-          <header className="bg-[#FF9800] px-4 py-3 flex items-center justify-between flex-shrink-0 shadow-md">
+          <header className="bg-[#FF9800] px-4 py-3 flex items-center justify-between flex-shrink-0 shadow-md sticky top-6 z-40">
             <div className="flex items-center gap-3">
               <button onClick={getUserLocation} className="flex items-center gap-2">
                 {isLoadingLocation ? (
@@ -255,8 +255,8 @@ export function ClientApp() {
           </header>
         )}
 
-        {/* Content */}
-        <div className={`flex-1 ${activeTab !== 'chat' ? 'overflow-y-auto pb-16' : ''}`}>
+        {/* Content - scrollable area */}
+        <div className={`flex-1 overflow-y-auto ${activeTab !== 'chat' ? 'pb-28' : ''}`}>
           {activeTab === 'home' && (
             <HomeContent
               services={services}
@@ -284,31 +284,31 @@ export function ClientApp() {
           {activeTab === 'chat' && <ChatList onBack={() => setActiveTab('home')} />}
           {activeTab === 'profile' && <ProfileContent user={user} onLogout={logout} />}
         </div>
-
-        {/* Android Bottom Navigation (not shown on chat tab) */}
-        {activeTab !== 'chat' && (
-          <nav className="bg-white border-t border-[#E0E0E0] flex justify-around items-center h-14 flex-shrink-0">
-            {navItems.map((item) => {
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setActiveTab(item.id)}
-                  className={`flex flex-col items-center justify-center py-1.5 px-4 transition-all ${
-                    isActive ? 'text-[#FF9800]' : 'text-[#757575]'
-                  }`}
-                >
-                  <item.icon className={`w-6 h-6 ${isActive ? 'fill-current' : ''}`} />
-                  <span className="text-[10px] font-medium mt-0.5">{item.label}</span>
-                </button>
-              );
-            })}
-          </nav>
-        )}
       </div>
 
-      {/* Android Navigation Bar */}
-      <div className="h-10 bg-black flex items-center justify-center gap-16 flex-shrink-0">
+      {/* Android Bottom Navigation - FIXED at bottom */}
+      {activeTab !== 'chat' && (
+        <nav className="fixed bottom-10 left-0 right-0 bg-white border-t border-[#E0E0E0] flex justify-around items-center h-14 z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
+          {navItems.map((item) => {
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={`flex flex-col items-center justify-center py-1.5 px-4 transition-all ${
+                  isActive ? 'text-[#FF9800]' : 'text-[#757575]'
+                }`}
+              >
+                <item.icon className={`w-6 h-6 ${isActive ? 'fill-current' : ''}`} />
+                <span className="text-[10px] font-medium mt-0.5">{item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+      )}
+
+      {/* Android Navigation Bar - FIXED at very bottom */}
+      <div className="fixed bottom-0 left-0 right-0 h-10 bg-black flex items-center justify-center gap-16 z-50">
         <button className="w-8 h-8 flex items-center justify-center">
           <div className="w-5 h-5 border-2 border-white rounded-full"></div>
         </button>
@@ -512,7 +512,7 @@ function HomeContent({
 // Profile Content - Android Material Design Style
 function ProfileContent({ user, onLogout }: { user: any; onLogout: () => void }) {
   return (
-    <div className="p-4 space-y-3 pb-20">
+    <div className="p-4 space-y-3 pb-28">
       {/* Profile Card - Android style */}
       <div className="bg-white rounded-lg p-4 shadow-sm">
         <div className="flex items-center gap-3">
