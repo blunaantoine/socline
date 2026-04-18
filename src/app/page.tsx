@@ -32,7 +32,7 @@ export default function SoclineApp() {
     return (
       <div className="min-h-screen bg-[#FF9800] flex items-center justify-center">
         <div className="text-center">
-          <div className="w-20 h-20 mx-auto mb-4 bg-white rounded-full flex items-center justify-center shadow-lg overflow-hidden">
+          <div className="w-24 h-24 mx-auto mb-4 rounded-full overflow-hidden shadow-lg">
             <img src="/android-chrome-192x192.png" alt="Socline" className="w-full h-full object-cover" />
           </div>
           <h2 className="text-xl font-bold text-white">Socline</h2>
@@ -114,7 +114,7 @@ function LandingScreen({ onLogin }: { onLogin: () => void }) {
       {/* Main Content */}
       <div className="flex-1 flex flex-col items-center justify-center px-6">
         {/* Logo */}
-        <div className="w-24 h-24 bg-[#FF9800] rounded-full flex items-center justify-center mb-6 shadow-lg overflow-hidden">
+        <div className="w-24 h-24 mb-6 rounded-full overflow-hidden shadow-lg">
           <img src="/android-chrome-192x192.png" alt="Socline" className="w-full h-full object-cover" />
         </div>
 
