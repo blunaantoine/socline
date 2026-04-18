@@ -23,7 +23,7 @@ export const useAuthStore = create<AuthState>()(
       washer: null,
       token: null,
       isAuthenticated: false,
-      isLoading: true,
+      isLoading: false,
       login: (user, token) => set({ user, token, isAuthenticated: true }),
       setWasher: (washer) => set({ washer }),
       logout: () => set({ user: null, washer: null, token: null, isAuthenticated: false }),

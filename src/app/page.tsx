@@ -9,10 +9,10 @@ import { AuthModal } from '@/components/socline/AuthModal';
 import { Toaster } from '@/components/ui/sonner';
 
 export default function SoclineApp() {
-  const { isAuthenticated, user, isLoading, setLoading, logout } = useAuthStore();
+  const { isAuthenticated, user, logout } = useAuthStore();
   const { currentView, setView } = useAppStore();
   const [showAuth, setShowAuth] = useState(false);
-  const [initialized, setInitialized] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const defaultView = useMemo(() => {
     if (!user) return 'client';
@@ -22,48 +22,55 @@ export default function SoclineApp() {
   }, [user]);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      // Migration: remove old washgo-auth data
-      const oldAuth = localStorage.getItem('washgo-auth');
-      if (oldAuth) {
+    const init = async () => {
+      try {
+        // Clear old data
         localStorage.removeItem('washgo-auth');
-      }
-
-      // Check socline-auth validity
-      const storedAuth = localStorage.getItem('socline-auth');
-      if (storedAuth) {
-        try {
-          const parsed = JSON.parse(storedAuth);
-          const userId = parsed?.state?.user?.id;
-          if (userId) {
-            const res = await fetch(`/api/auth/me?userId=${userId}`);
-            const data = await res.json();
-            if (!data.valid) {
-              localStorage.removeItem('socline-auth');
-              logout();
+        
+        // Check if we have valid auth data
+        const storedAuth = localStorage.getItem('socline-auth');
+        if (storedAuth) {
+          try {
+            const parsed = JSON.parse(storedAuth);
+            const userId = parsed?.state?.user?.id;
+            if (userId) {
+              const res = await fetch(`/api/auth/me?userId=${userId}`);
+              const data = await res.json();
+              if (!data.valid) {
+                localStorage.removeItem('socline-auth');
+                logout();
+              }
             }
+          } catch {
+            localStorage.removeItem('socline-auth');
+            logout();
           }
-        } catch {
-          localStorage.removeItem('socline-auth');
-          logout();
         }
+      } catch (e) {
+        console.error('Init error:', e);
       }
-
-      setLoading(true);
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      setLoading(false);
-      setInitialized(true);
+      
+      // Finish loading immediately
+      setIsLoading(false);
     };
-    checkAuth();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    
+    // Fallback timeout - ensure we never get stuck on loading screen
+    const fallbackTimeout = setTimeout(() => {
+      setIsLoading(false);
+    }, 3000);
+    
+    init().finally(() => {
+      clearTimeout(fallbackTimeout);
+    });
+  }, [logout]);
 
   useEffect(() => {
-    if (initialized && isAuthenticated && user) {
+    if (isAuthenticated && user) {
       setView(defaultView);
     }
-  }, [initialized, isAuthenticated, user, defaultView, setView]);
+  }, [isAuthenticated, user, defaultView, setView]);
 
+  // Loading screen with timeout fallback
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#FF9800] flex items-center justify-center">
