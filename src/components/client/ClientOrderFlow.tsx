@@ -281,49 +281,94 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
 
   if (isLoadingServices) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto text-[#FF9800]" />
-          <p className="mt-4 text-gray-500">Chargement des services...</p>
+      <div className="flex-1 flex flex-col bg-[#FAFAFA]">
+        {/* Android Status Bar */}
+        <div className="h-6 bg-[#FF9800] flex items-center justify-between px-4 flex-shrink-0 sticky top-0 z-50">
+          <span className="text-white text-xs font-medium">9:41</span>
+          <div className="flex items-center gap-1">
+            <div className="flex items-end gap-0.5">
+              <div className="w-1 h-1 bg-white rounded-sm"></div>
+              <div className="w-1 h-2 bg-white rounded-sm"></div>
+              <div className="w-1 h-3 bg-white rounded-sm"></div>
+              <div className="w-1 h-4 bg-white rounded-sm"></div>
+            </div>
+            <div className="w-5 h-2.5 border border-white rounded-sm ml-1 relative">
+              <div className="absolute inset-0.5 bg-white rounded-sm" style={{ width: '70%' }}></div>
+            </div>
+          </div>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto text-[#FF9800]" />
+            <p className="mt-4 text-[#757575]">Chargement des services...</p>
+          </div>
+        </div>
+        {/* Android Navigation Bar */}
+        <div className="fixed bottom-0 left-0 right-0 h-10 bg-black flex items-center justify-center gap-16 z-50">
+          <button className="w-8 h-8 flex items-center justify-center">
+            <div className="w-5 h-5 border-2 border-white rounded-full"></div>
+          </button>
+          <button className="w-8 h-8 flex items-center justify-center">
+            <div className="w-5 h-5 border-2 border-white rounded"></div>
+          </button>
+          <button className="w-8 h-8 flex items-center justify-center">
+            <div className="w-4 h-4 border-2 border-white rotate-45"></div>
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="flex-1 flex flex-col bg-[#FAFAFA]">
+      {/* Android Status Bar */}
+      <div className="h-6 bg-[#FF9800] flex items-center justify-between px-4 flex-shrink-0 sticky top-0 z-50">
+        <span className="text-white text-xs font-medium">9:41</span>
+        <div className="flex items-center gap-1">
+          <div className="flex items-end gap-0.5">
+            <div className="w-1 h-1 bg-white rounded-sm"></div>
+            <div className="w-1 h-2 bg-white rounded-sm"></div>
+            <div className="w-1 h-3 bg-white rounded-sm"></div>
+            <div className="w-1 h-4 bg-white rounded-sm"></div>
+          </div>
+          <div className="w-5 h-2.5 border border-white rounded-sm ml-1 relative">
+            <div className="absolute inset-0.5 bg-white rounded-sm" style={{ width: '70%' }}></div>
+          </div>
+        </div>
+      </div>
+
       {/* Header */}
-      <div className="bg-white border-b px-4 py-4 sticky top-16 z-30">
+      <div className="bg-white border-b border-[#E0E0E0] px-4 py-3 flex-shrink-0 sticky top-6 z-40">
         <div className="flex items-center gap-3">
           {step === 'service' ? (
-            <button onClick={onBack}>
-              <ArrowLeft className="w-5 h-5" />
+            <button onClick={onBack} className="p-1 -ml-1">
+              <ArrowLeft className="w-5 h-5 text-[#212121]" />
             </button>
           ) : (
-            <button onClick={() => {
-              if (step === 'location') setStep('service');
-              else if (step === 'schedule') setStep('location');
-              else if (step === 'payment') setStep('schedule');
-            }}>
-              <ArrowLeft className="w-5 h-5" />
+            <button 
+              onClick={() => {
+                if (step === 'location') setStep('service');
+                else if (step === 'schedule') setStep('location');
+                else if (step === 'payment') setStep('schedule');
+              }}
+              className="p-1 -ml-1"
+            >
+              <ArrowLeft className="w-5 h-5 text-[#212121]" />
             </button>
           )}
           <div>
-            <h1 className="font-semibold">
+            <h1 className="font-semibold text-[#212121]">
               {step === 'service' && 'Choisir un service'}
               {step === 'location' && 'Adresse de service'}
               {step === 'schedule' && 'Planification'}
               {step === 'payment' && 'Paiement'}
             </h1>
-            <p className="text-sm text-gray-500">
-              Étape {step === 'service' ? 1 : step === 'location' ? 2 : step === 'schedule' ? 3 : 4} sur 4
-            </p>
           </div>
         </div>
       </div>
 
       {/* Progress Steps - Android Stepper Style */}
-      <div className="bg-white px-4 py-4 border-b border-[#E0E0E0]">
+      <div className="bg-white px-4 py-3 border-b border-[#E0E0E0] flex-shrink-0">
         <div className="flex items-center justify-between">
           {[
             { id: 'service', label: 'Service', step: 1 },
@@ -372,7 +417,7 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
         </div>
       </div>
 
-      <div className="p-4">
+      <div className="flex-1 overflow-y-auto pb-28 p-4">
         {/* Step 1: Service Selection */}
         {step === 'service' && (
           <div className="space-y-4">
@@ -807,6 +852,19 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
             </Button>
           </div>
         )}
+      </div>
+
+      {/* Android Navigation Bar - FIXED at very bottom */}
+      <div className="fixed bottom-0 left-0 right-0 h-10 bg-black flex items-center justify-center gap-16 z-50">
+        <button className="w-8 h-8 flex items-center justify-center">
+          <div className="w-5 h-5 border-2 border-white rounded-full"></div>
+        </button>
+        <button className="w-8 h-8 flex items-center justify-center">
+          <div className="w-5 h-5 border-2 border-white rounded"></div>
+        </button>
+        <button className="w-8 h-8 flex items-center justify-center">
+          <div className="w-4 h-4 border-2 border-white rotate-45"></div>
+        </button>
       </div>
     </div>
   );

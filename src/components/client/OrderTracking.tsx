@@ -80,10 +80,26 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
+    <div className="flex-1 flex flex-col bg-[#FAFAFA]">
+      {/* Android Status Bar */}
+      <div className="h-6 bg-[#FF9800] flex items-center justify-between px-4 flex-shrink-0 sticky top-0 z-50">
+        <span className="text-white text-xs font-medium">9:41</span>
+        <div className="flex items-center gap-1">
+          <div className="flex items-end gap-0.5">
+            <div className="w-1 h-1 bg-white rounded-sm"></div>
+            <div className="w-1 h-2 bg-white rounded-sm"></div>
+            <div className="w-1 h-3 bg-white rounded-sm"></div>
+            <div className="w-1 h-4 bg-white rounded-sm"></div>
+          </div>
+          <div className="w-5 h-2.5 border border-white rounded-sm ml-1 relative">
+            <div className="absolute inset-0.5 bg-white rounded-sm" style={{ width: '70%' }}></div>
+          </div>
+        </div>
+      </div>
+
       {/* Header with Back Button */}
-      <div className="bg-white border-b px-4 py-3 flex items-center gap-3 sticky top-0 z-10">
-        <button onClick={onBack} className="p-1">
+      <div className="bg-white border-b border-[#E0E0E0] px-4 py-3 flex items-center gap-3 flex-shrink-0 sticky top-6 z-40">
+        <button onClick={onBack} className="p-1 -ml-1">
           <ArrowLeft className="w-5 h-5 text-[#212121]" />
         </button>
         <div className="flex-1">
@@ -93,7 +109,7 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
       </div>
       
       {/* Map Placeholder */}
-      <div className="h-64 bg-gradient-to-br from-blue-100 to-green-100 relative">
+      <div className="h-48 bg-gradient-to-br from-blue-100 to-green-100 relative flex-shrink-0">
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-center">
             <Navigation className="w-12 h-12 text-blue-600 mx-auto mb-2 animate-bounce" />
@@ -173,7 +189,7 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
       </div>
 
       {/* Order Details */}
-      <div className="p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto pb-28 p-4 space-y-4">
         {/* Service Info */}
         <Card>
           <CardContent className="p-4">
@@ -261,12 +277,25 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
 
       {/* Cancel Button */}
       {['PENDING', 'ACCEPTED'].includes(order.status) && (
-        <div className="fixed bottom-4 left-4 right-4">
-          <Button variant="outline" className="w-full border-red-200 text-red-600 hover:bg-red-50">
+        <div className="px-4 pb-4">
+          <Button variant="outline" className="w-full h-12 border-red-200 text-red-600 hover:bg-red-50">
             Annuler la commande
           </Button>
         </div>
       )}
+
+      {/* Android Navigation Bar - FIXED at very bottom */}
+      <div className="fixed bottom-0 left-0 right-0 h-10 bg-black flex items-center justify-center gap-16 z-50">
+        <button className="w-8 h-8 flex items-center justify-center">
+          <div className="w-5 h-5 border-2 border-white rounded-full"></div>
+        </button>
+        <button className="w-8 h-8 flex items-center justify-center">
+          <div className="w-5 h-5 border-2 border-white rounded"></div>
+        </button>
+        <button className="w-8 h-8 flex items-center justify-center">
+          <div className="w-4 h-4 border-2 border-white rotate-45"></div>
+        </button>
+      </div>
     </div>
   );
 }
@@ -283,95 +312,154 @@ function OrderCompleted({ order, onBack, onGoHome }: { order: Order; onBack?: ()
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
-        <Card className="max-w-md w-full text-center">
-          <CardContent className="p-8">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle className="w-10 h-10 text-green-600" />
+      <div className="flex-1 flex flex-col bg-[#FAFAFA]">
+        {/* Android Status Bar */}
+        <div className="h-6 bg-[#FF9800] flex items-center justify-between px-4 flex-shrink-0 sticky top-0 z-50">
+          <span className="text-white text-xs font-medium">9:41</span>
+          <div className="flex items-center gap-1">
+            <div className="flex items-end gap-0.5">
+              <div className="w-1 h-1 bg-white rounded-sm"></div>
+              <div className="w-1 h-2 bg-white rounded-sm"></div>
+              <div className="w-1 h-3 bg-white rounded-sm"></div>
+              <div className="w-1 h-4 bg-white rounded-sm"></div>
             </div>
-            <h2 className="text-2xl font-bold mb-2">Merci!</h2>
-            <p className="text-gray-600 mb-4">
-              Votre avis a été enregistré. À bientôt sur WashGo!
-            </p>
-            <Button onClick={onGoHome} className="bg-[#FF9800] hover:bg-[#F57C00]">
-              <Home className="w-4 h-4 mr-2" />
-              Retour à l&apos;accueil
-            </Button>
-          </CardContent>
-        </Card>
+            <div className="w-5 h-2.5 border border-white rounded-sm ml-1 relative">
+              <div className="absolute inset-0.5 bg-white rounded-sm" style={{ width: '70%' }}></div>
+            </div>
+          </div>
+        </div>
+        <div className="flex-1 flex items-center justify-center p-4">
+          <Card className="max-w-md w-full text-center border-0 shadow-lg">
+            <CardContent className="p-8">
+              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="w-10 h-10 text-green-600" />
+              </div>
+              <h2 className="text-2xl font-bold mb-2 text-[#212121]">Merci!</h2>
+              <p className="text-[#757575] mb-4">
+                Votre avis a été enregistré. À bientôt sur WashGo!
+              </p>
+              <Button onClick={onGoHome} className="w-full h-12 bg-[#FF9800] hover:bg-[#F57C00] rounded-xl">
+                <Home className="w-4 h-4 mr-2" />
+                Retour à l&apos;accueil
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+        {/* Android Navigation Bar */}
+        <div className="fixed bottom-0 left-0 right-0 h-10 bg-black flex items-center justify-center gap-16 z-50">
+          <button className="w-8 h-8 flex items-center justify-center">
+            <div className="w-5 h-5 border-2 border-white rounded-full"></div>
+          </button>
+          <button className="w-8 h-8 flex items-center justify-center">
+            <div className="w-5 h-5 border-2 border-white rounded"></div>
+          </button>
+          <button className="w-8 h-8 flex items-center justify-center">
+            <div className="w-4 h-4 border-2 border-white rotate-45"></div>
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 p-4">
-      <div className="max-w-md mx-auto space-y-6 pt-8">
-        {/* Back Button */}
-        {onBack && (
-          <button onClick={onBack} className="flex items-center gap-2 text-[#757575] mb-2">
-            <ArrowLeft className="w-5 h-5" />
-            <span>Retour</span>
-          </button>
-        )}
-        
-        {/* Success Card */}
-        <Card>
-          <CardContent className="p-8 text-center">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle className="w-10 h-10 text-green-600" />
-            </div>
-            <h2 className="text-2xl font-bold mb-2">Lavage terminé!</h2>
-            <p className="text-gray-600">
-              Votre véhicule est propre et brillant.
-            </p>
-            <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-              <div className="text-sm text-gray-500">Total payé</div>
-              <div className="text-2xl font-bold text-blue-600">
-                {order.totalPrice.toLocaleString()} FCFA
+    <div className="flex-1 flex flex-col bg-[#FAFAFA]">
+      {/* Android Status Bar */}
+      <div className="h-6 bg-[#FF9800] flex items-center justify-between px-4 flex-shrink-0 sticky top-0 z-50">
+        <span className="text-white text-xs font-medium">9:41</span>
+        <div className="flex items-center gap-1">
+          <div className="flex items-end gap-0.5">
+            <div className="w-1 h-1 bg-white rounded-sm"></div>
+            <div className="w-1 h-2 bg-white rounded-sm"></div>
+            <div className="w-1 h-3 bg-white rounded-sm"></div>
+            <div className="w-1 h-4 bg-white rounded-sm"></div>
+          </div>
+          <div className="w-5 h-2.5 border border-white rounded-sm ml-1 relative">
+            <div className="absolute inset-0.5 bg-white rounded-sm" style={{ width: '70%' }}></div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto pb-28 p-4">
+        <div className="max-w-md mx-auto space-y-4">
+          {/* Back Button */}
+          {onBack && (
+            <button onClick={onBack} className="flex items-center gap-2 text-[#757575] mb-2">
+              <ArrowLeft className="w-5 h-5" />
+              <span>Retour</span>
+            </button>
+          )}
+          
+          {/* Success Card */}
+          <Card className="border-0 shadow-lg">
+            <CardContent className="p-6 text-center">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <CheckCircle className="w-8 h-8 text-green-600" />
               </div>
-            </div>
-          </CardContent>
-        </Card>
+              <h2 className="text-xl font-bold mb-1 text-[#212121]">Lavage terminé!</h2>
+              <p className="text-[#757575] text-sm">
+                Votre véhicule est propre et brillant.
+              </p>
+              <div className="mt-3 p-3 bg-[#F5F5F5] rounded-xl">
+                <div className="text-xs text-[#757575]">Total payé</div>
+                <div className="text-xl font-bold text-[#FF9800]">
+                  {order.totalPrice.toLocaleString()} F
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-        {/* Rating Card */}
-        <Card>
-          <CardContent className="p-6">
-            <h3 className="font-semibold mb-4 text-center">Notez votre expérience</h3>
-            
-            <div className="flex justify-center gap-2 mb-6">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  onClick={() => setRating(star)}
-                  className="transition-transform hover:scale-110"
-                >
-                  <Star
-                    className={`w-10 h-10 ${
-                      star <= rating
-                        ? 'text-yellow-400 fill-yellow-400'
-                        : 'text-gray-300'
-                    }`}
-                  />
-                </button>
-              ))}
-            </div>
+          {/* Rating Card */}
+          <Card className="border-0 shadow-lg">
+            <CardContent className="p-4">
+              <h3 className="font-semibold mb-3 text-center text-[#212121]">Notez votre expérience</h3>
+              
+              <div className="flex justify-center gap-2 mb-4">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    onClick={() => setRating(star)}
+                    className="transition-transform hover:scale-110"
+                  >
+                    <Star
+                      className={`w-8 h-8 ${
+                        star <= rating
+                          ? 'text-yellow-400 fill-yellow-400'
+                          : 'text-gray-300'
+                      }`}
+                    />
+                  </button>
+                ))}
+              </div>
 
-            <textarea
-              placeholder="Laissez un commentaire (optionnel)"
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              className="w-full p-3 border rounded-lg resize-none h-24 mb-4"
-            />
+              <textarea
+                placeholder="Laissez un commentaire (optionnel)"
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                className="w-full p-3 border border-[#E0E0E0] rounded-xl resize-none h-20 text-sm focus:outline-none focus:border-[#FF9800]"
+              />
+              <Button
+                className="w-full h-12 bg-[#FF9800] hover:bg-[#F57C00] rounded-xl mt-3"
+                onClick={handleSubmitReview}
+                disabled={rating === 0}
+              >
+                Envoyer mon avis
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
-            <Button
-              className="w-full bg-blue-600 hover:bg-blue-700"
-              onClick={handleSubmitReview}
-              disabled={rating === 0}
-            >
-              Envoyer mon avis
-            </Button>
-          </CardContent>
-        </Card>
+      {/* Android Navigation Bar */}
+      <div className="fixed bottom-0 left-0 right-0 h-10 bg-black flex items-center justify-center gap-16 z-50">
+        <button className="w-8 h-8 flex items-center justify-center">
+          <div className="w-5 h-5 border-2 border-white rounded-full"></div>
+        </button>
+        <button className="w-8 h-8 flex items-center justify-center">
+          <div className="w-5 h-5 border-2 border-white rounded"></div>
+        </button>
+        <button className="w-8 h-8 flex items-center justify-center">
+          <div className="w-4 h-4 border-2 border-white rotate-45"></div>
+        </button>
       </div>
     </div>
   );
