@@ -9,8 +9,9 @@ import {
   MapPin, Search, Star, Clock, Car,
   CheckCircle, Phone, Loader2,
   Zap, Droplets, Sparkles, Crown, RefreshCw, ExternalLink,
-  Home, Calendar, MessageCircle, User, Bell, Settings, LogOut, Wallet
+  Home, Calendar, MessageCircle, User, Bell, Settings, LogOut, Wallet, Copy
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { ClientOrderFlow } from './ClientOrderFlow';
 import { OrderTracking } from './OrderTracking';
 import { OrderHistory } from './OrderHistory';
@@ -382,9 +383,16 @@ function HomeContent({
             <p className="text-white/80 text-sm mb-2">{activePromotion.description}</p>
           )}
           {activePromotion.code && (
-            <div className="bg-white/20 rounded px-2 py-1 inline-block mb-2">
-              <span className="text-white font-mono text-sm">Code: {activePromotion.code}</span>
-            </div>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(activePromotion.code);
+                toast.success('Code promo copié !');
+              }}
+              className="bg-white/20 rounded px-3 py-1.5 inline-flex items-center gap-2 mb-3 hover:bg-white/30 transition-colors active:scale-95"
+            >
+              <span className="text-white font-mono text-sm font-bold">{activePromotion.code}</span>
+              <Copy className="w-4 h-4 text-white/80" />
+            </button>
           )}
           <button
             onClick={onStartOrder}
