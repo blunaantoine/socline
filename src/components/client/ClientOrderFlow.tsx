@@ -114,9 +114,22 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
       return;
     }
 
+    // Validate wallet payment
+    if (paymentMethod === 'wallet' && walletBalance < selectedService.price) {
+      alert('Solde insuffisant dans votre portefeuille.');
+      return;
+    }
+
+    // Validate mobile money
+    if (paymentMethod === 'mobile_money' && mobileNumber.length < 8) {
+      alert('Veuillez entrer un numéro Mobile Money valide.');
+      return;
+    }
+
     setIsProcessing(true);
     
     try {
+      // Create the order first
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -136,6 +149,36 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
       console.log('Order response:', data);
 
       if (data.success && data.order) {
+        // Process wallet payment if selected
+        if (paymentMethod === 'wallet') {
+          const walletRes = await fetch('/api/wallet', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: clientId,
+              orderId: data.order.id,
+              amount: selectedService.price,
+            }),
+          });
+          
+          const walletData = await walletRes.json();
+          if (!walletData.success) {
+            alert('Erreur lors du paiement par portefeuille. La commande a été créée mais le paiement a échoué.');
+          }
+        }
+
+        // Create payment record
+        await fetch('/api/orders/' + data.order.id + '/payment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: clientId,
+            amount: selectedService.price,
+            method: paymentMethod === 'wallet' ? 'WALLET' : paymentMethod === 'mobile_money' ? 'MOBILE_MONEY' : paymentMethod === 'card' ? 'CARD' : 'CASH',
+            phoneNumber: paymentMethod === 'mobile_money' ? mobileNumber : undefined,
+          }),
+        });
+
         const order: Order = {
           id: data.order.id,
           orderNumber: data.order.orderNumber,
