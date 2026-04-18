@@ -33,7 +33,7 @@ export const useAuthStore = create<AuthState>()(
       setLoading: (loading) => set({ isLoading: loading }),
     }),
     {
-      name: 'washgo-auth',
+      name: 'socline-auth',
       partialize: (state) => ({ 
         user: state.user, 
         token: state.token, 

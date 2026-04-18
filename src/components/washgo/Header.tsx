@@ -54,7 +54,7 @@ export function Header() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
               </svg>
             </div>
-            <span className="font-bold text-xl text-gray-900">WashGo</span>
+            <span className="font-bold text-xl text-gray-900">Socline</span>
           </div>
 
           {/* Role Switcher for admins */}

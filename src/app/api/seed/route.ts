@@ -63,8 +63,8 @@ export async function POST() {
       // Create a default station
       station = await db.station.create({
         data: {
-          name: 'WashGo Centre-Ville',
-          description: 'Station principale WashGo au centre-ville de Lomé',
+          name: 'Socline Centre-Ville',
+          description: 'Station principale Socline au centre-ville de Lomé',
           address: 'Centre-ville, Lomé, Togo',
           latitude: 6.1725,
           longitude: 1.2314,
@@ -139,7 +139,7 @@ export async function POST() {
       adminUser = await db.user.create({
         data: {
           phone: '90345678',
-          name: 'Admin WashGo',
+          name: 'Admin Socline',
           role: 'ADMIN',
           pin: '1234',
           isActive: true,
@@ -157,7 +157,7 @@ export async function POST() {
       await db.promotion.create({
         data: {
           name: 'sur votre 1er lavage',
-          description: 'Profitez de 20% de réduction sur votre premier lavage auto avec WashGo',
+          description: 'Profitez de 20% de réduction sur votre premier lavage auto avec Socline',
           type: 'GLOBAL',
           discountType: 'PERCENTAGE',
           discountValue: 20,

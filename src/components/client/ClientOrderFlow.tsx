@@ -689,7 +689,7 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
                       </div>
                       <div>
                         <Label className="font-medium cursor-pointer text-[#212121]">
-                          Portefeuille WashGo
+                          Portefeuille Socline
                         </Label>
                         <p className="text-sm text-[#757575]">
                           Solde: {walletBalance.toLocaleString()} F

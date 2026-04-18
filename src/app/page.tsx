@@ -5,10 +5,10 @@ import { useAuthStore, useAppStore } from '@/store';
 import { ClientApp } from '@/components/client/ClientApp';
 import { WasherApp } from '@/components/washer/WasherApp';
 import { AdminPanel } from '@/components/admin/AdminPanel';
-import { AuthModal } from '@/components/washgo/AuthModal';
+import { AuthModal } from '@/components/socline/AuthModal';
 import { Toaster } from '@/components/ui/sonner';
 
-export default function WashGoApp() {
+export default function SoclineApp() {
   const { isAuthenticated, user, isLoading, setLoading } = useAuthStore();
   const { currentView, setView } = useAppStore();
   const [showAuth, setShowAuth] = useState(false);
@@ -46,7 +46,7 @@ export default function WashGoApp() {
               <div className="absolute inset-0 border-4 border-[#FFE0B2] rounded-full"></div>
               <div className="absolute inset-0 border-4 border-[#FF9800] rounded-full border-t-transparent animate-spin"></div>
             </div>
-            <h2 className="text-xl font-bold text-[#212121]">WashGo</h2>
+            <h2 className="text-xl font-bold text-[#212121]">Socline</h2>
             <p className="text-[#757575] text-sm">Chargement...</p>
           </div>
         </div>
@@ -126,7 +126,7 @@ function LandingScreen({ onLogin }: { onLogin: () => void }) {
 
       {/* App Bar */}
       <div className="bg-[#FF9800] px-4 py-4 shadow-md">
-        <h1 className="text-white text-xl font-bold">WashGo</h1>
+        <h1 className="text-white text-xl font-bold">Socline</h1>
         <p className="text-white/80 text-sm">Votre lavage auto, livré à votre porte</p>
       </div>
 

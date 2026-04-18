@@ -14,23 +14,23 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "WashGo - Votre lavage auto, livré à votre porte",
+  title: "Socline - Votre lavage auto, livré à votre porte",
   description: "Réservez un lavage professionnel en quelques clics. Nos laveurs certifiés viennent à vous, où que vous soyez.",
-  keywords: ["WashGo", "lavage auto", "car wash", "Togo", "Lome", "mobile car wash"],
-  authors: [{ name: "WashGo Team" }],
+  keywords: ["Socline", "lavage auto", "car wash", "Togo", "Lome", "mobile car wash"],
+  authors: [{ name: "Socline Team" }],
   icons: {
     icon: "/logo.svg",
   },
   openGraph: {
-    title: "WashGo - Lavage Auto Mobile",
+    title: "Socline - Lavage Auto Mobile",
     description: "Votre lavage auto, livré à votre porte",
-    url: "https://washgo.tg",
-    siteName: "WashGo",
+    url: "https://socline.tg",
+    siteName: "Socline",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "WashGo - Lavage Auto Mobile",
+    title: "Socline - Lavage Auto Mobile",
     description: "Votre lavage auto, livré à votre porte",
   },
 };

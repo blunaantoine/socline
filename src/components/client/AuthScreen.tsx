@@ -132,7 +132,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
           <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mb-6 shadow-lg">
             <Car className="w-12 h-12 text-[#FF9800]" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">WashGo</h1>
+          <h1 className="text-3xl font-bold text-white mb-2">Socline</h1>
           <p className="text-white/80 text-center">Votre lavage auto à domicile</p>
         </div>
         

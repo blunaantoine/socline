@@ -336,7 +336,7 @@ function OrderCompleted({ order, onBack, onGoHome }: { order: Order; onBack?: ()
               </div>
               <h2 className="text-2xl font-bold mb-2 text-[#212121]">Merci!</h2>
               <p className="text-[#757575] mb-4">
-                Votre avis a été enregistré. À bientôt sur WashGo!
+                Votre avis a été enregistré. À bientôt sur Socline!
               </p>
               <Button onClick={onGoHome} className="w-full h-12 bg-[#FF9800] hover:bg-[#F57C00] rounded-xl">
                 <Home className="w-4 h-4 mr-2" />

@@ -63,7 +63,7 @@ export function ClientApp() {
   // Initialize auth state and verify session
   useEffect(() => {
     const verifySession = async () => {
-      const storedAuth = localStorage.getItem('washgo-auth');
+      const storedAuth = localStorage.getItem('socline-auth');
       if (storedAuth) {
         try {
           const parsed = JSON.parse(storedAuth);
@@ -76,7 +76,7 @@ export function ClientApp() {
             if (!data.valid) {
               // Session invalid, clear storage
               console.log('Session invalid, clearing auth');
-              localStorage.removeItem('washgo-auth');
+              localStorage.removeItem('socline-auth');
               logout();
             }
           }

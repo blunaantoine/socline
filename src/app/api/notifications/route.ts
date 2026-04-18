@@ -25,8 +25,8 @@ export async function GET(request: NextRequest) {
       const sampleNotifications = [
         {
           userId,
-          title: 'Bienvenue sur WashGo! 🎉',
-          message: 'Merci de rejoindre WashGo. Votre première commande vous attend!',
+          title: 'Bienvenue sur Socline! 🎉',
+          message: 'Merci de rejoindre Socline. Votre première commande vous attend!',
           type: 'system',
           isRead: false,
         },

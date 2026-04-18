@@ -305,7 +305,7 @@ export function AdminPanel() {
             </div>
             <div>
               <div className="font-semibold text-[#212121]">Admin</div>
-              <div className="text-xs text-[#757575]">{user?.name || 'WashGo'}</div>
+              <div className="text-xs text-[#757575]">{user?.name || 'Socline'}</div>
             </div>
           </div>
           <Button variant="outline" size="icon" onClick={logout} className="text-red-500">
@@ -1123,7 +1123,7 @@ function AdminSettings() {
         <CardContent className="p-4 space-y-4">
           <div>
             <Label className="text-xs text-[#757575]">Nom de l&apos;entreprise</Label>
-            <Input defaultValue="WashGo" className="mt-1" />
+            <Input defaultValue="Socline" className="mt-1" />
           </div>
           <div>
             <Label className="text-xs text-[#757575]">Téléphone</Label>
