@@ -53,7 +53,6 @@ export function ClientApp() {
   const { stations, setStations } = useStationsStore();
   const [activeTab, setActiveTab] = useState('home');
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState('all');
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [showTracking, setShowTracking] = useState(true);
   const [promotions, setPromotions] = useState<any[]>([]);
@@ -281,8 +280,6 @@ export function ClientApp() {
               onStartOrder={() => setActiveTab('booking')}
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
-              activeFilter={activeFilter}
-              setActiveFilter={setActiveFilter}
               promotions={promotions}
               currentPromoIndex={currentPromoIndex}
               setCurrentPromoIndex={setCurrentPromoIndex}
@@ -341,13 +338,12 @@ export function ClientApp() {
 // Home Content - Android Material Design Style
 function HomeContent({
   services, nearbyWashers, googleStations, isLoadingStations, userLocation,
-  onRefresh, onStartOrder, searchQuery, setSearchQuery, activeFilter, setActiveFilter, 
+  onRefresh, onStartOrder, searchQuery, setSearchQuery, 
   promotions, currentPromoIndex, setCurrentPromoIndex,
 }: {
   services: any[]; nearbyWashers: any[]; googleStations: GooglePlaceStation[];
   isLoadingStations: boolean; userLocation: any; onRefresh: () => void;
   onStartOrder: () => void; searchQuery: string; setSearchQuery: (q: string) => void;
-  activeFilter: string; setActiveFilter: (f: string) => void;
   promotions: any[]; currentPromoIndex: number; setCurrentPromoIndex: (i: number) => void;
 }) {
   const currentPromo = promotions[currentPromoIndex];
@@ -363,28 +359,6 @@ function HomeContent({
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-10 h-12 bg-white border-0 rounded-lg text-sm shadow-sm"
         />
-      </div>
-
-      {/* Filters - Android Chips style */}
-      <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
-        {[
-          { id: 'all', label: 'Tout' },
-          { id: 'express', label: 'Express' },
-          { id: 'complet', label: 'Complet' },
-          { id: 'premium', label: 'Premium' },
-        ].map((filter) => (
-          <button
-            key={filter.id}
-            onClick={() => setActiveFilter(filter.id)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
-              activeFilter === filter.id
-                ? 'bg-[#FF9800] text-white'
-                : 'bg-white text-[#757575] border border-[#E0E0E0]'
-            }`}
-          >
-            {filter.label}
-          </button>
-        ))}
       </div>
 
       {/* Hero Banner - Promotions Carousel with auto-scroll */}
