@@ -6,14 +6,12 @@ import { ClientApp } from '@/components/client/ClientApp';
 import { WasherApp } from '@/components/washer/WasherApp';
 import { AdminPanel } from '@/components/admin/AdminPanel';
 import { AuthModal } from '@/components/washgo/AuthModal';
-import { RoleSelector } from '@/components/washgo/RoleSelector';
 import { Toaster } from '@/components/ui/sonner';
 
 export default function WashGoApp() {
   const { isAuthenticated, user, isLoading, setLoading } = useAuthStore();
   const { currentView, setView } = useAppStore();
   const [showAuth, setShowAuth] = useState(false);
-  const [showRoleSelector, setShowRoleSelector] = useState(false);
   const [initialized, setInitialized] = useState(false);
 
   const defaultView = useMemo(() => {
@@ -35,18 +33,10 @@ export default function WashGoApp() {
 
   useEffect(() => {
     if (initialized && isAuthenticated && user) {
-      const timer = setTimeout(() => {
-        setShowRoleSelector(true);
-        setView(defaultView);
-      }, 0);
-      return () => clearTimeout(timer);
+      // Set view directly based on user role - no selector needed
+      setView(defaultView);
     }
   }, [initialized, isAuthenticated, user, defaultView, setView]);
-
-  const handleRoleSelect = (view: 'client' | 'washer' | 'admin') => {
-    setView(view);
-    setShowRoleSelector(false);
-  };
 
   if (isLoading) {
     return (
@@ -77,9 +67,6 @@ export default function WashGoApp() {
           {currentView === 'client' && <ClientApp />}
           {currentView === 'washer' && <WasherApp />}
           {currentView === 'admin' && <AdminPanel />}
-          {showRoleSelector && user && user.role === 'ADMIN' && (
-            <RoleSelector onSelect={handleRoleSelect} />
-          )}
         </>
       )}
       <Toaster />
