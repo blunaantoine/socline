@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
@@ -13,14 +13,26 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const viewport: Viewport = {
+  themeColor: "#FF9800",
+};
+
 export const metadata: Metadata = {
   title: "Socline - Votre lavage auto, livré à votre porte",
   description: "Réservez un lavage professionnel en quelques clics. Nos laveurs certifiés viennent à vous, où que vous soyez.",
   keywords: ["Socline", "lavage auto", "car wash", "Togo", "Lome", "mobile car wash"],
   authors: [{ name: "Socline Team" }],
   icons: {
-    icon: "/logo.svg",
+    icon: [
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+    other: [
+      { rel: "manifest", url: "/site.webmanifest" },
+    ],
   },
+  manifest: "/site.webmanifest",
   openGraph: {
     title: "Socline - Lavage Auto Mobile",
     description: "Votre lavage auto, livré à votre porte",

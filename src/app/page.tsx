@@ -32,8 +32,8 @@ export default function SoclineApp() {
       {/* Main Content */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: 'white' }}>
         {/* Logo */}
-        <div style={{ width: 96, height: 96, backgroundColor: '#FF9800', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24, boxShadow: '0 4px 8px rgba(0,0,0,0.2)' }}>
-          <span style={{ fontSize: 48 }}>🚿</span>
+        <div style={{ width: 96, height: 96, backgroundColor: '#FF9800', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24, boxShadow: '0 4px 8px rgba(0,0,0,0.2)', overflow: 'hidden' }}>
+          <img src="/android-chrome-192x192.png" alt="Socline" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         </div>
 
         {/* Info Card */}
