@@ -43,6 +43,8 @@ export async function GET(request: NextRequest) {
         include: {
           service: true,
           washer: { include: { user: { select: { name: true, phone: true } } } },
+          payment: true,
+          review: true,
         },
         orderBy: { createdAt: 'desc' },
       });
