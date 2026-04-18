@@ -36,35 +36,38 @@ interface CarData {
   createdAt: string;
 }
 
-// Car brands and their models (popular in Togo/West Africa)
+// Car brands and their models (popular in Togo/West Africa) - sorted alphabetically
 const CAR_BRANDS: Record<string, string[]> = {
-  'Toyota': ['Corolla', 'Camry', 'Yaris', 'RAV4', 'Hilux', 'Land Cruiser', 'Prado', 'Highlander', 'Prius', 'Auris', 'Avensis', 'Matrix'],
-  'Renault': ['Clio', 'Logan', 'Sandero', 'Duster', 'Koleos', 'Captur', 'Megane', 'Scenic', 'Kangoo', 'Fluence', 'Symbol', 'Twingo'],
-  'Peugeot': ['206', '207', '208', '301', '307', '308', '406', '407', '508', '2008', '3008', '5008', 'Partner'],
-  'Nissan': ['Almera', 'Sentra', 'Tiida', 'Qashqai', 'X-Trail', 'Patrol', 'Navara', 'Micra', 'Juke', 'Murano', 'Sunny', 'Note'],
-  'Hyundai': ['Accent', 'Elantra', 'Sonata', 'Tucson', 'Santa Fe', 'i10', 'i20', 'i30', 'Kona', 'Creta', 'Matrix', 'Getz'],
-  'Kia': ['Rio', 'Cerato', 'Optima', 'Sportage', 'Sorento', 'Picanto', 'Ceed', 'Soul', 'Sportage', 'Carnival', 'Morning', 'K5'],
-  'Volkswagen': ['Golf', 'Polo', 'Jetta', 'Passat', 'Tiguan', 'Touareg', 'Touran', 'Caddy', 'Amarok', 'Beetle', 'Scirocco', 'Bora'],
-  'Mercedes': ['Classe A', 'Classe B', 'Classe C', 'Classe E', 'Classe S', 'GLA', 'GLC', 'GLE', 'GLS', 'ML', 'CLA', 'CLS'],
-  'BMW': ['Série 1', 'Série 3', 'Série 5', 'Série 7', 'X1', 'X3', 'X5', 'X6', 'X7', 'Z4', 'M3', 'M5'],
-  'Ford': ['Fiesta', 'Focus', 'Fusion', 'Mondeo', 'Escape', 'Explorer', 'Ranger', 'F-150', 'EcoSport', 'Kuga', 'Edge', 'Transit'],
-  'Honda': ['Civic', 'Accord', 'CR-V', 'HR-V', 'Pilot', 'Odyssey', 'Fit', 'City', 'Jazz', 'HR-V', 'BR-V', 'WR-V'],
-  'Mitsubishi': ['Lancer', 'Outlander', 'Pajero', 'ASX', 'Mirage', 'Eclipse Cross', 'Montero', 'Triton', 'Space Star', 'Colt', 'Galant', 'Endeavor'],
-  'Mazda': ['Mazda2', 'Mazda3', 'Mazda6', 'CX-3', 'CX-5', 'CX-9', 'MX-5', 'BT-50', 'Demio', 'Axela', 'Atenza', 'Premacy'],
-  'Suzuki': ['Swift', 'Dzire', 'Vitara', 'S-Cross', 'Jimny', 'Ciaz', 'Baleno', 'Ertiga', 'XL7', 'Ignis', 'SX4', 'Grand Vitara'],
-  'Isuzu': ['D-Max', 'MU-X', 'Trooper', 'Rodeo', 'Faster', 'Hombre', 'VehiCROSS', 'i-Series', 'Elf', 'NPR', 'NQR', 'Forward'],
-  'Chevrolet': ['Spark', 'Aveo', 'Cruze', 'Malibu', 'Cruze', 'Equinox', 'Traverse', 'Tahoe', 'Suburban', 'Colorado', 'Silverado', 'Captiva'],
-  'Fiat': ['Punto', 'Grande Punto', '500', 'Panda', 'Tipo', 'Linea', 'Bravo', 'Ducato', 'Fiorino', 'Doblo', 'Qubo', 'Fullback'],
-  'Citroën': ['C1', 'C2', 'C3', 'C4', 'C5', 'C-Elysée', 'Berlingo', 'Picasso', 'SpaceTourer', 'DS3', 'DS4', 'DS5'],
   'Audi': ['A1', 'A3', 'A4', 'A5', 'A6', 'A8', 'Q2', 'Q3', 'Q5', 'Q7', 'Q8', 'TT'],
-  'Lexus': ['IS', 'ES', 'GS', 'LS', 'UX', 'NX', 'RX', 'GX', 'LX', 'RC', 'LC', 'CT'],
-  'Land Rover': ['Range Rover', 'Range Rover Sport', 'Range Rover Evoque', 'Discovery', 'Discovery Sport', 'Defender', 'Freelander', 'Velar'],
-  'Jeep': ['Wrangler', 'Grand Cherokee', 'Cherokee', 'Compass', 'Renegade', 'Patriot', 'Liberty', 'Gladiator', 'Commander'],
+  'BMW': ['Série 1', 'Série 3', 'Série 5', 'Série 7', 'X1', 'X3', 'X5', 'X6', 'X7', 'Z4', 'M3', 'M5'],
+  'Changan': ['Alsvin', 'CS35 Plus', 'CS55 Plus', 'CS75 Plus', 'CS95', 'Uni-K', 'Uni-V', 'Raeton', 'Eado', 'Benni', 'CX20', 'X70A'],
+  'Chevrolet': ['Spark', 'Aveo', 'Cruze', 'Malibu', 'Equinox', 'Traverse', 'Tahoe', 'Suburban', 'Colorado', 'Silverado', 'Captiva', 'Orlando'],
+  'Citroën': ['C1', 'C2', 'C3', 'C4', 'C5', 'C-Elysée', 'Berlingo', 'Picasso', 'SpaceTourer', 'DS3', 'DS4', 'DS5'],
   'Dacia': ['Sandero', 'Logan', 'Duster', 'Lodgy', 'Dokker', 'Spring'],
+  'Fiat': ['Punto', 'Grande Punto', '500', 'Panda', 'Tipo', 'Linea', 'Bravo', 'Ducato', 'Fiorino', 'Doblo', 'Qubo', 'Fullback'],
+  'Ford': ['Fiesta', 'Focus', 'Fusion', 'Mondeo', 'Escape', 'Explorer', 'Ranger', 'F-150', 'EcoSport', 'Kuga', 'Edge', 'Transit'],
+  'Honda': ['Civic', 'Accord', 'CR-V', 'HR-V', 'Pilot', 'Odyssey', 'Fit', 'City', 'Jazz', 'BR-V', 'WR-V', 'HR-V'],
+  'Hyundai': ['Accent', 'Elantra', 'Sonata', 'Tucson', 'Santa Fe', 'i10', 'i20', 'i30', 'Kona', 'Creta', 'Matrix', 'Getz'],
+  'Isuzu': ['D-Max', 'MU-X', 'Trooper', 'Rodeo', 'Faster', 'Hombre', 'VehiCROSS', 'i-Series', 'Elf', 'NPR', 'NQR', 'Forward'],
+  'Jeep': ['Wrangler', 'Grand Cherokee', 'Cherokee', 'Compass', 'Renegade', 'Patriot', 'Liberty', 'Gladiator', 'Commander', 'Cherokee XJ'],
+  'Jetour': ['X70', 'X70 Plus', 'X70 Coupe', 'X90', 'X90 Plus', 'X95', 'Dashing', 'T2', 'T5', 'Traveler', 'X50', 'X60'],
+  'Kia': ['Rio', 'Cerato', 'Optima', 'Sportage', 'Sorento', 'Picanto', 'Ceed', 'Soul', 'Carnival', 'Morning', 'K5', 'Stinger'],
+  'Land Rover': ['Range Rover', 'Range Rover Sport', 'Range Rover Evoque', 'Discovery', 'Discovery Sport', 'Defender', 'Freelander', 'Velar'],
+  'Lexus': ['IS', 'ES', 'GS', 'LS', 'UX', 'NX', 'RX', 'GX', 'LX', 'RC', 'LC', 'CT'],
+  'Mazda': ['Mazda2', 'Mazda3', 'Mazda6', 'CX-3', 'CX-5', 'CX-9', 'MX-5', 'BT-50', 'Demio', 'Axela', 'Atenza', 'Premacy'],
+  'Mercedes': ['Classe A', 'Classe B', 'Classe C', 'Classe E', 'Classe S', 'GLA', 'GLC', 'GLE', 'GLS', 'ML', 'CLA', 'CLS'],
+  'Mitsubishi': ['Lancer', 'Outlander', 'Pajero', 'ASX', 'Mirage', 'Eclipse Cross', 'Montero', 'Triton', 'Space Star', 'Colt', 'Galant', 'Endeavor'],
+  'Nissan': ['Almera', 'Sentra', 'Tiida', 'Qashqai', 'X-Trail', 'Patrol', 'Navara', 'Micra', 'Juke', 'Murano', 'Sunny', 'Note'],
+  'Peugeot': ['206', '207', '208', '301', '307', '308', '406', '407', '508', '2008', '3008', '5008', 'Partner'],
+  'Renault': ['Clio', 'Logan', 'Sandero', 'Duster', 'Koleos', 'Captur', 'Megane', 'Scenic', 'Kangoo', 'Fluence', 'Symbol', 'Twingo'],
+  'Suzuki': ['Swift', 'Dzire', 'Vitara', 'S-Cross', 'Jimny', 'Ciaz', 'Baleno', 'Ertiga', 'XL7', 'Ignis', 'SX4', 'Grand Vitara'],
+  'Toyota': ['Corolla', 'Camry', 'Yaris', 'RAV4', 'Hilux', 'Land Cruiser', 'Prado', 'Highlander', 'Prius', 'Auris', 'Avensis', 'Matrix'],
+  'Volkswagen': ['Golf', 'Polo', 'Jetta', 'Passat', 'Tiguan', 'Touareg', 'Touran', 'Caddy', 'Amarok', 'Beetle', 'Scirocco', 'Bora'],
   'Autre': ['Autre modèle'],
 };
 
-const BRAND_LIST = Object.keys(CAR_BRANDS);
+// Sorted brand list
+const BRAND_LIST = Object.keys(CAR_BRANDS).sort((a, b) => a.localeCompare(b));
 
 const CAR_COLORS = [
   { value: 'Noir', label: 'Noir', bg: 'bg-gray-900' },
