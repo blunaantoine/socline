@@ -13,7 +13,8 @@ import {
   Wallet, TrendingUp, Calendar, LogOut, Settings, Home,
   RefreshCw, Loader2, ArrowLeft
 } from 'lucide-react';
-import type { Order, OrderStatus } from '@/types';
+import type { Order, OrderStatus, Conversation } from '@/types';
+import { ChatView } from '@/components/chat/ChatView';
 
 export function WasherApp() {
   const { user, logout } = useAuthStore();
@@ -22,6 +23,30 @@ export function WasherApp() {
   const [isAvailable, setIsAvailable] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [pendingOrders, setPendingOrders] = useState<Order[]>([]);
+  const [showChat, setShowChat] = useState(false);
+  const [conversation, setConversation] = useState<Conversation | null>(null);
+
+  // Fetch conversation for current order
+  const fetchConversation = useCallback(async (orderId: string) => {
+    try {
+      const res = await fetch(`/api/conversations?orderId=${orderId}`);
+      const data = await res.json();
+      
+      if (data.success && data.conversation) {
+        setConversation(data.conversation);
+      }
+    } catch (error) {
+      console.error('Fetch conversation error:', error);
+    }
+  }, []);
+
+  // Open chat for order
+  const handleOpenChat = useCallback(async (order: Order) => {
+    if (order.id) {
+      await fetchConversation(order.id);
+      setShowChat(true);
+    }
+  }, [fetchConversation]);
 
   // Get washer stats from user or defaults
   const washerStats = {
@@ -217,6 +242,7 @@ export function WasherApp() {
             order={currentOrder} 
             onUpdateStatus={handleUpdateStatus} 
             onBack={() => setActiveTab('dashboard')}
+            onOpenChat={handleOpenChat}
           />
         )}
         {activeTab === 'history' && (
@@ -270,6 +296,16 @@ export function WasherApp() {
 
       {/* Home Indicator */}
       <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-32 h-1 bg-black rounded-full"></div>
+
+      {/* Chat Overlay */}
+      {showChat && conversation && (
+        <div className="absolute inset-0 z-[60] bg-[#FFF8F0]">
+          <ChatView 
+            conversation={conversation} 
+            onBack={() => setShowChat(false)} 
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -425,10 +461,11 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
 }
 
 // Active Order View
-function ActiveOrderView({ order, onUpdateStatus, onBack }: { 
+function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat }: { 
   order: Order | null; 
   onUpdateStatus: (status: OrderStatus) => void;
   onBack: () => void;
+  onOpenChat: (order: Order) => void;
 }) {
 
   const steps = [
@@ -518,7 +555,12 @@ function ActiveOrderView({ order, onUpdateStatus, onBack }: {
               <Button size="icon" variant="outline" className="rounded-full">
                 <Phone className="w-4 h-4" />
               </Button>
-              <Button size="icon" variant="outline" className="rounded-full">
+              <Button 
+                size="icon" 
+                variant="outline" 
+                className="rounded-full bg-[#4CAF50] text-white hover:bg-[#43A047]"
+                onClick={() => order && onOpenChat(order)}
+              >
                 <MessageCircle className="w-4 h-4" />
               </Button>
             </div>

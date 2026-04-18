@@ -1,11 +1,95 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
-// GET /api/conversations - Get user's conversations
+// GET /api/conversations - Get user's conversations or by orderId
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
+    const orderId = searchParams.get('orderId');
+
+    // If orderId is provided, get conversation by order
+    if (orderId) {
+      const conversation = await db.conversation.findFirst({
+        where: { orderId },
+        include: {
+          order: {
+            include: {
+              service: true,
+              client: {
+                select: { id: true, name: true, phone: true, plateNumber: true, carColor: true },
+              },
+              washer: {
+                include: {
+                  user: { select: { id: true, name: true, phone: true } },
+                },
+              },
+            },
+          },
+          messages: {
+            orderBy: { createdAt: 'asc' },
+            take: 50,
+          },
+        },
+      });
+
+      if (!conversation) {
+        // Create conversation if it doesn't exist (for accepted orders)
+        const order = await db.order.findUnique({
+          where: { id: orderId },
+          include: {
+            client: { select: { id: true, name: true, phone: true, plateNumber: true, carColor: true } },
+            washer: { include: { user: { select: { id: true, name: true, phone: true } } } },
+            service: true,
+          },
+        });
+
+        if (order && order.washerId) {
+          const newConversation = await db.conversation.create({
+            data: {
+              orderId,
+              clientId: order.clientId,
+              washerId: order.washerId,
+              isActive: true,
+            },
+            include: {
+              order: {
+                include: {
+                  service: true,
+                  client: {
+                    select: { id: true, name: true, phone: true, plateNumber: true, carColor: true },
+                  },
+                  washer: {
+                    include: {
+                      user: { select: { id: true, name: true, phone: true } },
+                    },
+                  },
+                },
+              },
+              messages: {
+                orderBy: { createdAt: 'asc' },
+                take: 50,
+              },
+            },
+          });
+
+          return NextResponse.json({
+            success: true,
+            conversation: newConversation,
+          });
+        }
+
+        return NextResponse.json(
+          { success: false, error: 'Conversation not found' },
+          { status: 404 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        conversation,
+      });
+    }
 
     if (!userId) {
       return NextResponse.json(
