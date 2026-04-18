@@ -80,8 +80,8 @@ model User {
   fcmToken      String?   // For push notifications
   
   // Client specific fields (for car identification)
-  plateNumber   String?   // Numéro de plaque
-  carColor      String?   // Couleur de la voiture
+  plateNumber   String?   // Numéro de plaque (deprecated - use Car model)
+  carColor      String?   // Couleur de la voiture (deprecated - use Car model)
   pin           String?   // 4-digit PIN code
   
   createdAt     DateTime  @default(now())
@@ -96,8 +96,34 @@ model User {
   sentMessages  Message[] @relation("SentMessages")
   receivedMessages Message[] @relation("ReceivedMessages")
   wallet        Wallet?
+  cars          Car[]     // User's cars (max 10)
 
   @@map("users")
+}
+
+// Car model (for client vehicles)
+model Car {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Car details
+  nickname      String?  // e.g., "Ma Clio", "Voiture de travail"
+  plateNumber   String   // Numéro de plaque (e.g., TG-1234-A)
+  brand         String?  // Marque (e.g., Renault, Toyota)
+  model         String?  // Modèle (e.g., Clio, Corolla)
+  color         String   // Couleur (e.g., Blanc, Noir, Bleu)
+  
+  // Additional info
+  year          Int?     // Année du véhicule
+  
+  // Default car for orders
+  isDefault     Boolean  @default(false)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("cars")
 }
 
 // Washer model (extends User)

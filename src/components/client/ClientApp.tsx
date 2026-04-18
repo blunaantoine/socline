@@ -9,7 +9,7 @@ import {
   MapPin, Search, Star, Clock, Car,
   CheckCircle, Phone, Loader2,
   Zap, Droplets, Sparkles, Crown, RefreshCw, ExternalLink,
-  Home, Calendar, MessageCircle, User, Bell, Settings, LogOut, Wallet, Copy
+  Home, Calendar, MessageCircle, User, Bell, Settings, LogOut, Wallet, Copy, Plus, ChevronRight
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ClientOrderFlow } from './ClientOrderFlow';
@@ -21,6 +21,7 @@ import { AuthScreen } from './AuthScreen';
 import { ChatList } from '@/components/chat/ChatList';
 import { NotificationCenter } from './NotificationCenter';
 import { WalletScreen } from './WalletScreen';
+import { CarsManager } from './CarsManager';
 
 const navItems = [
   { id: 'home', icon: Home, label: 'Accueil' },
@@ -537,31 +538,8 @@ function ProfileContent({ user, onLogout }: { user: any; onLogout: () => void })
         </div>
       </div>
 
-      {/* Vehicle Card */}
-      <div className="bg-white rounded-lg p-4 shadow-sm">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold text-[#212121]">Ma voiture</h3>
-          <button className="text-xs text-[#FF9800] font-medium">Modifier</button>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 bg-[#FFF3E0] rounded-lg flex items-center justify-center">
-            <Car className="w-7 h-7 text-[#FF9800]" />
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-sm text-[#757575]">Plaque:</span>
-              <span className="font-bold text-[#212121]">{user?.plateNumber || 'TG 1234 A'}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-[#757575]">Couleur:</span>
-              <div className="flex items-center gap-1">
-                <div className={`w-4 h-4 rounded-full ${CAR_COLORS[user?.carColor] || 'bg-gray-400'}`} />
-                <span className="font-medium text-[#212121]">{user?.carColor || 'Non définie'}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Cars Section - Multi-car support */}
+      <CarsManager userId={user?.id} />
 
       {/* Stats */}
       <div className="bg-white rounded-lg p-4 shadow-sm">
@@ -585,7 +563,6 @@ function ProfileContent({ user, onLogout }: { user: any; onLogout: () => void })
       {/* Menu - Android List style */}
       <div className="bg-white rounded-lg overflow-hidden shadow-sm">
         {[
-          { icon: Car, label: 'Mes véhicules' },
           { icon: Clock, label: 'Historique' },
           { icon: MapPin, label: 'Adresses' },
           { icon: Settings, label: 'Paramètres' },
@@ -598,7 +575,7 @@ function ProfileContent({ user, onLogout }: { user: any; onLogout: () => void })
               <item.icon className="w-4 h-4 text-[#FF9800]" />
             </div>
             <span className="flex-1 text-left text-[#212121] text-sm">{item.label}</span>
-            <div className="w-5 h-5 text-[#BDBDBD]">›</div>
+            <ChevronRight className="w-5 h-5 text-[#BDBDBD]" />
           </button>
         ))}
       </div>
