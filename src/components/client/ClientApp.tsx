@@ -196,12 +196,14 @@ export function ClientApp() {
       <div className="h-6 bg-[#FF9800] flex items-center justify-between px-4 flex-shrink-0">
         <span className="text-white text-xs font-medium">9:41</span>
         <div className="flex items-center gap-1">
-          <div className="flex gap-0.5">
-            <div className="w-1 h-2 bg-white/80 rounded-sm"></div>
-            <div className="w-1 h-3 bg-white/80 rounded-sm"></div>
+          {/* Signal Network Bars - de petite à grande */}
+          <div className="flex items-end gap-0.5">
+            <div className="w-1 h-1 bg-white rounded-sm"></div>
+            <div className="w-1 h-2 bg-white rounded-sm"></div>
+            <div className="w-1 h-3 bg-white rounded-sm"></div>
             <div className="w-1 h-4 bg-white rounded-sm"></div>
-            <div className="w-1 h-3 bg-white/80 rounded-sm"></div>
           </div>
+          {/* Battery */}
           <div className="w-5 h-2.5 border border-white rounded-sm ml-1 relative">
             <div className="absolute inset-0.5 bg-white rounded-sm" style={{ width: '70%' }}></div>
           </div>
