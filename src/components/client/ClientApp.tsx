@@ -189,7 +189,7 @@ export function ClientApp() {
   return (
     <div className="flex-1 flex flex-col bg-[#FAFAFA] relative">
       {/* Android Status Bar */}
-      <div className="h-6 bg-[#FF9800] flex items-center justify-between px-4 flex-shrink-0 sticky top-0 z-50">
+      <div className="h-6 bg-[#FF9800] flex items-center justify-between px-4 flex-shrink-0">
         <span className="text-white text-xs font-medium">9:41</span>
         <div className="flex items-center gap-1">
           {/* Signal Network Bars - de petite à grande */}
@@ -209,8 +209,8 @@ export function ClientApp() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* App Bar (not shown on chat tab) */}
-        {activeTab !== 'chat' && (
-          <header className="bg-[#FF9800] px-4 py-3 flex items-center justify-between flex-shrink-0 shadow-md sticky top-6 z-40">
+        {activeTab !== 'chat' && activeTab !== 'booking' && (
+          <header className="bg-[#FF9800] px-4 py-3 flex items-center justify-between flex-shrink-0 shadow-md">
             <div className="flex items-center gap-3">
               <button onClick={getUserLocation} className="flex items-center gap-2">
                 {isLoadingLocation ? (
