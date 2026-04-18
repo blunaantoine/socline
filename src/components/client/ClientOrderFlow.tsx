@@ -31,7 +31,8 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
   const [address, setAddress] = useState(userLocation?.address || '');
   const [scheduledTime, setScheduledTime] = useState<'now' | 'later'>('now');
   const [scheduledDate, setScheduledDate] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'mobile_money' | 'cash' | 'card'>('cash');
+  const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'mobile_money' | 'cash' | 'card'>('cash');
+  const [walletBalance, setWalletBalance] = useState(0);
   const [mobileProvider, setMobileProvider] = useState<'mixx' | 'tmoney'>('mixx');
   const [mobileNumber, setMobileNumber] = useState('');
   const [promoCode, setPromoCode] = useState('');
@@ -67,6 +68,23 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
 
     loadServices();
   }, [setServices]);
+
+  // Fetch wallet balance
+  useEffect(() => {
+    const fetchWallet = async () => {
+      if (!user?.id) return;
+      try {
+        const res = await fetch(`/api/wallet?userId=${user.id}`);
+        const data = await res.json();
+        if (data.success && data.wallet) {
+          setWalletBalance(data.wallet.balance);
+        }
+      } catch (error) {
+        console.error('Error fetching wallet:', error);
+      }
+    };
+    fetchWallet();
+  }, [user?.id]);
 
   const handleServiceSelect = (service: Service) => {
     selectService(service);
@@ -474,6 +492,42 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
             <Card>
               <CardContent className="p-4 space-y-4">
                 <Label className="text-base font-medium">Mode de paiement</Label>
+                
+                {/* Wallet Option */}
+                <div
+                  className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                    paymentMethod === 'wallet' ? 'border-[#FF9800] bg-[#FFF8F0]' : 'border-gray-200 hover:border-gray-300'
+                  } ${walletBalance < (selectedService?.price || 0) ? 'opacity-60' : ''}`}
+                  onClick={() => {
+                    if (walletBalance >= (selectedService?.price || 0)) {
+                      setPaymentMethod('wallet');
+                    }
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-[#FF9800] to-[#F57C00] rounded-full flex items-center justify-center">
+                        <Wallet className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <Label className="font-medium cursor-pointer text-[#212121]">
+                          Portefeuille WashGo
+                        </Label>
+                        <p className="text-sm text-[#757575]">
+                          Solde: {walletBalance.toLocaleString()} F
+                        </p>
+                      </div>
+                    </div>
+                    {walletBalance >= (selectedService?.price || 0) ? (
+                      <div className="w-5 h-5 border-2 border-[#FF9800] rounded-full flex items-center justify-center">
+                        {paymentMethod === 'wallet' && <div className="w-3 h-3 bg-[#FF9800] rounded-full" />}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-red-500 font-medium">Solde insuffisant</span>
+                    )}
+                  </div>
+                </div>
+
                 <RadioGroup value={paymentMethod} onValueChange={(v: any) => setPaymentMethod(v)}>
                   <div className="space-y-3">
                     {[

@@ -9,7 +9,7 @@ import {
   MapPin, Search, Star, Clock, Car,
   CheckCircle, Phone, Loader2,
   Zap, Droplets, Sparkles, Crown, RefreshCw, ExternalLink,
-  Home, Calendar, MessageCircle, User, Bell, Settings, LogOut
+  Home, Calendar, MessageCircle, User, Bell, Settings, LogOut, Wallet
 } from 'lucide-react';
 import { ClientOrderFlow } from './ClientOrderFlow';
 import { OrderTracking } from './OrderTracking';
@@ -19,12 +19,13 @@ import { useGooglePlaces, GooglePlaceStation } from '@/hooks/useGooglePlaces';
 import { AuthScreen } from './AuthScreen';
 import { ChatList } from '@/components/chat/ChatList';
 import { NotificationCenter } from './NotificationCenter';
+import { WalletScreen } from './WalletScreen';
 
 const navItems = [
   { id: 'home', icon: Home, label: 'Accueil' },
   { id: 'booking', icon: Calendar, label: 'Réserver' },
+  { id: 'wallet', icon: Wallet, label: 'Portefeuille' },
   { id: 'activity', icon: Clock, label: 'Activité' },
-  { id: 'chat', icon: MessageCircle, label: 'Messages' },
   { id: 'profile', icon: User, label: 'Profil' },
 ];
 
@@ -278,6 +279,7 @@ export function ClientApp() {
               onOrderComplete={() => setActiveTab('activity')}
             />
           )}
+          {activeTab === 'wallet' && <WalletScreen />}
           {activeTab === 'activity' && <OrderHistory />}
           {activeTab === 'chat' && <ChatList onBack={() => setActiveTab('home')} />}
           {activeTab === 'profile' && <ProfileContent user={user} onLogout={logout} />}
