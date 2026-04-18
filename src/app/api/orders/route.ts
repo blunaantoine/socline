@@ -1,66 +1,57 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
-// GET /api/orders - Get orders (with filters)
+// GET /api/orders - Get orders (for washer or client)
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
-    const washerId = searchParams.get('washerId');
+    const role = searchParams.get('role');
     const status = searchParams.get('status');
-    const limit = parseInt(searchParams.get('limit') || '20');
-    const offset = parseInt(searchParams.get('offset') || '0');
 
-    const where: any = {};
-    
-    if (userId) {
-      where.clientId = userId;
-    }
-    if (washerId) {
-      where.washerId = washerId;
-    }
-    if (status) {
-      where.status = status;
+    if (!userId) {
+      return NextResponse.json({ error: 'userId required' }, { status: 400 });
     }
 
-    const orders = await db.order.findMany({
-      where,
-      include: {
-        client: {
-          select: { id: true, name: true, phone: true },
-        },
-        washer: {
+    let orders;
+
+    if (role === 'WASHER') {
+      // Get orders assigned to washer or pending orders
+      if (status === 'PENDING') {
+        orders = await db.order.findMany({
+          where: { status: 'PENDING' },
           include: {
-            user: { select: { id: true, name: true, phone: true } },
+            client: { select: { id: true, name: true, phone: true } },
+            service: true,
           },
+          orderBy: { createdAt: 'desc' },
+        });
+      } else {
+        orders = await db.order.findMany({
+          where: { washerId: userId },
+          include: {
+            client: { select: { id: true, name: true, phone: true } },
+            service: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        });
+      }
+    } else {
+      // Get client's orders
+      orders = await db.order.findMany({
+        where: { clientId: userId },
+        include: {
+          service: true,
+          washer: { include: { user: { select: { name: true, phone: true } } } },
         },
-        service: true,
-        station: true,
-        payment: true,
-      },
-      orderBy: { createdAt: 'desc' },
-      take: limit,
-      skip: offset,
-    });
+        orderBy: { createdAt: 'desc' },
+      });
+    }
 
-    const total = await db.order.count({ where });
-
-    return NextResponse.json({
-      success: true,
-      orders,
-      pagination: {
-        total,
-        limit,
-        offset,
-        hasMore: offset + limit < total,
-      },
-    });
+    return NextResponse.json({ success: true, orders });
   } catch (error) {
     console.error('Get orders error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to get orders' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
   }
 }
 
@@ -68,86 +59,28 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const {
-      clientId,
-      serviceId,
-      isHomeService,
-      address,
-      latitude,
-      longitude,
-      stationId,
-      scheduledAt,
-      promoCode,
+    const { 
+      clientId, serviceId, isHomeService, address, 
+      latitude, longitude, totalPrice, scheduledAt 
     } = body;
-
-    // Validate required fields
-    if (!clientId || !serviceId || !address) {
-      return NextResponse.json(
-        { success: false, error: 'Missing required fields' },
-        { status: 400 }
-      );
-    }
-
-    // Get service price
-    const service = await db.service.findUnique({
-      where: { id: serviceId },
-    });
-
-    if (!service) {
-      return NextResponse.json(
-        { success: false, error: 'Service not found' },
-        { status: 404 }
-      );
-    }
-
-    // Calculate pricing
-    let basePrice = service.price;
-    let discount = 0;
-
-    // Check promo code if provided
-    if (promoCode) {
-      const promo = await db.promotion.findFirst({
-        where: {
-          code: promoCode,
-          isActive: true,
-          startDate: { lte: new Date() },
-          endDate: { gte: new Date() },
-        },
-      });
-
-      if (promo) {
-        if (promo.discountType === 'PERCENTAGE') {
-          discount = basePrice * (promo.discountValue / 100);
-        } else {
-          discount = promo.discountValue;
-        }
-      }
-    }
-
-    const totalPrice = basePrice - discount;
-    const commission = totalPrice * 0.15; // 15% commission
 
     // Generate order number
     const orderNumber = `WG${Date.now().toString().slice(-8)}`;
 
-    // Create order
     const order = await db.order.create({
       data: {
         orderNumber,
         clientId,
         serviceId,
-        isHomeService: isHomeService ?? true,
+        isHomeService,
         address,
         latitude,
         longitude,
-        stationId,
-        basePrice,
-        discount,
+        basePrice: totalPrice,
         totalPrice,
-        commission,
-        promoCode,
-        scheduledAt: scheduledAt ? new Date(scheduledAt) : undefined,
+        commission: totalPrice * 0.15,
         status: 'PENDING',
+        scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
       },
       include: {
         client: { select: { id: true, name: true, phone: true } },
@@ -155,15 +88,53 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({
-      success: true,
-      order,
-    });
+    return NextResponse.json({ success: true, order });
   } catch (error) {
     console.error('Create order error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to create order' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Erreur lors de la création' }, { status: 500 });
+  }
+}
+
+// PATCH /api/orders - Update order (accept, update status)
+export async function PATCH(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { orderId, status, washerId } = body;
+
+    const updateData: any = { status };
+    if (washerId) updateData.washerId = washerId;
+
+    const order = await db.order.update({
+      where: { id: orderId },
+      data: updateData,
+      include: {
+        client: { select: { id: true, name: true, phone: true } },
+        service: true,
+        washer: { include: { user: { select: { name: true, phone: true } } } },
+      },
+    });
+
+    // Create conversation if order is accepted
+    if (status === 'ACCEPTED' && order.washerId && order.clientId) {
+      const existingConversation = await db.conversation.findFirst({
+        where: { orderId: order.id },
+      });
+
+      if (!existingConversation) {
+        await db.conversation.create({
+          data: {
+            orderId: order.id,
+            clientId: order.clientId,
+            washerId: order.washerId,
+            isActive: true,
+          },
+        });
+      }
+    }
+
+    return NextResponse.json({ success: true, order });
+  } catch (error) {
+    console.error('Update order error:', error);
+    return NextResponse.json({ error: 'Erreur lors de la mise à jour' }, { status: 500 });
   }
 }

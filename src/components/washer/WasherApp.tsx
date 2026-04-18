@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuthStore, useOrdersStore } from '@/store';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,15 +10,18 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { 
   Power, MapPin, Clock, Star, DollarSign, CheckCircle, 
   Navigation, Phone, MessageCircle, Car, AlertCircle,
-  Wallet, TrendingUp, Calendar, LogOut, Settings, Home
+  Wallet, TrendingUp, Calendar, LogOut, Settings, Home,
+  RefreshCw, Loader2
 } from 'lucide-react';
 import type { Order, OrderStatus } from '@/types';
 
 export function WasherApp() {
   const { user, logout } = useAuthStore();
-  const { currentOrder, setCurrentOrder } = useOrdersStore();
+  const { currentOrder, setCurrentOrder, orders, setOrders } = useOrdersStore();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isAvailable, setIsAvailable] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [pendingOrders, setPendingOrders] = useState<Order[]>([]);
 
   // Get washer stats from user or defaults
   const washerStats = {
@@ -29,6 +32,117 @@ export function WasherApp() {
     totalEarnings: 0,
     todayEarnings: 0,
     todayJobs: 0,
+  };
+
+  // Fetch pending orders
+  const fetchPendingOrders = useCallback(async () => {
+    if (!user) return;
+    
+    setIsLoading(true);
+    try {
+      const res = await fetch(`/api/orders?userId=${user.id}&role=WASHER&status=PENDING`);
+      const data = await res.json();
+      
+      if (data.success) {
+        setPendingOrders(data.orders);
+      }
+    } catch (error) {
+      console.error('Fetch orders error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user]);
+
+  // Fetch my orders (active and history)
+  const fetchMyOrders = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      const res = await fetch(`/api/orders?userId=${user.id}&role=WASHER`);
+      const data = await res.json();
+      
+      if (data.success) {
+        setOrders(data.orders);
+        
+        // Set current active order
+        const active = data.orders.find((o: Order) => 
+          ['ACCEPTED', 'EN_ROUTE', 'ARRIVED', 'IN_PROGRESS'].includes(o.status)
+        );
+        if (active) {
+          setCurrentOrder(active);
+        }
+      }
+    } catch (error) {
+      console.error('Fetch my orders error:', error);
+    }
+  }, [user, setOrders, setCurrentOrder]);
+
+  // Initial load and polling
+  useEffect(() => {
+    fetchPendingOrders();
+    fetchMyOrders();
+    
+    // Poll for new orders every 10 seconds when available
+    const interval = setInterval(() => {
+      if (isAvailable) {
+        fetchPendingOrders();
+      }
+    }, 10000);
+    
+    return () => clearInterval(interval);
+  }, [isAvailable, fetchPendingOrders, fetchMyOrders]);
+
+  // Accept order
+  const handleAcceptOrder = async (order: Order) => {
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: order.id,
+          status: 'ACCEPTED',
+          washerId: user?.id,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setCurrentOrder(data.order);
+        setPendingOrders(prev => prev.filter(o => o.id !== order.id));
+        setActiveTab('active');
+      }
+    } catch (error) {
+      console.error('Accept order error:', error);
+    }
+  };
+
+  // Update order status
+  const handleUpdateStatus = async (newStatus: OrderStatus) => {
+    if (!currentOrder) return;
+    
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: currentOrder.id,
+          status: newStatus,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setCurrentOrder(data.order);
+        if (newStatus === 'COMPLETED') {
+          setCurrentOrder(null);
+          fetchMyOrders();
+        }
+      }
+    } catch (error) {
+      console.error('Update order error:', error);
+    }
   };
 
   return (
@@ -89,12 +203,19 @@ export function WasherApp() {
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto pb-20">
         {activeTab === 'dashboard' && (
-          <WasherDashboard stats={washerStats} isAvailable={isAvailable} />
+          <WasherDashboard 
+            stats={washerStats} 
+            isAvailable={isAvailable} 
+            isLoading={isLoading}
+            pendingOrders={pendingOrders}
+            onAccept={handleAcceptOrder}
+            onRefresh={fetchPendingOrders}
+          />
         )}
         {activeTab === 'active' && (
-          <ActiveOrderView order={currentOrder} />
+          <ActiveOrderView order={currentOrder} onUpdateStatus={handleUpdateStatus} />
         )}
-        {activeTab === 'history' && <WasherOrderHistory />}
+        {activeTab === 'history' && <WasherOrderHistory orders={orders} />}
         {activeTab === 'earnings' && <WasherEarnings stats={washerStats} />}
         {activeTab === 'profile' && (
           <WasherProfile user={user} stats={washerStats} onLogout={logout} />
@@ -135,7 +256,14 @@ export function WasherApp() {
 }
 
 // Washer Dashboard
-function WasherDashboard({ stats, isAvailable }: { stats: any; isAvailable: boolean }) {
+function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccept, onRefresh }: { 
+  stats: any; 
+  isAvailable: boolean;
+  isLoading: boolean;
+  pendingOrders: Order[];
+  onAccept: (order: Order) => void;
+  onRefresh: () => void;
+}) {
   return (
     <div className="p-4 space-y-4">
       {/* Status Banner */}
@@ -184,51 +312,85 @@ function WasherDashboard({ stats, isAvailable }: { stats: any; isAvailable: bool
         </Card>
       </div>
 
-      {/* Rating Card */}
-      <Card className="border-0 shadow-sm">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-[#757575]">Votre note</p>
-              {stats.rating > 0 ? (
+      {/* Pending Orders */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-semibold text-[#212121]">Commandes en attente</h2>
+          <button 
+            onClick={onRefresh}
+            disabled={isLoading}
+            className="text-[#FF9800] text-sm flex items-center gap-1"
+          >
+            {isLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <RefreshCw className="w-4 h-4" />
+            )}
+          </button>
+        </div>
+
+        {isAvailable ? (
+          pendingOrders.length > 0 ? (
+            <div className="space-y-3">
+              {pendingOrders.map((order) => (
+                <Card key={order.id} className="border-0 shadow-sm overflow-hidden">
+                  <CardContent className="p-0">
+                    <div className="p-4 bg-gradient-to-r from-[#FF9800] to-[#F57C00] text-white">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="text-sm opacity-80">Nouvelle commande</p>
+                          <p className="font-bold text-lg">{order.service?.name || 'Service'}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-xl">{order.totalPrice?.toLocaleString()} F</p>
+                          <p className="text-sm opacity-80">{order.service?.duration || 30} min</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="p-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-[#FF9800]" />
+                        <span className="text-sm text-[#212121]">{order.address || 'Adresse non spécifiée'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-[#757575]">Client: {order.client?.name || 'N/A'}</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button 
+                          className="flex-1 bg-[#4CAF50] hover:bg-[#43A047] rounded-xl"
+                          onClick={() => onAccept(order)}
+                        >
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Accepter
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl p-6 text-center shadow-sm">
+              {isLoading ? (
                 <>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-2xl font-bold">{stats.rating.toFixed(1)}</span>
-                    <Star className="w-6 h-6 text-[#FFC107] fill-[#FFC107]" />
-                  </div>
-                  <p className="text-xs text-[#9E9E9E] mt-1">
-                    {stats.totalRatings} avis
-                  </p>
+                  <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin mx-auto mb-3" />
+                  <p className="text-[#757575]">Recherche de commandes...</p>
                 </>
               ) : (
-                <p className="text-sm text-[#9E9E9E] mt-1">
-                  Pas encore de note
-                </p>
+                <>
+                  <div className="w-16 h-16 bg-[#E8F5E9] rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Clock className="w-8 h-8 text-[#4CAF50]" />
+                  </div>
+                  <p className="font-semibold text-[#212121]">En attente de commandes</p>
+                  <p className="text-sm text-[#757575] mt-1">
+                    Vous serez notifié dès qu&apos;une commande arrive.
+                  </p>
+                </>
               )}
             </div>
-            <div className="text-right">
-              <p className="text-sm text-[#757575]">Total</p>
-              <p className="text-2xl font-bold text-[#212121]">{stats.completedJobs}</p>
-              <p className="text-xs text-[#9E9E9E]">lavages</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Waiting for orders */}
-      <div className="bg-white rounded-2xl p-6 text-center border-0 shadow-sm">
-        {isAvailable ? (
-          <>
-            <div className="w-16 h-16 bg-[#E8F5E9] rounded-full flex items-center justify-center mx-auto mb-4">
-              <Clock className="w-8 h-8 text-[#4CAF50] animate-pulse" />
-            </div>
-            <p className="font-semibold text-[#212121]">En attente de commandes</p>
-            <p className="text-sm text-[#757575] mt-1">
-              Vous serez notifié dès qu&apos;une commande arrive.
-            </p>
-          </>
+          )
         ) : (
-          <>
+          <div className="bg-white rounded-2xl p-6 text-center shadow-sm">
             <div className="w-16 h-16 bg-[#F5F5F5] rounded-full flex items-center justify-center mx-auto mb-4">
               <Power className="w-8 h-8 text-[#9E9E9E]" />
             </div>
@@ -236,7 +398,7 @@ function WasherDashboard({ stats, isAvailable }: { stats: any; isAvailable: bool
             <p className="text-sm text-[#9E9E9E] mt-1">
               Activez votre disponibilité pour recevoir des commandes.
             </p>
-          </>
+          </div>
         )}
       </div>
     </div>
@@ -244,8 +406,7 @@ function WasherDashboard({ stats, isAvailable }: { stats: any; isAvailable: bool
 }
 
 // Active Order View
-function ActiveOrderView({ order }: { order: Order | null }) {
-  const { updateOrder } = useOrdersStore();
+function ActiveOrderView({ order, onUpdateStatus }: { order: Order | null; onUpdateStatus: (status: OrderStatus) => void }) {
 
   const steps = [
     { status: 'ACCEPTED', label: 'Acceptée', icon: CheckCircle },
@@ -254,12 +415,6 @@ function ActiveOrderView({ order }: { order: Order | null }) {
     { status: 'IN_PROGRESS', label: 'En cours', icon: Car },
     { status: 'COMPLETED', label: 'Terminée', icon: CheckCircle },
   ];
-
-  const handleUpdateStatus = (newStatus: OrderStatus) => {
-    if (order) {
-      updateOrder({ id: order.id, status: newStatus });
-    }
-  };
 
   if (!order) {
     return (
@@ -358,7 +513,7 @@ function ActiveOrderView({ order }: { order: Order | null }) {
         {order.status === 'ACCEPTED' && (
           <Button
             className="w-full h-12 bg-[#2196F3] hover:bg-[#1976D2] rounded-xl"
-            onClick={() => handleUpdateStatus('EN_ROUTE')}
+            onClick={() => onUpdateStatus('EN_ROUTE')}
           >
             <Navigation className="w-5 h-5 mr-2" />
             Démarrer le trajet
@@ -368,7 +523,7 @@ function ActiveOrderView({ order }: { order: Order | null }) {
         {order.status === 'EN_ROUTE' && (
           <Button
             className="w-full h-12 bg-[#4CAF50] hover:bg-[#43A047] rounded-xl"
-            onClick={() => handleUpdateStatus('ARRIVED')}
+            onClick={() => onUpdateStatus('ARRIVED')}
           >
             <MapPin className="w-5 h-5 mr-2" />
             Je suis arrivé
@@ -378,7 +533,7 @@ function ActiveOrderView({ order }: { order: Order | null }) {
         {order.status === 'ARRIVED' && (
           <Button
             className="w-full h-12 bg-[#9C27B0] hover:bg-[#8E24AA] rounded-xl"
-            onClick={() => handleUpdateStatus('IN_PROGRESS')}
+            onClick={() => onUpdateStatus('IN_PROGRESS')}
           >
             <Car className="w-5 h-5 mr-2" />
             Commencer le lavage
@@ -388,7 +543,7 @@ function ActiveOrderView({ order }: { order: Order | null }) {
         {order.status === 'IN_PROGRESS' && (
           <Button
             className="w-full h-12 bg-[#4CAF50] hover:bg-[#43A047] rounded-xl"
-            onClick={() => handleUpdateStatus('COMPLETED')}
+            onClick={() => onUpdateStatus('COMPLETED')}
           >
             <CheckCircle className="w-5 h-5 mr-2" />
             Terminer le lavage
@@ -400,20 +555,47 @@ function ActiveOrderView({ order }: { order: Order | null }) {
 }
 
 // Washer Order History
-function WasherOrderHistory() {
+function WasherOrderHistory({ orders }: { orders: Order[] }) {
+  const completedOrders = orders.filter(o => o.status === 'COMPLETED');
+  
   return (
     <div className="p-4 space-y-4">
       <h2 className="font-semibold text-lg text-[#212121]">Historique</h2>
       
-      <div className="bg-white rounded-2xl p-8 text-center shadow-sm">
-        <div className="w-16 h-16 bg-[#F5F5F5] rounded-full flex items-center justify-center mx-auto mb-4">
-          <Clock className="w-8 h-8 text-[#9E9E9E]" />
+      {completedOrders.length > 0 ? (
+        <div className="space-y-3">
+          {completedOrders.map((order) => (
+            <Card key={order.id} className="border-0 shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-medium text-[#212121]">{order.client?.name || 'Client'}</h3>
+                    <p className="text-sm text-[#757575]">{order.service?.name || 'Service'}</p>
+                    <p className="text-xs text-[#9E9E9E] mt-1">
+                      {new Date(order.createdAt).toLocaleDateString('fr-FR')}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-[#4CAF50]">
+                      {((order.totalPrice || 0) - (order.commission || 0)).toLocaleString()} F
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
-        <p className="font-medium text-[#757575]">Aucun historique</p>
-        <p className="text-sm text-[#9E9E9E] mt-1">
-          Vos lavages terminés apparaîtront ici.
-        </p>
-      </div>
+      ) : (
+        <div className="bg-white rounded-2xl p-8 text-center shadow-sm">
+          <div className="w-16 h-16 bg-[#F5F5F5] rounded-full flex items-center justify-center mx-auto mb-4">
+            <Clock className="w-8 h-8 text-[#9E9E9E]" />
+          </div>
+          <p className="font-medium text-[#757575]">Aucun historique</p>
+          <p className="text-sm text-[#9E9E9E] mt-1">
+            Vos lavages terminés apparaîtront ici.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

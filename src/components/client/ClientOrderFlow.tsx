@@ -56,41 +56,57 @@ export function ClientOrderFlow({ onBack }: ClientOrderFlowProps) {
     
     setIsProcessing(true);
     
-    // Simulate order creation
-    await new Promise((r) => setTimeout(r, 2000));
-    
-    const order: Order = {
-      id: `order-${Date.now()}`,
-      orderNumber: `WG${Date.now().toString().slice(-8)}`,
-      clientId: 'demo-client',
-      client: {
-        id: 'demo-client',
-        phone: '771234567',
-        name: 'Client Demo',
-        role: 'CLIENT',
-        isActive: true,
-        createdAt: '',
-        updatedAt: '',
-      },
-      serviceId: selectedService.id,
-      service: selectedService,
-      isHomeService,
-      address,
-      latitude: userLocation?.latitude,
-      longitude: userLocation?.longitude,
-      basePrice: selectedService.price,
-      discount: 0,
-      totalPrice: selectedService.price,
-      commission: selectedService.price * 0.15,
-      status: 'PENDING',
-      scheduledAt: scheduledTime === 'later' ? scheduledDate : undefined,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId: 'demo-client',
+          serviceId: selectedService.id,
+          isHomeService,
+          address,
+          latitude: userLocation?.latitude,
+          longitude: userLocation?.longitude,
+          totalPrice: selectedService.price,
+          scheduledAt: scheduledTime === 'later' ? scheduledDate : null,
+        }),
+      });
 
-    setCurrentOrder(order);
-    addOrder(order);
-    setIsProcessing(false);
+      const data = await res.json();
+
+      if (data.success && data.order) {
+        const order: Order = {
+          id: data.order.id,
+          orderNumber: data.order.orderNumber,
+          clientId: data.order.clientId,
+          client: data.order.client,
+          serviceId: data.order.serviceId,
+          service: data.order.service,
+          isHomeService: data.order.isHomeService,
+          address: data.order.address,
+          latitude: data.order.latitude,
+          longitude: data.order.longitude,
+          basePrice: data.order.basePrice,
+          discount: 0,
+          totalPrice: data.order.totalPrice,
+          commission: data.order.commission,
+          status: data.order.status,
+          scheduledAt: data.order.scheduledAt,
+          createdAt: data.order.createdAt,
+          updatedAt: data.order.updatedAt,
+        };
+
+        setCurrentOrder(order);
+        addOrder(order);
+      } else {
+        alert(data.error || 'Erreur lors de la création de la commande');
+      }
+    } catch (error) {
+      console.error('Order error:', error);
+      alert('Erreur de connexion. Réessayez.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
