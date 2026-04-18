@@ -1,86 +1,41 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
-import { useAuthStore, useAppStore } from '@/store';
-import { ClientApp } from '@/components/client/ClientApp';
-import { WasherApp } from '@/components/washer/WasherApp';
-import { AdminPanel } from '@/components/admin/AdminPanel';
-import { AuthModal } from '@/components/socline/AuthModal';
-import { Toaster } from '@/components/ui/sonner';
+import { useEffect, useState } from 'react';
 
 export default function SoclineApp() {
-  const { isAuthenticated, user, logout } = useAuthStore();
-  const { currentView, setView } = useAppStore();
   const [showAuth, setShowAuth] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const defaultView = useMemo(() => {
-    if (!user) return 'client';
-    if (user.role === 'ADMIN') return 'admin';
-    if (user.role === 'WASHER') return 'washer';
-    return 'client';
-  }, [user]);
-
+  // Clear corrupted data on mount
   useEffect(() => {
-    const init = async () => {
-      try {
-        // Clear old data
-        localStorage.removeItem('washgo-auth');
-        
-        // Check if we have valid auth data
-        const storedAuth = localStorage.getItem('socline-auth');
-        if (storedAuth) {
-          try {
-            const parsed = JSON.parse(storedAuth);
-            const userId = parsed?.state?.user?.id;
-            if (userId) {
-              const res = await fetch(`/api/auth/me?userId=${userId}`);
-              const data = await res.json();
-              if (!data.valid) {
-                localStorage.removeItem('socline-auth');
-                logout();
-              }
-            }
-          } catch {
-            localStorage.removeItem('socline-auth');
-            logout();
-          }
-        }
-      } catch (e) {
-        console.error('Init error:', e);
-      }
-      
-      // Finish loading immediately
-      setIsLoading(false);
-    };
-    
-    // Fallback timeout - ensure we never get stuck on loading screen
-    const fallbackTimeout = setTimeout(() => {
-      setIsLoading(false);
-    }, 3000);
-    
-    init().finally(() => {
-      clearTimeout(fallbackTimeout);
-    });
-  }, [logout]);
-
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      setView(defaultView);
+    try {
+      // Remove all old auth data
+      localStorage.removeItem('washgo-auth');
+      localStorage.removeItem('socline-auth');
+    } catch (e) {
+      // Use setTimeout to avoid setState in effect warning
+      setTimeout(() => {
+        setError('Erreur de stockage navigateur');
+      }, 0);
+      console.error('Storage error:', e);
     }
-  }, [isAuthenticated, user, defaultView, setView]);
+  }, []);
 
-  // Loading screen with timeout fallback
-  if (isLoading) {
+  if (error) {
     return (
-      <div className="min-h-screen bg-[#FF9800] flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 relative">
-            <div className="absolute inset-0 border-4 border-white/30 rounded-full"></div>
-            <div className="absolute inset-0 border-4 border-white rounded-full border-t-transparent animate-spin"></div>
-          </div>
-          <h2 className="text-xl font-bold text-white">Socline</h2>
-          <p className="text-white/80 text-sm">Chargement...</p>
+      <div className="min-h-screen bg-[#FF9800] flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg p-6 text-center max-w-sm">
+          <h2 className="text-lg font-bold text-red-500 mb-2">Erreur</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={() => {
+              localStorage.clear();
+              window.location.reload();
+            }}
+            className="bg-[#FF9800] text-white px-6 py-2 rounded font-semibold"
+          >
+            Effacer les données
+          </button>
         </div>
       </div>
     );
@@ -88,19 +43,41 @@ export default function SoclineApp() {
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] flex flex-col">
-      {!isAuthenticated ? (
-        <>
-          <LandingScreen onLogin={() => setShowAuth(true)} />
-          {showAuth && <AuthModal onClose={() => setShowAuth(false)} />}
-        </>
-      ) : (
-        <>
-          {currentView === 'client' && <ClientApp />}
-          {currentView === 'washer' && <WasherApp />}
-          {currentView === 'admin' && <AdminPanel />}
-        </>
+      <LandingScreen onLogin={() => setShowAuth(true)} />
+      {showAuth && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full mx-4">
+            <h2 className="text-xl font-bold mb-4 text-center">Connexion</h2>
+            <p className="text-center text-gray-500">Mode simplifié - cliquez pour continuer</p>
+            <button
+              onClick={() => {
+                // Create a simple user
+                const user = {
+                  id: 'user-1',
+                  name: 'Utilisateur Test',
+                  phone: '90123456',
+                  role: 'CLIENT',
+                  balance: 0,
+                  createdAt: new Date().toISOString(),
+                };
+                localStorage.setItem('socline-auth', JSON.stringify({
+                  state: { user, token: 'test-token', isAuthenticated: true }
+                }));
+                window.location.reload();
+              }}
+              className="w-full mt-4 bg-[#FF9800] text-white py-3 rounded-xl font-semibold"
+            >
+              Continuer en tant que Client
+            </button>
+            <button
+              onClick={() => setShowAuth(false)}
+              className="w-full mt-2 text-gray-500 py-2"
+            >
+              Annuler
+            </button>
+          </div>
+        </div>
       )}
-      <Toaster />
     </div>
   );
 }
