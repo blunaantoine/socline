@@ -19,6 +19,7 @@ import { GoogleMap } from '@/components/map/GoogleMap';
 import { useGooglePlaces, GooglePlaceStation } from '@/hooks/useGooglePlaces';
 import { AuthScreen } from './AuthScreen';
 import { ChatList } from '@/components/chat/ChatList';
+import { NotificationCenter } from './NotificationCenter';
 
 const navItems = [
   { id: 'home', icon: Home, label: 'Accueil' },
@@ -227,9 +228,7 @@ export function ClientApp() {
               </button>
             </div>
             <div className="flex items-center gap-2">
-              <button className="w-10 h-10 bg-[#FFF3E0] rounded-full flex items-center justify-center">
-                <Bell className="w-5 h-5 text-[#FF9800]" />
-              </button>
+              <NotificationCenter />
             </div>
           </header>
         )}
@@ -251,7 +250,12 @@ export function ClientApp() {
               setActiveFilter={setActiveFilter}
             />
           )}
-          {activeTab === 'booking' && <ClientOrderFlow onBack={() => setActiveTab('home')} />}
+          {activeTab === 'booking' && (
+            <ClientOrderFlow 
+              onBack={() => setActiveTab('home')} 
+              onOrderComplete={() => setActiveTab('activity')}
+            />
+          )}
           {activeTab === 'activity' && <OrderHistory />}
           {activeTab === 'chat' && <ChatList />}
           {activeTab === 'profile' && <ProfileContent user={user} onLogout={logout} />}

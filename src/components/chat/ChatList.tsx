@@ -1,15 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAuthStore, useChatStore } from '@/store';
+import { useAuthStore, useChatStore, useAppStore } from '@/store';
 import type { Conversation } from '@/types';
 import { ChatView } from './ChatView';
 import {
-  MessageCircle, Clock, Car, User, ChevronRight, Loader2
+  MessageCircle, Clock, Car, User, ChevronRight, Loader2, ArrowLeft
 } from 'lucide-react';
 
 export function ChatList() {
   const { user } = useAuthStore();
+  const { setView } = useAppStore();
   const { conversations, setConversations, currentConversation, setCurrentConversation } = useChatStore();
   const [isLoading, setIsLoading] = useState(true);
 
@@ -64,7 +65,16 @@ export function ChatList() {
     <div className="flex-1 flex flex-col bg-[#FFF8F0]">
       {/* Header */}
       <header className="bg-white px-4 py-4 border-b border-[#F5F5F5] flex-shrink-0">
-        <h1 className="text-xl font-bold text-[#212121]">Messages</h1>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setView('home')}
+            className="flex items-center gap-1 text-[#FF9800] font-medium hover:bg-[#FFF3E0] px-2 py-1 rounded-lg transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span className="text-sm">Retour</span>
+          </button>
+        </div>
+        <h1 className="text-xl font-bold text-[#212121] mt-2">Messages</h1>
         <p className="text-sm text-[#757575]">Vos conversations liées aux commandes</p>
       </header>
 

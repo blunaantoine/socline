@@ -18,9 +18,10 @@ import type { Service, Order } from '@/types';
 
 interface ClientOrderFlowProps {
   onBack: () => void;
+  onOrderComplete?: () => void;
 }
 
-export function ClientOrderFlow({ onBack }: ClientOrderFlowProps) {
+export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProps) {
   const { services, selectedService, selectService, setServices } = useServicesStore();
   const { setCurrentOrder, addOrder } = useOrdersStore();
   const { userLocation } = useAppStore();
@@ -140,7 +141,11 @@ export function ClientOrderFlow({ onBack }: ClientOrderFlowProps) {
 
         setCurrentOrder(order);
         addOrder(order);
-        alert('Commande créée avec succès!');
+        
+        // Redirect after successful order
+        if (onOrderComplete) {
+          onOrderComplete();
+        }
       } else {
         // If user not found, force logout
         if (data.error?.includes('reconnecter')) {
