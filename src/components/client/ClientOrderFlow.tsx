@@ -34,7 +34,7 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
   const [scheduledDate, setScheduledDate] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'mobile_money' | 'cash' | 'card'>('cash');
   const [walletBalance, setWalletBalance] = useState(0);
-  const [mobileProvider, setMobileProvider] = useState<'mixx' | 'tmoney'>('mixx');
+  const [mobileProvider, setMobileProvider] = useState<'mixx' | 'flooz'>('mixx');
   const [mobileNumber, setMobileNumber] = useState('');
   const [promoCode, setPromoCode] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<any>(null);
@@ -709,14 +709,16 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
                         }`}
                       >
                         <span className="font-medium text-[#FF9800]">Mixx by Yas</span>
+                        <p className="text-xs text-gray-500">Togo Telecom</p>
                       </button>
                       <button
-                        onClick={() => setMobileProvider('tmoney')}
+                        onClick={() => setMobileProvider('flooz')}
                         className={`p-3 rounded-lg border-2 ${
-                          mobileProvider === 'tmoney' ? 'border-[#FF9800] bg-[#FFF8F0]' : 'border-gray-200'
+                          mobileProvider === 'flooz' ? 'border-[#FF9800] bg-[#FFF8F0]' : 'border-gray-200'
                         }`}
                       >
-                        <span className="font-medium text-blue-500">T-Money</span>
+                        <span className="font-medium text-blue-500">Flooz</span>
+                        <p className="text-xs text-gray-500">Moov Africa</p>
                       </button>
                     </div>
                     <div className="relative">

@@ -78,7 +78,7 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
   const [showDeposit, setShowDeposit] = useState(false);
   const [depositAmount, setDepositAmount] = useState<number>(0);
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'mixx' | 'tmoney' | 'card'>('tmoney');
+  const [paymentMethod, setPaymentMethod] = useState<'mixx' | 'flooz' | 'card'>('mixx');
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Fetch wallet data
@@ -124,7 +124,7 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
           userId: user.id,
           amount: depositAmount,
           phoneNumber,
-          paymentMethod: paymentMethod === 'tmoney' ? 'T-Money' : paymentMethod === 'mixx' ? 'Mixx by Yas' : 'Carte',
+          paymentMethod: paymentMethod === 'mixx' ? 'Mixx by Yas' : paymentMethod === 'flooz' ? 'Flooz' : 'Carte',
         }),
       });
 
@@ -314,27 +314,6 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
               <label className="text-sm text-[#757575] mb-2 block">Méthode de paiement</label>
               <div className="space-y-2">
                 <button
-                  onClick={() => setPaymentMethod('tmoney')}
-                  className={`w-full p-3 rounded-lg flex items-center gap-3 transition-all ${
-                    paymentMethod === 'tmoney'
-                      ? 'bg-[#FF9800] text-white'
-                      : 'bg-[#F5F5F5] text-[#212121]'
-                  }`}
-                >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    paymentMethod === 'tmoney' ? 'bg-white/20' : 'bg-white'
-                  }`}>
-                    <Phone className="w-4 h-4" />
-                  </div>
-                  <div className="text-left">
-                    <p className="font-medium">T-Money</p>
-                    <p className={`text-xs ${paymentMethod === 'tmoney' ? 'text-white/80' : 'text-[#757575]'}`}>
-                      Togo Telecom
-                    </p>
-                  </div>
-                </button>
-
-                <button
                   onClick={() => setPaymentMethod('mixx')}
                   className={`w-full p-3 rounded-lg flex items-center gap-3 transition-all ${
                     paymentMethod === 'mixx'
@@ -350,6 +329,27 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
                   <div className="text-left">
                     <p className="font-medium">Mixx by Yas</p>
                     <p className={`text-xs ${paymentMethod === 'mixx' ? 'text-white/80' : 'text-[#757575]'}`}>
+                      Togo Telecom
+                    </p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => setPaymentMethod('flooz')}
+                  className={`w-full p-3 rounded-lg flex items-center gap-3 transition-all ${
+                    paymentMethod === 'flooz'
+                      ? 'bg-[#FF9800] text-white'
+                      : 'bg-[#F5F5F5] text-[#212121]'
+                  }`}
+                >
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    paymentMethod === 'flooz' ? 'bg-white/20' : 'bg-white'
+                  }`}>
+                    <Phone className="w-4 h-4" />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-medium">Flooz</p>
+                    <p className={`text-xs ${paymentMethod === 'flooz' ? 'text-white/80' : 'text-[#757575]'}`}>
                       Moov Africa
                     </p>
                   </div>
@@ -379,7 +379,7 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
             </div>
 
             {/* Phone Number */}
-            {(paymentMethod === 'tmoney' || paymentMethod === 'mixx') && (
+            {(paymentMethod === 'mixx' || paymentMethod === 'flooz') && (
               <div>
                 <label className="text-sm text-[#757575] mb-2 block">Numéro de téléphone</label>
                 <div className="relative">
