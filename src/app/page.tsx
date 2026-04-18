@@ -32,9 +32,12 @@ export default function SoclineApp() {
     return (
       <div className="min-h-screen bg-[#FF9800] flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-16 h-16 mx-auto mb-4 text-white animate-spin" />
+          <div className="w-20 h-20 mx-auto mb-4 bg-white rounded-full flex items-center justify-center shadow-lg overflow-hidden">
+            <img src="/android-chrome-192x192.png" alt="Socline" className="w-full h-full object-cover" />
+          </div>
           <h2 className="text-xl font-bold text-white">Socline</h2>
           <p className="text-white/80 text-sm">Chargement...</p>
+          <Loader2 className="w-6 h-6 mx-auto mt-4 text-white animate-spin" />
         </div>
       </div>
     );
