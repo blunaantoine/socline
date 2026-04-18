@@ -45,7 +45,7 @@ const CAR_COLORS: Record<string, string> = {
 };
 
 export function ClientApp() {
-  const { user, isAuthenticated, isLoading, logout, setLoading } = useAuthStore();
+  const { user, isAuthenticated, logout } = useAuthStore();
   const { userLocation, setUserLocation } = useAppStore();
   const { services, setServices } = useServicesStore();
   const { currentOrder, setCurrentOrder } = useOrdersStore();
@@ -60,41 +60,7 @@ export function ClientApp() {
   
   const { stations: googleStations, isLoading: isLoadingStations, searchCarWashes } = useGooglePlaces();
 
-  // Initialize auth state and verify session
-  useEffect(() => {
-    const verifySession = async () => {
-      // Migration: remove old washgo-auth data
-      const oldAuth = localStorage.getItem('washgo-auth');
-      if (oldAuth) {
-        localStorage.removeItem('washgo-auth');
-      }
 
-      const storedAuth = localStorage.getItem('socline-auth');
-      if (storedAuth) {
-        try {
-          const parsed = JSON.parse(storedAuth);
-          const userId = parsed?.state?.user?.id;
-
-          if (userId) {
-            const res = await fetch(`/api/auth/me?userId=${userId}`);
-            const data = await res.json();
-
-            if (!data.valid) {
-              // Session invalid, clear storage
-              console.log('Session invalid, clearing auth');
-              localStorage.removeItem('socline-auth');
-              logout();
-            }
-          }
-        } catch (error) {
-          console.error('Session verification error:', error);
-        }
-      }
-      setLoading(false);
-    };
-
-    verifySession();
-  }, []);
 
   // Fetch real services from API
   useEffect(() => {
@@ -195,15 +161,6 @@ export function ClientApp() {
     const timer = setTimeout(getUserLocation, 0);
     return () => clearTimeout(timer);
   }, [getUserLocation]);
-
-  // Show loading state
-  if (isLoading) {
-    return (
-      <div className="flex-1 flex items-center justify-center bg-white">
-        <Loader2 className="w-8 h-8 animate-spin text-[#FF9800]" />
-      </div>
-    );
-  }
 
   // Show auth screen if not authenticated
   if (!isAuthenticated || !user) {

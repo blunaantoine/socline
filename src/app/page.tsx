@@ -1,41 +1,89 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useAuthStore, useAppStore } from '@/store';
+import { ClientApp } from '@/components/client/ClientApp';
+import { WasherApp } from '@/components/washer/WasherApp';
+import { AdminPanel } from '@/components/admin/AdminPanel';
+import { AuthModal } from '@/components/socline/AuthModal';
+import { Toaster } from '@/components/ui/sonner';
 
 export default function SoclineApp() {
+  const { isAuthenticated, user, logout } = useAuthStore();
+  const { currentView, setView } = useAppStore();
   const [showAuth, setShowAuth] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Clear corrupted data on mount
+  // Hydrate from localStorage after mount
   useEffect(() => {
     try {
-      // Remove all old auth data
+      // Clear old washgo data
       localStorage.removeItem('washgo-auth');
-      localStorage.removeItem('socline-auth');
+      
+      // Check for corrupted data
+      const storedAuth = localStorage.getItem('socline-auth');
+      if (storedAuth) {
+        try {
+          JSON.parse(storedAuth);
+        } catch {
+          // Corrupted JSON, remove it
+          localStorage.removeItem('socline-auth');
+        }
+      }
+      
+      // Use setTimeout to avoid setState warning
+      const timer = setTimeout(() => setMounted(true), 0);
+      return () => clearTimeout(timer);
     } catch (e) {
-      // Use setTimeout to avoid setState in effect warning
-      setTimeout(() => {
-        setError('Erreur de stockage navigateur');
-      }, 0);
-      console.error('Storage error:', e);
+      console.error('Init error:', e);
+      setTimeout(() => setError('Erreur d\'initialisation. Cliquez pour réinitialiser.'), 0);
     }
   }, []);
 
+  // Set view based on user role
+  useEffect(() => {
+    if (isAuthenticated && user && mounted) {
+      const view = user.role === 'ADMIN' ? 'admin' : user.role === 'WASHER' ? 'washer' : 'client';
+      setView(view);
+    }
+  }, [isAuthenticated, user, mounted, setView]);
+
+  // Error screen with reset button
   if (error) {
     return (
       <div className="min-h-screen bg-[#FF9800] flex items-center justify-center p-4">
         <div className="bg-white rounded-lg p-6 text-center max-w-sm">
-          <h2 className="text-lg font-bold text-red-500 mb-2">Erreur</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
+          <div className="w-16 h-16 mx-auto mb-4 bg-[#FFF3E0] rounded-full flex items-center justify-center">
+            <span className="text-3xl">⚠️</span>
+          </div>
+          <h2 className="text-lg font-bold text-[#212121] mb-2">Oups!</h2>
+          <p className="text-[#757575] text-sm mb-4">{error}</p>
           <button
             onClick={() => {
               localStorage.clear();
               window.location.reload();
             }}
-            className="bg-[#FF9800] text-white px-6 py-2 rounded font-semibold"
+            className="w-full bg-[#FF9800] text-white py-3 rounded font-semibold"
           >
-            Effacer les données
+            Réinitialiser l'application
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading during hydration
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-[#FF9800] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 mx-auto mb-4 relative">
+            <div className="absolute inset-0 border-4 border-white/30 rounded-full"></div>
+            <div className="absolute inset-0 border-4 border-white rounded-full border-t-transparent animate-spin"></div>
+          </div>
+          <h2 className="text-xl font-bold text-white">Socline</h2>
+          <p className="text-white/80 text-sm">Chargement...</p>
         </div>
       </div>
     );
@@ -43,41 +91,19 @@ export default function SoclineApp() {
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] flex flex-col">
-      <LandingScreen onLogin={() => setShowAuth(true)} />
-      {showAuth && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full mx-4">
-            <h2 className="text-xl font-bold mb-4 text-center">Connexion</h2>
-            <p className="text-center text-gray-500">Mode simplifié - cliquez pour continuer</p>
-            <button
-              onClick={() => {
-                // Create a simple user
-                const user = {
-                  id: 'user-1',
-                  name: 'Utilisateur Test',
-                  phone: '90123456',
-                  role: 'CLIENT',
-                  balance: 0,
-                  createdAt: new Date().toISOString(),
-                };
-                localStorage.setItem('socline-auth', JSON.stringify({
-                  state: { user, token: 'test-token', isAuthenticated: true }
-                }));
-                window.location.reload();
-              }}
-              className="w-full mt-4 bg-[#FF9800] text-white py-3 rounded-xl font-semibold"
-            >
-              Continuer en tant que Client
-            </button>
-            <button
-              onClick={() => setShowAuth(false)}
-              className="w-full mt-2 text-gray-500 py-2"
-            >
-              Annuler
-            </button>
-          </div>
-        </div>
+      {!isAuthenticated ? (
+        <>
+          <LandingScreen onLogin={() => setShowAuth(true)} />
+          {showAuth && <AuthModal onClose={() => setShowAuth(false)} />}
+        </>
+      ) : (
+        <>
+          {currentView === 'client' && <ClientApp />}
+          {currentView === 'washer' && <WasherApp />}
+          {currentView === 'admin' && <AdminPanel />}
+        </>
       )}
+      <Toaster />
     </div>
   );
 }
@@ -91,6 +117,14 @@ function LandingScreen({ onLogin }: { onLogin: () => void }) {
     { title: "Laveurs certifiés", subtitle: "Des professionnels de confiance", icon: "✅" },
     { title: "Prix transparents", subtitle: "Pas de surprises, payez ce que vous voyez", icon: "💰" },
   ];
+
+  // Auto-slide
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % slides.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [slides.length]);
 
   return (
     <div className="flex-1 flex flex-col bg-white">
