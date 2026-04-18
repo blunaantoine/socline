@@ -32,9 +32,7 @@ export default function SoclineApp() {
     return (
       <div className="min-h-screen bg-[#FF9800] flex items-center justify-center">
         <div className="text-center">
-          <div className="w-24 h-24 mx-auto mb-4 rounded-full overflow-hidden shadow-lg">
-            <img src="/android-chrome-192x192.png" alt="Socline" className="w-full h-full object-cover" />
-          </div>
+          <img src="/android-chrome-192x192.png" alt="Socline" className="w-28 h-28 mx-auto mb-4 object-contain" />
           <h2 className="text-xl font-bold text-white">Socline</h2>
           <p className="text-white/80 text-sm">Chargement...</p>
           <Loader2 className="w-6 h-6 mx-auto mt-4 text-white animate-spin" />
@@ -114,9 +112,7 @@ function LandingScreen({ onLogin }: { onLogin: () => void }) {
       {/* Main Content */}
       <div className="flex-1 flex flex-col items-center justify-center px-6">
         {/* Logo */}
-        <div className="w-24 h-24 mb-6 rounded-full overflow-hidden shadow-lg">
-          <img src="/android-chrome-192x192.png" alt="Socline" className="w-full h-full object-cover" />
-        </div>
+        <img src="/android-chrome-192x192.png" alt="Socline" className="w-24 h-24 mb-6 object-contain" />
 
         {/* Slides */}
         <div className="w-full mb-6">
