@@ -131,7 +131,25 @@ export async function PATCH(request: NextRequest) {
     const { orderId, status, washerId } = body;
 
     const updateData: any = { status };
-    if (washerId) updateData.washerId = washerId;
+    
+    // If washerId is provided, find the actual Washer record
+    if (washerId) {
+      // Check if it's a userId or a washerId
+      const washer = await db.washer.findFirst({
+        where: { 
+          OR: [
+            { id: washerId },
+            { userId: washerId }
+          ]
+        }
+      });
+      
+      if (!washer) {
+        return NextResponse.json({ error: 'Laveur non trouvé' }, { status: 400 });
+      }
+      
+      updateData.washerId = washer.id;
+    }
 
     const order = await db.order.update({
       where: { id: orderId },

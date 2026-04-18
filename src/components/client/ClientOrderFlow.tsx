@@ -174,7 +174,11 @@ export function ClientOrderFlow({ onBack }: ClientOrderFlowProps) {
       {/* Header */}
       <div className="bg-white border-b px-4 py-4 sticky top-16 z-30">
         <div className="flex items-center gap-3">
-          {step !== 'service' && (
+          {step === 'service' ? (
+            <button onClick={onBack}>
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+          ) : (
             <button onClick={() => {
               if (step === 'location') setStep('service');
               else if (step === 'schedule') setStep('location');

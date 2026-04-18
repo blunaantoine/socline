@@ -11,7 +11,7 @@ import {
   Power, MapPin, Clock, Star, DollarSign, CheckCircle, 
   Navigation, Phone, MessageCircle, Car, AlertCircle,
   Wallet, TrendingUp, Calendar, LogOut, Settings, Home,
-  RefreshCw, Loader2
+  RefreshCw, Loader2, ArrowLeft
 } from 'lucide-react';
 import type { Order, OrderStatus } from '@/types';
 
@@ -213,12 +213,31 @@ export function WasherApp() {
           />
         )}
         {activeTab === 'active' && (
-          <ActiveOrderView order={currentOrder} onUpdateStatus={handleUpdateStatus} />
+          <ActiveOrderView 
+            order={currentOrder} 
+            onUpdateStatus={handleUpdateStatus} 
+            onBack={() => setActiveTab('dashboard')}
+          />
         )}
-        {activeTab === 'history' && <WasherOrderHistory orders={orders} />}
-        {activeTab === 'earnings' && <WasherEarnings stats={washerStats} />}
+        {activeTab === 'history' && (
+          <WasherOrderHistory 
+            orders={orders} 
+            onBack={() => setActiveTab('dashboard')} 
+          />
+        )}
+        {activeTab === 'earnings' && (
+          <WasherEarnings 
+            stats={washerStats} 
+            onBack={() => setActiveTab('dashboard')} 
+          />
+        )}
         {activeTab === 'profile' && (
-          <WasherProfile user={user} stats={washerStats} onLogout={logout} />
+          <WasherProfile 
+            user={user} 
+            stats={washerStats} 
+            onLogout={logout} 
+            onBack={() => setActiveTab('dashboard')}
+          />
         )}
       </div>
 
@@ -406,7 +425,11 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
 }
 
 // Active Order View
-function ActiveOrderView({ order, onUpdateStatus }: { order: Order | null; onUpdateStatus: (status: OrderStatus) => void }) {
+function ActiveOrderView({ order, onUpdateStatus, onBack }: { 
+  order: Order | null; 
+  onUpdateStatus: (status: OrderStatus) => void;
+  onBack: () => void;
+}) {
 
   const steps = [
     { status: 'ACCEPTED', label: 'Acceptée', icon: CheckCircle },
@@ -419,6 +442,15 @@ function ActiveOrderView({ order, onUpdateStatus }: { order: Order | null; onUpd
   if (!order) {
     return (
       <div className="p-4">
+        {/* Back Button */}
+        <button 
+          onClick={onBack}
+          className="flex items-center gap-2 text-[#4CAF50] mb-4"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          <span>Retour</span>
+        </button>
+        
         <div className="bg-white rounded-2xl p-8 text-center shadow-sm">
           <div className="w-16 h-16 bg-[#F5F5F5] rounded-full flex items-center justify-center mx-auto mb-4">
             <Car className="w-8 h-8 text-[#9E9E9E]" />
@@ -436,6 +468,15 @@ function ActiveOrderView({ order, onUpdateStatus }: { order: Order | null; onUpd
 
   return (
     <div className="p-4 space-y-4">
+      {/* Back Button */}
+      <button 
+        onClick={onBack}
+        className="flex items-center gap-2 text-[#4CAF50]"
+      >
+        <ArrowLeft className="w-5 h-5" />
+        <span>Retour</span>
+      </button>
+
       {/* Progress Steps */}
       <Card className="border-0 shadow-sm">
         <CardContent className="p-4">
@@ -555,11 +596,23 @@ function ActiveOrderView({ order, onUpdateStatus }: { order: Order | null; onUpd
 }
 
 // Washer Order History
-function WasherOrderHistory({ orders }: { orders: Order[] }) {
+function WasherOrderHistory({ orders, onBack }: { 
+  orders: Order[];
+  onBack: () => void;
+}) {
   const completedOrders = orders.filter(o => o.status === 'COMPLETED');
   
   return (
     <div className="p-4 space-y-4">
+      {/* Back Button */}
+      <button 
+        onClick={onBack}
+        className="flex items-center gap-2 text-[#4CAF50]"
+      >
+        <ArrowLeft className="w-5 h-5" />
+        <span>Retour</span>
+      </button>
+      
       <h2 className="font-semibold text-lg text-[#212121]">Historique</h2>
       
       {completedOrders.length > 0 ? (
@@ -601,9 +654,21 @@ function WasherOrderHistory({ orders }: { orders: Order[] }) {
 }
 
 // Washer Earnings
-function WasherEarnings({ stats }: { stats: any }) {
+function WasherEarnings({ stats, onBack }: { 
+  stats: any;
+  onBack: () => void;
+}) {
   return (
     <div className="p-4 space-y-4">
+      {/* Back Button */}
+      <button 
+        onClick={onBack}
+        className="flex items-center gap-2 text-[#4CAF50]"
+      >
+        <ArrowLeft className="w-5 h-5" />
+        <span>Retour</span>
+      </button>
+      
       <h2 className="font-semibold text-lg text-[#212121]">Revenus</h2>
 
       {/* Total Earnings */}
@@ -655,9 +720,23 @@ function WasherEarnings({ stats }: { stats: any }) {
 }
 
 // Washer Profile
-function WasherProfile({ user, stats, onLogout }: { user: any; stats: any; onLogout: () => void }) {
+function WasherProfile({ user, stats, onLogout, onBack }: { 
+  user: any; 
+  stats: any; 
+  onLogout: () => void;
+  onBack: () => void;
+}) {
   return (
     <div className="p-4 space-y-4">
+      {/* Back Button */}
+      <button 
+        onClick={onBack}
+        className="flex items-center gap-2 text-[#4CAF50]"
+      >
+        <ArrowLeft className="w-5 h-5" />
+        <span>Retour</span>
+      </button>
+      
       {/* Profile Card */}
       <Card className="border-0 shadow-sm">
         <CardContent className="p-4">
