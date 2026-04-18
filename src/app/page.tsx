@@ -104,29 +104,12 @@ export default function WashGoApp() {
   );
 }
 
-// Mobile Container - simulates phone screen
+// Mobile Container - simulates phone screen (full screen mobile app)
 function MobileContainer({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center p-4">
       <div className="w-full max-w-[390px] h-[844px] bg-[#FFF8F0] rounded-[40px] overflow-hidden shadow-2xl flex flex-col relative border-[8px] border-[#2a2a2a]">
-        {/* Status Bar */}
-        <div className="h-11 bg-white flex items-center justify-between px-6 flex-shrink-0">
-          <span className="text-sm font-semibold text-[#212121]">9:41</span>
-          <div className="flex items-center gap-1">
-            <div className="flex gap-0.5">
-              <div className="w-1 h-3 bg-[#212121] rounded-sm" />
-              <div className="w-1 h-3 bg-[#212121] rounded-sm" />
-              <div className="w-1 h-3 bg-[#212121] rounded-sm" />
-              <div className="w-1 h-2 bg-[#212121] rounded-sm self-end" />
-            </div>
-            <div className="w-6 h-3 bg-[#212121] rounded-sm ml-1" />
-          </div>
-        </div>
         {children}
-        {/* Home Indicator */}
-        <div className="h-8 bg-white flex items-center justify-center flex-shrink-0">
-          <div className="w-32 h-1 bg-[#212121] rounded-full" />
-        </div>
       </div>
     </div>
   );

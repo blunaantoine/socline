@@ -143,25 +143,25 @@ export function ClientApp() {
   }
 
   return (
-    <div className="w-[390px] h-[844px] bg-[#FFF8F0] flex flex-col overflow-hidden relative">
-      {/* iOS Status Bar */}
-      <div className="h-11 bg-[#FFF8F0] flex items-end justify-between px-6 pb-1 flex-shrink-0">
-        <span className="text-sm font-semibold">9:41</span>
+    <div className="flex-1 flex flex-col overflow-hidden relative bg-[#FFF8F0]">
+      {/* iOS Status Bar - transparent overlay */}
+      <div className="h-11 bg-transparent flex items-end justify-between px-6 pb-1 flex-shrink-0 absolute top-0 left-0 right-0 z-50">
+        <span className="text-sm font-semibold text-[#212121]">9:41</span>
         <div className="flex items-center gap-1">
           <div className="w-4 h-4 flex items-end justify-between">
-            <div className="w-0.5 h-1.5 bg-black rounded-sm"></div>
-            <div className="w-0.5 h-2.5 bg-black rounded-sm"></div>
-            <div className="w-0.5 h-3.5 bg-black rounded-sm"></div>
-            <div className="w-0.5 h-4 bg-black rounded-sm"></div>
+            <div className="w-0.5 h-1.5 bg-[#212121] rounded-sm"></div>
+            <div className="w-0.5 h-2.5 bg-[#212121] rounded-sm"></div>
+            <div className="w-0.5 h-3.5 bg-[#212121] rounded-sm"></div>
+            <div className="w-0.5 h-4 bg-[#212121] rounded-sm"></div>
           </div>
-          <div className="w-6 h-3 border border-black rounded-sm relative">
-            <div className="absolute inset-0.5 bg-black rounded-sm" style={{ width: '80%' }}></div>
+          <div className="w-6 h-3 border border-[#212121] rounded-sm relative">
+            <div className="absolute inset-0.5 bg-[#212121] rounded-sm" style={{ width: '80%' }}></div>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden pt-11">
         {/* Header (not shown on chat tab) */}
         {activeTab !== 'chat' && (
           <header className="bg-white px-4 py-3 flex items-center justify-between flex-shrink-0">
