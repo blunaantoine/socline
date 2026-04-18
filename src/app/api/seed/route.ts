@@ -147,6 +147,30 @@ export async function POST() {
       });
     }
 
+    // Create default promotion if doesn't exist
+    const existingPromotions = await db.promotion.count();
+    if (existingPromotions === 0) {
+      const now = new Date();
+      const endDate = new Date();
+      endDate.setMonth(endDate.getMonth() + 3); // 3 months from now
+
+      await db.promotion.create({
+        data: {
+          name: 'sur votre 1er lavage',
+          description: 'Profitez de 20% de réduction sur votre premier lavage auto avec WashGo',
+          type: 'GLOBAL',
+          discountType: 'PERCENTAGE',
+          discountValue: 20,
+          code: 'WELCOME20',
+          startDate: now,
+          endDate: endDate,
+          maxUses: 1000,
+          maxUsesPerUser: 1,
+          isActive: true,
+        },
+      });
+    }
+
     return NextResponse.json({ 
       success: true, 
       message: 'Database seeded successfully',
