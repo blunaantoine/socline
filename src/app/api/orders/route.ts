@@ -63,7 +63,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { 
       clientId, serviceId, isHomeService, address, 
-      latitude, longitude, totalPrice, scheduledAt 
+      latitude, longitude, totalPrice, scheduledAt,
+      promoCode, discount
     } = body;
 
     // Validate required fields
@@ -107,7 +108,9 @@ export async function POST(request: NextRequest) {
         address,
         latitude,
         longitude,
-        basePrice: totalPrice ?? service.price,
+        basePrice: service.price,
+        discount: discount ?? 0,
+        promoCode: promoCode ?? null,
         totalPrice: totalPrice ?? service.price,
         commission: (totalPrice ?? service.price) * 0.15,
         status: 'PENDING',
@@ -118,6 +121,14 @@ export async function POST(request: NextRequest) {
         service: true,
       },
     });
+
+    // Increment promo code usage if applied
+    if (promoCode) {
+      await db.promotion.updateMany({
+        where: { code: promoCode },
+        data: { currentUses: { increment: 1 } },
+      });
+    }
 
     return NextResponse.json({ success: true, order });
   } catch (error) {

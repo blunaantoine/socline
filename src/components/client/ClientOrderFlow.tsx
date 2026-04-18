@@ -36,6 +36,9 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
   const [mobileProvider, setMobileProvider] = useState<'mixx' | 'tmoney'>('mixx');
   const [mobileNumber, setMobileNumber] = useState('');
   const [promoCode, setPromoCode] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState<any>(null);
+  const [promoError, setPromoError] = useState('');
+  const [isValidatingPromo, setIsValidatingPromo] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLoadingServices, setIsLoadingServices] = useState(true);
 
@@ -102,6 +105,55 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
     setStep('payment');
   };
 
+  const handleApplyPromo = async () => {
+    if (!promoCode || !selectedService) return;
+    
+    setIsValidatingPromo(true);
+    setPromoError('');
+    
+    try {
+      const res = await fetch('/api/promotions/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: promoCode,
+          userId: user?.id,
+          orderAmount: selectedService.price,
+        }),
+      });
+      
+      const data = await res.json();
+      
+      if (data.success) {
+        setAppliedPromo(data.promotion);
+        setPromoError('');
+      } else {
+        setPromoError(data.error || 'Code promo invalide');
+        setAppliedPromo(null);
+      }
+    } catch (error) {
+      setPromoError('Erreur lors de la validation');
+      setAppliedPromo(null);
+    } finally {
+      setIsValidatingPromo(false);
+    }
+  };
+
+  const handleRemovePromo = () => {
+    setAppliedPromo(null);
+    setPromoCode('');
+    setPromoError('');
+  };
+
+  const getFinalPrice = () => {
+    if (!selectedService) return 0;
+    const basePrice = selectedService.price;
+    if (appliedPromo) {
+      return Math.max(0, basePrice - appliedPromo.discountAmount);
+    }
+    return basePrice;
+  };
+
   const handlePaymentSubmit = async () => {
     if (!selectedService) return;
     
@@ -115,7 +167,8 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
     }
 
     // Validate wallet payment
-    if (paymentMethod === 'wallet' && walletBalance < selectedService.price) {
+    const finalPrice = getFinalPrice();
+    if (paymentMethod === 'wallet' && walletBalance < finalPrice) {
       alert('Solde insuffisant dans votre portefeuille.');
       return;
     }
@@ -140,7 +193,9 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
           address,
           latitude: userLocation?.latitude,
           longitude: userLocation?.longitude,
-          totalPrice: selectedService.price,
+          totalPrice: finalPrice,
+          promoCode: appliedPromo?.code || null,
+          discount: appliedPromo?.discountAmount || 0,
           scheduledAt: scheduledTime === 'later' ? scheduledDate : null,
         }),
       });
@@ -157,7 +212,7 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
             body: JSON.stringify({
               userId: clientId,
               orderId: data.order.id,
-              amount: selectedService.price,
+              amount: finalPrice,
             }),
           });
           
@@ -173,7 +228,7 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             userId: clientId,
-            amount: selectedService.price,
+            amount: finalPrice,
             method: paymentMethod === 'wallet' ? 'WALLET' : paymentMethod === 'mobile_money' ? 'MOBILE_MONEY' : paymentMethod === 'card' ? 'CARD' : 'CASH',
             phoneNumber: paymentMethod === 'mobile_money' ? mobileNumber : undefined,
           }),
@@ -191,7 +246,7 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
           latitude: data.order.latitude,
           longitude: data.order.longitude,
           basePrice: data.order.basePrice,
-          discount: 0,
+          discount: appliedPromo?.discountAmount || 0,
           totalPrice: data.order.totalPrice,
           commission: data.order.commission,
           status: data.order.status,
@@ -508,9 +563,15 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
                   <span className="text-gray-500">Prix de base</span>
                   <span>{selectedService.price.toLocaleString()} F</span>
                 </div>
+                {appliedPromo && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Réduction ({appliedPromo.discountType === 'PERCENTAGE' ? `${appliedPromo.discountValue}%` : `${appliedPromo.discountValue.toLocaleString()} F`})</span>
+                    <span>-{appliedPromo.discountAmount.toLocaleString()} F</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-lg font-bold">
                   <span>Total</span>
-                  <span className="text-[#FF9800]">{selectedService.price.toLocaleString()} F</span>
+                  <span className="text-[#FF9800]">{getFinalPrice().toLocaleString()} F</span>
                 </div>
               </CardContent>
             </Card>
@@ -519,15 +580,51 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
             <Card>
               <CardContent className="p-4">
                 <Label className="text-base font-medium mb-3 block">Code promo</Label>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Entrez votre code"
-                    value={promoCode}
-                    onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                    className="border-2 focus:border-[#FF9800]"
-                  />
-                  <Button variant="outline" className="border-[#FF9800] text-[#FF9800]">Appliquer</Button>
-                </div>
+                {appliedPromo ? (
+                  <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg p-3">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                      <div>
+                        <span className="font-bold text-green-700">{appliedPromo.code}</span>
+                        <p className="text-xs text-green-600">
+                          -{appliedPromo.discountAmount.toLocaleString()} F de réduction
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleRemovePromo}
+                      className="text-red-500 hover:text-red-700 text-sm font-medium"
+                    >
+                      Supprimer
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <Input
+                                               placeholder="Entrez votre code"
+                        value={promoCode}
+                        onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                        className="border-2 focus:border-[#FF9800]"
+                      />
+                      <Button
+                        variant="outline"
+                        className="border-[#FF9800] text-[#FF9800]"
+                        onClick={handleApplyPromo}
+                        disabled={!promoCode || isValidatingPromo}
+                      >
+                        {isValidatingPromo ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          'Appliquer'
+                        )}
+                      </Button>
+                    </div>
+                    {promoError && (
+                      <p className="text-sm text-red-500">{promoError}</p>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -540,9 +637,9 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
                 <div
                   className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
                     paymentMethod === 'wallet' ? 'border-[#FF9800] bg-[#FFF8F0]' : 'border-gray-200 hover:border-gray-300'
-                  } ${walletBalance < (selectedService?.price || 0) ? 'opacity-60' : ''}`}
+                  } ${walletBalance < getFinalPrice() ? 'opacity-60' : ''}`}
                   onClick={() => {
-                    if (walletBalance >= (selectedService?.price || 0)) {
+                    if (walletBalance >= getFinalPrice()) {
                       setPaymentMethod('wallet');
                     }
                   }}
@@ -561,7 +658,7 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
                         </p>
                       </div>
                     </div>
-                    {walletBalance >= (selectedService?.price || 0) ? (
+                    {walletBalance >= getFinalPrice() ? (
                       <div className="w-5 h-5 border-2 border-[#FF9800] rounded-full flex items-center justify-center">
                         {paymentMethod === 'wallet' && <div className="w-3 h-3 bg-[#FF9800] rounded-full" />}
                       </div>
@@ -667,7 +764,7 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
                   Traitement en cours...
                 </>
               ) : (
-                `Confirmer ${selectedService.price.toLocaleString()} F`
+                `Confirmer ${getFinalPrice().toLocaleString()} F`
               )}
             </Button>
           </div>

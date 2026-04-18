@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { VisuallyHidden } from '@/components/ui/visually-hidden';
 import {
   Clock, CheckCircle, X, ChevronRight, Star, Zap, Droplets, Sparkles, Crown,
   MapPin, User, Car, Calendar, CreditCard, Phone, MessageCircle, RefreshCw,
@@ -150,6 +151,9 @@ export function OrderHistory() {
       {/* Order Details Modal */}
       <Dialog open={showDetails} onOpenChange={setShowDetails}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto p-0">
+          <VisuallyHidden>
+            <DialogTitle>Détails de la commande</DialogTitle>
+          </VisuallyHidden>
           {selectedOrder && (
             <OrderDetails 
               order={selectedOrder} 
