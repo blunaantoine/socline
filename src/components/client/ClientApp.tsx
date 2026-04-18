@@ -56,7 +56,8 @@ export function ClientApp() {
   const [activeFilter, setActiveFilter] = useState('all');
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [showTracking, setShowTracking] = useState(true);
-  const [activePromotion, setActivePromotion] = useState<any>(null);
+  const [promotions, setPromotions] = useState<any[]>([]);
+  const [currentPromoIndex, setCurrentPromoIndex] = useState(0);
   
   const { stations: googleStations, isLoading: isLoadingStations, searchCarWashes } = useGooglePlaces();
 
@@ -144,8 +145,7 @@ export function ClientApp() {
         const data = await res.json();
         
         if (data.success && data.promotions.length > 0) {
-          // Get the first active promotion (most recent)
-          setActivePromotion(data.promotions[0]);
+          setPromotions(data.promotions);
         }
       } catch (error) {
         console.error('Error fetching promotions:', error);
@@ -154,6 +154,17 @@ export function ClientApp() {
     
     fetchPromotions();
   }, []);
+
+  // Auto-scroll promotions carousel
+  useEffect(() => {
+    if (promotions.length <= 1) return;
+    
+    const interval = setInterval(() => {
+      setCurrentPromoIndex((prev) => (prev + 1) % promotions.length);
+    }, 4000); // Change every 4 seconds
+    
+    return () => clearInterval(interval);
+  }, [promotions.length]);
 
   // Get user location
   const getUserLocation = useCallback(() => {
@@ -272,7 +283,9 @@ export function ClientApp() {
               setSearchQuery={setSearchQuery}
               activeFilter={activeFilter}
               setActiveFilter={setActiveFilter}
-              activePromotion={activePromotion}
+              promotions={promotions}
+              currentPromoIndex={currentPromoIndex}
+              setCurrentPromoIndex={setCurrentPromoIndex}
             />
           )}
           {activeTab === 'booking' && (
@@ -328,14 +341,17 @@ export function ClientApp() {
 // Home Content - Android Material Design Style
 function HomeContent({
   services, nearbyWashers, googleStations, isLoadingStations, userLocation,
-  onRefresh, onStartOrder, searchQuery, setSearchQuery, activeFilter, setActiveFilter, activePromotion,
+  onRefresh, onStartOrder, searchQuery, setSearchQuery, activeFilter, setActiveFilter, 
+  promotions, currentPromoIndex, setCurrentPromoIndex,
 }: {
   services: any[]; nearbyWashers: any[]; googleStations: GooglePlaceStation[];
   isLoadingStations: boolean; userLocation: any; onRefresh: () => void;
   onStartOrder: () => void; searchQuery: string; setSearchQuery: (q: string) => void;
   activeFilter: string; setActiveFilter: (f: string) => void;
-  activePromotion: any;
+  promotions: any[]; currentPromoIndex: number; setCurrentPromoIndex: (i: number) => void;
 }) {
+  const currentPromo = promotions[currentPromoIndex];
+
   return (
     <div className="p-4 space-y-4">
       {/* Search - Android style */}
@@ -371,36 +387,58 @@ function HomeContent({
         ))}
       </div>
 
-      {/* Hero Banner - Android Card style with dynamic promotion */}
-      {activePromotion && (
-        <div className="bg-gradient-to-r from-[#FF9800] to-[#F57C00] rounded-lg p-4 shadow-md">
-          <p className="text-white/90 text-xs font-medium mb-1">Offre spéciale</p>
-          <h2 className="text-white text-lg font-bold mb-2">
-            {activePromotion.discountType === 'PERCENTAGE' 
-              ? `-${activePromotion.discountValue}% ${activePromotion.name}`
-              : `-${activePromotion.discountValue.toLocaleString()}F ${activePromotion.name}`}
-          </h2>
-          {activePromotion.description && (
-            <p className="text-white/80 text-sm mb-2">{activePromotion.description}</p>
-          )}
-          {activePromotion.code && (
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(activePromotion.code);
-                toast.success('Code promo copié !');
-              }}
-              className="bg-white/20 rounded px-3 py-1.5 inline-flex items-center gap-2 mb-3 hover:bg-white/30 transition-colors active:scale-95"
-            >
-              <span className="text-white font-mono text-sm font-bold">{activePromotion.code}</span>
-              <Copy className="w-4 h-4 text-white/80" />
-            </button>
-          )}
-          <button
-            onClick={onStartOrder}
-            className="bg-white text-[#FF9800] px-4 py-2 rounded text-sm font-semibold"
+      {/* Hero Banner - Promotions Carousel with auto-scroll */}
+      {promotions.length > 0 && currentPromo && (
+        <div className="relative">
+          <div 
+            key={currentPromo.id}
+            className="bg-gradient-to-r from-[#FF9800] to-[#F57C00] rounded-lg p-4 shadow-md transition-opacity duration-500"
           >
-            Réserver
-          </button>
+            <p className="text-white/90 text-xs font-medium mb-1">Offre spéciale</p>
+            <h2 className="text-white text-lg font-bold mb-2">
+              {currentPromo.discountType === 'PERCENTAGE' 
+                ? `-${currentPromo.discountValue}% ${currentPromo.name}`
+                : `-${currentPromo.discountValue.toLocaleString()}F ${currentPromo.name}`}
+            </h2>
+            {currentPromo.description && (
+              <p className="text-white/80 text-sm mb-2">{currentPromo.description}</p>
+            )}
+            {currentPromo.code && (
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(currentPromo.code);
+                  toast.success('Code promo copié !');
+                }}
+                className="bg-white/20 rounded px-3 py-1.5 inline-flex items-center gap-2 mb-3 hover:bg-white/30 transition-colors active:scale-95"
+              >
+                <span className="text-white font-mono text-sm font-bold">{currentPromo.code}</span>
+                <Copy className="w-4 h-4 text-white/80" />
+              </button>
+            )}
+            <button
+              onClick={onStartOrder}
+              className="bg-white text-[#FF9800] px-4 py-2 rounded text-sm font-semibold"
+            >
+              Réserver
+            </button>
+          </div>
+          
+          {/* Carousel Dots Indicator */}
+          {promotions.length > 1 && (
+            <div className="flex justify-center gap-2 mt-3">
+              {promotions.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentPromoIndex(index)}
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    index === currentPromoIndex 
+                      ? 'w-6 bg-[#FF9800]' 
+                      : 'w-2 bg-[#BDBDBD]'
+                  }`}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
