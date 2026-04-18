@@ -738,8 +738,8 @@ function AdminFinances() {
             </TableHeader>
             <TableBody>
               {[
-                { id: 'TRX001', type: 'Paiement commande', amount: 15000, method: 'Orange Money', status: 'completed', date: '2024-01-15 14:30' },
-                { id: 'TRX002', type: 'Retrait laveur', amount: 50000, method: 'Wave', status: 'pending', date: '2024-01-15 12:00' },
+                { id: 'TRX001', type: 'Paiement commande', amount: 15000, method: 'Mixx by Yas', status: 'completed', date: '2024-01-15 14:30' },
+                { id: 'TRX002', type: 'Retrait laveur', amount: 50000, method: 'T-Money', status: 'pending', date: '2024-01-15 12:00' },
               ].map((tx) => (
                 <TableRow key={tx.id}>
                   <TableCell className="font-mono">{tx.id}</TableCell>
@@ -777,11 +777,11 @@ function AdminSettings() {
           </div>
           <div>
             <Label>Email de contact</Label>
-            <Input defaultValue="contact@washgo.sn" />
+            <Input defaultValue="contact@washgo.tg" />
           </div>
           <div>
             <Label>Téléphone</Label>
-            <Input defaultValue="+221 77 123 45 67" />
+            <Input defaultValue="+228 90 12 34 56" />
           </div>
         </CardContent>
       </Card>

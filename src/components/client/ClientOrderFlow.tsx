@@ -29,7 +29,9 @@ export function ClientOrderFlow({ onBack }: ClientOrderFlowProps) {
   const [address, setAddress] = useState(userLocation?.address || '');
   const [scheduledTime, setScheduledTime] = useState<'now' | 'later'>('now');
   const [scheduledDate, setScheduledDate] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'mobile_money' | 'cash' | 'card'>('mobile_money');
+  const [paymentMethod, setPaymentMethod] = useState<'mobile_money' | 'cash' | 'card'>('cash');
+  const [mobileProvider, setMobileProvider] = useState<'mixx' | 'tmoney'>('mixx');
+  const [mobileNumber, setMobileNumber] = useState('');
   const [promoCode, setPromoCode] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -373,41 +375,95 @@ export function ClientOrderFlow({ onBack }: ClientOrderFlowProps) {
 
             {/* Payment Method */}
             <Card>
-              <CardContent className="p-4">
-                <Label className="text-base font-medium mb-3 block">Mode de paiement</Label>
+              <CardContent className="p-4 space-y-4">
+                <Label className="text-base font-medium">Mode de paiement</Label>
                 <RadioGroup value={paymentMethod} onValueChange={(v: any) => setPaymentMethod(v)}>
                   <div className="space-y-3">
                     {[
-                      { id: 'mobile_money', label: 'Mobile Money', icon: Wallet, desc: 'Orange Money, Wave, Free Money' },
-                      { id: 'cash', label: 'Espèces', icon: CreditCard, desc: 'Payer en espèces au laveur' },
-                      { id: 'card', label: 'Carte bancaire', icon: CreditCard, desc: 'Visa, Mastercard' },
+                      { id: 'cash', label: 'Espèces', icon: CreditCard, desc: 'Payer en espèces au laveur', color: '#4CAF50' },
+                      { id: 'mobile_money', label: 'Mobile Money', icon: Wallet, desc: 'Mixx by Yas, T-Money', color: '#FF9800' },
+                      { id: 'card', label: 'Carte bancaire', icon: CreditCard, desc: 'Visa, Mastercard', color: '#2196F3' },
                     ].map((method) => (
                       <div
                         key={method.id}
-                        className={`p-4 rounded-lg border-2 cursor-pointer ${
-                          paymentMethod === method.id ? 'border-blue-600 bg-blue-50' : 'border-gray-200'
+                        className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                          paymentMethod === method.id ? 'border-[#FF9800] bg-[#FFF8F0]' : 'border-gray-200 hover:border-gray-300'
                         }`}
                         onClick={() => setPaymentMethod(method.id as any)}
                       >
                         <div className="flex items-center gap-3">
                           <RadioGroupItem value={method.id} id={method.id} />
-                          <method.icon className="w-5 h-5 text-gray-600" />
+                          <method.icon className="w-5 h-5 text-[#757575]" />
                           <div>
-                            <Label htmlFor={method.id} className="font-medium cursor-pointer">
+                            <Label htmlFor={method.id} className="font-medium cursor-pointer text-[#212121]">
                               {method.label}
                             </Label>
-                            <p className="text-sm text-gray-500">{method.desc}</p>
+                            <p className="text-sm text-[#757575]">{method.desc}</p>
                           </div>
                         </div>
                       </div>
                     ))}
                   </div>
                 </RadioGroup>
+
+                {/* Mobile Money Provider Selection */}
+                {paymentMethod === 'mobile_money' && (
+                  <div className="mt-4 pt-4 border-t border-[#F5F5F5] space-y-4">
+                    <Label className="text-sm font-medium text-[#757575]">Choisissez votre opérateur</Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => setMobileProvider('mixx')}
+                        className={`p-4 rounded-xl border-2 transition-all ${
+                          mobileProvider === 'mixx' 
+                            ? 'border-[#FF9800] bg-[#FFF8F0]' 
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="w-12 h-12 bg-[#FFE0B2] rounded-full flex items-center justify-center">
+                            <span className="text-lg font-bold text-[#FF9800]">M</span>
+                          </div>
+                          <span className="font-medium text-sm text-[#212121]">Mixx by Yas</span>
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => setMobileProvider('tmoney')}
+                        className={`p-4 rounded-xl border-2 transition-all ${
+                          mobileProvider === 'tmoney' 
+                            ? 'border-[#FF9800] bg-[#FFF8F0]' 
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="w-12 h-12 bg-[#E3F2FD] rounded-full flex items-center justify-center">
+                            <span className="text-lg font-bold text-[#2196F3]">T</span>
+                          </div>
+                          <span className="font-medium text-sm text-[#212121]">T-Money</span>
+                        </div>
+                      </button>
+                    </div>
+
+                    {/* Mobile Number */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-[#757575]">Numéro Mobile Money</Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#757575]">+228</span>
+                        <Input
+                          type="tel"
+                          placeholder="90 12 34 56"
+                          value={mobileNumber}
+                          onChange={(e) => setMobileNumber(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                          className="pl-14 h-12 bg-[#F5F5F5] border-0 rounded-xl"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
             <Button 
-              className="w-full h-14 bg-gradient-to-r from-blue-600 to-green-500 hover:from-blue-700 hover:to-green-600 text-lg"
+              className="w-full h-14 bg-[#FF9800] hover:bg-[#F57C00] text-white text-lg rounded-2xl font-semibold shadow-lg shadow-[#FF9800]/30"
               onClick={handlePaymentSubmit}
               disabled={isProcessing}
             >
@@ -417,7 +473,7 @@ export function ClientOrderFlow({ onBack }: ClientOrderFlowProps) {
                   Traitement en cours...
                 </>
               ) : (
-                `Confirmer et payer ${selectedService.price.toLocaleString()} FCFA`
+                `Confirmer ${selectedService.price.toLocaleString()} F`
               )}
             </Button>
           </div>
