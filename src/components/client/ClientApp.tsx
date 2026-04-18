@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAppStore, useServicesStore, useOrdersStore, useStationsStore, useWashersStore, useAuthStore } from '@/store';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import {
@@ -161,7 +160,7 @@ export function ClientApp() {
   // Show loading state
   if (isLoading) {
     return (
-      <div className="w-[390px] h-[844px] bg-[#FFF8F0] flex items-center justify-center">
+      <div className="flex-1 flex items-center justify-center bg-white">
         <Loader2 className="w-8 h-8 animate-spin text-[#FF9800]" />
       </div>
     );
@@ -170,7 +169,7 @@ export function ClientApp() {
   // Show auth screen if not authenticated
   if (!isAuthenticated || !user) {
     return (
-      <div className="w-[390px] h-[844px] bg-[#FFF8F0] flex flex-col overflow-hidden relative">
+      <div className="flex-1 flex flex-col overflow-hidden relative bg-white">
         <AuthScreen onComplete={() => {}} />
       </div>
     );
@@ -192,38 +191,38 @@ export function ClientApp() {
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden relative bg-[#FFF8F0]">
-      {/* iOS Status Bar - transparent overlay */}
-      <div className="h-11 bg-transparent flex items-end justify-between px-6 pb-1 flex-shrink-0 absolute top-0 left-0 right-0 z-50">
-        <span className="text-sm font-semibold text-[#212121]">9:41</span>
+    <div className="flex-1 flex flex-col bg-[#FAFAFA]">
+      {/* Android Status Bar */}
+      <div className="h-6 bg-[#FF9800] flex items-center justify-between px-4 flex-shrink-0">
+        <span className="text-white text-xs font-medium">9:41</span>
         <div className="flex items-center gap-1">
-          <div className="w-4 h-4 flex items-end justify-between">
-            <div className="w-0.5 h-1.5 bg-[#212121] rounded-sm"></div>
-            <div className="w-0.5 h-2.5 bg-[#212121] rounded-sm"></div>
-            <div className="w-0.5 h-3.5 bg-[#212121] rounded-sm"></div>
-            <div className="w-0.5 h-4 bg-[#212121] rounded-sm"></div>
+          <div className="flex gap-0.5">
+            <div className="w-1 h-2 bg-white/80 rounded-sm"></div>
+            <div className="w-1 h-3 bg-white/80 rounded-sm"></div>
+            <div className="w-1 h-4 bg-white rounded-sm"></div>
+            <div className="w-1 h-3 bg-white/80 rounded-sm"></div>
           </div>
-          <div className="w-6 h-3 border border-[#212121] rounded-sm relative">
-            <div className="absolute inset-0.5 bg-[#212121] rounded-sm" style={{ width: '80%' }}></div>
+          <div className="w-5 h-2.5 border border-white rounded-sm ml-1 relative">
+            <div className="absolute inset-0.5 bg-white rounded-sm" style={{ width: '70%' }}></div>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden pt-11">
-        {/* Header (not shown on chat tab) */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* App Bar (not shown on chat tab) */}
         {activeTab !== 'chat' && (
-          <header className="bg-white px-4 py-3 flex items-center justify-between flex-shrink-0">
+          <header className="bg-[#FF9800] px-4 py-3 flex items-center justify-between flex-shrink-0 shadow-md">
             <div className="flex items-center gap-3">
               <button onClick={getUserLocation} className="flex items-center gap-2">
                 {isLoadingLocation ? (
-                  <Loader2 className="w-5 h-5 text-[#FF9800] animate-spin" />
+                  <Loader2 className="w-5 h-5 text-white animate-spin" />
                 ) : (
-                  <MapPin className="w-5 h-5 text-[#FF9800]" />
+                  <MapPin className="w-5 h-5 text-white" />
                 )}
                 <div className="text-left">
-                  <p className="text-xs text-[#757575]">Position</p>
-                  <p className="text-sm font-medium text-[#212121] truncate max-w-[140px]">{userLocation?.address || 'Lomé'}</p>
+                  <p className="text-xs text-white/80">Position</p>
+                  <p className="text-sm font-medium text-white truncate max-w-[140px]">{userLocation?.address || 'Lomé'}</p>
                 </div>
               </button>
             </div>
@@ -234,7 +233,7 @@ export function ClientApp() {
         )}
 
         {/* Content */}
-        <div className={`flex-1 ${activeTab !== 'chat' ? 'overflow-y-auto pb-20' : ''}`}>
+        <div className={`flex-1 ${activeTab !== 'chat' ? 'overflow-y-auto pb-16' : ''}`}>
           {activeTab === 'home' && (
             <HomeContent
               services={services}
@@ -261,23 +260,21 @@ export function ClientApp() {
           {activeTab === 'profile' && <ProfileContent user={user} onLogout={logout} />}
         </div>
 
-        {/* Bottom Navigation (not shown on chat tab) */}
+        {/* Android Bottom Navigation (not shown on chat tab) */}
         {activeTab !== 'chat' && (
-          <nav className="absolute bottom-0 left-0 right-0 bg-white border-t border-[#F5F5F5] flex justify-around items-center py-2 px-2 z-50">
+          <nav className="bg-white border-t border-[#E0E0E0] flex justify-around items-center h-14 flex-shrink-0">
             {navItems.map((item) => {
               const isActive = activeTab === item.id;
               return (
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl transition-all ${
-                    isActive ? 'text-[#FF9800]' : 'text-[#9E9E9E]'
+                  className={`flex flex-col items-center justify-center py-1.5 px-4 transition-all ${
+                    isActive ? 'text-[#FF9800]' : 'text-[#757575]'
                   }`}
                 >
-                  <div className={`w-6 h-6 flex items-center justify-center ${isActive ? 'bg-[#FFF3E0] rounded-lg' : ''}`}>
-                    <item.icon className="w-5 h-5" />
-                  </div>
-                  <span className="text-[10px] font-medium">{item.label}</span>
+                  <item.icon className={`w-6 h-6 ${isActive ? 'fill-current' : ''}`} />
+                  <span className="text-[10px] font-medium mt-0.5">{item.label}</span>
                 </button>
               );
             })}
@@ -285,13 +282,23 @@ export function ClientApp() {
         )}
       </div>
 
-      {/* iOS Home Indicator */}
-      <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-32 h-1 bg-black rounded-full"></div>
+      {/* Android Navigation Bar */}
+      <div className="h-10 bg-black flex items-center justify-center gap-16 flex-shrink-0">
+        <button className="w-8 h-8 flex items-center justify-center">
+          <div className="w-5 h-5 border-2 border-white rounded-full"></div>
+        </button>
+        <button className="w-8 h-8 flex items-center justify-center">
+          <div className="w-5 h-5 border-2 border-white rounded"></div>
+        </button>
+        <button className="w-8 h-8 flex items-center justify-center">
+          <div className="w-4 h-4 border-2 border-white rotate-45"></div>
+        </button>
+      </div>
     </div>
   );
 }
 
-// Home Content
+// Home Content - Android Material Design Style
 function HomeContent({
   services, nearbyWashers, googleStations, isLoadingStations, userLocation,
   onRefresh, onStartOrder, searchQuery, setSearchQuery, activeFilter, setActiveFilter,
@@ -302,19 +309,19 @@ function HomeContent({
   activeFilter: string; setActiveFilter: (f: string) => void;
 }) {
   return (
-    <div className="p-4 space-y-5">
-      {/* Search */}
+    <div className="p-4 space-y-4">
+      {/* Search - Android style */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9E9E9E]" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#757575]" />
         <Input
           placeholder="Rechercher un service..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10 h-11 bg-white border-[#FFE0B2] rounded-xl text-sm"
+          className="pl-10 h-12 bg-white border-0 rounded-lg text-sm shadow-sm"
         />
       </div>
 
-      {/* Filters */}
+      {/* Filters - Android Chips style */}
       <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
         {[
           { id: 'all', label: 'Tout' },
@@ -325,7 +332,7 @@ function HomeContent({
           <button
             key={filter.id}
             onClick={() => setActiveFilter(filter.id)}
-            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+            className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
               activeFilter === filter.id
                 ? 'bg-[#FF9800] text-white'
                 : 'bg-white text-[#757575] border border-[#E0E0E0]'
@@ -336,22 +343,19 @@ function HomeContent({
         ))}
       </div>
 
-      {/* Hero Banner */}
-      <div className="bg-gradient-to-r from-[#FF9800] to-[#F57C00] rounded-2xl p-4 relative overflow-hidden">
-        <div className="absolute right-0 top-0 w-24 h-24 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
-        <div className="relative z-10">
-          <p className="text-white/90 text-xs font-medium mb-1">Offre spéciale</p>
-          <h2 className="text-white text-lg font-bold mb-2">-20% sur votre 1er lavage</h2>
-          <button
-            onClick={onStartOrder}
-            className="bg-white text-[#FF9800] px-4 py-2 rounded-xl text-sm font-semibold"
-          >
-            Réserver
-          </button>
-        </div>
+      {/* Hero Banner - Android Card style */}
+      <div className="bg-[#FF9800] rounded-lg p-4 shadow-md">
+        <p className="text-white/90 text-xs font-medium mb-1">Offre spéciale</p>
+        <h2 className="text-white text-lg font-bold mb-2">-20% sur votre 1er lavage</h2>
+        <button
+          onClick={onStartOrder}
+          className="bg-white text-[#FF9800] px-4 py-2 rounded text-sm font-semibold"
+        >
+          Réserver
+        </button>
       </div>
 
-      {/* Services */}
+      {/* Services - Android style */}
       <section>
         <div className="flex justify-between items-center mb-3">
           <h3 className="text-base font-bold text-[#212121]">Nos Services</h3>
@@ -362,9 +366,9 @@ function HomeContent({
             <button
               key={service.id}
               onClick={onStartOrder}
-              className="bg-white rounded-2xl p-3 text-center active:scale-95 transition-transform"
+              className="bg-white rounded-lg p-3 text-center shadow-sm active:bg-[#F5F5F5] transition-colors"
             >
-              <div className="w-10 h-10 mx-auto mb-2 bg-[#FFF3E0] rounded-xl flex items-center justify-center">
+              <div className="w-10 h-10 mx-auto mb-2 bg-[#FFF3E0] rounded-lg flex items-center justify-center">
                 {service.category === 'basic' && <Zap className="w-5 h-5 text-[#FF9800]" />}
                 {service.category === 'standard' && <Droplets className="w-5 h-5 text-[#FF9800]" />}
                 {service.category === 'premium' && <Sparkles className="w-5 h-5 text-[#FF9800]" />}
@@ -385,9 +389,9 @@ function HomeContent({
         </div>
         <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4">
           {nearbyWashers.filter(w => w.isAvailable).map((washer) => (
-            <div key={washer.id} className="flex-shrink-0 w-28 bg-white rounded-2xl p-3 text-center">
+            <div key={washer.id} className="flex-shrink-0 w-28 bg-white rounded-lg p-3 text-center shadow-sm">
               <div className="relative w-12 h-12 mx-auto mb-2">
-                <div className="w-12 h-12 bg-gradient-to-br from-[#FF9800] to-[#F57C00] rounded-full flex items-center justify-center text-white font-bold">
+                <div className="w-12 h-12 bg-[#FF9800] rounded-full flex items-center justify-center text-white font-bold">
                   {washer.user.name?.charAt(0)}
                 </div>
                 <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 rounded-full border-2 border-white" />
@@ -416,18 +420,18 @@ function HomeContent({
             <Loader2 className="w-5 h-5 animate-spin text-[#FF9800]" />
           </div>
         ) : googleStations.length === 0 ? (
-          <div className="bg-white rounded-2xl p-6 text-center">
+          <div className="bg-white rounded-lg p-6 text-center shadow-sm">
             <MapPin className="w-8 h-8 text-[#9E9E9E] mx-auto mb-2" />
             <p className="text-sm text-[#757575]">Aucune station trouvée</p>
           </div>
         ) : (
           <div className="space-y-2">
             {googleStations.slice(0, 4).map((station) => (
-              <div key={station.id} className="bg-white rounded-2xl p-3 flex gap-3">
+              <div key={station.id} className="bg-white rounded-lg p-3 flex gap-3 shadow-sm">
                 {station.photo ? (
-                  <img src={station.photo} alt={station.name} className="w-14 h-14 rounded-xl object-cover" />
+                  <img src={station.photo} alt={station.name} className="w-14 h-14 rounded-lg object-cover" />
                 ) : (
-                  <div className="w-14 h-14 bg-[#FFF3E0] rounded-xl flex items-center justify-center">
+                  <div className="w-14 h-14 bg-[#FFF3E0] rounded-lg flex items-center justify-center">
                     <MapPin className="w-6 h-6 text-[#FF9800]" />
                   </div>
                 )}
@@ -452,7 +456,7 @@ function HomeContent({
                   href={`https://www.google.com/maps/search/?api=1&query=${station.latitude},${station.longitude}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-8 h-8 bg-[#FFF3E0] rounded-lg flex items-center justify-center self-center"
+                  className="w-8 h-8 bg-[#FFF3E0] rounded flex items-center justify-center self-center"
                 >
                   <ExternalLink className="w-4 h-4 text-[#FF9800]" />
                 </a>
@@ -465,35 +469,35 @@ function HomeContent({
   );
 }
 
-// Profile Content
+// Profile Content - Android Material Design Style
 function ProfileContent({ user, onLogout }: { user: any; onLogout: () => void }) {
   return (
-    <div className="p-4 space-y-4 pb-24">
-      {/* Profile Card */}
-      <div className="bg-white rounded-2xl p-4">
+    <div className="p-4 space-y-3 pb-20">
+      {/* Profile Card - Android style */}
+      <div className="bg-white rounded-lg p-4 shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="w-14 h-14 bg-gradient-to-br from-[#FF9800] to-[#F57C00] rounded-full flex items-center justify-center text-white text-xl font-bold">
+          <div className="w-14 h-14 bg-[#FF9800] rounded-full flex items-center justify-center text-white text-xl font-bold">
             {user?.name?.charAt(0) || 'U'}
           </div>
           <div className="flex-1">
             <h2 className="font-bold text-[#212121]">{user?.name || 'Utilisateur'}</h2>
             <p className="text-sm text-[#757575]">+228 {user?.phone || '90 12 34 56'}</p>
           </div>
-          <button className="w-8 h-8 bg-[#FFF3E0] rounded-lg flex items-center justify-center">
+          <button className="w-8 h-8 bg-[#FFF3E0] rounded flex items-center justify-center">
             <Settings className="w-4 h-4 text-[#FF9800]" />
           </button>
         </div>
       </div>
 
       {/* Vehicle Card */}
-      <div className="bg-white rounded-2xl p-4">
+      <div className="bg-white rounded-lg p-4 shadow-sm">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-[#212121]">Ma voiture</h3>
           <button className="text-xs text-[#FF9800] font-medium">Modifier</button>
         </div>
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 bg-[#FFF3E0] rounded-xl flex items-center justify-center">
-            <Car className="w-8 h-8 text-[#FF9800]" />
+          <div className="w-14 h-14 bg-[#FFF3E0] rounded-lg flex items-center justify-center">
+            <Car className="w-7 h-7 text-[#FF9800]" />
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
@@ -512,7 +516,7 @@ function ProfileContent({ user, onLogout }: { user: any; onLogout: () => void })
       </div>
 
       {/* Stats */}
-      <div className="bg-white rounded-2xl p-4">
+      <div className="bg-white rounded-lg p-4 shadow-sm">
         <h3 className="font-semibold text-[#212121] mb-3">Statistiques</h3>
         <div className="grid grid-cols-3 gap-4">
           <div className="text-center">
@@ -530,8 +534,8 @@ function ProfileContent({ user, onLogout }: { user: any; onLogout: () => void })
         </div>
       </div>
 
-      {/* Menu */}
-      <div className="bg-white rounded-2xl overflow-hidden">
+      {/* Menu - Android List style */}
+      <div className="bg-white rounded-lg overflow-hidden shadow-sm">
         {[
           { icon: Car, label: 'Mes véhicules' },
           { icon: Clock, label: 'Historique' },
@@ -542,24 +546,23 @@ function ProfileContent({ user, onLogout }: { user: any; onLogout: () => void })
             key={index}
             className="w-full flex items-center gap-3 p-4 hover:bg-[#F5F5F5] transition-colors border-b border-[#F5F5F5] last:border-0"
           >
-            <div className="w-8 h-8 bg-[#FFF3E0] rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-[#FFF3E0] rounded flex items-center justify-center">
               <item.icon className="w-4 h-4 text-[#FF9800]" />
             </div>
             <span className="flex-1 text-left text-[#212121] text-sm">{item.label}</span>
-            <div className="w-5 h-5 text-[#9E9E9E]">›</div>
+            <div className="w-5 h-5 text-[#BDBDBD]">›</div>
           </button>
         ))}
       </div>
 
-      {/* Logout Button */}
-      <Button
+      {/* Logout Button - Android style */}
+      <button
         onClick={onLogout}
-        variant="outline"
-        className="w-full h-12 border-red-200 text-red-500 hover:bg-red-50 rounded-xl font-semibold"
+        className="w-full h-12 border border-[#E0E0E0] text-red-500 bg-white rounded-lg font-semibold text-sm active:bg-red-50 transition-colors"
       >
-        <LogOut className="w-5 h-5 mr-2" />
+        <LogOut className="w-4 h-4 inline mr-2" />
         Déconnexion
-      </Button>
+      </button>
     </div>
   );
 }

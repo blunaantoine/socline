@@ -33,15 +33,14 @@ export default function WashGoApp() {
 
   useEffect(() => {
     if (initialized && isAuthenticated && user) {
-      // Set view directly based on user role - no selector needed
       setView(defaultView);
     }
   }, [initialized, isAuthenticated, user, defaultView, setView]);
 
   if (isLoading) {
     return (
-      <MobileContainer>
-        <div className="flex-1 flex items-center justify-center">
+      <AndroidContainer>
+        <div className="flex-1 flex items-center justify-center bg-white">
           <div className="text-center">
             <div className="w-16 h-16 mx-auto mb-4 relative">
               <div className="absolute inset-0 border-4 border-[#FFE0B2] rounded-full"></div>
@@ -51,12 +50,12 @@ export default function WashGoApp() {
             <p className="text-[#757575] text-sm">Chargement...</p>
           </div>
         </div>
-      </MobileContainer>
+      </AndroidContainer>
     );
   }
 
   return (
-    <MobileContainer>
+    <AndroidContainer>
       {!isAuthenticated ? (
         <>
           <LandingScreen onLogin={() => setShowAuth(true)} />
@@ -70,71 +69,87 @@ export default function WashGoApp() {
         </>
       )}
       <Toaster />
-    </MobileContainer>
+    </AndroidContainer>
   );
 }
 
-// Mobile Container - simulates phone screen (full screen mobile app)
-function MobileContainer({ children }: { children: React.ReactNode }) {
+// Android Container - Full screen Android app style
+function AndroidContainer({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center p-4">
-      <div className="w-full max-w-[390px] h-[844px] bg-[#FFF8F0] rounded-[40px] overflow-hidden shadow-2xl flex flex-col relative border-[8px] border-[#2a2a2a]">
-        {children}
-      </div>
+    <div className="min-h-screen bg-[#FAFAFA] flex flex-col">
+      {children}
     </div>
   );
 }
 
-// Landing Screen - Mobile Style
+// Landing Screen - Android Material Design Style
 function LandingScreen({ onLogin }: { onLogin: () => void }) {
   const [currentSlide, setCurrentSlide] = useState(0);
-  
+
   const slides = [
     {
       title: "Lavage à domicile",
       subtitle: "Votre voiture propre sans bouger",
-      color: "#FF9800",
+      icon: "🚗",
     },
     {
       title: "Laveurs certifiés",
       subtitle: "Des professionnels de confiance",
-      color: "#4CAF50",
+      icon: "✅",
     },
     {
       title: "Prix transparents",
       subtitle: "Pas de surprises, payez ce que vous voyez",
-      color: "#2196F3",
+      icon: "💰",
     },
   ];
 
   return (
     <div className="flex-1 flex flex-col bg-white">
+      {/* Android Status Bar */}
+      <div className="h-6 bg-[#FF9800] flex items-center justify-between px-4">
+        <span className="text-white text-xs font-medium">9:41</span>
+        <div className="flex items-center gap-1">
+          <div className="flex gap-0.5">
+            <div className="w-1 h-2 bg-white/80 rounded-sm"></div>
+            <div className="w-1 h-3 bg-white/80 rounded-sm"></div>
+            <div className="w-1 h-4 bg-white rounded-sm"></div>
+            <div className="w-1 h-3 bg-white/80 rounded-sm"></div>
+          </div>
+          <div className="w-5 h-2.5 border border-white rounded-sm ml-1 relative">
+            <div className="absolute inset-0.5 bg-white rounded-sm" style={{ width: '70%' }}></div>
+          </div>
+        </div>
+      </div>
+
+      {/* App Bar */}
+      <div className="bg-[#FF9800] px-4 py-4 shadow-md">
+        <h1 className="text-white text-xl font-bold">WashGo</h1>
+        <p className="text-white/80 text-sm">Votre lavage auto, livré à votre porte</p>
+      </div>
+
       {/* Logo Section */}
       <div className="flex-1 flex flex-col items-center justify-center px-6">
-        <div className="w-20 h-20 bg-[#FF9800] rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-[#FF9800]/30">
-          <svg className="w-10 h-10 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-          </svg>
+        <div className="w-24 h-24 bg-[#FF9800] rounded-full flex items-center justify-center mb-6 shadow-lg elevation-4">
+          <span className="text-5xl">🚿</span>
         </div>
-        
-        <h1 className="text-3xl font-bold text-[#212121] mb-2">WashGo</h1>
-        <p className="text-[#757575] text-center mb-8">Votre lavage auto, livré à votre porte</p>
 
         {/* Slides */}
-        <div className="w-full mb-8">
-          <div className="bg-[#FFF8F0] rounded-2xl p-6 text-center">
-            <h2 className="text-xl font-bold text-[#212121] mb-2">{slides[currentSlide].title}</h2>
-            <p className="text-[#757575]">{slides[currentSlide].subtitle}</p>
+        <div className="w-full mb-6">
+          <div className="bg-[#FFF8F0] rounded-lg p-6 text-center border border-[#FFE0B2]">
+            <span className="text-3xl mb-2 block">{slides[currentSlide].icon}</span>
+            <h2 className="text-lg font-bold text-[#212121] mb-1">{slides[currentSlide].title}</h2>
+            <p className="text-[#757575] text-sm">{slides[currentSlide].subtitle}</p>
           </div>
-          
+
           {/* Dots */}
           <div className="flex justify-center gap-2 mt-4">
             {slides.map((_, index) => (
               <button
                 key={index}
                 onClick={() => setCurrentSlide(index)}
-                className={`w-2 h-2 rounded-full transition-all ${
-                  currentSlide === index ? 'w-6 bg-[#FF9800]' : 'bg-[#E0E0E0]'
+                className={`h-2 rounded-full transition-all ${
+                  currentSlide === index ? 'w-6 bg-[#FF9800]' : 'w-2 bg-[#BDBDBD]'
                 }`}
               />
             ))}
@@ -142,17 +157,15 @@ function LandingScreen({ onLogin }: { onLogin: () => void }) {
         </div>
 
         {/* Stats */}
-        <div className="flex gap-6 mb-8">
+        <div className="flex gap-8 mb-6">
           <div className="text-center">
             <div className="text-2xl font-bold text-[#FF9800]">2000+</div>
             <div className="text-xs text-[#757575]">Clients</div>
           </div>
-          <div className="w-px bg-[#E0E0E0]" />
           <div className="text-center">
             <div className="text-2xl font-bold text-[#FF9800]">30+</div>
             <div className="text-xs text-[#757575]">Laveurs</div>
           </div>
-          <div className="w-px bg-[#E0E0E0]" />
           <div className="text-center">
             <div className="text-2xl font-bold text-[#FF9800]">4.8</div>
             <div className="text-xs text-[#757575]">Note</div>
@@ -160,19 +173,32 @@ function LandingScreen({ onLogin }: { onLogin: () => void }) {
         </div>
       </div>
 
-      {/* Bottom Buttons */}
-      <div className="p-6 space-y-3 bg-white border-t border-[#F5F5F5]">
+      {/* Bottom Buttons - Android Material style */}
+      <div className="p-4 space-y-3 bg-[#FAFAFA] border-t border-[#E0E0E0]">
         <button
           onClick={onLogin}
-          className="w-full bg-[#FF9800] text-white py-4 rounded-2xl font-semibold text-lg shadow-lg shadow-[#FF9800]/30 active:scale-[0.98] transition-transform"
+          className="w-full bg-[#FF9800] text-white py-3.5 rounded font-semibold text-base elevation-2 active:bg-[#F57C00] transition-colors"
         >
           Commencer
         </button>
         <button
           onClick={onLogin}
-          className="w-full bg-[#FFF3E0] text-[#FF9800] py-4 rounded-2xl font-semibold text-lg active:scale-[0.98] transition-transform"
+          className="w-full border-2 border-[#FF9800] text-[#FF9800] py-3.5 rounded font-semibold text-base bg-transparent active:bg-[#FFF3E0] transition-colors"
         >
           Se connecter
+        </button>
+      </div>
+
+      {/* Android Navigation Bar */}
+      <div className="h-12 bg-black flex items-center justify-center gap-16">
+        <button className="w-10 h-10 flex items-center justify-center">
+          <div className="w-5 h-5 border-2 border-white rounded-full"></div>
+        </button>
+        <button className="w-10 h-10 flex items-center justify-center">
+          <div className="w-5 h-5 border-2 border-white rounded"></div>
+        </button>
+        <button className="w-10 h-10 flex items-center justify-center">
+          <div className="w-4 h-4 border-2 border-white rotate-45"></div>
         </button>
       </div>
     </div>
