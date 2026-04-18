@@ -55,10 +55,35 @@ export function ClientApp() {
   
   const { stations: googleStations, isLoading: isLoadingStations, searchCarWashes } = useGooglePlaces();
 
-  // Initialize auth state
+  // Initialize auth state and verify session
   useEffect(() => {
-    setLoading(false);
-  }, [setLoading]);
+    const verifySession = async () => {
+      const storedAuth = localStorage.getItem('washgo-auth');
+      if (storedAuth) {
+        try {
+          const parsed = JSON.parse(storedAuth);
+          const userId = parsed?.state?.user?.id;
+          
+          if (userId) {
+            const res = await fetch(`/api/auth/me?userId=${userId}`);
+            const data = await res.json();
+            
+            if (!data.valid) {
+              // Session invalid, clear storage
+              console.log('Session invalid, clearing auth');
+              localStorage.removeItem('washgo-auth');
+              logout();
+            }
+          }
+        } catch (error) {
+          console.error('Session verification error:', error);
+        }
+      }
+      setLoading(false);
+    };
+
+    verifySession();
+  }, []);
 
   // Fetch real services from API
   useEffect(() => {

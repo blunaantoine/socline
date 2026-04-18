@@ -64,6 +64,35 @@ export async function POST(request: NextRequest) {
       latitude, longitude, totalPrice, scheduledAt 
     } = body;
 
+    // Validate required fields
+    if (!clientId) {
+      return NextResponse.json({ error: 'Utilisateur non connecté' }, { status: 401 });
+    }
+    if (!serviceId) {
+      return NextResponse.json({ error: 'Service non sélectionné' }, { status: 400 });
+    }
+    if (!address) {
+      return NextResponse.json({ error: 'Adresse requise' }, { status: 400 });
+    }
+
+    // Verify client exists
+    const client = await db.user.findUnique({
+      where: { id: clientId },
+    });
+
+    if (!client) {
+      return NextResponse.json({ error: 'Utilisateur non trouvé. Veuillez vous reconnecter.' }, { status: 401 });
+    }
+
+    // Verify service exists
+    const service = await db.service.findUnique({
+      where: { id: serviceId },
+    });
+
+    if (!service) {
+      return NextResponse.json({ error: 'Service non trouvé' }, { status: 400 });
+    }
+
     // Generate order number
     const orderNumber = `WG${Date.now().toString().slice(-8)}`;
 
@@ -72,13 +101,13 @@ export async function POST(request: NextRequest) {
         orderNumber,
         clientId,
         serviceId,
-        isHomeService,
+        isHomeService: isHomeService ?? true,
         address,
         latitude,
         longitude,
-        basePrice: totalPrice,
-        totalPrice,
-        commission: totalPrice * 0.15,
+        basePrice: totalPrice ?? service.price,
+        totalPrice: totalPrice ?? service.price,
+        commission: (totalPrice ?? service.price) * 0.15,
         status: 'PENDING',
         scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
       },
@@ -91,7 +120,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, order });
   } catch (error) {
     console.error('Create order error:', error);
-    return NextResponse.json({ error: 'Erreur lors de la création' }, { status: 500 });
+    return NextResponse.json({ error: 'Erreur lors de la création de la commande' }, { status: 500 });
   }
 }
 

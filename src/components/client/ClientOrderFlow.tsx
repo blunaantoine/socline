@@ -88,8 +88,10 @@ export function ClientOrderFlow({ onBack }: ClientOrderFlowProps) {
     
     // Use real user ID or show error
     const clientId = user?.id;
+    console.log('Creating order with clientId:', clientId, 'user:', user);
+    
     if (!clientId) {
-      alert('Erreur: Utilisateur non connecté. Veuillez vous reconnecter.');
+      alert('Session expirée. Veuillez vous reconnecter.');
       return;
     }
 
@@ -112,6 +114,7 @@ export function ClientOrderFlow({ onBack }: ClientOrderFlowProps) {
       });
 
       const data = await res.json();
+      console.log('Order response:', data);
 
       if (data.success && data.order) {
         const order: Order = {
@@ -139,6 +142,12 @@ export function ClientOrderFlow({ onBack }: ClientOrderFlowProps) {
         addOrder(order);
         alert('Commande créée avec succès!');
       } else {
+        // If user not found, force logout
+        if (data.error?.includes('reconnecter')) {
+          alert('Session expirée. Veuillez vous reconnecter.');
+          window.location.reload();
+          return;
+        }
         alert(data.error || 'Erreur lors de la création de la commande');
       }
     } catch (error) {
