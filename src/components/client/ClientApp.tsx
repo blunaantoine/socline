@@ -258,7 +258,7 @@ export function ClientApp() {
             />
           )}
           {activeTab === 'activity' && <OrderHistory />}
-          {activeTab === 'chat' && <ChatList />}
+          {activeTab === 'chat' && <ChatList onBack={() => setActiveTab('home')} />}
           {activeTab === 'profile' && <ProfileContent user={user} onLogout={logout} />}
         </div>
 
