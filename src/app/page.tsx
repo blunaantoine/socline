@@ -7,21 +7,7 @@ import { WasherApp } from '@/components/washer/WasherApp';
 import { AdminPanel } from '@/components/admin/AdminPanel';
 import { AuthModal } from '@/components/washgo/AuthModal';
 import { RoleSelector } from '@/components/washgo/RoleSelector';
-import { Header } from '@/components/washgo/Header';
 import { Toaster } from '@/components/ui/sonner';
-import dynamic from 'next/dynamic';
-
-const GoogleMapPreview = dynamic(
-  () => import('@/components/map/GoogleMap').then(mod => mod.GoogleMap),
-  { 
-    ssr: false,
-    loading: () => (
-      <div className="w-full h-full bg-[#F5F5F5] rounded-2xl animate-pulse flex items-center justify-center">
-        <div className="text-[#9E9E9E]">Chargement...</div>
-      </div>
-    )
-  }
-);
 
 export default function WashGoApp() {
   const { isAuthenticated, user, isLoading, setLoading } = useAuthStore();
@@ -88,12 +74,9 @@ export default function WashGoApp() {
         </>
       ) : (
         <>
-          <Header />
-          <main className="flex-1 overflow-hidden">
-            {currentView === 'client' && <ClientApp />}
-            {currentView === 'washer' && <WasherApp />}
-            {currentView === 'admin' && <AdminPanel />}
-          </main>
+          {currentView === 'client' && <ClientApp />}
+          {currentView === 'washer' && <WasherApp />}
+          {currentView === 'admin' && <AdminPanel />}
           {showRoleSelector && user && user.role === 'ADMIN' && (
             <RoleSelector onSelect={handleRoleSelect} />
           )}
