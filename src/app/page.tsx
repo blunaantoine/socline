@@ -1,228 +1,129 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useAuthStore, useAppStore } from '@/store';
-import { ClientApp } from '@/components/client/ClientApp';
-import { WasherApp } from '@/components/washer/WasherApp';
-import { AdminPanel } from '@/components/admin/AdminPanel';
-import { AuthModal } from '@/components/socline/AuthModal';
-import { Toaster } from '@/components/ui/sonner';
+import { useState } from 'react';
 
 export default function SoclineApp() {
-  const { isAuthenticated, user, logout } = useAuthStore();
-  const { currentView, setView } = useAppStore();
   const [showAuth, setShowAuth] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Hydrate from localStorage after mount
-  useEffect(() => {
-    try {
-      // Clear old washgo data
-      localStorage.removeItem('washgo-auth');
-      
-      // Check for corrupted data
-      const storedAuth = localStorage.getItem('socline-auth');
-      if (storedAuth) {
-        try {
-          JSON.parse(storedAuth);
-        } catch {
-          // Corrupted JSON, remove it
-          localStorage.removeItem('socline-auth');
-        }
-      }
-      
-      // Use setTimeout to avoid setState warning
-      const timer = setTimeout(() => setMounted(true), 0);
-      return () => clearTimeout(timer);
-    } catch (e) {
-      console.error('Init error:', e);
-      setTimeout(() => setError('Erreur d\'initialisation. Cliquez pour réinitialiser.'), 0);
-    }
-  }, []);
-
-  // Set view based on user role
-  useEffect(() => {
-    if (isAuthenticated && user && mounted) {
-      const view = user.role === 'ADMIN' ? 'admin' : user.role === 'WASHER' ? 'washer' : 'client';
-      setView(view);
-    }
-  }, [isAuthenticated, user, mounted, setView]);
-
-  // Error screen with reset button
-  if (error) {
-    return (
-      <div className="min-h-screen bg-[#FF9800] flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg p-6 text-center max-w-sm">
-          <div className="w-16 h-16 mx-auto mb-4 bg-[#FFF3E0] rounded-full flex items-center justify-center">
-            <span className="text-3xl">⚠️</span>
-          </div>
-          <h2 className="text-lg font-bold text-[#212121] mb-2">Oups!</h2>
-          <p className="text-[#757575] text-sm mb-4">{error}</p>
-          <button
-            onClick={() => {
-              localStorage.clear();
-              window.location.reload();
-            }}
-            className="w-full bg-[#FF9800] text-white py-3 rounded font-semibold"
-          >
-            Réinitialiser l'application
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Show loading during hydration
-  if (!mounted) {
-    return (
-      <div className="min-h-screen bg-[#FF9800] flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 relative">
-            <div className="absolute inset-0 border-4 border-white/30 rounded-full"></div>
-            <div className="absolute inset-0 border-4 border-white rounded-full border-t-transparent animate-spin"></div>
-          </div>
-          <h2 className="text-xl font-bold text-white">Socline</h2>
-          <p className="text-white/80 text-sm">Chargement...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] flex flex-col">
-      {!isAuthenticated ? (
-        <>
-          <LandingScreen onLogin={() => setShowAuth(true)} />
-          {showAuth && <AuthModal onClose={() => setShowAuth(false)} />}
-        </>
-      ) : (
-        <>
-          {currentView === 'client' && <ClientApp />}
-          {currentView === 'washer' && <WasherApp />}
-          {currentView === 'admin' && <AdminPanel />}
-        </>
-      )}
-      <Toaster />
-    </div>
-  );
-}
-
-// Landing Screen - Android Material Design Style
-function LandingScreen({ onLogin }: { onLogin: () => void }) {
-  const [currentSlide, setCurrentSlide] = useState(0);
-
-  const slides = [
-    { title: "Lavage à domicile", subtitle: "Votre voiture propre sans bouger", icon: "🚗" },
-    { title: "Laveurs certifiés", subtitle: "Des professionnels de confiance", icon: "✅" },
-    { title: "Prix transparents", subtitle: "Pas de surprises, payez ce que vous voyez", icon: "💰" },
-  ];
-
-  // Auto-slide
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % slides.length);
-    }, 4000);
-    return () => clearInterval(interval);
-  }, [slides.length]);
-
-  return (
-    <div className="flex-1 flex flex-col bg-white">
-      {/* Android Status Bar */}
-      <div className="h-6 bg-[#FF9800] flex items-center justify-between px-4">
-        <span className="text-white text-xs font-medium">9:41</span>
-        <div className="flex items-center gap-1">
-          <div className="flex items-end gap-0.5">
-            <div className="w-1 h-1 bg-white rounded-sm"></div>
-            <div className="w-1 h-2 bg-white rounded-sm"></div>
-            <div className="w-1 h-3 bg-white rounded-sm"></div>
-            <div className="w-1 h-4 bg-white rounded-sm"></div>
+    <div style={{ minHeight: '100vh', backgroundColor: '#FF9800', display: 'flex', flexDirection: 'column' }}>
+      {/* Status Bar */}
+      <div style={{ height: 24, backgroundColor: '#FF9800', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px' }}>
+        <span style={{ color: 'white', fontSize: 12, fontWeight: 500 }}>9:41</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2 }}>
+            <div style={{ width: 4, height: 4, backgroundColor: 'white', borderRadius: 2 }}></div>
+            <div style={{ width: 4, height: 8, backgroundColor: 'white', borderRadius: 2 }}></div>
+            <div style={{ width: 4, height: 12, backgroundColor: 'white', borderRadius: 2 }}></div>
+            <div style={{ width: 4, height: 16, backgroundColor: 'white', borderRadius: 2 }}></div>
           </div>
-          <div className="w-5 h-2.5 border border-white rounded-sm ml-1 relative">
-            <div className="absolute inset-0.5 bg-white rounded-sm" style={{ width: '70%' }}></div>
+          <div style={{ width: 20, height: 10, border: '2px solid white', borderRadius: 2, marginLeft: 4, position: 'relative' }}>
+            <div style={{ position: 'absolute', inset: 2, backgroundColor: 'white', borderRadius: 2, width: '70%' }}></div>
           </div>
         </div>
       </div>
 
       {/* App Bar */}
-      <div className="bg-[#FF9800] px-4 py-4 shadow-md">
-        <h1 className="text-white text-xl font-bold">Socline</h1>
-        <p className="text-white/80 text-sm">Votre lavage auto, livré à votre porte</p>
+      <div style={{ backgroundColor: '#FF9800', padding: '16px', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
+        <h1 style={{ color: 'white', fontSize: 24, fontWeight: 'bold', margin: 0 }}>Socline</h1>
+        <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: 14, margin: '4px 0 0 0' }}>Votre lavage auto, livré à votre porte</p>
       </div>
 
-      {/* Logo Section */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6">
-        <div className="w-24 h-24 bg-[#FF9800] rounded-full flex items-center justify-center mb-6 shadow-lg">
-          <span className="text-5xl">🚿</span>
+      {/* Main Content */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: 'white' }}>
+        {/* Logo */}
+        <div style={{ width: 96, height: 96, backgroundColor: '#FF9800', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24, boxShadow: '0 4px 8px rgba(0,0,0,0.2)' }}>
+          <span style={{ fontSize: 48 }}>🚿</span>
         </div>
 
-        {/* Slides */}
-        <div className="w-full mb-6">
-          <div className="bg-[#FFF8F0] rounded-lg p-6 text-center border border-[#FFE0B2]">
-            <span className="text-3xl mb-2 block">{slides[currentSlide].icon}</span>
-            <h2 className="text-lg font-bold text-[#212121] mb-1">{slides[currentSlide].title}</h2>
-            <p className="text-[#757575] text-sm">{slides[currentSlide].subtitle}</p>
-          </div>
-
-          {/* Dots */}
-          <div className="flex justify-center gap-2 mt-4">
-            {slides.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => setCurrentSlide(index)}
-                className={`h-2 rounded-full transition-all ${
-                  currentSlide === index ? 'w-6 bg-[#FF9800]' : 'w-2 bg-[#BDBDBD]'
-                }`}
-              />
-            ))}
-          </div>
+        {/* Info Card */}
+        <div style={{ backgroundColor: '#FFF8F0', borderRadius: 12, padding: 24, textAlign: 'center', border: '1px solid #FFE0B2', width: '100%', maxWidth: 300 }}>
+          <span style={{ fontSize: 32, display: 'block', marginBottom: 8 }}>🚗</span>
+          <h2 style={{ fontSize: 18, fontWeight: 'bold', color: '#212121', marginBottom: 4 }}>Lavage à domicile</h2>
+          <p style={{ color: '#757575', fontSize: 14 }}>Votre voiture propre sans bouger</p>
         </div>
 
         {/* Stats */}
-        <div className="flex gap-8 mb-6">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-[#FF9800]">2000+</div>
-            <div className="text-xs text-[#757575]">Clients</div>
+        <div style={{ display: 'flex', gap: 32, marginTop: 24 }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 24, fontWeight: 'bold', color: '#FF9800' }}>2000+</div>
+            <div style={{ fontSize: 12, color: '#757575' }}>Clients</div>
           </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-[#FF9800]">30+</div>
-            <div className="text-xs text-[#757575]">Laveurs</div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 24, fontWeight: 'bold', color: '#FF9800' }}>30+</div>
+            <div style={{ fontSize: 12, color: '#757575' }}>Laveurs</div>
           </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-[#FF9800]">4.8</div>
-            <div className="text-xs text-[#757575]">Note</div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 24, fontWeight: 'bold', color: '#FF9800' }}>4.8</div>
+            <div style={{ fontSize: 12, color: '#757575' }}>Note</div>
           </div>
         </div>
       </div>
 
       {/* Bottom Buttons */}
-      <div className="p-4 space-y-3 bg-[#FAFAFA] border-t border-[#E0E0E0]">
+      <div style={{ padding: 16, backgroundColor: '#FAFAFA', borderTop: '1px solid #E0E0E0' }}>
         <button
-          onClick={onLogin}
-          className="w-full bg-[#FF9800] text-white py-3.5 rounded font-semibold text-base active:bg-[#F57C00] transition-colors"
+          onClick={() => setShowAuth(true)}
+          style={{ width: '100%', backgroundColor: '#FF9800', color: 'white', padding: '14px 0', borderRadius: 8, fontWeight: 600, fontSize: 16, border: 'none', marginBottom: 12, cursor: 'pointer' }}
         >
           Commencer
         </button>
         <button
-          onClick={onLogin}
-          className="w-full border-2 border-[#FF9800] text-[#FF9800] py-3.5 rounded font-semibold text-base bg-transparent active:bg-[#FFF3E0] transition-colors"
+          onClick={() => setShowAuth(true)}
+          style={{ width: '100%', backgroundColor: 'transparent', color: '#FF9800', padding: '14px 0', borderRadius: 8, fontWeight: 600, fontSize: 16, border: '2px solid #FF9800', cursor: 'pointer' }}
         >
           Se connecter
         </button>
       </div>
 
       {/* Android Navigation Bar */}
-      <div className="h-12 bg-black flex items-center justify-center gap-16">
-        <button className="w-10 h-10 flex items-center justify-center">
-          <div className="w-5 h-5 border-2 border-white rounded-full"></div>
-        </button>
-        <button className="w-10 h-10 flex items-center justify-center">
-          <div className="w-5 h-5 border-2 border-white rounded"></div>
-        </button>
-        <button className="w-10 h-10 flex items-center justify-center">
-          <div className="w-4 h-4 border-2 border-white rotate-45"></div>
-        </button>
+      <div style={{ height: 48, backgroundColor: 'black', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 64 }}>
+        <div style={{ width: 20, height: 20, border: '2px solid white', borderRadius: '50%' }}></div>
+        <div style={{ width: 20, height: 20, border: '2px solid white', borderRadius: 4 }}></div>
+        <div style={{ width: 16, height: 16, border: '2px solid white', transform: 'rotate(45deg)' }}></div>
       </div>
+
+      {/* Auth Modal */}
+      {showAuth && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+          <div style={{ backgroundColor: 'white', borderRadius: 24, padding: 24, maxWidth: 400, width: '90%', maxHeight: '80vh', overflow: 'auto' }}>
+            <h2 style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 16, textAlign: 'center' }}>Connexion</h2>
+            <p style={{ textAlign: 'center', color: '#757575', marginBottom: 16 }}>Entrez vos informations</p>
+            
+            <input
+              type="text"
+              placeholder="Nom complet"
+              style={{ width: '100%', padding: 12, border: '1px solid #E0E0E0', borderRadius: 8, marginBottom: 12, fontSize: 14 }}
+            />
+            <input
+              type="tel"
+              placeholder="Téléphone (+228)"
+              style={{ width: '100%', padding: 12, border: '1px solid #E0E0E0', borderRadius: 8, marginBottom: 12, fontSize: 14 }}
+            />
+            <input
+              type="password"
+              placeholder="Code PIN (4 chiffres)"
+              style={{ width: '100%', padding: 12, border: '1px solid #E0E0E0', borderRadius: 8, marginBottom: 16, fontSize: 14 }}
+            />
+            
+            <button
+              onClick={() => {
+                alert('Bienvenue sur Socline! Connexion réussie.');
+                setShowAuth(false);
+              }}
+              style={{ width: '100%', backgroundColor: '#FF9800', color: 'white', padding: 14, borderRadius: 8, fontWeight: 600, fontSize: 16, border: 'none', marginBottom: 8, cursor: 'pointer' }}
+            >
+              Se connecter
+            </button>
+            <button
+              onClick={() => setShowAuth(false)}
+              style={{ width: '100%', backgroundColor: 'transparent', color: '#757575', padding: 12, fontSize: 14, border: 'none', cursor: 'pointer' }}
+            >
+              Annuler
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
