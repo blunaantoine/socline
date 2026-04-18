@@ -171,25 +171,27 @@ export function WasherApp() {
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-[#FFF8F0] overflow-hidden">
-      {/* iOS Status Bar */}
-      <div className="h-11 bg-transparent flex items-end justify-between px-6 pb-1 flex-shrink-0 absolute top-0 left-0 right-0 z-50">
-        <span className="text-sm font-semibold text-[#212121]">9:41</span>
+    <div className="flex-1 flex flex-col bg-[#FAFAFA] overflow-hidden">
+      {/* Android Status Bar */}
+      <div className="h-6 bg-[#4CAF50] flex items-center justify-between px-4 flex-shrink-0 sticky top-0 z-50">
+        <span className="text-white text-xs font-medium">9:41</span>
         <div className="flex items-center gap-1">
-          <div className="w-4 h-4 flex items-end justify-between">
-            <div className="w-0.5 h-1.5 bg-[#212121] rounded-sm"></div>
-            <div className="w-0.5 h-2.5 bg-[#212121] rounded-sm"></div>
-            <div className="w-0.5 h-3.5 bg-[#212121] rounded-sm"></div>
-            <div className="w-0.5 h-4 bg-[#212121] rounded-sm"></div>
+          {/* Signal Network Bars */}
+          <div className="flex items-end gap-0.5">
+            <div className="w-1 h-1 bg-white rounded-sm"></div>
+            <div className="w-1 h-2 bg-white rounded-sm"></div>
+            <div className="w-1 h-3 bg-white rounded-sm"></div>
+            <div className="w-1 h-4 bg-white rounded-sm"></div>
           </div>
-          <div className="w-6 h-3 border border-[#212121] rounded-sm relative">
-            <div className="absolute inset-0.5 bg-[#212121] rounded-sm" style={{ width: '80%' }}></div>
+          {/* Battery */}
+          <div className="w-5 h-2.5 border border-white rounded-sm ml-1 relative">
+            <div className="absolute inset-0.5 bg-white rounded-sm" style={{ width: '70%' }}></div>
           </div>
         </div>
       </div>
 
       {/* Header with Availability */}
-      <div className="bg-white border-b px-4 py-3 pt-12 flex-shrink-0">
+      <div className="bg-white border-b px-4 py-3 flex-shrink-0 sticky top-6 z-40">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-gradient-to-br from-[#4CAF50] to-[#2E7D32] rounded-full flex items-center justify-center text-white text-xl font-bold">
@@ -226,7 +228,7 @@ export function WasherApp() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto pb-20">
+      <div className="flex-1 overflow-y-auto pb-28">
         {activeTab === 'dashboard' && (
           <WasherDashboard 
             stats={washerStats} 
@@ -267,8 +269,8 @@ export function WasherApp() {
         )}
       </div>
 
-      {/* Bottom Navigation */}
-      <nav className="absolute bottom-0 left-0 right-0 bg-white border-t border-[#F5F5F5] flex justify-around items-center py-2 px-2 z-50">
+      {/* Android Bottom Navigation - FIXED at bottom */}
+      <nav className="fixed bottom-10 left-0 right-0 bg-white border-t border-[#E0E0E0] flex justify-around items-center h-14 z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
         {[
           { id: 'dashboard', icon: Home, label: 'Accueil' },
           { id: 'active', icon: Car, label: 'Active' },
@@ -281,25 +283,33 @@ export function WasherApp() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl transition-all ${
-                isActive ? 'text-[#4CAF50]' : 'text-[#9E9E9E]'
+              className={`flex flex-col items-center justify-center py-1.5 px-4 transition-all ${
+                isActive ? 'text-[#4CAF50]' : 'text-[#757575]'
               }`}
             >
-              <div className={`w-6 h-6 flex items-center justify-center ${isActive ? 'bg-[#E8F5E9] rounded-lg' : ''}`}>
-                <tab.icon className="w-5 h-5" />
-              </div>
-              <span className="text-[10px] font-medium">{tab.label}</span>
+              <tab.icon className={`w-6 h-6 ${isActive ? 'fill-current' : ''}`} />
+              <span className="text-[10px] font-medium mt-0.5">{tab.label}</span>
             </button>
           );
         })}
       </nav>
 
-      {/* Home Indicator */}
-      <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-32 h-1 bg-black rounded-full"></div>
+      {/* Android Navigation Bar - FIXED at very bottom */}
+      <div className="fixed bottom-0 left-0 right-0 h-10 bg-black flex items-center justify-center gap-16 z-50">
+        <button className="w-8 h-8 flex items-center justify-center">
+          <div className="w-5 h-5 border-2 border-white rounded-full"></div>
+        </button>
+        <button className="w-8 h-8 flex items-center justify-center">
+          <div className="w-5 h-5 border-2 border-white rounded"></div>
+        </button>
+        <button className="w-8 h-8 flex items-center justify-center">
+          <div className="w-4 h-4 border-2 border-white rotate-45"></div>
+        </button>
+      </div>
 
       {/* Chat Overlay */}
       {showChat && conversation && (
-        <div className="absolute inset-0 z-[60] bg-[#FFF8F0]">
+        <div className="absolute inset-0 z-[60] bg-[#FAFAFA]">
           <ChatView 
             conversation={conversation} 
             onBack={() => setShowChat(false)} 
