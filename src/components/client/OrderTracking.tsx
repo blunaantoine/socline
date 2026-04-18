@@ -123,15 +123,52 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
         )}
       </div>
 
-      {/* Progress */}
-      <div className="bg-white p-4 border-b">
-        <Progress value={config.progress} className="h-2" />
-        <div className="flex justify-between mt-2 text-xs text-gray-500">
-          <span>Commande</span>
-          <span>Acceptée</span>
-          <span>En route</span>
-          <span>Arrivé</span>
-          <span>En cours</span>
+      {/* Progress Steps - Android Stepper Style */}
+      <div className="bg-white px-4 py-4 border-b border-[#E0E0E0]">
+        <div className="flex items-center justify-between">
+          {[
+            { status: 'PENDING', label: 'Commande', icon: Clock },
+            { status: 'ACCEPTED', label: 'Acceptée', icon: CheckCircle },
+            { status: 'EN_ROUTE', label: 'En route', icon: Navigation },
+            { status: 'ARRIVED', label: 'Arrivé', icon: MapPin },
+            { status: 'IN_PROGRESS', label: 'En cours', icon: CheckCircle },
+          ].map((item, index) => {
+            const statusOrder = ['PENDING', 'ACCEPTED', 'EN_ROUTE', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED'];
+            const currentIndex = statusOrder.indexOf(order.status);
+            const itemIndex = statusOrder.indexOf(item.status);
+            const isActive = order.status === item.status || 
+              (order.status === 'COMPLETED' && item.status === 'IN_PROGRESS');
+            const isPast = itemIndex < currentIndex || order.status === 'COMPLETED';
+            const Icon = item.icon;
+            
+            return (
+              <div key={item.status} className="flex items-center flex-1">
+                <div className="flex flex-col items-center">
+                  <div
+                    className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${
+                      isActive
+                        ? 'bg-[#FF9800] text-white shadow-lg shadow-[#FF9800]/30'
+                        : isPast
+                        ? 'bg-[#4CAF50] text-white'
+                        : 'bg-[#E0E0E0] text-[#9E9E9E]'
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                  </div>
+                  <span className={`text-[9px] mt-0.5 font-medium whitespace-nowrap ${
+                    isActive ? 'text-[#FF9800]' : isPast ? 'text-[#4CAF50]' : 'text-[#9E9E9E]'
+                  }`}>
+                    {item.label}
+                  </span>
+                </div>
+                {index < 4 && (
+                  <div className={`flex-1 h-0.5 mx-0.5 transition-all ${
+                    isPast ? 'bg-[#4CAF50]' : 'bg-[#E0E0E0]'
+                  }`} />
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 

@@ -524,29 +524,44 @@ function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat }: {
         <span>Retour</span>
       </button>
 
-      {/* Progress Steps */}
-      <Card className="border-0 shadow-sm">
-        <CardContent className="p-4">
-          <div className="flex justify-between">
-            {steps.map((step, index) => (
-              <div key={step.status} className="flex flex-col items-center">
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    index <= currentStepIndex
-                      ? 'bg-[#4CAF50] text-white'
-                      : 'bg-[#F5F5F5] text-[#9E9E9E]'
-                  }`}
-                >
-                  <step.icon className="w-4 h-4" />
+      {/* Progress Steps - Android Stepper Style */}
+      <div className="bg-white px-4 py-4 border-b border-[#E0E0E0]">
+        <div className="flex items-center justify-between">
+          {steps.map((step, index) => {
+            const isActive = index === currentStepIndex;
+            const isPast = index < currentStepIndex;
+            const Icon = step.icon;
+            
+            return (
+              <div key={step.status} className="flex items-center flex-1">
+                <div className="flex flex-col items-center">
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                      isActive
+                        ? 'bg-[#4CAF50] text-white shadow-lg shadow-[#4CAF50]/30'
+                        : isPast
+                        ? 'bg-[#4CAF50] text-white'
+                        : 'bg-[#E0E0E0] text-[#9E9E9E]'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                  </div>
+                  <span className={`text-[9px] mt-0.5 font-medium whitespace-nowrap ${
+                    isActive ? 'text-[#4CAF50] font-bold' : isPast ? 'text-[#4CAF50]' : 'text-[#9E9E9E]'
+                  }`}>
+                    {step.label}
+                  </span>
                 </div>
-                <span className={`text-[10px] mt-1 ${index <= currentStepIndex ? 'text-[#4CAF50]' : 'text-[#9E9E9E]'}`}>
-                  {step.label}
-                </span>
+                {index < steps.length - 1 && (
+                  <div className={`flex-1 h-0.5 mx-1 transition-all ${
+                    isPast ? 'bg-[#4CAF50]' : 'bg-[#E0E0E0]'
+                  }`} />
+                )}
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+            );
+          })}
+        </div>
+      </div>
 
       {/* Client Info */}
       <Card className="border-0 shadow-sm">

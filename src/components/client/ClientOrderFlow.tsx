@@ -322,15 +322,53 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
         </div>
       </div>
 
-      {/* Progress Bar */}
-      <div className="bg-white px-4 pb-4">
-        <div className="h-1 bg-gray-200 rounded-full">
-          <div 
-            className="h-full bg-gradient-to-r from-[#FF9800] to-[#F57C00] rounded-full transition-all duration-300"
-            style={{ 
-              width: step === 'service' ? '25%' : step === 'location' ? '50%' : step === 'schedule' ? '75%' : '100%' 
-            }}
-          />
+      {/* Progress Steps - Android Stepper Style */}
+      <div className="bg-white px-4 py-4 border-b border-[#E0E0E0]">
+        <div className="flex items-center justify-between">
+          {[
+            { id: 'service', label: 'Service', step: 1 },
+            { id: 'location', label: 'Adresse', step: 2 },
+            { id: 'schedule', label: 'Planifier', step: 3 },
+            { id: 'payment', label: 'Paiement', step: 4 },
+          ].map((item, index) => {
+            const isActive = step === item.id;
+            const isPast = 
+              (step === 'location' && index < 1) ||
+              (step === 'schedule' && index < 2) ||
+              (step === 'payment' && index < 3);
+            
+            return (
+              <div key={item.id} className="flex items-center flex-1">
+                <div className="flex flex-col items-center">
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${
+                      isActive
+                        ? 'bg-[#FF9800] text-white shadow-lg shadow-[#FF9800]/30'
+                        : isPast
+                        ? 'bg-[#4CAF50] text-white'
+                        : 'bg-[#E0E0E0] text-[#9E9E9E]'
+                    }`}
+                  >
+                    {isPast && !isActive ? (
+                      <CheckCircle className="w-4 h-4" />
+                    ) : (
+                      item.step
+                    )}
+                  </div>
+                  <span className={`text-[10px] mt-1 font-medium ${
+                    isActive ? 'text-[#FF9800]' : isPast ? 'text-[#4CAF50]' : 'text-[#9E9E9E]'
+                  }`}>
+                    {item.label}
+                  </span>
+                </div>
+                {index < 3 && (
+                  <div className={`flex-1 h-0.5 mx-1 transition-all ${
+                    isPast ? 'bg-[#4CAF50]' : 'bg-[#E0E0E0]'
+                  }`} />
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
