@@ -849,24 +849,91 @@ function AdminWashers({ washers, isLoading, onRefresh, onVerify }: {
 function AdminServices() {
   const [services, setServices] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [editingService, setEditingService] = useState<any>(null);
+  const [editPrice, setEditPrice] = useState('');
+  const [editName, setEditName] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editDuration, setEditDuration] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const fetchServices = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/services');
+      const data = await res.json();
+      if (data.success) {
+        setServices(data.services);
+      }
+    } catch (error) {
+      console.error('Fetch services error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const fetchServices = async () => {
-      setIsLoading(true);
-      try {
-        const res = await fetch('/api/services');
-        const data = await res.json();
-        if (data.success) {
-          setServices(data.services);
-        }
-      } catch (error) {
-        console.error('Fetch services error:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
     fetchServices();
-  }, []);
+  }, [fetchServices]);
+
+  const handleEditService = (service: any) => {
+    setEditingService(service);
+    setEditName(service.name);
+    setEditDescription(service.description || '');
+    setEditPrice(service.price.toString());
+    setEditDuration(service.duration.toString());
+  };
+
+  const handleSaveService = async () => {
+    if (!editingService) return;
+    
+    setIsSaving(true);
+    try {
+      const res = await fetch(`/api/services/${editingService.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editName,
+          description: editDescription,
+          price: parseInt(editPrice),
+          duration: parseInt(editDuration),
+        }),
+      });
+      
+      const data = await res.json();
+      
+      if (data.success) {
+        toast.success('Service mis à jour avec succès');
+        setEditingService(null);
+        fetchServices();
+      } else {
+        toast.error(data.error || 'Erreur lors de la mise à jour');
+      }
+    } catch (error) {
+      console.error('Update service error:', error);
+      toast.error('Erreur lors de la mise à jour');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleToggleActive = async (service: any) => {
+    try {
+      const res = await fetch(`/api/services/${service.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: !service.isActive }),
+      });
+      
+      const data = await res.json();
+      
+      if (data.success) {
+        toast.success(service.isActive ? 'Service désactivé' : 'Service activé');
+        fetchServices();
+      }
+    } catch (error) {
+      toast.error('Erreur lors de la modification');
+    }
+  };
 
   return (
     <div className="p-4 space-y-4">
@@ -888,16 +955,30 @@ function AdminServices() {
             <Card key={service.id} className="border-0 shadow-sm">
               <CardContent className="p-4">
                 <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-medium text-[#212121]">{service.name}</h3>
-                    <p className="text-xs text-[#757575]">{service.description}</p>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-medium text-[#212121]">{service.name}</h3>
+                      <Badge variant="outline" className="text-xs">{service.category}</Badge>
+                    </div>
+                    <p className="text-xs text-[#757575] mt-1">{service.description}</p>
                     <p className="text-xs text-[#757575] mt-1">{service.duration} min</p>
                   </div>
-                  <div className="text-right">
-                    <p className="font-bold text-[#FF9800]">{service.price.toLocaleString()} F</p>
-                    <Badge className={service.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
-                      {service.isActive ? 'Actif' : 'Inactif'}
-                    </Badge>
+                  <div className="text-right flex flex-col items-end gap-2">
+                    <p className="font-bold text-[#FF9800] text-lg">{service.price.toLocaleString()} F</p>
+                    <div className="flex items-center gap-2">
+                      <Badge className={service.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
+                        {service.isActive ? 'Actif' : 'Inactif'}
+                      </Badge>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        className="h-8 px-2"
+                        onClick={() => handleEditService(service)}
+                      >
+                        <Edit className="w-3 h-3 mr-1" />
+                        Modifier
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -905,6 +986,85 @@ function AdminServices() {
           ))}
         </div>
       )}
+
+      {/* Edit Service Dialog */}
+      <Dialog open={!!editingService} onOpenChange={() => setEditingService(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Modifier le service</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Nom du service</Label>
+              <Input
+                id="name"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="Nom du service"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Input
+                id="description"
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                placeholder="Description"
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="price">Prix (FCFA)</Label>
+                <Input
+                  id="price"
+                  type="number"
+                  value={editPrice}
+                  onChange={(e) => setEditPrice(e.target.value)}
+                  placeholder="Prix"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="duration">Durée (min)</Label>
+                <Input
+                  id="duration"
+                  type="number"
+                  value={editDuration}
+                  onChange={(e) => setEditDuration(e.target.value)}
+                  placeholder="Durée"
+                />
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setEditingService(null)}
+              disabled={isSaving}
+            >
+              Annuler
+            </Button>
+            <Button 
+              className="bg-[#FF9800] hover:bg-[#F57C00]"
+              onClick={handleSaveService}
+              disabled={isSaving || !editPrice || !editName}
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Enregistrement...
+                </>
+              ) : (
+                'Enregistrer'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
