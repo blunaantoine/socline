@@ -53,6 +53,7 @@ export function ClientApp() {
   const [activeFilter, setActiveFilter] = useState('all');
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [showTracking, setShowTracking] = useState(true);
+  const [activePromotion, setActivePromotion] = useState<any>(null);
   
   const { stations: googleStations, isLoading: isLoadingStations, searchCarWashes } = useGooglePlaces();
 
@@ -131,6 +132,25 @@ export function ClientApp() {
       setStations(formattedStations);
     }
   }, [googleStations, setStations]);
+
+  // Fetch active promotions
+  useEffect(() => {
+    const fetchPromotions = async () => {
+      try {
+        const res = await fetch('/api/promotions?active=true');
+        const data = await res.json();
+        
+        if (data.success && data.promotions.length > 0) {
+          // Get the first active promotion (most recent)
+          setActivePromotion(data.promotions[0]);
+        }
+      } catch (error) {
+        console.error('Error fetching promotions:', error);
+      }
+    };
+    
+    fetchPromotions();
+  }, []);
 
   // Get user location
   const getUserLocation = useCallback(() => {
@@ -249,6 +269,7 @@ export function ClientApp() {
               setSearchQuery={setSearchQuery}
               activeFilter={activeFilter}
               setActiveFilter={setActiveFilter}
+              activePromotion={activePromotion}
             />
           )}
           {activeTab === 'booking' && (
@@ -303,12 +324,13 @@ export function ClientApp() {
 // Home Content - Android Material Design Style
 function HomeContent({
   services, nearbyWashers, googleStations, isLoadingStations, userLocation,
-  onRefresh, onStartOrder, searchQuery, setSearchQuery, activeFilter, setActiveFilter,
+  onRefresh, onStartOrder, searchQuery, setSearchQuery, activeFilter, setActiveFilter, activePromotion,
 }: {
   services: any[]; nearbyWashers: any[]; googleStations: GooglePlaceStation[];
   isLoadingStations: boolean; userLocation: any; onRefresh: () => void;
   onStartOrder: () => void; searchQuery: string; setSearchQuery: (q: string) => void;
   activeFilter: string; setActiveFilter: (f: string) => void;
+  activePromotion: any;
 }) {
   return (
     <div className="p-4 space-y-4">
@@ -345,17 +367,31 @@ function HomeContent({
         ))}
       </div>
 
-      {/* Hero Banner - Android Card style */}
-      <div className="bg-[#FF9800] rounded-lg p-4 shadow-md">
-        <p className="text-white/90 text-xs font-medium mb-1">Offre spéciale</p>
-        <h2 className="text-white text-lg font-bold mb-2">-20% sur votre 1er lavage</h2>
-        <button
-          onClick={onStartOrder}
-          className="bg-white text-[#FF9800] px-4 py-2 rounded text-sm font-semibold"
-        >
-          Réserver
-        </button>
-      </div>
+      {/* Hero Banner - Android Card style with dynamic promotion */}
+      {activePromotion && (
+        <div className="bg-gradient-to-r from-[#FF9800] to-[#F57C00] rounded-lg p-4 shadow-md">
+          <p className="text-white/90 text-xs font-medium mb-1">Offre spéciale</p>
+          <h2 className="text-white text-lg font-bold mb-2">
+            {activePromotion.discountType === 'PERCENTAGE' 
+              ? `-${activePromotion.discountValue}% ${activePromotion.name}`
+              : `-${activePromotion.discountValue.toLocaleString()}F ${activePromotion.name}`}
+          </h2>
+          {activePromotion.description && (
+            <p className="text-white/80 text-sm mb-2">{activePromotion.description}</p>
+          )}
+          {activePromotion.code && (
+            <div className="bg-white/20 rounded px-2 py-1 inline-block mb-2">
+              <span className="text-white font-mono text-sm">Code: {activePromotion.code}</span>
+            </div>
+          )}
+          <button
+            onClick={onStartOrder}
+            className="bg-white text-[#FF9800] px-4 py-2 rounded text-sm font-semibold"
+          >
+            Réserver
+          </button>
+        </div>
+      )}
 
       {/* Services - Android style */}
       <section>

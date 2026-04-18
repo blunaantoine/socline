@@ -36,7 +36,7 @@ import {
   TrendingUp, Clock, Star, Settings, Bell, Plus,
   CheckCircle, XCircle, AlertCircle, Search,
   ChevronDown, Download, Eye, Edit, Trash2, Tag,
-  RefreshCw, Loader2, ArrowLeft, LogOut
+  RefreshCw, Loader2, ArrowLeft, LogOut, Percent
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -89,6 +89,24 @@ interface Stats {
   completedOrders: number;
 }
 
+interface Promotion {
+  id: string;
+  name: string;
+  description: string | null;
+  type: string;
+  discountType: string;
+  discountValue: number;
+  code: string | null;
+  startDate: string;
+  endDate: string;
+  maxUses: number | null;
+  currentUses: number;
+  maxUsesPerUser: number;
+  minOrderAmount: number | null;
+  isActive: boolean;
+  createdAt: string;
+}
+
 export function AdminPanel() {
   const { user, logout } = useAuthStore();
   const { setView } = useAppStore();
@@ -101,6 +119,7 @@ export function AdminPanel() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [washers, setWashers] = useState<Washer[]>([]);
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -181,6 +200,23 @@ export function AdminPanel() {
     }
   }, []);
 
+  // Fetch promotions
+  const fetchPromotions = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/promotions');
+      const data = await res.json();
+      
+      if (data.success) {
+        setPromotions(data.promotions);
+      }
+    } catch (error) {
+      console.error('Fetch promotions error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   // Load data based on active tab
   useEffect(() => {
     if (activeTab === 'dashboard') {
@@ -191,8 +227,10 @@ export function AdminPanel() {
       fetchUsers();
     } else if (activeTab === 'washers') {
       fetchWashers();
+    } else if (activeTab === 'promotions') {
+      fetchPromotions();
     }
-  }, [activeTab, fetchStats, fetchOrders, fetchUsers, fetchWashers]);
+  }, [activeTab, fetchStats, fetchOrders, fetchUsers, fetchWashers, fetchPromotions]);
 
   // Handle washer verification
   const handleVerifyWasher = async (washerId: string, action: 'verify' | 'reject') => {
@@ -316,6 +354,13 @@ export function AdminPanel() {
           />
         )}
         {activeTab === 'services' && <AdminServices />}
+        {activeTab === 'promotions' && (
+          <AdminPromotions 
+            promotions={promotions}
+            isLoading={isLoading}
+            onRefresh={fetchPromotions}
+          />
+        )}
         {activeTab === 'finances' && <AdminFinances stats={stats} />}
         {activeTab === 'settings' && <AdminSettings />}
       </div>
@@ -325,8 +370,8 @@ export function AdminPanel() {
         {[
           { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
           { id: 'orders', icon: Clock, label: 'Commandes' },
+          { id: 'promotions', icon: Tag, label: 'Promos' },
           { id: 'users', icon: Users, label: 'Clients' },
-          { id: 'washers', icon: Car, label: 'Laveurs' },
           { id: 'settings', icon: Settings, label: 'Plus' },
         ].map((tab) => {
           const isActive = activeTab === tab.id;
@@ -933,6 +978,373 @@ function AdminSettings() {
         <LogOut className="w-4 h-4 mr-2" />
         Déconnexion
       </Button>
+    </div>
+  );
+}
+
+// Admin Promotions
+function AdminPromotions({ promotions, isLoading, onRefresh }: { 
+  promotions: Promotion[];
+  isLoading: boolean;
+  onRefresh: () => void;
+}) {
+  const [showForm, setShowForm] = useState(false);
+  const [editingPromo, setEditingPromo] = useState<Promotion | null>(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    discountType: 'PERCENTAGE',
+    discountValue: '',
+    code: '',
+    startDate: '',
+    endDate: '',
+    maxUses: '',
+    maxUsesPerUser: '1',
+    minOrderAmount: '',
+    isActive: true,
+  });
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      description: '',
+      discountType: 'PERCENTAGE',
+      discountValue: '',
+      code: '',
+      startDate: '',
+      endDate: '',
+      maxUses: '',
+      maxUsesPerUser: '1',
+      minOrderAmount: '',
+      isActive: true,
+    });
+    setEditingPromo(null);
+    setShowForm(false);
+  };
+
+  const handleSubmit = async () => {
+    try {
+      const method = editingPromo ? 'PUT' : 'POST';
+      const body = editingPromo 
+        ? { id: editingPromo.id, ...formData }
+        : formData;
+
+      const res = await fetch('/api/promotions', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      const data = await res.json();
+      
+      if (data.success) {
+        toast.success(editingPromo ? 'Promotion mise à jour' : 'Promotion créée');
+        resetForm();
+        onRefresh();
+      } else {
+        toast.error(data.error || 'Erreur');
+      }
+    } catch (error) {
+      toast.error('Erreur lors de la sauvegarde');
+    }
+  };
+
+  const handleEdit = (promo: Promotion) => {
+    setEditingPromo(promo);
+    setFormData({
+      name: promo.name,
+      description: promo.description || '',
+      discountType: promo.discountType,
+      discountValue: promo.discountValue.toString(),
+      code: promo.code || '',
+      startDate: new Date(promo.startDate).toISOString().split('T')[0],
+      endDate: new Date(promo.endDate).toISOString().split('T')[0],
+      maxUses: promo.maxUses?.toString() || '',
+      maxUsesPerUser: promo.maxUsesPerUser.toString(),
+      minOrderAmount: promo.minOrderAmount?.toString() || '',
+      isActive: promo.isActive,
+    });
+    setShowForm(true);
+  };
+
+  const handleToggleActive = async (promo: Promotion) => {
+    try {
+      const res = await fetch('/api/promotions', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: promo.id,
+          isActive: !promo.isActive,
+        }),
+      });
+
+      const data = await res.json();
+      
+      if (data.success) {
+        toast.success(promo.isActive ? 'Promotion désactivée' : 'Promotion activée');
+        onRefresh();
+      }
+    } catch (error) {
+      toast.error('Erreur');
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Supprimer cette promotion ?')) return;
+    
+    try {
+      const res = await fetch(`/api/promotions?id=${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      
+      if (data.success) {
+        toast.success('Promotion supprimée');
+        onRefresh();
+      }
+    } catch (error) {
+      toast.error('Erreur lors de la suppression');
+    }
+  };
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  };
+
+  const isPromoActive = (promo: Promotion) => {
+    const now = new Date();
+    const start = new Date(promo.startDate);
+    const end = new Date(promo.endDate);
+    return promo.isActive && now >= start && now <= end;
+  };
+
+  return (
+    <div className="p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="font-semibold text-lg text-[#212121]">Promotions</h2>
+        <div className="flex items-center gap-2">
+          <button onClick={onRefresh} disabled={isLoading} className="text-[#FF9800]">
+            <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+          </button>
+          <Button 
+            size="sm" 
+            className="bg-[#FF9800] hover:bg-[#F57C00]"
+            onClick={() => setShowForm(true)}
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            Nouvelle
+          </Button>
+        </div>
+      </div>
+
+      {/* Form */}
+      {showForm && (
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4 space-y-3">
+            <h3 className="font-semibold text-[#212121]">
+              {editingPromo ? 'Modifier la promotion' : 'Nouvelle promotion'}
+            </h3>
+            
+            <div>
+              <Label className="text-xs text-[#757575]">Nom *</Label>
+              <Input
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="Offre spéciale été"
+                className="mt-1"
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs text-[#757575]">Description</Label>
+              <Input
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Description de l'offre"
+                className="mt-1"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs text-[#757575]">Type de réduction</Label>
+                <Select 
+                  value={formData.discountType} 
+                  onValueChange={(v) => setFormData({ ...formData, discountType: v })}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PERCENTAGE">Pourcentage (%)</SelectItem>
+                    <SelectItem value="FIXED">Montant fixe (F)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs text-[#757575]">Valeur *</Label>
+                <Input
+                  type="number"
+                  value={formData.discountValue}
+                  onChange={(e) => setFormData({ ...formData, discountValue: e.target.value })}
+                  placeholder={formData.discountType === 'PERCENTAGE' ? '20' : '5000'}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs text-[#757575]">Code promo (optionnel)</Label>
+              <Input
+                value={formData.code}
+                onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+                placeholder="WASHGO20"
+                className="mt-1 uppercase"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs text-[#757575]">Date début *</Label>
+                <Input
+                  type="date"
+                  value={formData.startDate}
+                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-[#757575]">Date fin *</Label>
+                <Input
+                  type="date"
+                  value={formData.endDate}
+                  onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={formData.isActive}
+                onCheckedChange={(v) => setFormData({ ...formData, isActive: v })}
+              />
+              <Label className="text-xs text-[#757575]">Active</Label>
+            </div>
+
+            <div className="flex gap-2">
+              <Button 
+                className="flex-1 bg-[#FF9800] hover:bg-[#F57C00]"
+                onClick={handleSubmit}
+              >
+                {editingPromo ? 'Mettre à jour' : 'Créer'}
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={resetForm}
+              >
+                Annuler
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Promotions List */}
+      {isLoading ? (
+        <div className="flex justify-center py-8">
+          <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+        </div>
+      ) : promotions.length > 0 ? (
+        <div className="space-y-3">
+          {promotions.map((promo) => (
+            <Card key={promo.id} className={`border-0 shadow-sm ${!promo.isActive ? 'opacity-60' : ''}`}>
+              <CardContent className="p-4">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <Tag className="w-4 h-4 text-[#FF9800]" />
+                      <h3 className="font-medium text-[#212121]">{promo.name}</h3>
+                    </div>
+                    {promo.description && (
+                      <p className="text-xs text-[#757575] mt-1">{promo.description}</p>
+                    )}
+                    <div className="flex items-center gap-3 mt-2">
+                      <span className="text-lg font-bold text-[#FF9800]">
+                        {promo.discountType === 'PERCENTAGE' 
+                          ? `-${promo.discountValue}%` 
+                          : `-${promo.discountValue.toLocaleString()}F`}
+                      </span>
+                      {promo.code && (
+                        <Badge className="bg-[#FFF3E0] text-[#FF9800]">
+                          {promo.code}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-[#757575] mt-2">
+                      {formatDate(promo.startDate)} - {formatDate(promo.endDate)}
+                    </p>
+                    <p className="text-xs text-[#9E9E9E] mt-1">
+                      Utilisé {promo.currentUses} fois
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end gap-2">
+                    <Badge className={
+                      isPromoActive(promo) 
+                        ? 'bg-green-100 text-green-800' 
+                        : promo.isActive 
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-gray-100 text-gray-800'
+                    }>
+                      {isPromoActive(promo) ? 'Active' : promo.isActive ? 'À venir' : 'Inactive'}
+                    </Badge>
+                    <div className="flex gap-1">
+                      <Button 
+                        size="sm" 
+                        variant="ghost"
+                        onClick={() => handleEdit(promo)}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="ghost"
+                        onClick={() => handleToggleActive(promo)}
+                      >
+                        {promo.isActive ? (
+                          <XCircle className="w-4 h-4 text-red-500" />
+                        ) : (
+                          <CheckCircle className="w-4 h-4 text-green-500" />
+                        )}
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="ghost"
+                        onClick={() => handleDelete(promo.id)}
+                      >
+                        <Trash2 className="w-4 h-4 text-red-500" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl p-8 text-center">
+          <Tag className="w-12 h-12 text-[#9E9E9E] mx-auto mb-3" />
+          <p className="text-[#757575]">Aucune promotion</p>
+          <Button 
+            className="mt-4 bg-[#FF9800] hover:bg-[#F57C00]"
+            onClick={() => setShowForm(true)}
+          >
+            Créer une promotion
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

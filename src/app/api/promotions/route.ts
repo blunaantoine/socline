@@ -1,98 +1,83 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
-// GET /api/promotions - Get all promotions
+// GET - Fetch all promotions or active promotions
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const code = searchParams.get('code');
-    const active = searchParams.get('active');
-
+    const activeOnly = searchParams.get('active') === 'true';
+    
     const where: any = {};
     
-    if (code) {
-      where.code = code;
-    }
-    if (active === 'true') {
+    if (activeOnly) {
+      const now = new Date();
       where.isActive = true;
-      where.startDate = { lte: new Date() };
-      where.endDate = { gte: new Date() };
+      where.startDate = { lte: now };
+      where.endDate = { gte: now };
     }
-
+    
     const promotions = await db.promotion.findMany({
       where,
       orderBy: { createdAt: 'desc' },
     });
-
+    
     return NextResponse.json({
       success: true,
       promotions,
     });
   } catch (error) {
-    console.error('Get promotions error:', error);
+    console.error('Fetch promotions error:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to get promotions' },
+      { success: false, error: 'Erreur lors de la récupération des promotions' },
       { status: 500 }
     );
   }
 }
 
-// POST /api/promotions - Create new promotion (admin only)
+// POST - Create a new promotion
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const {
       name,
       description,
-      type,
-      discountType,
+      type = 'GLOBAL',
+      discountType = 'PERCENTAGE',
       discountValue,
       code,
       startDate,
       endDate,
       maxUses,
-      maxUsesPerUser,
+      maxUsesPerUser = 1,
       minOrderAmount,
-      targetUserIds,
+      isActive = true,
     } = body;
-
-    if (!name || !discountType || !discountValue || !startDate || !endDate) {
+    
+    // Validate required fields
+    if (!name || !discountValue || !startDate || !endDate) {
       return NextResponse.json(
-        { success: false, error: 'Missing required fields' },
+        { success: false, error: 'Veuillez remplir tous les champs obligatoires' },
         { status: 400 }
       );
     }
-
-    // Check if code already exists
-    if (code) {
-      const existing = await db.promotion.findUnique({
-        where: { code },
-      });
-      if (existing) {
-        return NextResponse.json(
-          { success: false, error: 'Promo code already exists' },
-          { status: 400 }
-        );
-      }
-    }
-
+    
     const promotion = await db.promotion.create({
       data: {
         name,
         description,
-        type: type || 'PROMO_CODE',
+        type,
         discountType,
-        discountValue,
-        code,
+        discountValue: parseFloat(discountValue),
+        code: code?.toUpperCase() || null,
         startDate: new Date(startDate),
         endDate: new Date(endDate),
-        maxUses,
-        maxUsesPerUser: maxUsesPerUser || 1,
-        minOrderAmount,
-        targetUserIds: targetUserIds ? JSON.stringify(targetUserIds) : undefined,
+        maxUses: maxUses ? parseInt(maxUses) : null,
+        maxUsesPerUser: parseInt(maxUsesPerUser),
+        minOrderAmount: minOrderAmount ? parseFloat(minOrderAmount) : null,
+        isActive,
       },
     });
-
+    
     return NextResponse.json({
       success: true,
       promotion,
@@ -100,83 +85,83 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Create promotion error:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to create promotion' },
+      { success: false, error: 'Erreur lors de la création de la promotion' },
       { status: 500 }
     );
   }
 }
 
-// POST /api/promotions/validate - Validate promo code
+// PUT - Update a promotion
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { code, userId, orderAmount } = body;
-
-    if (!code) {
+    const { id, ...data } = body;
+    
+    if (!id) {
       return NextResponse.json(
-        { success: false, error: 'Promo code is required' },
+        { success: false, error: 'ID de promotion requis' },
         { status: 400 }
       );
     }
-
-    const promotion = await db.promotion.findUnique({
-      where: { code },
+    
+    const updateData: any = {};
+    
+    if (data.name) updateData.name = data.name;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.type) updateData.type = data.type;
+    if (data.discountType) updateData.discountType = data.discountType;
+    if (data.discountValue) updateData.discountValue = parseFloat(data.discountValue);
+    if (data.code !== undefined) updateData.code = data.code?.toUpperCase() || null;
+    if (data.startDate) updateData.startDate = new Date(data.startDate);
+    if (data.endDate) updateData.endDate = new Date(data.endDate);
+    if (data.maxUses !== undefined) updateData.maxUses = data.maxUses ? parseInt(data.maxUses) : null;
+    if (data.maxUsesPerUser) updateData.maxUsesPerUser = parseInt(data.maxUsesPerUser);
+    if (data.minOrderAmount !== undefined) updateData.minOrderAmount = data.minOrderAmount ? parseFloat(data.minOrderAmount) : null;
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
+    
+    const promotion = await db.promotion.update({
+      where: { id },
+      data: updateData,
     });
-
-    if (!promotion) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid promo code' },
-        { status: 400 }
-      );
-    }
-
-    // Check if promotion is active
-    const now = new Date();
-    if (!promotion.isActive || promotion.startDate > now || promotion.endDate < now) {
-      return NextResponse.json(
-        { success: false, error: 'Promo code has expired' },
-        { status: 400 }
-      );
-    }
-
-    // Check usage limits
-    if (promotion.maxUses && promotion.currentUses >= promotion.maxUses) {
-      return NextResponse.json(
-        { success: false, error: 'Promo code usage limit reached' },
-        { status: 400 }
-      );
-    }
-
-    // Check minimum order amount
-    if (promotion.minOrderAmount && orderAmount < promotion.minOrderAmount) {
-      return NextResponse.json(
-        { success: false, error: `Minimum order amount is ${promotion.minOrderAmount} FCFA` },
-        { status: 400 }
-      );
-    }
-
-    // Calculate discount
-    let discount = 0;
-    if (promotion.discountType === 'PERCENTAGE') {
-      discount = orderAmount * (promotion.discountValue / 100);
-    } else {
-      discount = promotion.discountValue;
-    }
-
+    
     return NextResponse.json({
       success: true,
-      promotion: {
-        id: promotion.id,
-        name: promotion.name,
-        discountType: promotion.discountType,
-        discountValue: promotion.discountValue,
-        discount,
-      },
+      promotion,
     });
   } catch (error) {
-    console.error('Validate promotion error:', error);
+    console.error('Update promotion error:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to validate promotion' },
+      { success: false, error: 'Erreur lors de la mise à jour de la promotion' },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE - Delete a promotion
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    
+    if (!id) {
+      return NextResponse.json(
+        { success: false, error: 'ID de promotion requis' },
+        { status: 400 }
+      );
+    }
+    
+    await db.promotion.delete({
+      where: { id },
+    });
+    
+    return NextResponse.json({
+      success: true,
+      message: 'Promotion supprimée',
+    });
+  } catch (error) {
+    console.error('Delete promotion error:', error);
+    return NextResponse.json(
+      { success: false, error: 'Erreur lors de la suppression de la promotion' },
       { status: 500 }
     );
   }
