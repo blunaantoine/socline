@@ -60,20 +60,32 @@ export function ClientApp() {
     setLoading(false);
   }, [setLoading]);
 
-  // Initialize services and washers
+  // Fetch real services from API
   useEffect(() => {
-    setServices([
-      { id: '1', name: 'Express', description: 'Lavage extérieur rapide', price: 5000, duration: 20, category: 'basic', isActive: true, createdAt: '', updatedAt: '' },
-      { id: '2', name: 'Complet', description: 'Intérieur + Extérieur', price: 10000, duration: 45, category: 'standard', isActive: true, createdAt: '', updatedAt: '' },
-      { id: '3', name: 'Premium', description: 'Complet + Polish + Cire', price: 15000, duration: 60, category: 'premium', isActive: true, createdAt: '', updatedAt: '' },
-      { id: '4', name: 'Deluxe', description: 'Service VIP complet', price: 25000, duration: 90, category: 'deluxe', isActive: true, createdAt: '', updatedAt: '' },
-    ]);
+    const loadServices = async () => {
+      try {
+        // Seed database if needed
+        const seedCheck = await fetch('/api/seed');
+        const seedData = await seedCheck.json();
+        
+        if (!seedData.seeded || seedData.servicesCount === 0) {
+          await fetch('/api/seed', { method: 'POST' });
+        }
 
-    setNearbyWashers([
-      { id: '1', userId: 'w1', user: { id: 'w1', phone: '90123456', name: 'Kofi Mensah', role: 'CLIENT', isActive: true, createdAt: '', updatedAt: '' }, isAvailable: true, isVerified: true, rating: 4.9, totalRatings: 234, totalEarnings: 150000, completedJobs: 156, latitude: 6.172, longitude: 1.230, address: 'Centre-ville', createdAt: '', updatedAt: '' },
-      { id: '2', userId: 'w2', user: { id: 'w2', phone: '90234567', name: 'Yaw Adzimah', role: 'CLIENT', isActive: true, createdAt: '', updatedAt: '' }, isAvailable: true, isVerified: true, rating: 4.7, totalRatings: 189, totalEarnings: 120000, completedJobs: 120, latitude: 6.175, longitude: 1.233, address: 'Hedzranawoé', createdAt: '', updatedAt: '' },
-    ]);
-  }, [setServices, setNearbyWashers]);
+        // Fetch services
+        const res = await fetch('/api/services');
+        const data = await res.json();
+        
+        if (data.success && data.services) {
+          setServices(data.services);
+        }
+      } catch (error) {
+        console.error('Error loading services:', error);
+      }
+    };
+
+    loadServices();
+  }, [setServices]);
 
   // Search Google car washes
   useEffect(() => {
