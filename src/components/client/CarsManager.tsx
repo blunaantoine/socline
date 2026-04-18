@@ -10,6 +10,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { VisuallyHidden } from '@/components/ui/visually-hidden';
 import {
   Car, Plus, Star, Trash2, CheckCircle, Loader2,
@@ -28,6 +35,36 @@ interface CarData {
   isDefault: boolean;
   createdAt: string;
 }
+
+// Car brands and their models (popular in Togo/West Africa)
+const CAR_BRANDS: Record<string, string[]> = {
+  'Toyota': ['Corolla', 'Camry', 'Yaris', 'RAV4', 'Hilux', 'Land Cruiser', 'Prado', 'Highlander', 'Prius', 'Auris', 'Avensis', 'Matrix'],
+  'Renault': ['Clio', 'Logan', 'Sandero', 'Duster', 'Koleos', 'Captur', 'Megane', 'Scenic', 'Kangoo', 'Fluence', 'Symbol', 'Twingo'],
+  'Peugeot': ['206', '207', '208', '301', '307', '308', '406', '407', '508', '2008', '3008', '5008', 'Partner'],
+  'Nissan': ['Almera', 'Sentra', 'Tiida', 'Qashqai', 'X-Trail', 'Patrol', 'Navara', 'Micra', 'Juke', 'Murano', 'Sunny', 'Note'],
+  'Hyundai': ['Accent', 'Elantra', 'Sonata', 'Tucson', 'Santa Fe', 'i10', 'i20', 'i30', 'Kona', 'Creta', 'Matrix', 'Getz'],
+  'Kia': ['Rio', 'Cerato', 'Optima', 'Sportage', 'Sorento', 'Picanto', 'Ceed', 'Soul', 'Sportage', 'Carnival', 'Morning', 'K5'],
+  'Volkswagen': ['Golf', 'Polo', 'Jetta', 'Passat', 'Tiguan', 'Touareg', 'Touran', 'Caddy', 'Amarok', 'Beetle', 'Scirocco', 'Bora'],
+  'Mercedes': ['Classe A', 'Classe B', 'Classe C', 'Classe E', 'Classe S', 'GLA', 'GLC', 'GLE', 'GLS', 'ML', 'CLA', 'CLS'],
+  'BMW': ['Série 1', 'Série 3', 'Série 5', 'Série 7', 'X1', 'X3', 'X5', 'X6', 'X7', 'Z4', 'M3', 'M5'],
+  'Ford': ['Fiesta', 'Focus', 'Fusion', 'Mondeo', 'Escape', 'Explorer', 'Ranger', 'F-150', 'EcoSport', 'Kuga', 'Edge', 'Transit'],
+  'Honda': ['Civic', 'Accord', 'CR-V', 'HR-V', 'Pilot', 'Odyssey', 'Fit', 'City', 'Jazz', 'HR-V', 'BR-V', 'WR-V'],
+  'Mitsubishi': ['Lancer', 'Outlander', 'Pajero', 'ASX', 'Mirage', 'Eclipse Cross', 'Montero', 'Triton', 'Space Star', 'Colt', 'Galant', 'Endeavor'],
+  'Mazda': ['Mazda2', 'Mazda3', 'Mazda6', 'CX-3', 'CX-5', 'CX-9', 'MX-5', 'BT-50', 'Demio', 'Axela', 'Atenza', 'Premacy'],
+  'Suzuki': ['Swift', 'Dzire', 'Vitara', 'S-Cross', 'Jimny', 'Ciaz', 'Baleno', 'Ertiga', 'XL7', 'Ignis', 'SX4', 'Grand Vitara'],
+  'Isuzu': ['D-Max', 'MU-X', 'Trooper', 'Rodeo', 'Faster', 'Hombre', 'VehiCROSS', 'i-Series', 'Elf', 'NPR', 'NQR', 'Forward'],
+  'Chevrolet': ['Spark', 'Aveo', 'Cruze', 'Malibu', 'Cruze', 'Equinox', 'Traverse', 'Tahoe', 'Suburban', 'Colorado', 'Silverado', 'Captiva'],
+  'Fiat': ['Punto', 'Grande Punto', '500', 'Panda', 'Tipo', 'Linea', 'Bravo', 'Ducato', 'Fiorino', 'Doblo', 'Qubo', 'Fullback'],
+  'Citroën': ['C1', 'C2', 'C3', 'C4', 'C5', 'C-Elysée', 'Berlingo', 'Picasso', 'SpaceTourer', 'DS3', 'DS4', 'DS5'],
+  'Audi': ['A1', 'A3', 'A4', 'A5', 'A6', 'A8', 'Q2', 'Q3', 'Q5', 'Q7', 'Q8', 'TT'],
+  'Lexus': ['IS', 'ES', 'GS', 'LS', 'UX', 'NX', 'RX', 'GX', 'LX', 'RC', 'LC', 'CT'],
+  'Land Rover': ['Range Rover', 'Range Rover Sport', 'Range Rover Evoque', 'Discovery', 'Discovery Sport', 'Defender', 'Freelander', 'Velar'],
+  'Jeep': ['Wrangler', 'Grand Cherokee', 'Cherokee', 'Compass', 'Renegade', 'Patriot', 'Liberty', 'Gladiator', 'Commander'],
+  'Dacia': ['Sandero', 'Logan', 'Duster', 'Lodgy', 'Dokker', 'Spring'],
+  'Autre': ['Autre modèle'],
+};
+
+const BRAND_LIST = Object.keys(CAR_BRANDS);
 
 const CAR_COLORS = [
   { value: 'Noir', label: 'Noir', bg: 'bg-gray-900' },
@@ -92,6 +129,9 @@ export function CarsManager({ userId }: CarsManagerProps) {
     fetchCars();
   }, [userId]);
 
+  // Get available models based on selected brand
+  const availableModels = brand ? CAR_BRANDS[brand] || [] : [];
+
   const resetForm = () => {
     setNickname('');
     setPlateNumber('');
@@ -99,6 +139,12 @@ export function CarsManager({ userId }: CarsManagerProps) {
     setModel('');
     setColor('Blanc');
     setYear('');
+  };
+
+  // Reset model when brand changes
+  const handleBrandChange = (newBrand: string) => {
+    setBrand(newBrand);
+    setModel(''); // Reset model when brand changes
   };
 
   const handleAddCar = async () => {
@@ -390,19 +436,37 @@ export function CarsManager({ userId }: CarsManagerProps) {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-sm text-[#757575] mb-1 block">Marque</label>
-                <Input
-                  placeholder="Renault, Toyota..."
-                  value={brand}
-                  onChange={(e) => setBrand(e.target.value)}
-                />
+                <Select value={brand} onValueChange={handleBrandChange}>
+                  <SelectTrigger className="h-10 bg-white">
+                    <SelectValue placeholder="Sélectionner..." />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    {BRAND_LIST.map((b) => (
+                      <SelectItem key={b} value={b}>
+                        {b}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <label className="text-sm text-[#757575] mb-1 block">Modèle</label>
-                <Input
-                  placeholder="Clio, Corolla..."
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                />
+                <Select 
+                  value={model} 
+                  onValueChange={setModel}
+                  disabled={!brand}
+                >
+                  <SelectTrigger className="h-10 bg-white">
+                    <SelectValue placeholder={brand ? "Sélectionner..." : "Choisir marque"} />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    {availableModels.map((m) => (
+                      <SelectItem key={m} value={m}>
+                        {m}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -500,19 +564,37 @@ export function CarsManager({ userId }: CarsManagerProps) {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-sm text-[#757575] mb-1 block">Marque</label>
-                <Input
-                  placeholder="Renault, Toyota..."
-                  value={brand}
-                  onChange={(e) => setBrand(e.target.value)}
-                />
+                <Select value={brand} onValueChange={handleBrandChange}>
+                  <SelectTrigger className="h-10 bg-white">
+                    <SelectValue placeholder="Sélectionner..." />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    {BRAND_LIST.map((b) => (
+                      <SelectItem key={b} value={b}>
+                        {b}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <label className="text-sm text-[#757575] mb-1 block">Modèle</label>
-                <Input
-                  placeholder="Clio, Corolla..."
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                />
+                <Select 
+                  value={model} 
+                  onValueChange={setModel}
+                  disabled={!brand}
+                >
+                  <SelectTrigger className="h-10 bg-white">
+                    <SelectValue placeholder={brand ? "Sélectionner..." : "Choisir marque"} />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    {availableModels.map((m) => (
+                      <SelectItem key={m} value={m}>
+                        {m}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
