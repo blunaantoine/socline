@@ -306,6 +306,7 @@ export function AdminPanel() {
   const [deposits, setDeposits] = useState<Deposit[]>([]);
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [subTab, setSubTab] = useState<string | null>(null); // For "Plus" menu sub-navigation
 
   // Fetch dashboard stats
   const fetchStats = useCallback(async () => {
@@ -407,7 +408,7 @@ export function AdminPanel() {
     try {
       const res = await fetch('/api/admin/deposits?status=PENDING');
       const data = await res.json();
-      
+
       if (data.success) {
         setDeposits(data.deposits);
       }
@@ -418,7 +419,13 @@ export function AdminPanel() {
     }
   }, []);
 
-  // Load data based on active tab
+  // Pre-fetch deposits for badge count on mount
+  useEffect(() => {
+    fetchDeposits();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Load data based on active tab or subTab
   useEffect(() => {
     if (activeTab === 'dashboard') {
       fetchStats();
@@ -428,12 +435,21 @@ export function AdminPanel() {
       fetchUsers();
     } else if (activeTab === 'washers') {
       fetchWashers();
+    } else if (activeTab === 'settings') {
+      // Load data based on subTab
+      if (subTab === 'promotions') {
+        fetchPromotions();
+      } else if (subTab === 'deposits') {
+        fetchDeposits();
+      } else if (subTab === 'operators') {
+        // Operators are loaded in AdminSettings
+      }
     } else if (activeTab === 'promotions') {
       fetchPromotions();
     } else if (activeTab === 'deposits') {
       fetchDeposits();
     }
-  }, [activeTab, fetchStats, fetchOrders, fetchUsers, fetchWashers, fetchPromotions, fetchDeposits]);
+  }, [activeTab, subTab, fetchStats, fetchOrders, fetchUsers, fetchWashers, fetchPromotions, fetchDeposits]);
 
   // Handle washer verification
   const handleVerifyWasher = async (washerId: string, action: 'verify' | 'reject') => {
@@ -596,7 +612,54 @@ export function AdminPanel() {
           />
         )}
         {activeTab === 'finances' && <AdminFinances stats={stats} />}
-        {activeTab === 'settings' && <AdminSettings />}
+        {activeTab === 'settings' && (
+          subTab ? (
+            // Show sub-content with back button
+            <div className="p-4 space-y-4">
+              <div className="flex items-center gap-3 mb-4">
+                <button
+                  onClick={() => setSubTab(null)}
+                  className="p-2 rounded-full bg-[#F5F5F5] hover:bg-[#E0E0E0]"
+                >
+                  <ArrowLeft className="w-5 h-5 text-[#757575]" />
+                </button>
+                <h2 className="font-semibold text-lg text-[#212121]">
+                  {subTab === 'deposits' && 'Demandes de recharge'}
+                  {subTab === 'promotions' && 'Promotions'}
+                  {subTab === 'services' && 'Services'}
+                  {subTab === 'finances' && 'Finances'}
+                  {subTab === 'operators' && 'Opérateurs Mobile Money'}
+                  {subTab === 'settings' && 'Paramètres'}
+                </h2>
+              </div>
+              {subTab === 'deposits' && (
+                <AdminDeposits
+                  deposits={deposits}
+                  isLoading={isLoading}
+                  onRefresh={fetchDeposits}
+                  onAction={handleDepositAction}
+                />
+              )}
+              {subTab === 'promotions' && (
+                <AdminPromotions
+                  promotions={promotions}
+                  isLoading={isLoading}
+                  onRefresh={fetchPromotions}
+                />
+              )}
+              {subTab === 'services' && <AdminServices />}
+              {subTab === 'finances' && <AdminFinances stats={stats} />}
+              {subTab === 'operators' && <AdminOperatorsSection />}
+              {subTab === 'settings' && <AdminSettingsContent />}
+            </div>
+          ) : (
+            // Show "Plus" menu
+            <AdminPlusMenu
+              depositsCount={deposits.filter(d => d.status === 'PENDING').length}
+              onSelect={setSubTab}
+            />
+          )
+        )}
       </div>
 
       {/* Android Bottom Navigation - FIXED at bottom */}
@@ -1923,6 +1986,414 @@ function AdminFinances({ stats }: { stats: Stats | null }) {
               </p>
             </div>
             <TrendingUp className="w-8 h-8 text-[#FF9800]" />
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// Admin Plus Menu - Main menu for "Plus" tab
+function AdminPlusMenu({ depositsCount, onSelect }: {
+  depositsCount: number;
+  onSelect: (tab: string) => void;
+}) {
+  const { logout } = useAuthStore();
+
+  const menuItems = [
+    {
+      id: 'deposits',
+      icon: Wallet,
+      label: 'Demandes de recharge',
+      description: 'Valider les rechargements de portefeuille',
+      badge: depositsCount > 0 ? depositsCount : undefined,
+      color: '#4CAF50',
+    },
+    {
+      id: 'promotions',
+      icon: Tag,
+      label: 'Promotions',
+      description: 'Gérer les codes promo et offres',
+      color: '#9C27B0',
+    },
+    {
+      id: 'services',
+      icon: Car,
+      label: 'Services',
+      description: 'Gérer les types de lavage',
+      color: '#2196F3',
+    },
+    {
+      id: 'finances',
+      icon: DollarSign,
+      label: 'Finances',
+      description: 'Rapports et statistiques financières',
+      color: '#FF9800',
+    },
+    {
+      id: 'operators',
+      icon: Phone,
+      label: 'Opérateurs Mobile Money',
+      description: 'Configurer les opérateurs de paiement',
+      color: '#00BCD4',
+    },
+    {
+      id: 'settings',
+      icon: Settings,
+      label: 'Paramètres',
+      description: 'Configuration générale',
+      color: '#607D8B',
+    },
+  ];
+
+  return (
+    <div className="p-4 space-y-4">
+      <h2 className="font-semibold text-lg text-[#212121]">Plus d&apos;options</h2>
+
+      <div className="space-y-2">
+        {menuItems.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => onSelect(item.id)}
+            className="w-full flex items-center gap-4 p-4 bg-white rounded-xl border border-[#E0E0E0] hover:border-[#FF9800] transition-all active:scale-[0.98]"
+          >
+            <div
+              className="w-12 h-12 rounded-full flex items-center justify-center"
+              style={{ backgroundColor: `${item.color}20` }}
+            >
+              <item.icon className="w-6 h-6" style={{ color: item.color }} />
+            </div>
+            <div className="flex-1 text-left">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-[#212121]">{item.label}</span>
+                {item.badge && (
+                  <span className="px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">
+                    {item.badge}
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-[#757575]">{item.description}</p>
+            </div>
+            <ChevronDown className="w-5 h-5 text-[#9E9E9E] -rotate-90" />
+          </button>
+        ))}
+      </div>
+
+      {/* Logout button */}
+      <button
+        onClick={() => logout()}
+        className="w-full flex items-center justify-center gap-2 p-4 bg-red-50 text-red-600 rounded-xl border border-red-200 hover:bg-red-100 transition-all mt-6"
+      >
+        <LogOut className="w-5 h-5" />
+        <span className="font-medium">Déconnexion</span>
+      </button>
+    </div>
+  );
+}
+
+// Admin Operators Section
+function AdminOperatorsSection() {
+  const [operators, setOperators] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [editingOperator, setEditingOperator] = useState<any>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({
+    name: '',
+    displayName: '',
+    ussdPattern: '',
+    recipientNumber: '',
+    color: '#FF9800',
+    minAmount: '100',
+    maxAmount: '500000',
+    isActive: true,
+  });
+
+  const fetchOperators = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/operators');
+      const data = await res.json();
+      if (data.success) {
+        setOperators(data.operators);
+      }
+    } catch (error) {
+      console.error('Error fetching operators:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchOperators();
+  }, [fetchOperators]);
+
+  const handleSave = async () => {
+    try {
+      const url = editingOperator ? '/api/operators' : '/api/operators';
+      const method = editingOperator ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingOperator ? { ...form, id: editingOperator.id } : form),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        toast.success(editingOperator ? 'Opérateur modifié' : 'Opérateur créé');
+        setShowForm(false);
+        setEditingOperator(null);
+        setForm({
+          name: '',
+          displayName: '',
+          ussdPattern: '',
+          recipientNumber: '',
+          color: '#FF9800',
+          minAmount: '100',
+          maxAmount: '500000',
+          isActive: true,
+        });
+        fetchOperators();
+      } else {
+        toast.error(data.error || 'Erreur');
+      }
+    } catch (error) {
+      toast.error('Erreur lors de la sauvegarde');
+    }
+  };
+
+  const handleEdit = (operator: any) => {
+    setEditingOperator(operator);
+    setForm({
+      name: operator.name,
+      displayName: operator.displayName,
+      ussdPattern: operator.ussdPattern,
+      recipientNumber: operator.recipientNumber,
+      color: operator.color,
+      minAmount: operator.minAmount.toString(),
+      maxAmount: operator.maxAmount.toString(),
+      isActive: operator.isActive,
+    });
+    setShowForm(true);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-[#757575]">Gérez les opérateurs de paiement mobile</p>
+        <Button
+          onClick={() => {
+            setEditingOperator(null);
+            setForm({
+              name: '',
+              displayName: '',
+              ussdPattern: '',
+              recipientNumber: '',
+              color: '#FF9800',
+              minAmount: '100',
+              maxAmount: '500000',
+              isActive: true,
+            });
+            setShowForm(true);
+          }}
+          className="bg-[#FF9800] hover:bg-[#F57C00]"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Nouveau
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-8">
+          <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+        </div>
+      ) : showForm ? (
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4 space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs text-[#757575]">Nom technique</Label>
+                <Input
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="mixx"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-[#757575]">Nom affiché</Label>
+                <Input
+                  value={form.displayName}
+                  onChange={(e) => setForm({ ...form, displayName: e.target.value })}
+                  placeholder="Mixx by Yas"
+                  className="mt-1"
+                />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs text-[#757575]">Pattern USSD</Label>
+              <Input
+                value={form.ussdPattern}
+                onChange={(e) => setForm({ ...form, ussdPattern: e.target.value })}
+                placeholder="*145*1*{montant}*{numero}*2#"
+                className="mt-1"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs text-[#757575]">Numéro destinataire</Label>
+                <Input
+                  value={form.recipientNumber}
+                  onChange={(e) => setForm({ ...form, recipientNumber: e.target.value })}
+                  placeholder="90000000"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-[#757575]">Couleur</Label>
+                <div className="flex gap-2 mt-1">
+                  <Input
+                    type="color"
+                    value={form.color}
+                    onChange={(e) => setForm({ ...form, color: e.target.value })}
+                    className="w-10 h-9 p-1"
+                  />
+                  <Input
+                    value={form.color}
+                    onChange={(e) => setForm({ ...form, color: e.target.value })}
+                    className="flex-1 font-mono text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs text-[#757575]">Montant min (F)</Label>
+                <Input
+                  type="number"
+                  value={form.minAmount}
+                  onChange={(e) => setForm({ ...form, minAmount: e.target.value })}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-[#757575]">Montant max (F)</Label>
+                <Input
+                  type="number"
+                  value={form.maxAmount}
+                  onChange={(e) => setForm({ ...form, maxAmount: e.target.value })}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={form.isActive}
+                onCheckedChange={(checked) => setForm({ ...form, isActive: checked })}
+              />
+              <Label className="text-sm">Actif</Label>
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={handleSave} className="flex-1 bg-[#FF9800] hover:bg-[#F57C00]">
+                {editingOperator ? 'Modifier' : 'Créer'}
+              </Button>
+              <Button variant="outline" onClick={() => setShowForm(false)}>
+                Annuler
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : operators.length === 0 ? (
+        <div className="text-center py-8 bg-white rounded-lg">
+          <Phone className="w-12 h-12 mx-auto text-gray-400" />
+          <p className="mt-4 text-gray-500">Aucun opérateur configuré</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {operators.map((operator) => (
+            <Card key={operator.id} className="border-0 shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-10 h-10 rounded-full flex items-center justify-center"
+                      style={{ backgroundColor: `${operator.color}20` }}
+                    >
+                      <Phone className="w-5 h-5" style={{ color: operator.color }} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-[#212121]">{operator.displayName}</span>
+                        {!operator.isActive && (
+                          <Badge className="bg-gray-100 text-gray-600">Inactif</Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-[#757575]">{operator.ussdPattern}</p>
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => handleEdit(operator)}>
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Admin Settings Content
+function AdminSettingsContent() {
+  const { logout } = useAuthStore();
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-[#757575]">Configuration générale de l&apos;application</p>
+
+      {/* App Info */}
+      <Card className="border-0 shadow-sm">
+        <CardContent className="p-4 space-y-3">
+          <h3 className="font-medium text-[#212121]">Informations</h3>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-[#757575]">Version</span>
+              <span className="font-medium">1.0.0</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-[#757575]">Environnement</span>
+              <Badge className="bg-green-100 text-green-700">Production</Badge>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Quick Actions */}
+      <Card className="border-0 shadow-sm">
+        <CardContent className="p-4 space-y-3">
+          <h3 className="font-medium text-[#212121]">Actions rapides</h3>
+          <div className="space-y-2">
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={() => {
+                fetch('/api/seed', { method: 'POST' }).then(() => {
+                  toast.success('Données de test réinitialisées');
+                });
+              }}
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Réinitialiser les données de test
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+              onClick={() => logout()}
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Déconnexion
+            </Button>
           </div>
         </CardContent>
       </Card>
