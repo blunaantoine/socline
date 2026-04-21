@@ -635,49 +635,53 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
 
             {/* Step: USSD */}
             {deposit.step === 'ussd' && (
-              <div className="space-y-4">
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="space-y-3">
+                {/* Instructions */}
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                   <div className="flex gap-2">
-                    <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0" />
+                    <AlertCircle className="w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5" />
                     <div>
-                      <p className="font-medium text-yellow-800">Instructions importantes</p>
-                      <p className="text-sm text-yellow-700 mt-1">
-                        1. Lancez le code USSD ci-dessous<br/>
-                        2. Entrez votre code PIN pour valider<br/>
-                        3. Revenez ici et cliquez sur "J'ai payé"
+                      <p className="font-medium text-yellow-800 text-sm">Instructions</p>
+                      <p className="text-xs text-yellow-700 mt-1">
+                        1. Lancez le code USSD<br/>
+                        2. Entrez votre code PIN<br/>
+                        3. Revenez et cliquez "J'ai payé"
                       </p>
                     </div>
                   </div>
                 </div>
 
+                {/* Code USSD */}
                 <div className="bg-[#212121] rounded-xl p-4 text-center">
-                  <p className="text-white/60 text-xs mb-2">Code USSD</p>
-                  <p className="text-white text-2xl font-mono font-bold tracking-wider">
+                  <p className="text-white/60 text-xs mb-1">Code USSD</p>
+                  <p className="text-white text-xl font-mono font-bold tracking-wide break-all">
                     {deposit.ussdCode}
                   </p>
                 </div>
 
-                <div className="flex gap-2">
+                {/* Boutons */}
+                <div className="grid grid-cols-2 gap-2">
                   <Button
                     variant="outline"
                     onClick={handleCopyUssd}
-                    className="flex-1"
+                    className="h-11"
                   >
-                    {copied ? <Check className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
+                    {copied ? <Check className="w-4 h-4 mr-1.5 text-green-500" /> : <Copy className="w-4 h-4 mr-1.5" />}
                     {copied ? 'Copié !' : 'Copier'}
                   </Button>
                   <Button
                     onClick={handleLaunchUssd}
-                    className="flex-1 bg-[#FF9800] hover:bg-[#F57C00]"
+                    className="h-11 bg-[#FF9800] hover:bg-[#F57C00]"
                   >
-                    <ExternalLink className="w-4 h-4 mr-2" />
+                    <ExternalLink className="w-4 h-4 mr-1.5" />
                     Lancer
                   </Button>
                 </div>
 
-                <div className="bg-[#F5F5F5] rounded-lg p-3 text-center">
+                {/* Info destinataire */}
+                <div className="bg-[#F5F5F5] rounded-lg p-2.5 text-center">
                   <p className="text-xs text-[#757575]">
-                    Le numéro destinataire est : <span className="font-mono font-bold">{deposit.recipientNumber}</span>
+                    Destinataire: <span className="font-mono font-bold text-[#212121]">{deposit.recipientNumber}</span>
                   </p>
                 </div>
               </div>
@@ -685,27 +689,27 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
 
             {/* Step: Confirm */}
             {deposit.step === 'confirm' && (
-              <div className="space-y-4">
-                <div className="text-center py-4">
-                  <div className="w-16 h-16 bg-[#FFF8F0] rounded-full flex items-center justify-center mx-auto mb-4">
-                    <CheckCircle className="w-8 h-8 text-[#FF9800]" />
+              <div className="space-y-3">
+                <div className="text-center py-2">
+                  <div className="w-14 h-14 bg-[#FFF8F0] rounded-full flex items-center justify-center mx-auto mb-3">
+                    <CheckCircle className="w-7 h-7 text-[#FF9800]" />
                   </div>
-                  <p className="font-semibold text-[#212121] text-lg">Avez-vous validé le paiement ?</p>
-                  <p className="text-sm text-[#757575] mt-2">
-                    Confirmez uniquement si vous avez entré votre code PIN et reçu une confirmation de la part de {selectedOperator?.displayName}
+                  <p className="font-semibold text-[#212121]">Avez-vous validé le paiement ?</p>
+                  <p className="text-xs text-[#757575] mt-1.5">
+                    Confirmez si vous avez entré votre code PIN
                   </p>
                 </div>
 
-                <div className="bg-[#F5F5F5] rounded-lg p-4 space-y-2">
-                  <div className="flex justify-between">
+                <div className="bg-[#F5F5F5] rounded-lg p-3 space-y-2">
+                  <div className="flex justify-between text-sm">
                     <span className="text-[#757575]">Montant</span>
                     <span className="font-semibold">{deposit.amount.toLocaleString()} F</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between text-sm">
                     <span className="text-[#757575]">Opérateur</span>
-                    <span className="font-semibold">{selectedOperator?.displayName}</span>
+                    <span className="font-semibold">{selectedOperator?.name}</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between text-sm">
                     <span className="text-[#757575]">Numéro</span>
                     <span className="font-semibold">+228 {deposit.phoneNumber}</span>
                   </div>
