@@ -41,7 +41,7 @@ import {
   X
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { GoogleMap } from '@/components/map/GoogleMap';
+import { LeafletMap } from '@/components/map/LeafletMap';
 
 // Types
 interface Address {
@@ -328,16 +328,16 @@ export function AddressesManager({ userId, onBack }: { userId: string; onBack: (
         setSelectedPosition({ lat: latitude, lng: longitude });
         setFormData(prev => ({ ...prev, latitude, longitude }));
 
-        // Reverse geocode to get address
+        // Reverse geocode using Nominatim (free, no API key needed)
         try {
           const response = await fetch(
-            `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&language=fr`
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=fr`
           );
           const data = await response.json();
-          if (data.results && data.results[0]) {
+          if (data && data.display_name) {
             setFormData(prev => ({
               ...prev,
-              address: data.results[0].formatted_address
+              address: data.display_name
             }));
           }
         } catch (error) {
@@ -355,25 +355,20 @@ export function AddressesManager({ userId, onBack }: { userId: string; onBack: (
   };
 
   // Handle map click to select position
-  const handleMapClick = async (e: google.maps.MapMouseEvent) => {
-    if (!e.latLng) return;
-
-    const lat = e.latLng.lat();
-    const lng = e.latLng.lng();
-
+  const handleMapClick = async (lat: number, lng: number) => {
     setSelectedPosition({ lat, lng });
     setFormData(prev => ({ ...prev, latitude: lat, longitude: lng }));
 
-    // Reverse geocode
+    // Reverse geocode using Nominatim (free, no API key needed)
     try {
       const response = await fetch(
-        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&language=fr`
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=fr`
       );
       const data = await response.json();
-      if (data.results && data.results[0]) {
+      if (data && data.display_name) {
         setFormData(prev => ({
           ...prev,
-          address: data.results[0].formatted_address
+          address: data.display_name
         }));
       }
     } catch (error) {
@@ -497,26 +492,14 @@ export function AddressesManager({ userId, onBack }: { userId: string; onBack: (
 
         {/* Map */}
         <div className="flex-1 relative">
-          <GoogleMap
-            center={selectedPosition || { lat: 6.1725, lng: 1.2314 }} // Lomé coordinates
+          <LeafletMap
+            center={selectedPosition ? [selectedPosition.lat, selectedPosition.lng] : [6.1725, 1.2314]}
             zoom={14}
-            markers={selectedPosition ? [{
-              id: 'selected',
-              type: 'ORDER',
-              position: { lat: selectedPosition.lat, lng: selectedPosition.lng }
-            }] : []}
+            selectedPosition={selectedPosition ? [selectedPosition.lat, selectedPosition.lng] : null}
             onMapClick={handleMapClick}
             className="w-full h-full"
             height="100%"
           />
-
-          {/* Center marker overlay */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-full pointer-events-none">
-            <div className="w-10 h-10 bg-[#FF9800] rounded-full flex items-center justify-center shadow-lg">
-              <MapPin className="w-6 h-6 text-white" />
-            </div>
-            <div className="w-3 h-3 bg-[#FF9800] rounded-full mx-auto -mt-1" />
-          </div>
         </div>
 
         {/* Selected Address Preview */}
