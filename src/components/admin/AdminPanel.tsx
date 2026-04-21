@@ -2449,6 +2449,22 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
     setShowForm(false);
   };
 
+  const formatDate = (date: string | Date | null | undefined) => {
+    if (!date) return '-';
+    const d = new Date(date);
+    return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
+
+  const isPromoActive = (promo: Promotion) => {
+    if (!promo.isActive) return false;
+    const now = new Date();
+    const start = promo.startDate ? new Date(promo.startDate) : null;
+    const end = promo.endDate ? new Date(promo.endDate) : null;
+    if (start && now < start) return false;
+    if (end && now > end) return false;
+    return true;
+  };
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
