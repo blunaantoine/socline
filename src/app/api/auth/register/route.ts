@@ -32,11 +32,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate phone format (Togo: 8 digits starting with 9)
+    // Validate phone format (Togo: 8 digits starting with 7 or 9)
     const cleanPhone = phone.replace(/\s/g, '');
-    if (!/^9\d{7}$/.test(cleanPhone)) {
+    if (!/^[79]\d{7}$/.test(cleanPhone)) {
       return NextResponse.json(
-        { success: false, error: 'Numéro de téléphone invalide (8 chiffres commençant par 9)' },
+        { success: false, error: 'Numéro de téléphone invalide (8 chiffres commençant par 7 ou 9)' },
         { status: 400 }
       );
     }

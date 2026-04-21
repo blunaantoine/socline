@@ -41,9 +41,8 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
 };
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
-  MOBILE_MONEY: 'Mobile Money',
+  WALLET: 'Portefeuille',
   CASH: 'Espèces',
-  CARD: 'Carte bancaire',
 };
 
 const PAYMENT_STATUS_COLORS: Record<string, string> = {

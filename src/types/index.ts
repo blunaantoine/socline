@@ -80,7 +80,7 @@ export interface Service {
 
 export type OrderStatus = 'PENDING' | 'ACCEPTED' | 'EN_ROUTE' | 'ARRIVED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
 export type PaymentStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
-export type PaymentMethod = 'MOBILE_MONEY' | 'CASH' | 'CARD';
+export type PaymentMethod = 'WALLET' | 'CASH';
 
 export interface Order {
   id: string;

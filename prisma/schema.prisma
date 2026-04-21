@@ -38,10 +38,8 @@ enum PaymentStatus {
 
 // Payment method enum
 enum PaymentMethod {
-  MOBILE_MONEY
-  CASH
-  CARD
   WALLET
+  CASH
 }
 
 // Wallet transaction type enum
@@ -287,7 +285,7 @@ model Payment {
   user            User          @relation(fields: [userId], references: [id])
   
   amount          Float
-  method          PaymentMethod @default(MOBILE_MONEY)
+  method          PaymentMethod @default(CASH)
   status          PaymentStatus @default(PENDING)
   
   // Transaction details

@@ -1326,7 +1326,7 @@ function AdminUsers({ users, searchQuery, setSearchQuery, isLoading, onRefresh }
                 id="new-phone"
                 value={newUser.phone}
                 onChange={(e) => setNewUser({ ...newUser, phone: e.target.value })}
-                placeholder="Ex: 90123456"
+                placeholder="Ex: 70123456 ou 90123456"
               />
             </div>
             
@@ -1413,7 +1413,7 @@ function AdminUsers({ users, searchQuery, setSearchQuery, isLoading, onRefresh }
                 id="edit-phone"
                 value={editForm.phone}
                 onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                placeholder="Ex: 90123456"
+                placeholder="Ex: 70123456 ou 90123456"
               />
             </div>
             
@@ -2351,7 +2351,7 @@ function AdminSettings() {
                     <Input
                       value={userForm.phone}
                       onChange={(e) => setUserForm({ ...userForm, phone: e.target.value })}
-                      placeholder="90123456"
+                      placeholder="70123456 ou 90123456"
                       className="mt-1"
                     />
                   </div>
