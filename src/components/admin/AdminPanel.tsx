@@ -2347,6 +2347,31 @@ function AdminOperatorsSection() {
 // Admin Settings Content
 function AdminSettingsContent() {
   const { logout } = useAuthStore();
+  const [isResetting, setIsResetting] = useState(false);
+
+  const handleResetData = async () => {
+    setIsResetting(true);
+    try {
+      const res = await fetch('/api/seed', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('Données de test réinitialisées');
+        // Recharger la page pour refléter les changements
+        setTimeout(() => window.location.reload(), 1000);
+      } else {
+        toast.error(data.error || 'Erreur lors de la réinitialisation');
+      }
+    } catch (error) {
+      toast.error('Erreur lors de la réinitialisation');
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    toast.success('Déconnexion réussie');
+  };
 
   return (
     <div className="space-y-4">
@@ -2377,19 +2402,20 @@ function AdminSettingsContent() {
             <Button
               variant="outline"
               className="w-full justify-start"
-              onClick={() => {
-                fetch('/api/seed', { method: 'POST' }).then(() => {
-                  toast.success('Données de test réinitialisées');
-                });
-              }}
+              onClick={handleResetData}
+              disabled={isResetting}
             >
-              <RefreshCw className="w-4 h-4 mr-2" />
+              {isResetting ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4 mr-2" />
+              )}
               Réinitialiser les données de test
             </Button>
             <Button
               variant="outline"
               className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
-              onClick={() => logout()}
+              onClick={handleLogout}
             >
               <LogOut className="w-4 h-4 mr-2" />
               Déconnexion

@@ -15,7 +15,7 @@ import {
   MapPin, Search, Star, Clock, Car,
   CheckCircle, Phone, Loader2,
   Zap, Droplets, Sparkles, Crown, RefreshCw, ExternalLink,
-  Home, Calendar, MessageCircle, User, Bell, Settings, LogOut, Wallet, Copy, Plus, ChevronRight
+  Home, Calendar, MessageCircle, User, Bell, Settings, LogOut, Wallet, Copy, Plus, ChevronRight, Headphones, MessageSquare
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ClientOrderFlow } from './ClientOrderFlow';
@@ -694,6 +694,21 @@ function HomeContent({
 
 // Profile Content - Android Material Design Style
 function ProfileContent({ user, onLogout }: { user: any; onLogout: () => void }) {
+  const [activeSection, setActiveSection] = useState<string | null>(null);
+
+  // Support client info
+  const supportPhone = '+22890345678';
+  const supportWhatsApp = '+22890345678';
+
+  const handleCallSupport = () => {
+    window.open(`tel:${supportPhone}`, '_self');
+  };
+
+  const handleWhatsAppSupport = () => {
+    const message = encodeURIComponent('Bonjour, j\'ai besoin d\'aide avec l\'application Socline.');
+    window.open(`https://wa.me/${supportWhatsApp.replace(/\+/g, '')}?text=${message}`, '_blank');
+  };
+
   return (
     <div className="p-4 space-y-3 pb-28">
       {/* Profile Card - Android style */}
@@ -706,9 +721,6 @@ function ProfileContent({ user, onLogout }: { user: any; onLogout: () => void })
             <h2 className="font-bold text-[#212121]">{user?.name || 'Utilisateur'}</h2>
             <p className="text-sm text-[#757575]">+228 {user?.phone || '90 12 34 56'}</p>
           </div>
-          <button className="w-8 h-8 bg-[#FFF3E0] rounded flex items-center justify-center">
-            <Settings className="w-4 h-4 text-[#FF9800]" />
-          </button>
         </div>
       </div>
 
@@ -734,16 +746,46 @@ function ProfileContent({ user, onLogout }: { user: any; onLogout: () => void })
         </div>
       </div>
 
+      {/* Support Client - Nouveau */}
+      <div className="bg-gradient-to-r from-[#FF9800] to-[#F57C00] rounded-lg p-4 shadow-sm">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+            <Headphones className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-white">Support Client</h3>
+            <p className="text-xs text-white/80">Nous sommes là pour vous aider</p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={handleCallSupport}
+            className="flex-1 bg-white rounded-lg py-2 px-3 flex items-center justify-center gap-2 text-[#FF9800] font-medium text-sm"
+          >
+            <Phone className="w-4 h-4" />
+            Appeler
+          </button>
+          <button
+            onClick={handleWhatsAppSupport}
+            className="flex-1 bg-[#25D366] rounded-lg py-2 px-3 flex items-center justify-center gap-2 text-white font-medium text-sm"
+          >
+            <MessageSquare className="w-4 h-4" />
+            WhatsApp
+          </button>
+        </div>
+      </div>
+
       {/* Menu - Android List style */}
       <div className="bg-white rounded-lg overflow-hidden shadow-sm">
         {[
-          { icon: Clock, label: 'Historique' },
-          { icon: MapPin, label: 'Adresses' },
-          { icon: Settings, label: 'Paramètres' },
+          { icon: Clock, label: 'Historique', action: () => toast.info('Historique bientôt disponible') },
+          { icon: MapPin, label: 'Adresses', action: () => toast.info('Gestion des adresses bientôt disponible') },
+          { icon: Settings, label: 'Paramètres', action: () => toast.info('Paramètres bientôt disponibles') },
         ].map((item, index) => (
           <button
             key={index}
-            className="w-full flex items-center gap-3 p-4 hover:bg-[#F5F5F5] transition-colors border-b border-[#F5F5F5] last:border-0"
+            onClick={item.action}
+            className="w-full flex items-center gap-3 p-4 hover:bg-[#F5F5F5] active:bg-[#EEEEEE] transition-colors border-b border-[#F5F5F5] last:border-0"
           >
             <div className="w-8 h-8 bg-[#FFF3E0] rounded flex items-center justify-center">
               <item.icon className="w-4 h-4 text-[#FF9800]" />
