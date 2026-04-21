@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useAuthStore, useAppStore } from '@/store';
 import { ClientApp } from '@/components/client/ClientApp';
 import { WasherApp } from '@/components/washer/WasherApp';
@@ -8,33 +8,26 @@ import { AdminPanel } from '@/components/admin/AdminPanel';
 import { Toaster } from '@/components/ui/sonner';
 import { Loader2, Phone, Lock, Eye, EyeOff } from 'lucide-react';
 
-// Custom hook to check hydration status
-function useHydration() {
-  const [hydrated, setHydrated] = useState(useAuthStore.persist.hasHydrated());
-
-  useEffect(() => {
-    const unsubHydrate = useAuthStore.persist.onFinishHydration(() => {
-      setHydrated(true);
-    });
-    return unsubHydrate;
-  }, []);
-
-  return hydrated;
-}
-
 export default function SoclineApp() {
   const { isAuthenticated, user, login, logout } = useAuthStore();
   const { currentView, setView } = useAppStore();
-  const hydrated = useHydration();
+
+  // Detect if we're on the client
+  const isClient = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
 
   useEffect(() => {
-    if (isAuthenticated && user && hydrated) {
+    if (isAuthenticated && user) {
       const view = user.role === 'ADMIN' ? 'admin' : user.role === 'WASHER' ? 'washer' : 'client';
       setView(view);
     }
-  }, [isAuthenticated, user, hydrated, setView]);
+  }, [isAuthenticated, user, setView]);
 
-  if (!hydrated) {
+  // Show loading screen during SSR
+  if (!isClient) {
     return (
       <div className="min-h-screen bg-[#FF9800] flex items-center justify-center">
         <div className="text-center">
