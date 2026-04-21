@@ -32,10 +32,8 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
   const [address, setAddress] = useState(userLocation?.address || '');
   const [scheduledTime, setScheduledTime] = useState<'now' | 'later'>('now');
   const [scheduledDate, setScheduledDate] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'mobile_money' | 'cash' | 'card'>('cash');
+  const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'cash'>('cash');
   const [walletBalance, setWalletBalance] = useState(0);
-  const [mobileProvider, setMobileProvider] = useState<'mixx' | 'flooz'>('mixx');
-  const [mobileNumber, setMobileNumber] = useState('');
   const [promoCode, setPromoCode] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<any>(null);
   const [promoError, setPromoError] = useState('');
@@ -170,11 +168,6 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
       return;
     }
 
-    if (paymentMethod === 'mobile_money' && mobileNumber.length < 8) {
-      alert('Veuillez entrer un numéro Mobile Money valide.');
-      return;
-    }
-
     setIsProcessing(true);
     
     try {
@@ -221,8 +214,7 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
           body: JSON.stringify({
             userId: clientId,
             amount: finalPrice,
-            method: paymentMethod === 'wallet' ? 'WALLET' : paymentMethod === 'mobile_money' ? 'MOBILE_MONEY' : paymentMethod === 'card' ? 'CARD' : 'CASH',
-            phoneNumber: paymentMethod === 'mobile_money' ? mobileNumber : undefined,
+            method: paymentMethod === 'wallet' ? 'WALLET' : 'CASH',
           }),
         });
 
@@ -676,63 +668,6 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
                     </div>
                   </div>
                 </button>
-
-                {/* Mobile Money */}
-                <button
-                  className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
-                    paymentMethod === 'mobile_money' ? 'border-[#FF9800] bg-[#FFF8F0]' : 'border-gray-200'
-                  }`}
-                  onClick={() => setPaymentMethod('mobile_money')}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Wallet className="w-10 h-10 p-2 bg-blue-100 rounded-full text-blue-600" />
-                      <div>
-                        <span className="font-medium text-[#212121]">Mobile Money</span>
-                        <p className="text-sm text-gray-500">Mixx by Yas, T-Money</p>
-                      </div>
-                    </div>
-                    <div className="w-5 h-5 border-2 border-[#FF9800] rounded-full flex items-center justify-center">
-                      {paymentMethod === 'mobile_money' && <div className="w-3 h-3 bg-[#FF9800] rounded-full" />}
-                    </div>
-                  </div>
-                </button>
-
-                {/* Mobile Money Details */}
-                {paymentMethod === 'mobile_money' && (
-                  <div className="mt-3 pt-3 border-t space-y-3">
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        onClick={() => setMobileProvider('mixx')}
-                        className={`p-3 rounded-lg border-2 ${
-                          mobileProvider === 'mixx' ? 'border-[#FF9800] bg-[#FFF8F0]' : 'border-gray-200'
-                        }`}
-                      >
-                        <span className="font-medium text-[#FF9800]">Mixx by Yas</span>
-                        <p className="text-xs text-gray-500">Togo Telecom</p>
-                      </button>
-                      <button
-                        onClick={() => setMobileProvider('flooz')}
-                        className={`p-3 rounded-lg border-2 ${
-                          mobileProvider === 'flooz' ? 'border-[#FF9800] bg-[#FFF8F0]' : 'border-gray-200'
-                        }`}
-                      >
-                        <span className="font-medium text-blue-500">Flooz</span>
-                        <p className="text-xs text-gray-500">Moov Africa</p>
-                      </button>
-                    </div>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">+228</span>
-                      <Input
-                        type="tel"
-                        placeholder="90 12 34 56"
-                        value={mobileNumber}
-                        onChange={(e) => setMobileNumber(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                        className="pl-14 h-11"
-                      />
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
 
