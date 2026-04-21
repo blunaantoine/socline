@@ -508,6 +508,7 @@ model WalletTransaction {
   // External payment reference (for deposits)
   externalRef     String?
   phoneNumber     String?           // For mobile money deposits
+  paymentMethod   String?           // "Mixx by Yas", "Flooz", etc.
   
   // Description
   description     String?

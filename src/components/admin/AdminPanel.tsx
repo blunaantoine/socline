@@ -36,7 +36,7 @@ import {
   TrendingUp, Clock, Star, Settings, Bell, Plus,
   CheckCircle, XCircle, AlertCircle, Search,
   ChevronDown, Download, Eye, Edit, Trash2, Tag,
-  RefreshCw, Loader2, ArrowLeft, LogOut, Percent
+  RefreshCw, Loader2, ArrowLeft, LogOut, Percent, Wallet, Phone
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -107,6 +107,23 @@ interface Promotion {
   createdAt: string;
 }
 
+interface Deposit {
+  id: string;
+  amount: number;
+  status: string;
+  phoneNumber: string;
+  paymentMethod: string;
+  description: string | null;
+  externalRef: string | null;
+  createdAt: string;
+  user: {
+    id: string;
+    name: string;
+    phone: string;
+    email: string;
+  };
+}
+
 export function AdminPanel() {
   const { user, logout } = useAuthStore();
   const { setView } = useAppStore();
@@ -120,6 +137,7 @@ export function AdminPanel() {
   const [users, setUsers] = useState<User[]>([]);
   const [washers, setWashers] = useState<Washer[]>([]);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [deposits, setDeposits] = useState<Deposit[]>([]);
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -217,6 +235,23 @@ export function AdminPanel() {
     }
   }, []);
 
+  // Fetch deposits
+  const fetchDeposits = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/admin/deposits?status=PENDING');
+      const data = await res.json();
+      
+      if (data.success) {
+        setDeposits(data.deposits);
+      }
+    } catch (error) {
+      console.error('Fetch deposits error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   // Load data based on active tab
   useEffect(() => {
     if (activeTab === 'dashboard') {
@@ -229,8 +264,10 @@ export function AdminPanel() {
       fetchWashers();
     } else if (activeTab === 'promotions') {
       fetchPromotions();
+    } else if (activeTab === 'deposits') {
+      fetchDeposits();
     }
-  }, [activeTab, fetchStats, fetchOrders, fetchUsers, fetchWashers, fetchPromotions]);
+  }, [activeTab, fetchStats, fetchOrders, fetchUsers, fetchWashers, fetchPromotions, fetchDeposits]);
 
   // Handle washer verification
   const handleVerifyWasher = async (washerId: string, action: 'verify' | 'reject') => {
@@ -248,6 +285,27 @@ export function AdminPanel() {
       }
     } catch (error) {
       toast.error('Erreur lors de la mise à jour');
+    }
+  };
+
+  // Handle deposit validation
+  const handleDepositAction = async (transactionId: string, action: 'validate' | 'reject') => {
+    try {
+      const res = await fetch('/api/admin/deposits', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transactionId, action }),
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        toast.success(action === 'validate' ? 'Rechargement validé' : 'Rechargement rejeté');
+        fetchDeposits();
+      } else {
+        toast.error(data.error || 'Erreur');
+      }
+    } catch (error) {
+      toast.error('Erreur lors du traitement');
     }
   };
 
@@ -363,6 +421,14 @@ export function AdminPanel() {
             onRefresh={fetchPromotions}
           />
         )}
+        {activeTab === 'deposits' && (
+          <AdminDeposits 
+            deposits={deposits}
+            isLoading={isLoading}
+            onRefresh={fetchDeposits}
+            onAction={handleDepositAction}
+          />
+        )}
         {activeTab === 'finances' && <AdminFinances stats={stats} />}
         {activeTab === 'settings' && <AdminSettings />}
       </div>
@@ -372,8 +438,8 @@ export function AdminPanel() {
         {[
           { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
           { id: 'orders', icon: Clock, label: 'Commandes' },
+          { id: 'deposits', icon: Wallet, label: 'Recharges' },
           { id: 'promotions', icon: Tag, label: 'Promos' },
-          { id: 'users', icon: Users, label: 'Clients' },
           { id: 'settings', icon: Settings, label: 'Plus' },
         ].map((tab) => {
           const isActive = activeTab === tab.id;
@@ -1513,6 +1579,95 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
           >
             Créer une promotion
           </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Admin Deposits (Recharges)
+function AdminDeposits({ deposits, isLoading, onRefresh, onAction }: { 
+  deposits: Deposit[];
+  isLoading: boolean;
+  onRefresh: () => void;
+  onAction: (id: string, action: 'validate' | 'reject') => void;
+}) {
+  return (
+    <div className="p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="font-semibold text-lg text-[#212121]">Demandes de recharge</h2>
+        <button onClick={onRefresh} disabled={isLoading} className="text-[#FF9800]">
+          <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+        </button>
+      </div>
+
+      {/* Pending Deposits */}
+      {isLoading ? (
+        <div className="flex justify-center py-8">
+          <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+        </div>
+      ) : deposits.length > 0 ? (
+        <div className="space-y-3">
+          {deposits.map((deposit) => (
+            <Card key={deposit.id} className="border-0 shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-medium text-[#212121]">{deposit.user?.name || 'Client'}</h3>
+                      <Badge className="bg-yellow-100 text-yellow-800">En attente</Badge>
+                    </div>
+                    <p className="text-xs text-[#757575]">{deposit.user?.phone}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xl font-bold text-[#FF9800]">{deposit.amount.toLocaleString()} F</p>
+                  </div>
+                </div>
+                
+                <div className="bg-[#F5F5F5] rounded-lg p-3 space-y-2 mb-3">
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-4 h-4 text-[#757575]" />
+                    <span className="text-sm text-[#212121]">+228 {deposit.phoneNumber}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Wallet className="w-4 h-4 text-[#757575]" />
+                    <span className="text-sm text-[#212121]">{deposit.paymentMethod}</span>
+                  </div>
+                  <div className="text-xs text-[#9E9E9E]">
+                    {new Date(deposit.createdAt).toLocaleString('fr-FR', {
+                      day: 'numeric',
+                      month: 'short',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    className="flex-1 bg-green-600 hover:bg-green-700"
+                    onClick={() => onAction(deposit.id, 'validate')}
+                  >
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Valider
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    className="flex-1"
+                    onClick={() => onAction(deposit.id, 'reject')}
+                  >
+                    <XCircle className="w-4 h-4 mr-2" />
+                    Échoué
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl p-8 text-center">
+          <Wallet className="w-12 h-12 text-[#9E9E9E] mx-auto mb-3" />
+          <p className="text-[#757575]">Aucune demande de recharge en attente</p>
         </div>
       )}
     </div>

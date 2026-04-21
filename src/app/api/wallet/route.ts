@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/wallet - Deposit money to wallet
+// POST /api/wallet - Request deposit (creates PENDING transaction)
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -63,6 +63,14 @@ export async function POST(request: NextRequest) {
 
     if (!userId || !amount || amount <= 0) {
       return NextResponse.json({ error: 'Paramètres invalides' }, { status: 400 });
+    }
+
+    if (!phoneNumber || phoneNumber.length < 8) {
+      return NextResponse.json({ error: 'Numéro de téléphone requis' }, { status: 400 });
+    }
+
+    if (!paymentMethod) {
+      return NextResponse.json({ error: 'Méthode de paiement requise' }, { status: 400 });
     }
 
     // Get or create wallet
@@ -82,43 +90,39 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Simulate payment processing (in real app, integrate with payment provider)
+    // Generate reference
     const externalRef = `DEP${Date.now()}${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
-    // Create transaction
+    // Create PENDING transaction (admin will validate)
     const transaction = await db.walletTransaction.create({
       data: {
         walletId: wallet.id,
         type: 'DEPOSIT',
         amount,
-        status: 'COMPLETED',
+        status: 'PENDING',
         externalRef,
         phoneNumber,
-        description: `Rechargement via ${paymentMethod || 'Mobile Money'}`,
-        balanceAfter: wallet.balance + amount,
-      },
-    });
-
-    // Update wallet balance
-    const updatedWallet = await db.wallet.update({
-      where: { id: wallet.id },
-      data: {
-        balance: { increment: amount },
-        totalDeposited: { increment: amount },
+        paymentMethod,
+        description: `Demande de rechargement via ${paymentMethod}`,
+        balanceAfter: wallet.balance, // Balance stays same until validated
       },
     });
 
     return NextResponse.json({
       success: true,
-      transaction,
-      wallet: {
-        balance: updatedWallet.balance,
-        totalDeposited: updatedWallet.totalDeposited,
+      message: 'Demande de rechargement envoyée. En attente de validation.',
+      transaction: {
+        id: transaction.id,
+        amount: transaction.amount,
+        status: transaction.status,
+        phoneNumber: transaction.phoneNumber,
+        paymentMethod: transaction.paymentMethod,
+        createdAt: transaction.createdAt,
       },
     });
   } catch (error) {
-    console.error('Deposit error:', error);
-    return NextResponse.json({ error: 'Erreur lors du rechargement' }, { status: 500 });
+    console.error('Deposit request error:', error);
+    return NextResponse.json({ error: 'Erreur lors de la demande de rechargement' }, { status: 500 });
   }
 }
 
@@ -142,7 +146,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (wallet.balance < amount) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'Solde insuffisant',
         balance: wallet.balance,
         required: amount,

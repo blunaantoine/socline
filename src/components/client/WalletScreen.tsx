@@ -78,7 +78,7 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
   const [showDeposit, setShowDeposit] = useState(false);
   const [depositAmount, setDepositAmount] = useState<number>(0);
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'mixx' | 'flooz' | 'card'>('mixx');
+  const [paymentMethod, setPaymentMethod] = useState<'mixx' | 'flooz'>('mixx');
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Fetch wallet data
@@ -124,20 +124,14 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
           userId: user.id,
           amount: depositAmount,
           phoneNumber,
-          paymentMethod: paymentMethod === 'mixx' ? 'Mixx by Yas' : paymentMethod === 'flooz' ? 'Flooz' : 'Carte',
+          paymentMethod: paymentMethod === 'mixx' ? 'Mixx by Yas' : 'Flooz',
         }),
       });
 
       const data = await res.json();
 
       if (data.success) {
-        toast.success('Rechargement effectué avec succès !');
-        setWallet(prev => prev ? {
-          ...prev,
-          balance: data.wallet.balance,
-          totalDeposited: data.wallet.totalDeposited,
-          transactions: [data.transaction, ...prev.transactions],
-        } : null);
+        toast.success('Demande de rechargement envoyée ! En attente de validation.');
         setShowDeposit(false);
         setDepositAmount(0);
         setPhoneNumber('');
@@ -355,26 +349,7 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
                   </div>
                 </button>
 
-                <button
-                  onClick={() => setPaymentMethod('card')}
-                  className={`w-full p-3 rounded-lg flex items-center gap-3 transition-all ${
-                    paymentMethod === 'card'
-                      ? 'bg-[#FF9800] text-white'
-                      : 'bg-[#F5F5F5] text-[#212121]'
-                  }`}
-                >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    paymentMethod === 'card' ? 'bg-white/20' : 'bg-white'
-                  }`}>
-                    <CreditCard className="w-4 h-4" />
-                  </div>
-                  <div className="text-left">
-                    <p className="font-medium">Carte bancaire</p>
-                    <p className={`text-xs ${paymentMethod === 'card' ? 'text-white/80' : 'text-[#757575]'}`}>
-                      Visa, Mastercard
-                    </p>
-                  </div>
-                </button>
+
               </div>
             </div>
 
