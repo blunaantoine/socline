@@ -1319,11 +1319,15 @@ function AdminFinances({ stats }: { stats: Stats | null }) {
 // Admin Settings
 function AdminSettings() {
   const { logout } = useAuthStore();
-  const [activeSection, setActiveSection] = useState<'general' | 'operators'>('general');
+  const [activeSection, setActiveSection] = useState<'general' | 'users' | 'operators'>('general');
   const [operators, setOperators] = useState<any[]>([]);
+  const [allUsers, setAllUsers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [editingOperator, setEditingOperator] = useState<any>(null);
   const [showOperatorForm, setShowOperatorForm] = useState(false);
+  const [showUserForm, setShowUserForm] = useState(false);
+  const [userFormType, setUserFormType] = useState<'client' | 'washer'>('client');
+  const [userSearch, setUserSearch] = useState('');
   const [operatorForm, setOperatorForm] = useState({
     name: '',
     displayName: '',
@@ -1333,6 +1337,13 @@ function AdminSettings() {
     minAmount: '100',
     maxAmount: '500000',
     isActive: true,
+  });
+  const [userForm, setUserForm] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    pin: '1234',
+    role: 'CLIENT' as 'CLIENT' | 'WASHER',
   });
 
   const fetchOperators = useCallback(async () => {
@@ -1350,11 +1361,133 @@ function AdminSettings() {
     }
   }, []);
 
+  const fetchAllUsers = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/admin/users?limit=50');
+      const data = await res.json();
+      if (data.success) {
+        setAllUsers(data.users);
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (activeSection === 'operators') {
       fetchOperators();
+    } else if (activeSection === 'users') {
+      fetchAllUsers();
     }
-  }, [activeSection, fetchOperators]);
+  }, [activeSection, fetchOperators, fetchAllUsers]);
+
+  // User management functions
+  const handleCreateUser = async () => {
+    if (!userForm.phone) {
+      toast.error('Le téléphone est requis');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...userForm,
+          createWasher: userForm.role === 'WASHER',
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        toast.success(userForm.role === 'WASHER' ? 'Laveur créé avec succès' : 'Client créé avec succès');
+        setShowUserForm(false);
+        resetUserForm();
+        fetchAllUsers();
+      } else {
+        toast.error(data.error || 'Erreur');
+      }
+    } catch (error) {
+      toast.error('Erreur lors de la création');
+    }
+  };
+
+  const handleCreateWasher = async () => {
+    if (!userForm.phone) {
+      toast.error('Le téléphone est requis');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/admin/washers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userForm),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        toast.success('Laveur créé avec succès');
+        setShowUserForm(false);
+        resetUserForm();
+        fetchAllUsers();
+      } else {
+        toast.error(data.error || 'Erreur');
+      }
+    } catch (error) {
+      toast.error('Erreur lors de la création');
+    }
+  };
+
+  const handleToggleUserStatus = async (userId: string, isActive: boolean) => {
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, isActive: !isActive }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        toast.success(isActive ? 'Utilisateur désactivé' : 'Utilisateur activé');
+        fetchAllUsers();
+      }
+    } catch (error) {
+      toast.error('Erreur');
+    }
+  };
+
+  const handlePromoteToWasher = async (userId: string) => {
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, role: 'WASHER' }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        toast.success('Utilisateur promu laveur');
+        fetchAllUsers();
+      }
+    } catch (error) {
+      toast.error('Erreur');
+    }
+  };
+
+  const resetUserForm = () => {
+    setUserForm({
+      name: '',
+      phone: '',
+      email: '',
+      pin: '1234',
+      role: 'CLIENT',
+    });
+    setUserFormType('client');
+  };
 
   const handleSaveOperator = async () => {
     try {
@@ -1449,12 +1582,17 @@ function AdminSettings() {
     }
   };
 
+  const filteredUsers = allUsers.filter(u => 
+    u.name?.toLowerCase().includes(userSearch.toLowerCase()) ||
+    u.phone.includes(userSearch)
+  );
+
   return (
     <div className="p-4 space-y-4 pb-28">
       <h2 className="font-semibold text-lg text-[#212121]">Paramètres</h2>
 
       {/* Section Tabs */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 overflow-x-auto">
         <Button
           variant={activeSection === 'general' ? 'default' : 'outline'}
           size="sm"
@@ -1462,6 +1600,15 @@ function AdminSettings() {
           className={activeSection === 'general' ? 'bg-[#FF9800] hover:bg-[#F57C00]' : ''}
         >
           Général
+        </Button>
+        <Button
+          variant={activeSection === 'users' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setActiveSection('users')}
+          className={activeSection === 'users' ? 'bg-[#FF9800] hover:bg-[#F57C00]' : ''}
+        >
+          <Users className="w-4 h-4 mr-1" />
+          Utilisateurs
         </Button>
         <Button
           variant={activeSection === 'operators' ? 'default' : 'outline'}
@@ -1508,6 +1655,205 @@ function AdminSettings() {
         </>
       )}
 
+      {activeSection === 'users' && (
+        <>
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-[#757575]">Gérer les utilisateurs et laveurs</p>
+            <Button
+              size="sm"
+              className="bg-[#FF9800] hover:bg-[#F57C00]"
+              onClick={() => {
+                resetUserForm();
+                setShowUserForm(true);
+              }}
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              Ajouter
+            </Button>
+          </div>
+
+          {/* Search */}
+          <div className="relative">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#9E9E9E]" />
+            <Input
+              placeholder="Rechercher un utilisateur..."
+              value={userSearch}
+              onChange={(e) => setUserSearch(e.target.value)}
+              className="pl-10 bg-white"
+            />
+          </div>
+
+          {/* Quick Action Buttons */}
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1"
+              onClick={() => {
+                setUserFormType('client');
+                setUserForm(prev => ({ ...prev, role: 'CLIENT' }));
+                setShowUserForm(true);
+              }}
+            >
+              <Users className="w-4 h-4 mr-1" />
+              Nouveau client
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1"
+              onClick={() => {
+                setUserFormType('washer');
+                setUserForm(prev => ({ ...prev, role: 'WASHER' }));
+                setShowUserForm(true);
+              }}
+            >
+              <Car className="w-4 h-4 mr-1" />
+              Nouveau laveur
+            </Button>
+          </div>
+
+          {/* User Creation Form */}
+          {showUserForm && (
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4 space-y-3">
+                <h3 className="font-semibold text-[#212121] flex items-center gap-2">
+                  {userFormType === 'washer' ? (
+                    <>
+                      <Car className="w-4 h-4 text-[#FF9800]" />
+                      Nouveau laveur
+                    </>
+                  ) : (
+                    <>
+                      <Users className="w-4 h-4 text-[#FF9800]" />
+                      Nouveau client
+                    </>
+                  )}
+                </h3>
+
+                <div className="space-y-2">
+                  <div>
+                    <Label className="text-xs text-[#757575]">Téléphone *</Label>
+                    <Input
+                      value={userForm.phone}
+                      onChange={(e) => setUserForm({ ...userForm, phone: e.target.value })}
+                      placeholder="90123456"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-[#757575]">Nom complet</Label>
+                    <Input
+                      value={userForm.name}
+                      onChange={(e) => setUserForm({ ...userForm, name: e.target.value })}
+                      placeholder="Jean Dupont"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-[#757575]">Email (optionnel)</Label>
+                    <Input
+                      type="email"
+                      value={userForm.email}
+                      onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
+                      placeholder="email@example.com"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-[#757575]">Code PIN</Label>
+                    <Input
+                      type="password"
+                      maxLength={4}
+                      value={userForm.pin}
+                      onChange={(e) => setUserForm({ ...userForm, pin: e.target.value.replace(/\D/g, '').slice(0, 4) })}
+                      placeholder="1234"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    className="flex-1 bg-[#FF9800] hover:bg-[#F57C00]"
+                    onClick={userFormType === 'washer' ? handleCreateWasher : handleCreateUser}
+                  >
+                    Créer
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowUserForm(false);
+                      resetUserForm();
+                    }}
+                  >
+                    Annuler
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Users List */}
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+            </div>
+          ) : filteredUsers.length > 0 ? (
+            <div className="space-y-2">
+              {filteredUsers.map((user) => (
+                <Card key={user.id} className={`border-0 shadow-sm ${!user.isActive ? 'opacity-60' : ''}`}>
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="w-10 h-10">
+                        <AvatarFallback className="bg-[#E3F2FD] text-[#2196F3]">
+                          {user.name?.charAt(0) || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-medium text-[#212121] text-sm truncate">{user.name || 'N/A'}</h3>
+                          <Badge className="bg-[#E3F2FD] text-[#2196F3] text-[10px]">Client</Badge>
+                        </div>
+                        <p className="text-xs text-[#757575]">{user.phone}</p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0"
+                          onClick={() => handlePromoteToWasher(user.id)}
+                          title="Promouvoir en laveur"
+                        >
+                          <Car className="w-4 h-4 text-[#FF9800]" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0"
+                          onClick={() => handleToggleUserStatus(user.id, user.isActive)}
+                        >
+                          {user.isActive ? (
+                            <XCircle className="w-4 h-4 text-red-500" />
+                          ) : (
+                            <CheckCircle className="w-4 h-4 text-green-500" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl p-8 text-center">
+              <Users className="w-12 h-12 text-[#9E9E9E] mx-auto mb-3" />
+              <p className="text-[#757575]">Aucun utilisateur trouvé</p>
+            </div>
+          )}
+        </>
+      )}
+
       {activeSection === 'operators' && (
         <>
           <div className="flex items-center justify-between">
@@ -1530,7 +1876,7 @@ function AdminSettings() {
             <Card className="border-0 shadow-sm">
               <CardContent className="p-4 space-y-3">
                 <h3 className="font-semibold text-[#212121]">
-                  {editingOperator ? 'Modifier l\'opérateur' : 'Nouvel opérateur'}
+                  {editingOperator ? 'Modifier l&apos;opérateur' : 'Nouvel opérateur'}
                 </h3>
 
                 <div className="grid grid-cols-2 gap-2">
@@ -1792,7 +2138,7 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
   const handleSubmit = async () => {
     try {
       const method = editingPromo ? 'PUT' : 'POST';
-      const body = editingPromo 
+      const body = editingPromo
         ? { id: editingPromo.id, ...formData }
         : formData;
 
@@ -1803,7 +2149,7 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
       });
 
       const data = await res.json();
-      
+
       if (data.success) {
         toast.success(editingPromo ? 'Promotion mise à jour' : 'Promotion créée');
         resetForm();
@@ -1860,37 +2206,6 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
     } catch (error) {
       toast.error('Erreur');
     }
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Supprimer cette promotion ?')) return;
-    
-    try {
-      const res = await fetch(`/api/promotions?id=${id}`, { method: 'DELETE' });
-      const data = await res.json();
-      
-      if (data.success) {
-        toast.success('Promotion supprimée');
-        onRefresh();
-      }
-    } catch (error) {
-      toast.error('Erreur lors de la suppression');
-    }
-  };
-
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('fr-FR', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
-  };
-
-  const isPromoActive = (promo: Promotion) => {
-    const now = new Date();
-    const start = new Date(promo.startDate);
-    const end = new Date(promo.endDate);
-    return promo.isActive && now >= start && now <= end;
   };
 
   return (

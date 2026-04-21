@@ -1,6 +1,93 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
+// POST /api/admin/washers - Create a new washer
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { name, phone, email, pin, isVerified, userId } = body;
+
+    if (!phone) {
+      return NextResponse.json({ error: 'Le téléphone est requis' }, { status: 400 });
+    }
+
+    // Check if user already exists
+    let user = await db.user.findUnique({
+      where: { phone },
+    });
+
+    if (user) {
+      // User exists, check if already a washer
+      const existingWasher = await db.washer.findUnique({
+        where: { userId: user.id },
+      });
+
+      if (existingWasher) {
+        return NextResponse.json({ error: 'Cet utilisateur est déjà un laveur' }, { status: 400 });
+      }
+
+      // Update user role to WASHER
+      user = await db.user.update({
+        where: { id: user.id },
+        data: {
+          role: 'WASHER',
+          name: name || user.name,
+        },
+      });
+    } else {
+      // Create new user with WASHER role
+      user = await db.user.create({
+        data: {
+          phone,
+          name: name || null,
+          email: email || null,
+          pin: pin || '1234',
+          role: 'WASHER',
+          isActive: true,
+        },
+      });
+    }
+
+    // Create washer profile
+    const washer = await db.washer.create({
+      data: {
+        userId: user.id,
+        isAvailable: true,
+        isVerified: isVerified !== undefined ? isVerified : true, // Auto-verify by default
+        rating: 0,
+        totalRatings: 0,
+        totalEarnings: 0,
+        completedJobs: 0,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      washer: {
+        id: washer.id,
+        name: washer.user.name,
+        phone: washer.user.phone,
+        email: washer.user.email,
+        isVerified: washer.isVerified,
+        isAvailable: washer.isAvailable,
+      },
+    });
+  } catch (error) {
+    console.error('Create washer error:', error);
+    return NextResponse.json({ error: 'Erreur lors de la création' }, { status: 500 });
+  }
+}
+
 // GET /api/admin/washers - Get all washers
 export async function GET(request: NextRequest) {
   try {
