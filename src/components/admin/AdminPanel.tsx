@@ -604,8 +604,8 @@ export function AdminPanel() {
         {[
           { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
           { id: 'users', icon: Users, label: 'Utilis.' },
+          { id: 'washers', icon: Car, label: 'Laveurs' },
           { id: 'orders', icon: Clock, label: 'Commandes' },
-          { id: 'promotions', icon: Tag, label: 'Promos' },
           { id: 'settings', icon: Settings, label: 'Plus' },
         ].map((tab) => {
           const isActive = activeTab === tab.id;
@@ -1137,6 +1137,46 @@ function AdminUsers({ users, searchQuery, setSearchQuery, isLoading, onRefresh }
         </div>
       </div>
 
+      {/* Quick Action Buttons */}
+      <div className="flex gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          className="flex-1 border-blue-200 text-blue-600 hover:bg-blue-50"
+          onClick={() => {
+            setNewUser({ name: '', phone: '', email: '', pin: '1234', role: 'CLIENT' });
+            setShowAddModal(true);
+          }}
+        >
+          <Users className="w-4 h-4 mr-1" />
+          Nouveau client
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="flex-1 border-orange-200 text-orange-600 hover:bg-orange-50"
+          onClick={() => {
+            setNewUser({ name: '', phone: '', email: '', pin: '1234', role: 'WASHER' });
+            setShowAddModal(true);
+          }}
+        >
+          <Car className="w-4 h-4 mr-1" />
+          Nouveau laveur
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="flex-1 border-red-200 text-red-600 hover:bg-red-50"
+          onClick={() => {
+            setNewUser({ name: '', phone: '', email: '', pin: '1234', role: 'ADMIN' });
+            setShowAddModal(true);
+          }}
+        >
+          <Settings className="w-4 h-4 mr-1" />
+          Nouvel admin
+        </Button>
+      </div>
+
       {/* Search and Filters */}
       <div className="flex gap-2">
         <div className="relative flex-1">
@@ -1163,19 +1203,19 @@ function AdminUsers({ users, searchQuery, setSearchQuery, isLoading, onRefresh }
 
       {/* Stats Summary */}
       <div className="grid grid-cols-3 gap-2">
-        <div className="bg-blue-50 rounded-lg p-2 text-center">
+        <div className="bg-blue-50 rounded-lg p-2 text-center cursor-pointer hover:bg-blue-100 transition-colors" onClick={() => setRoleFilter('CLIENT')}>
           <div className="text-lg font-bold text-blue-600">
             {displayUsers.filter(u => u.role === 'CLIENT').length}
           </div>
           <div className="text-xs text-blue-800">Clients</div>
         </div>
-        <div className="bg-orange-50 rounded-lg p-2 text-center">
+        <div className="bg-orange-50 rounded-lg p-2 text-center cursor-pointer hover:bg-orange-100 transition-colors" onClick={() => setRoleFilter('WASHER')}>
           <div className="text-lg font-bold text-orange-600">
             {displayUsers.filter(u => u.role === 'WASHER').length}
           </div>
           <div className="text-xs text-orange-800">Laveurs</div>
         </div>
-        <div className="bg-red-50 rounded-lg p-2 text-center">
+        <div className="bg-red-50 rounded-lg p-2 text-center cursor-pointer hover:bg-red-100 transition-colors" onClick={() => setRoleFilter('ADMIN')}>
           <div className="text-lg font-bold text-red-600">
             {displayUsers.filter(u => u.role === 'ADMIN').length}
           </div>
@@ -1509,10 +1549,26 @@ function AdminWashers({ washers, isLoading, onRefresh, onVerify }: {
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="font-semibold text-lg text-[#212121]">Laveurs</h2>
+        <h2 className="font-semibold text-lg text-[#212121]">Gestion des laveurs</h2>
         <button onClick={onRefresh} disabled={isLoading} className="text-[#FF9800]">
           <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
         </button>
+      </div>
+
+      {/* Stats Summary */}
+      <div className="grid grid-cols-3 gap-2">
+        <div className="bg-orange-50 rounded-lg p-2 text-center">
+          <div className="text-lg font-bold text-orange-600">{washers.length}</div>
+          <div className="text-xs text-orange-800">Total</div>
+        </div>
+        <div className="bg-green-50 rounded-lg p-2 text-center">
+          <div className="text-lg font-bold text-green-600">{washers.filter(w => w.isAvailable && w.isVerified).length}</div>
+          <div className="text-xs text-green-800">En ligne</div>
+        </div>
+        <div className="bg-yellow-50 rounded-lg p-2 text-center">
+          <div className="text-lg font-bold text-yellow-600">{pendingWashers.length}</div>
+          <div className="text-xs text-yellow-800">En attente</div>
+        </div>
       </div>
 
       {/* Pending Verifications */}
