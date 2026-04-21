@@ -8,25 +8,33 @@ import { AdminPanel } from '@/components/admin/AdminPanel';
 import { Toaster } from '@/components/ui/sonner';
 import { Loader2, Phone, Lock, Eye, EyeOff } from 'lucide-react';
 
+// Custom hook to check hydration status
+function useHydration() {
+  const [hydrated, setHydrated] = useState(useAuthStore.persist.hasHydrated());
+
+  useEffect(() => {
+    const unsubHydrate = useAuthStore.persist.onFinishHydration(() => {
+      setHydrated(true);
+    });
+    return unsubHydrate;
+  }, []);
+
+  return hydrated;
+}
+
 export default function SoclineApp() {
   const { isAuthenticated, user, login, logout } = useAuthStore();
   const { currentView, setView } = useAppStore();
-  const [mounted, setMounted] = useState(false);
+  const hydrated = useHydration();
 
   useEffect(() => {
-    localStorage.removeItem('washgo-auth');
-    const timer = setTimeout(() => setMounted(true), 0);
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    if (isAuthenticated && user && mounted) {
+    if (isAuthenticated && user && hydrated) {
       const view = user.role === 'ADMIN' ? 'admin' : user.role === 'WASHER' ? 'washer' : 'client';
       setView(view);
     }
-  }, [isAuthenticated, user, mounted, setView]);
+  }, [isAuthenticated, user, hydrated, setView]);
 
-  if (!mounted) {
+  if (!hydrated) {
     return (
       <div className="min-h-screen bg-[#FF9800] flex items-center justify-center">
         <div className="text-center">
