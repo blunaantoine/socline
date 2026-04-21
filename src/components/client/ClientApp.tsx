@@ -329,35 +329,76 @@ function HomeContent({
         <div className="relative overflow-hidden">
           <div 
             key={currentPromoIndex}
-            className="bg-gradient-to-r from-[#FF9800] to-[#F57C00] rounded-lg p-4 shadow-md animate-slide-in"
+            className="rounded-lg shadow-md animate-slide-in overflow-hidden"
           >
-            <p className="text-white/90 text-xs font-medium mb-1">Offre spéciale</p>
-            <h2 className="text-white text-lg font-bold mb-2">
-              {currentPromo.discountType === 'PERCENTAGE' 
-                ? `-${currentPromo.discountValue}% ${currentPromo.name}`
-                : `-${currentPromo.discountValue.toLocaleString()}F ${currentPromo.name}`}
-            </h2>
-            {currentPromo.description && (
-              <p className="text-white/80 text-sm mb-2">{currentPromo.description}</p>
+            {currentPromo.image ? (
+              // With image - show image as background
+              <div className="relative">
+                <img 
+                  src={currentPromo.image} 
+                  alt={currentPromo.name}
+                  className="w-full h-36 object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 p-3">
+                  <p className="text-white/90 text-xs font-medium mb-0.5">Offre spéciale</p>
+                  <h2 className="text-white text-base font-bold mb-1">
+                    {currentPromo.discountType === 'PERCENTAGE' 
+                      ? `-${currentPromo.discountValue}% ${currentPromo.name}`
+                      : `-${currentPromo.discountValue.toLocaleString()}F ${currentPromo.name}`}
+                  </h2>
+                  {currentPromo.code && (
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(currentPromo.code);
+                        toast.success('Code promo copié !');
+                      }}
+                      className="bg-white/20 rounded px-2 py-1 inline-flex items-center gap-1.5 mb-2 hover:bg-white/30 transition-colors active:scale-95"
+                    >
+                      <span className="text-white font-mono text-xs font-bold">{currentPromo.code}</span>
+                      <Copy className="w-3 h-3 text-white/80" />
+                    </button>
+                  )}
+                  <button
+                    onClick={onStartOrder}
+                    className="bg-white text-[#FF9800] px-3 py-1.5 rounded text-xs font-semibold"
+                  >
+                    Réserver
+                  </button>
+                </div>
+              </div>
+            ) : (
+              // No image - show gradient background
+              <div className="bg-gradient-to-r from-[#FF9800] to-[#F57C00] p-4">
+                <p className="text-white/90 text-xs font-medium mb-1">Offre spéciale</p>
+                <h2 className="text-white text-lg font-bold mb-2">
+                  {currentPromo.discountType === 'PERCENTAGE' 
+                    ? `-${currentPromo.discountValue}% ${currentPromo.name}`
+                    : `-${currentPromo.discountValue.toLocaleString()}F ${currentPromo.name}`}
+                </h2>
+                {currentPromo.description && (
+                  <p className="text-white/80 text-sm mb-2">{currentPromo.description}</p>
+                )}
+                {currentPromo.code && (
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(currentPromo.code);
+                      toast.success('Code promo copié !');
+                    }}
+                    className="bg-white/20 rounded px-3 py-1.5 inline-flex items-center gap-2 mb-3 hover:bg-white/30 transition-colors active:scale-95"
+                  >
+                    <span className="text-white font-mono text-sm font-bold">{currentPromo.code}</span>
+                    <Copy className="w-4 h-4 text-white/80" />
+                  </button>
+                )}
+                <button
+                  onClick={onStartOrder}
+                  className="bg-white text-[#FF9800] px-4 py-2 rounded text-sm font-semibold"
+                >
+                  Réserver
+                </button>
+              </div>
             )}
-            {currentPromo.code && (
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(currentPromo.code);
-                  toast.success('Code promo copié !');
-                }}
-                className="bg-white/20 rounded px-3 py-1.5 inline-flex items-center gap-2 mb-3 hover:bg-white/30 transition-colors active:scale-95"
-              >
-                <span className="text-white font-mono text-sm font-bold">{currentPromo.code}</span>
-                <Copy className="w-4 h-4 text-white/80" />
-              </button>
-            )}
-            <button
-              onClick={onStartOrder}
-              className="bg-white text-[#FF9800] px-4 py-2 rounded text-sm font-semibold"
-            >
-              Réserver
-            </button>
           </div>
           
           {/* Carousel Dots Indicator */}

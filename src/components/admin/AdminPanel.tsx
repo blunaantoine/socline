@@ -36,7 +36,7 @@ import {
   TrendingUp, Clock, Star, Settings, Bell, Plus,
   CheckCircle, XCircle, AlertCircle, Search,
   ChevronDown, Download, Eye, Edit, Trash2, Tag,
-  RefreshCw, Loader2, ArrowLeft, LogOut, Percent, Wallet, Phone
+  RefreshCw, Loader2, ArrowLeft, LogOut, Percent, Wallet, Phone, Image as ImageIcon
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -97,6 +97,7 @@ interface Promotion {
   discountType: string;
   discountValue: number;
   code: string | null;
+  image: string | null;
   startDate: string;
   endDate: string;
   maxUses: number | null;
@@ -1591,12 +1592,14 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
 }) {
   const [showForm, setShowForm] = useState(false);
   const [editingPromo, setEditingPromo] = useState<Promotion | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     discountType: 'PERCENTAGE',
     discountValue: '',
     code: '',
+    image: '',
     startDate: '',
     endDate: '',
     maxUses: '',
@@ -1612,6 +1615,7 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
       discountType: 'PERCENTAGE',
       discountValue: '',
       code: '',
+      image: '',
       startDate: '',
       endDate: '',
       maxUses: '',
@@ -1619,8 +1623,28 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
       minOrderAmount: '',
       isActive: true,
     });
+    setImagePreview(null);
     setEditingPromo(null);
     setShowForm(false);
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Check file size (max 2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error('L\'image ne doit pas dépasser 2MB');
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64 = reader.result as string;
+        setImagePreview(base64);
+        setFormData({ ...formData, image: base64 });
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleSubmit = async () => {
@@ -1658,6 +1682,7 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
       discountType: promo.discountType,
       discountValue: promo.discountValue.toString(),
       code: promo.code || '',
+      image: promo.image || '',
       startDate: new Date(promo.startDate).toISOString().split('T')[0],
       endDate: new Date(promo.endDate).toISOString().split('T')[0],
       maxUses: promo.maxUses?.toString() || '',
@@ -1665,6 +1690,9 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
       minOrderAmount: promo.minOrderAmount?.toString() || '',
       isActive: promo.isActive,
     });
+    if (promo.image) {
+      setImagePreview(promo.image);
+    }
     setShowForm(true);
   };
 
@@ -1806,6 +1834,47 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
               />
             </div>
 
+            {/* Image upload */}
+            <div>
+              <Label className="text-xs text-[#757575]">Image de la promotion (optionnel)</Label>
+              <div className="mt-1">
+                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-[#E0E0E0] rounded-lg cursor-pointer hover:bg-[#FAFAFA] transition-colors">
+                  {imagePreview ? (
+                    <div className="relative w-full h-full">
+                      <img 
+                        src={imagePreview} 
+                        alt="Preview" 
+                        className="w-full h-full object-cover rounded-lg"
+                      />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setImagePreview(null);
+                          setFormData({ ...formData, image: '' });
+                        }}
+                        className="absolute top-1 right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center"
+                      >
+                        <XCircle className="w-4 h-4 text-white" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                      <ImageIcon className="w-8 h-8 text-[#9E9E9E] mb-2" />
+                      <p className="text-xs text-[#757575]">Cliquez pour ajouter une image</p>
+                      <p className="text-xs text-[#9E9E9E]">PNG, JPG (max 2MB)</p>
+                    </div>
+                  )}
+                  <input 
+                    type="file" 
+                    className="hidden" 
+                    accept="image/png, image/jpeg, image/jpg"
+                    onChange={handleImageChange}
+                  />
+                </label>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <Label className="text-xs text-[#757575]">Date début *</Label>
@@ -1863,70 +1932,82 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
           {promotions.map((promo) => (
             <Card key={promo.id} className={`border-0 shadow-sm ${!promo.isActive ? 'opacity-60' : ''}`}>
               <CardContent className="p-4">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <Tag className="w-4 h-4 text-[#FF9800]" />
-                      <h3 className="font-medium text-[#212121]">{promo.name}</h3>
+                <div className="flex gap-3">
+                  {/* Image thumbnail */}
+                  {promo.image && (
+                    <div className="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden">
+                      <img 
+                        src={promo.image} 
+                        alt={promo.name}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
-                    {promo.description && (
-                      <p className="text-xs text-[#757575] mt-1">{promo.description}</p>
-                    )}
-                    <div className="flex items-center gap-3 mt-2">
-                      <span className="text-lg font-bold text-[#FF9800]">
-                        {promo.discountType === 'PERCENTAGE' 
-                          ? `-${promo.discountValue}%` 
-                          : `-${promo.discountValue.toLocaleString()}F`}
-                      </span>
-                      {promo.code && (
-                        <Badge className="bg-[#FFF3E0] text-[#FF9800]">
-                          {promo.code}
-                        </Badge>
+                  )}
+                  <div className="flex-1 flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <Tag className="w-4 h-4 text-[#FF9800]" />
+                        <h3 className="font-medium text-[#212121]">{promo.name}</h3>
+                      </div>
+                      {promo.description && (
+                        <p className="text-xs text-[#757575] mt-1">{promo.description}</p>
                       )}
-                    </div>
-                    <p className="text-xs text-[#757575] mt-2">
-                      {formatDate(promo.startDate)} - {formatDate(promo.endDate)}
-                    </p>
-                    <p className="text-xs text-[#9E9E9E] mt-1">
-                      Utilisé {promo.currentUses} fois
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <Badge className={
-                      isPromoActive(promo) 
-                        ? 'bg-green-100 text-green-800' 
-                        : promo.isActive 
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-gray-100 text-gray-800'
-                    }>
-                      {isPromoActive(promo) ? 'Active' : promo.isActive ? 'À venir' : 'Inactive'}
-                    </Badge>
-                    <div className="flex gap-1">
-                      <Button 
-                        size="sm" 
-                        variant="ghost"
-                        onClick={() => handleEdit(promo)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="ghost"
-                        onClick={() => handleToggleActive(promo)}
-                      >
-                        {promo.isActive ? (
-                          <XCircle className="w-4 h-4 text-red-500" />
-                        ) : (
-                          <CheckCircle className="w-4 h-4 text-green-500" />
+                      <div className="flex items-center gap-3 mt-2">
+                        <span className="text-lg font-bold text-[#FF9800]">
+                          {promo.discountType === 'PERCENTAGE' 
+                            ? `-${promo.discountValue}%` 
+                            : `-${promo.discountValue.toLocaleString()}F`}
+                        </span>
+                        {promo.code && (
+                          <Badge className="bg-[#FFF3E0] text-[#FF9800]">
+                            {promo.code}
+                          </Badge>
                         )}
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="ghost"
-                        onClick={() => handleDelete(promo.id)}
-                      >
-                        <Trash2 className="w-4 h-4 text-red-500" />
-                      </Button>
+                      </div>
+                      <p className="text-xs text-[#757575] mt-2">
+                        {formatDate(promo.startDate)} - {formatDate(promo.endDate)}
+                      </p>
+                      <p className="text-xs text-[#9E9E9E] mt-1">
+                        Utilisé {promo.currentUses} fois
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <Badge className={
+                        isPromoActive(promo) 
+                          ? 'bg-green-100 text-green-800' 
+                          : promo.isActive 
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-gray-100 text-gray-800'
+                      }>
+                        {isPromoActive(promo) ? 'Active' : promo.isActive ? 'À venir' : 'Inactive'}
+                      </Badge>
+                      <div className="flex gap-1">
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={() => handleEdit(promo)}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={() => handleToggleActive(promo)}
+                        >
+                          {promo.isActive ? (
+                            <XCircle className="w-4 h-4 text-red-500" />
+                          ) : (
+                            <CheckCircle className="w-4 h-4 text-green-500" />
+                          )}
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={() => handleDelete(promo.id)}
+                        >
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
