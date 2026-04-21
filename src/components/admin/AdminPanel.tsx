@@ -99,6 +99,7 @@ interface Promotion {
   code: string | null;
   displayType: string;
   image: string | null;
+  imagePosition: string;
   startDate: string;
   endDate: string;
   maxUses: number | null;
@@ -1602,6 +1603,7 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
     code: '',
     displayType: 'TEXT',
     image: '',
+    imagePosition: 'center',
     startDate: '',
     endDate: '',
     maxUses: '',
@@ -1619,6 +1621,7 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
       code: '',
       displayType: 'TEXT',
       image: '',
+      imagePosition: 'center',
       startDate: '',
       endDate: '',
       maxUses: '',
@@ -1687,6 +1690,7 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
       code: promo.code || '',
       displayType: promo.displayType || 'TEXT',
       image: promo.image || '',
+      imagePosition: promo.imagePosition || 'center',
       startDate: new Date(promo.startDate).toISOString().split('T')[0],
       endDate: new Date(promo.endDate).toISOString().split('T')[0],
       maxUses: promo.maxUses?.toString() || '',
@@ -1872,44 +1876,140 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
 
             {/* Image upload - only show if displayType is IMAGE */}
             {formData.displayType === 'IMAGE' && (
-              <div>
-                <Label className="text-xs text-[#757575]">Image de la promotion *</Label>
-                <div className="mt-1">
-                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-[#E0E0E0] rounded-lg cursor-pointer hover:bg-[#FAFAFA] transition-colors">
-                    {imagePreview ? (
-                      <div className="relative w-full h-full">
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs text-[#757575]">Image de la promotion *</Label>
+                  <div className="mt-1">
+                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-[#E0E0E0] rounded-lg cursor-pointer hover:bg-[#FAFAFA] transition-colors">
+                      {imagePreview ? (
+                        <div className="relative w-full h-full overflow-hidden rounded-lg">
+                          <img 
+                            src={imagePreview} 
+                            alt="Preview" 
+                            className="w-full h-full object-cover rounded-lg"
+                            style={{ objectPosition: formData.imagePosition }}
+                          />
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setImagePreview(null);
+                              setFormData({ ...formData, image: '' });
+                            }}
+                            className="absolute top-1 right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center"
+                          >
+                            <XCircle className="w-4 h-4 text-white" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                          <ImageIcon className="w-8 h-8 text-[#9E9E9E] mb-2" />
+                          <p className="text-xs text-[#757575]">Cliquez pour ajouter une image</p>
+                          <p className="text-xs text-[#9E9E9E]">PNG, JPG (max 2MB)</p>
+                        </div>
+                      )}
+                      <input 
+                        type="file" 
+                        className="hidden" 
+                        accept="image/png, image/jpeg, image/jpg"
+                        onChange={handleImageChange}
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Image Position Control */}
+                {imagePreview && (
+                  <div>
+                    <Label className="text-xs text-[#757575]">Position de l&apos;image</Label>
+                    <p className="text-[10px] text-[#9E9E9E] mb-2">Ajustez la zone visible de l&apos;image</p>
+                    
+                    {/* Position Grid */}
+                    <div className="grid grid-cols-3 gap-1 p-2 bg-[#FAFAFA] rounded-lg">
+                      {[
+                        { pos: 'top left', label: '↖' },
+                        { pos: 'top center', label: '↑' },
+                        { pos: 'top right', label: '↗' },
+                        { pos: 'center left', label: '←' },
+                        { pos: 'center', label: '●' },
+                        { pos: 'center right', label: '→' },
+                        { pos: 'bottom left', label: '↙' },
+                        { pos: 'bottom center', label: '↓' },
+                        { pos: 'bottom right', label: '↘' },
+                      ].map(({ pos, label }) => (
+                        <button
+                          key={pos}
+                          type="button"
+                          onClick={() => setFormData({ ...formData, imagePosition: pos })}
+                          className={`h-10 rounded flex items-center justify-center text-sm font-medium transition-all ${
+                            formData.imagePosition === pos
+                              ? 'bg-[#FF9800] text-white'
+                              : 'bg-white border border-[#E0E0E0] text-[#757575] hover:border-[#FF9800]'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Fine-tune sliders */}
+                    <div className="mt-3 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-[#757575] w-8">H: {formData.imagePosition.includes('left') ? '0%' : formData.imagePosition.includes('right') ? '100%' : '50%'}</span>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={
+                            formData.imagePosition.includes('left') ? 0 :
+                            formData.imagePosition.includes('right') ? 100 : 50
+                          }
+                          onChange={(e) => {
+                            const h = parseInt(e.target.value);
+                            const v = formData.imagePosition.includes('top') ? 0 :
+                                     formData.imagePosition.includes('bottom') ? 100 : 50;
+                            const newPos = `${v}% ${h}%`;
+                            setFormData({ ...formData, imagePosition: newPos });
+                          }}
+                          className="flex-1 h-1 accent-[#FF9800]"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-[#757575] w-8">V: {formData.imagePosition.includes('top') ? '0%' : formData.imagePosition.includes('bottom') ? '100%' : '50%'}</span>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={
+                            formData.imagePosition.includes('top') ? 0 :
+                            formData.imagePosition.includes('bottom') ? 100 : 50
+                          }
+                          onChange={(e) => {
+                            const v = parseInt(e.target.value);
+                            const h = formData.imagePosition.includes('left') ? 0 :
+                                     formData.imagePosition.includes('right') ? 100 : 50;
+                            const newPos = `${v}% ${h}%`;
+                            setFormData({ ...formData, imagePosition: newPos });
+                          }}
+                          className="flex-1 h-1 accent-[#FF9800]"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Preview with current position */}
+                    <div className="mt-3 p-2 bg-[#F5F5F5] rounded-lg">
+                      <p className="text-[10px] text-[#9E9E9E] mb-1">Aperçu avec position actuelle</p>
+                      <div className="w-full h-20 rounded overflow-hidden bg-[#E0E0E0]">
                         <img 
                           src={imagePreview} 
                           alt="Preview" 
-                          className="w-full h-full object-cover rounded-lg"
+                          className="w-full h-full object-cover"
+                          style={{ objectPosition: formData.imagePosition }}
                         />
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            setImagePreview(null);
-                            setFormData({ ...formData, image: '' });
-                          }}
-                          className="absolute top-1 right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center"
-                        >
-                          <XCircle className="w-4 h-4 text-white" />
-                        </button>
                       </div>
-                    ) : (
-                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                        <ImageIcon className="w-8 h-8 text-[#9E9E9E] mb-2" />
-                        <p className="text-xs text-[#757575]">Cliquez pour ajouter une image</p>
-                        <p className="text-xs text-[#9E9E9E]">PNG, JPG (max 2MB)</p>
-                      </div>
-                    )}
-                    <input 
-                      type="file" 
-                      className="hidden" 
-                      accept="image/png, image/jpeg, image/jpg"
-                      onChange={handleImageChange}
-                    />
-                  </label>
-                </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1978,6 +2078,7 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
                         src={promo.image} 
                         alt={promo.name}
                         className="w-full h-full object-cover"
+                        style={{ objectPosition: promo.imagePosition || 'center' }}
                       />
                     </div>
                   )}

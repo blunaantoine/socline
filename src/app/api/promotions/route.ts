@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
       code,
       displayType = 'TEXT',
       image,
+      imagePosition = 'center',
       startDate,
       endDate,
       maxUses,
@@ -73,6 +74,7 @@ export async function POST(request: NextRequest) {
         code: code?.toUpperCase() || null,
         displayType: displayType || 'TEXT',
         image: displayType === 'IMAGE' ? (image || null) : null,
+        imagePosition: displayType === 'IMAGE' ? (imagePosition || 'center') : 'center',
         startDate: new Date(startDate),
         endDate: new Date(endDate),
         maxUses: maxUses ? parseInt(maxUses) : null,
@@ -120,7 +122,9 @@ export async function PUT(request: NextRequest) {
       updateData.displayType = data.displayType;
       // Only save image if displayType is IMAGE
       updateData.image = data.displayType === 'IMAGE' ? (data.image || null) : null;
+      updateData.imagePosition = data.displayType === 'IMAGE' ? (data.imagePosition || 'center') : 'center';
     }
+    if (data.imagePosition !== undefined) updateData.imagePosition = data.imagePosition;
     if (data.startDate) updateData.startDate = new Date(data.startDate);
     if (data.endDate) updateData.endDate = new Date(data.endDate);
     if (data.maxUses !== undefined) updateData.maxUses = data.maxUses ? parseInt(data.maxUses) : null;

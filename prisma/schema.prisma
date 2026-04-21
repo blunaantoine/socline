@@ -355,6 +355,7 @@ model Promotion {
   // Display options
   displayType     String         @default("TEXT") // TEXT or IMAGE
   image           String?        // URL or base64 of the promotional image (only if displayType is IMAGE)
+  imagePosition   String         @default("center") // CSS object-position values: "center", "top", "bottom", "50% 30%", etc.
   
   // Validity
   startDate       DateTime
