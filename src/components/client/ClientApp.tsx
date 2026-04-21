@@ -6,6 +6,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   MapPin, Search, Star, Clock, Car,
   CheckCircle, Phone, Loader2,
   Zap, Droplets, Sparkles, Crown, RefreshCw, ExternalLink,
@@ -57,6 +63,7 @@ export function ClientApp() {
   const [showTracking, setShowTracking] = useState(true);
   const [promotions, setPromotions] = useState<any[]>([]);
   const [currentPromoIndex, setCurrentPromoIndex] = useState(0);
+  const [selectedService, setSelectedService] = useState<any | null>(null);
   
   const { stations: googleStations, isLoading: isLoadingStations, searchCarWashes } = useGooglePlaces();
 
@@ -435,7 +442,7 @@ function HomeContent({
           {services.map((service) => (
             <button
               key={service.id}
-              onClick={onStartOrder}
+              onClick={() => setSelectedService(service)}
               className="bg-white rounded-lg p-3 text-center shadow-sm active:bg-[#F5F5F5] transition-colors"
             >
               <div className="w-10 h-10 mx-auto mb-2 bg-[#FFF3E0] rounded-lg flex items-center justify-center">
@@ -450,6 +457,98 @@ function HomeContent({
           ))}
         </div>
       </section>
+
+      {/* Service Details Modal */}
+      <Dialog open={!!selectedService} onOpenChange={() => setSelectedService(null)}>
+        <DialogContent className="max-w-sm mx-auto rounded-2xl">
+          {selectedService && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-left text-lg font-bold text-[#212121]">
+                  {selectedService.name}
+                </DialogTitle>
+              </DialogHeader>
+              
+              <div className="space-y-4 py-2">
+                {/* Service Icon & Category */}
+                <div className="flex items-center gap-3">
+                  <div className="w-14 h-14 bg-[#FFF3E0] rounded-xl flex items-center justify-center">
+                    {selectedService.category === 'basic' && <Zap className="w-7 h-7 text-[#FF9800]" />}
+                    {selectedService.category === 'standard' && <Droplets className="w-7 h-7 text-[#FF9800]" />}
+                    {selectedService.category === 'premium' && <Sparkles className="w-7 h-7 text-[#FF9800]" />}
+                    {selectedService.category === 'deluxe' && <Crown className="w-7 h-7 text-[#FF9800]" />}
+                  </div>
+                  <div>
+                    <Badge className="bg-[#FFF3E0] text-[#FF9800] capitalize">
+                      {selectedService.category}
+                    </Badge>
+                    <p className="text-sm text-[#757575] mt-1">{selectedService.duration} minutes</p>
+                  </div>
+                </div>
+
+                {/* Description */}
+                {selectedService.description && (
+                  <div>
+                    <p className="text-sm font-medium text-[#212121] mb-1">Description</p>
+                    <p className="text-sm text-[#757575]">{selectedService.description}</p>
+                  </div>
+                )}
+
+                {/* Price */}
+                <div className="flex items-center justify-between bg-[#FAFAFA] rounded-xl p-3">
+                  <span className="text-sm text-[#757575]">Prix</span>
+                  <span className="text-xl font-bold text-[#FF9800]">{selectedService.price?.toLocaleString()} F</span>
+                </div>
+
+                {/* Active Promotions */}
+                {promotions.length > 0 && (
+                  <div>
+                    <p className="text-sm font-medium text-[#212121] mb-2">Offres disponibles</p>
+                    <div className="space-y-2">
+                      {promotions.slice(0, 2).map((promo) => (
+                        <div key={promo.id} className="bg-gradient-to-r from-[#FF9800] to-[#F57C00] rounded-xl p-3 text-white">
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <p className="font-bold text-sm">{promo.name}</p>
+                              <p className="text-xs opacity-90">
+                                {promo.discountType === 'PERCENTAGE' 
+                                  ? `-${promo.discountValue}% de réduction`
+                                  : `-${promo.discountValue?.toLocaleString()} F de réduction`}
+                              </p>
+                            </div>
+                            {promo.code && (
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(promo.code);
+                                  toast.success('Code promo copié !');
+                                }}
+                                className="bg-white/20 rounded-lg px-2 py-1 text-xs font-mono"
+                              >
+                                {promo.code}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Button */}
+                <button
+                  onClick={() => {
+                    setSelectedService(null);
+                    onStartOrder();
+                  }}
+                  className="w-full bg-[#FF9800] hover:bg-[#F57C00] text-white font-semibold py-3 rounded-xl transition-colors"
+                >
+                  Réserver ce service
+                </button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Available Washers */}
       <section>
