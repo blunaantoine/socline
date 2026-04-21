@@ -2559,10 +2559,10 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
 
   return (
     <div className="p-4 space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <h2 className="font-semibold text-lg text-[#212121]">Promotions</h2>
         <div className="flex items-center gap-2">
-          <button onClick={onRefresh} disabled={isLoading} className="text-[#FF9800]">
+          <button onClick={onRefresh} disabled={isLoading} className="text-[#FF9800] p-1">
             <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
           <Button 
@@ -2571,7 +2571,8 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
             onClick={() => setShowForm(true)}
           >
             <Plus className="w-4 h-4 mr-1" />
-            Nouvelle
+            <span className="hidden sm:inline">Nouvelle</span>
+            <span className="sm:hidden">+</span>
           </Button>
         </div>
       </div>
@@ -2767,10 +2768,10 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
           {promotions.map((promo) => (
             <Card key={promo.id} className={`border-0 shadow-sm ${!promo.isActive ? 'opacity-60' : ''}`}>
               <CardContent className="p-4">
-                <div className="flex gap-3">
+                <div className="flex flex-col sm:flex-row gap-3">
                   {/* Image thumbnail */}
                   {promo.image && (
-                    <div className="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden">
+                    <div className="w-full sm:w-20 h-32 sm:h-20 flex-shrink-0 rounded-lg overflow-hidden">
                       <img 
                         src={promo.image} 
                         alt={promo.name}
@@ -2779,45 +2780,46 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
                       />
                     </div>
                   )}
-                  <div className="flex-1 flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <Tag className="w-4 h-4 text-[#FF9800]" />
-                        <h3 className="font-medium text-[#212121]">{promo.name}</h3>
-                      </div>
-                      {promo.description && (
-                        <p className="text-xs text-[#757575] mt-1">{promo.description}</p>
-                      )}
-                      <div className="flex items-center gap-3 mt-2">
-                        <span className="text-lg font-bold text-[#FF9800]">
-                          {promo.discountType === 'PERCENTAGE' 
-                            ? `-${promo.discountValue}%` 
-                            : `-${promo.discountValue.toLocaleString()}F`}
-                        </span>
-                        {promo.code && (
-                          <Badge className="bg-[#FFF3E0] text-[#FF9800]">
-                            {promo.code}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Tag className="w-4 h-4 text-[#FF9800] flex-shrink-0" />
+                          <h3 className="font-medium text-[#212121] truncate">{promo.name}</h3>
+                          <Badge className={
+                            isPromoActive(promo) 
+                              ? 'bg-green-100 text-green-800' 
+                              : promo.isActive 
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-gray-100 text-gray-800'
+                          }>
+                            {isPromoActive(promo) ? 'Active' : promo.isActive ? 'À venir' : 'Inactive'}
                           </Badge>
+                        </div>
+                        {promo.description && (
+                          <p className="text-xs text-[#757575] mt-1 line-clamp-2">{promo.description}</p>
                         )}
+                        <div className="flex items-center gap-2 mt-2 flex-wrap">
+                          <span className="text-lg font-bold text-[#FF9800]">
+                            {promo.discountType === 'PERCENTAGE' 
+                              ? `-${promo.discountValue}%` 
+                              : `-${promo.discountValue.toLocaleString()}F`}
+                          </span>
+                          {promo.code && (
+                            <Badge className="bg-[#FFF3E0] text-[#FF9800]">
+                              {promo.code}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-[#757575] mt-2">
+                          {formatDate(promo.startDate)} - {formatDate(promo.endDate)}
+                        </p>
+                        <p className="text-xs text-[#9E9E9E] mt-1">
+                          Utilisé {promo.currentUses} fois
+                        </p>
                       </div>
-                      <p className="text-xs text-[#757575] mt-2">
-                        {formatDate(promo.startDate)} - {formatDate(promo.endDate)}
-                      </p>
-                      <p className="text-xs text-[#9E9E9E] mt-1">
-                        Utilisé {promo.currentUses} fois
-                      </p>
-                    </div>
-                    <div className="flex flex-col items-end gap-2">
-                      <Badge className={
-                        isPromoActive(promo) 
-                          ? 'bg-green-100 text-green-800' 
-                          : promo.isActive 
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-gray-100 text-gray-800'
-                      }>
-                        {isPromoActive(promo) ? 'Active' : promo.isActive ? 'À venir' : 'Inactive'}
-                      </Badge>
-                      <div className="flex gap-1">
+                      {/* Action buttons - horizontal on mobile, vertical on desktop */}
+                      <div className="flex sm:flex-col gap-1 sm:items-end">
                         <Button 
                           size="sm" 
                           variant="ghost"
