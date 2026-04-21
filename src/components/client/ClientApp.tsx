@@ -28,12 +28,13 @@ import { ChatList } from '@/components/chat/ChatList';
 import { NotificationCenter } from './NotificationCenter';
 import { WalletScreen } from './WalletScreen';
 import { CarsManager } from './CarsManager';
+import { SubscriptionPanel } from './SubscriptionPanel';
 
 const navItems = [
   { id: 'home', icon: Home, label: 'Accueil' },
   { id: 'booking', icon: Calendar, label: 'Réserver' },
+  { id: 'subscriptions', icon: Crown, label: 'Abonnements' },
   { id: 'wallet', icon: Wallet, label: 'Portefeuille' },
-  { id: 'activity', icon: Clock, label: 'Activité' },
   { id: 'profile', icon: User, label: 'Profil' },
 ];
 
@@ -63,9 +64,27 @@ export function ClientApp() {
   const [showTracking, setShowTracking] = useState(true);
   const [promotions, setPromotions] = useState<any[]>([]);
   const [currentPromoIndex, setCurrentPromoIndex] = useState(0);
+  const [walletBalance, setWalletBalance] = useState(0);
   
   const { stations: googleStations, isLoading: isLoadingStations, searchCarWashes } = useGooglePlaces();
 
+  // Fetch wallet balance
+  useEffect(() => {
+    const fetchWallet = async () => {
+      if (!user?.id) return;
+      try {
+        const res = await fetch(`/api/wallet?userId=${user.id}`);
+        const data = await res.json();
+        if (data.success && data.wallet) {
+          setWalletBalance(data.wallet.balance);
+        }
+      } catch (error) {
+        console.error('Error fetching wallet:', error);
+      }
+    };
+    
+    fetchWallet();
+  }, [user?.id]);
 
 
   // Fetch real services from API
@@ -86,6 +105,9 @@ export function ClientApp() {
         
         if (data.success && data.services) {
           setServices(data.services);
+          
+          // Seed subscription plans after services are loaded
+          await fetch('/api/subscriptions/seed', { method: 'POST' });
         }
       } catch (error) {
         console.error('Error loading services:', error);
@@ -257,8 +279,13 @@ export function ClientApp() {
           {activeTab === 'booking' && (
             <ClientOrderFlow 
               onBack={() => setActiveTab('home')} 
-              onOrderComplete={() => setActiveTab('activity')}
+              onOrderComplete={() => setActiveTab('subscriptions')}
             />
+          )}
+          {activeTab === 'subscriptions' && (
+            <div className="p-4 pb-28">
+              <SubscriptionPanel userId={user?.id || ''} walletBalance={walletBalance} />
+            </div>
           )}
           {activeTab === 'wallet' && <WalletScreen />}
           {activeTab === 'activity' && <OrderHistory />}

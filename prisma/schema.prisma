@@ -97,6 +97,7 @@ model User {
   receivedMessages Message[] @relation("ReceivedMessages")
   wallet        Wallet?
   cars          Car[]     // User's cars (max 10)
+  subscriptions UserSubscription[] // User's subscriptions
 
   @@map("users")
 }
@@ -207,7 +208,8 @@ model Service {
   updatedAt   DateTime @updatedAt
 
   // Relations
-  orders      Order[]
+  orders            Order[]
+  subscriptionPlans SubscriptionPlan[] // Plans associated with this service
 
   @@map("services")
 }
@@ -558,4 +560,120 @@ model MobileMoneyOperator {
   updatedAt       DateTime @updatedAt
   
   @@map("mobile_money_operators")
+}
+
+// Subscription Plan (Les 4 forfaits)
+model SubscriptionPlan {
+  id              String   @id @default(cuid())
+  name            String   @unique // "Essentiel", "Confort", "Premium", "Prestige"
+  displayName     String   // "Abonnement Essentiel", etc.
+  description     String?
+  
+  // Pricing
+  price           Float    // Prix mensuel
+  quarterlyPrice  Float?   // Prix trimestriel (avec réduction)
+  yearlyPrice     Float?   // Prix annuel (avec réduction)
+  
+  // Included washes
+  washCount       Int      @default(4) // Nombre de lavages inclus
+  serviceId       String   // Service associé (Essentiel, Confort, etc.)
+  service         Service  @relation(fields: [serviceId], references: [id])
+  
+  // Benefits
+  priority        Int      @default(0) // 0=normal, 1=légère, 2=priorité, 3=maximale
+  bonusWashes     Int      @default(0) // Lavages bonus si tous utilisés (Prestige)
+  freeOptions     Int      @default(0) // Options gratuites (désodorisation, etc.)
+  includesExpress Boolean  @default(false) // Service express inclus
+  includesVip     Boolean  @default(false) // Accès VIP
+  
+  // Features (JSON array of strings)
+  features        String?  // JSON: ["Économie mensuelle", "Priorité sur les réservations"]
+  
+  // Status
+  isActive        Boolean  @default(true)
+  displayOrder    Int      @default(0) // Ordre d'affichage
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  subscriptions   UserSubscription[]
+  
+  @@map("subscription_plans")
+}
+
+// Subscription Duration type
+enum SubscriptionDuration {
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+// User Subscription (Abonnement utilisateur)
+model UserSubscription {
+  id              String             @id @default(cuid())
+  userId          String
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId          String
+  plan            SubscriptionPlan   @relation(fields: [planId], references: [id])
+  
+  // Duration and pricing
+  duration        SubscriptionDuration @default(MONTHLY)
+  paidAmount      Float              // Montant réellement payé
+  
+  // Wash tracking
+  totalWashes     Int                // Total lavages inclus (peut être > 4 pour trimestriel/annuel)
+  usedWashes      Int                @default(0) // Lavages utilisés
+  remainingWashes Int                // Lavages restants
+  
+  // Free options tracking
+  freeOptionsUsed Int                @default(0) // Options gratuites utilisées
+  freeOptionsTotal Int               @default(0) // Total options gratuites
+  
+  // Bonus wash tracking (Prestige)
+  bonusWashEarned Boolean            @default(false) // Lavage bonus gagné
+  
+  // Dates
+  startDate       DateTime           // Date de début
+  endDate         DateTime           // Date de fin
+  activatedAt     DateTime           @default(now()) // Date d'activation
+  
+  // Status
+  isActive        Boolean            @default(true)
+  isExpired       Boolean            @default(false)
+  autoRenew       Boolean            @default(false) // Renouvellement automatique
+  
+  // Payment
+  paymentMethod   PaymentMethod      @default(WALLET)
+  transactionId   String?            // Référence transaction wallet
+  
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  
+  // Relations
+  usages          SubscriptionUsage[]
+  
+  @@map("user_subscriptions")
+}
+
+// Subscription Usage (Historique d'utilisation)
+model SubscriptionUsage {
+  id               String   @id @default(cuid())
+  subscriptionId   String
+  subscription     UserSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  
+  // Order reference
+  orderId          String?  // Référence à la commande
+  
+  // Usage details
+  usedAt           DateTime @default(now())
+  serviceName      String   // Nom du service au moment de l'utilisation
+  washType         String   // "standard" ou "bonus"
+  
+  // Location
+  address          String?
+  
+  createdAt        DateTime @default(now())
+  
+  @@map("subscription_usages")
 }
