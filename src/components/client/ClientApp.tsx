@@ -63,7 +63,6 @@ export function ClientApp() {
   const [showTracking, setShowTracking] = useState(true);
   const [promotions, setPromotions] = useState<any[]>([]);
   const [currentPromoIndex, setCurrentPromoIndex] = useState(0);
-  const [selectedService, setSelectedService] = useState<any | null>(null);
   
   const { stations: googleStations, isLoading: isLoadingStations, searchCarWashes } = useGooglePlaces();
 
@@ -317,6 +316,7 @@ function HomeContent({
   promotions: any[]; currentPromoIndex: number; setCurrentPromoIndex: (i: number) => void;
 }) {
   const currentPromo = promotions[currentPromoIndex];
+  const [selectedService, setSelectedService] = useState<any | null>(null);
 
   return (
     <div className="p-4 space-y-4">
