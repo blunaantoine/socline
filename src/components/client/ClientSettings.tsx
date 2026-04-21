@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -35,9 +35,13 @@ import {
   Lock,
   ShoppingBag,
   ArrowUpRight,
-  ArrowDownLeft
+  ArrowDownLeft,
+  Locate,
+  Search,
+  X
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { GoogleMap } from '@/components/map/GoogleMap';
 
 // Types
 interface Address {
@@ -241,14 +245,21 @@ export function AddressesManager({ userId, onBack }: { userId: string; onBack: (
   const [showForm, setShowForm] = useState(false);
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [showMapSelector, setShowMapSelector] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
 
   const [formData, setFormData] = useState({
     label: '',
     type: 'HOME' as 'HOME' | 'WORK' | 'OTHER',
     address: '',
+    latitude: undefined as number | undefined,
+    longitude: undefined as number | undefined,
     instructions: '',
     isDefault: false
   });
+
+  // Selected position for map
+  const [selectedPosition, setSelectedPosition] = useState<{ lat: number; lng: number } | null>(null);
 
   const fetchAddresses = useCallback(async () => {
     setIsLoading(true);
@@ -274,11 +285,15 @@ export function AddressesManager({ userId, onBack }: { userId: string; onBack: (
       label: '',
       type: 'HOME',
       address: '',
+      latitude: undefined,
+      longitude: undefined,
       instructions: '',
       isDefault: false
     });
+    setSelectedPosition(null);
     setEditingAddress(null);
     setShowForm(false);
+    setShowMapSelector(false);
   };
 
   const handleEdit = (address: Address) => {
@@ -287,10 +302,108 @@ export function AddressesManager({ userId, onBack }: { userId: string; onBack: (
       label: address.label,
       type: address.type,
       address: address.address,
+      latitude: address.latitude,
+      longitude: address.longitude,
       instructions: address.instructions || '',
       isDefault: address.isDefault
     });
+    if (address.latitude && address.longitude) {
+      setSelectedPosition({ lat: address.latitude, lng: address.longitude });
+    }
     setShowForm(true);
+  };
+
+  // Get current location
+  const handleGetCurrentLocation = () => {
+    setIsLocating(true);
+    if (!navigator.geolocation) {
+      toast.error('La géolocalisation n\'est pas supportée');
+      setIsLocating(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        setSelectedPosition({ lat: latitude, lng: longitude });
+        setFormData(prev => ({ ...prev, latitude, longitude }));
+
+        // Reverse geocode to get address
+        try {
+          const response = await fetch(
+            `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&language=fr`
+          );
+          const data = await response.json();
+          if (data.results && data.results[0]) {
+            setFormData(prev => ({
+              ...prev,
+              address: data.results[0].formatted_address
+            }));
+          }
+        } catch (error) {
+          console.error('Reverse geocoding error:', error);
+        }
+        setIsLocating(false);
+        setShowMapSelector(true);
+      },
+      (error) => {
+        toast.error('Impossible d\'obtenir votre position');
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: true }
+    );
+  };
+
+  // Handle map click to select position
+  const handleMapClick = async (e: google.maps.MapMouseEvent) => {
+    if (!e.latLng) return;
+
+    const lat = e.latLng.lat();
+    const lng = e.latLng.lng();
+
+    setSelectedPosition({ lat, lng });
+    setFormData(prev => ({ ...prev, latitude: lat, longitude: lng }));
+
+    // Reverse geocode
+    try {
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&language=fr`
+      );
+      const data = await response.json();
+      if (data.results && data.results[0]) {
+        setFormData(prev => ({
+          ...prev,
+          address: data.results[0].formatted_address
+        }));
+      }
+    } catch (error) {
+      console.error('Reverse geocoding error:', error);
+    }
+  };
+
+  // Search address
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
+  const handleSearchAddress = async (query: string) => {
+    setSearchQuery(query);
+    if (query.length < 3) {
+      setSearchResults([]);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&language=fr&components=country:TG`
+      );
+      // Note: For client-side, we should use the Places Autocomplete widget
+      // This is a simplified version
+    } catch (error) {
+      console.error('Search error:', error);
+    }
+    setIsSearching(false);
   };
 
   const handleSave = async () => {
@@ -370,6 +483,67 @@ export function AddressesManager({ userId, onBack }: { userId: string; onBack: (
     }
   };
 
+  // Map Selector View
+  if (showMapSelector) {
+    return (
+      <div className="fixed inset-0 bg-white z-50 flex flex-col">
+        {/* Header */}
+        <div className="flex items-center gap-3 p-4 border-b border-[#E0E0E0]">
+          <button onClick={() => setShowMapSelector(false)} className="p-2 hover:bg-[#F5F5F5] rounded-full">
+            <ArrowLeft className="w-5 h-5 text-[#212121]" />
+          </button>
+          <h1 className="text-lg font-semibold text-[#212121]">Sélectionner sur la carte</h1>
+        </div>
+
+        {/* Map */}
+        <div className="flex-1 relative">
+          <GoogleMap
+            center={selectedPosition || { lat: 6.1725, lng: 1.2314 }} // Lomé coordinates
+            zoom={14}
+            markers={selectedPosition ? [{
+              id: 'selected',
+              type: 'ORDER',
+              position: { lat: selectedPosition.lat, lng: selectedPosition.lng }
+            }] : []}
+            onMapClick={handleMapClick}
+            className="w-full h-full"
+            height="100%"
+          />
+
+          {/* Center marker overlay */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-full pointer-events-none">
+            <div className="w-10 h-10 bg-[#FF9800] rounded-full flex items-center justify-center shadow-lg">
+              <MapPin className="w-6 h-6 text-white" />
+            </div>
+            <div className="w-3 h-3 bg-[#FF9800] rounded-full mx-auto -mt-1" />
+          </div>
+        </div>
+
+        {/* Selected Address Preview */}
+        <div className="p-4 bg-white border-t border-[#E0E0E0] space-y-3">
+          {selectedPosition && formData.address && (
+            <div className="flex items-start gap-2">
+              <MapPin className="w-5 h-5 text-[#FF9800] flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-[#212121]">{formData.address}</p>
+            </div>
+          )}
+          <div className="flex gap-2">
+            <Button
+              className="flex-1 bg-[#FF9800] hover:bg-[#F57C00]"
+              onClick={() => setShowMapSelector(false)}
+              disabled={!selectedPosition}
+            >
+              Confirmer l&apos;emplacement
+            </Button>
+            <Button variant="outline" onClick={() => setShowMapSelector(false)}>
+              Annuler
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 space-y-4 pb-28">
       {/* Header */}
@@ -427,16 +601,58 @@ export function AddressesManager({ userId, onBack }: { userId: string; onBack: (
             />
           </div>
 
-          {/* Address */}
+          {/* Address with Map Selection */}
           <div>
             <label className="text-xs text-[#757575]">Adresse complète *</label>
-            <Input
-              value={formData.address}
-              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-              placeholder="Ex: Rue du Commerce, Adidogomé"
-              className="mt-1"
-            />
+            <div className="flex gap-2 mt-1">
+              <Input
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                placeholder="Ex: Rue du Commerce, Adidogomé"
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-shrink-0"
+                onClick={handleGetCurrentLocation}
+                disabled={isLocating}
+              >
+                {isLocating ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Locate className="w-4 h-4" />
+                )}
+              </Button>
+            </div>
           </div>
+
+          {/* Map Selection Button */}
+          <button
+            onClick={handleGetCurrentLocation}
+            disabled={isLocating}
+            className="w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed border-[#FF9800] rounded-lg text-[#FF9800] hover:bg-[#FFF3E0] transition-colors"
+          >
+            {isLocating ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Localisation en cours...</span>
+              </>
+            ) : (
+              <>
+                <MapPin className="w-5 h-5" />
+                <span>Sélectionner sur la carte</span>
+              </>
+            )}
+          </button>
+
+          {/* Show coordinates if selected */}
+          {selectedPosition && (
+            <div className="flex items-center gap-2 text-xs text-green-600 bg-green-50 p-2 rounded-lg">
+              <CheckCircle className="w-4 h-4" />
+              <span>Position sélectionnée: {selectedPosition.lat.toFixed(5)}, {selectedPosition.lng.toFixed(5)}</span>
+            </div>
+          )}
 
           {/* Instructions */}
           <div>
@@ -506,10 +722,16 @@ export function AddressesManager({ userId, onBack }: { userId: string; onBack: (
                   {getTypeIcon(address.type)}
                 </div>
                 <div className="flex-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="font-medium text-[#212121]">{address.label}</h3>
                     {address.isDefault && (
                       <Badge className="bg-[#FF9800] text-white text-xs">Par défaut</Badge>
+                    )}
+                    {address.latitude && address.longitude && (
+                      <Badge className="bg-green-100 text-green-700 text-xs">
+                        <MapPin className="w-3 h-3 mr-1" />
+                        GPS
+                      </Badge>
                     )}
                   </div>
                   <p className="text-sm text-[#757575] mt-1">{address.address}</p>
