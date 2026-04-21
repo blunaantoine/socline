@@ -199,6 +199,7 @@ model Service {
   duration    Int      // Duration in minutes
   image       String?
   category    String   // e.g., "basic", "premium", "deluxe"
+  products    String?  // JSON array of products used
   isActive    Boolean  @default(true)
   stationId   String?
   station     Station? @relation(fields: [stationId], references: [id], onDelete: SetNull)

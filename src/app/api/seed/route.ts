@@ -10,45 +10,71 @@ export async function POST() {
     let services = existingServices;
     
     if (existingServices.length === 0) {
-      // Create default services
+      // Create default services with detailed descriptions
       services = await Promise.all([
         db.service.create({
           data: {
-            name: 'Lavage Simple',
-            description: 'Lavage extérieur complet avec rinçage et séchage',
+            name: 'Lavage Essentiel',
+            description: 'Ce service assure un entretien rapide et efficace de l\'extérieur du véhicule. Il permet d\'éliminer les saletés superficielles telles que la poussière et la boue, tout en redonnant un aspect propre et soigné à la carrosserie grâce à un séchage manuel sans traces.',
             price: 2500,
             duration: 20,
-            category: 'basic',
+            category: 'essentiel',
+            products: JSON.stringify([
+              'Shampoing automobile au pH neutre respectueux de la peinture',
+              'Eau sous pression pour un rinçage efficace',
+              'Microfibres douces pour un séchage sans rayures'
+            ]),
             isActive: true,
           },
         }),
         db.service.create({
           data: {
-            name: 'Lavage Standard',
-            description: 'Lavage extérieur + intérieur, tableau de bord nettoyé',
+            name: 'Lavage Confort',
+            description: 'Ce service propose un nettoyage complet de l\'extérieur et un entretien de base de l\'intérieur. En plus du lavage extérieur, les surfaces intérieures visibles sont nettoyées afin d\'améliorer l\'hygiène et le confort à bord.',
             price: 4000,
             duration: 35,
-            category: 'standard',
+            category: 'confort',
+            products: JSON.stringify([
+              'Shampoing automobile au pH neutre',
+              'Nettoyant multi-surfaces pour plastiques et tableau de bord',
+              'Nettoyant vitres sans traces pour une visibilité optimale',
+              'Microfibres professionnelles adaptées aux surfaces intérieures'
+            ]),
             isActive: true,
           },
         }),
         db.service.create({
           data: {
             name: 'Lavage Premium',
-            description: 'Lavage complet extérieur + intérieur + aspiration + shampoing sièges',
+            description: 'Ce service offre un nettoyage approfondi du véhicule avec une attention particulière portée à l\'intérieur. Il comprend une aspiration complète et un traitement des sièges pour éliminer les saletés incrustées et améliorer la qualité de l\'air à bord.',
             price: 6500,
             duration: 50,
             category: 'premium',
+            products: JSON.stringify([
+              'Shampoing automobile haute qualité',
+              'Nettoyant spécifique textile ou cuir selon les sièges',
+              'Aspirateur professionnel haute puissance',
+              'Nettoyant intérieur renforcé pour un nettoyage en profondeur',
+              'Produits hygiénisants pour assainir l\'habitacle'
+            ]),
             isActive: true,
           },
         }),
         db.service.create({
           data: {
-            name: 'Lavage Deluxe',
-            description: 'Service VIP: Lavage complet + polish + cire + nettoyant pneus + désodorisant',
+            name: 'Lavage Prestige',
+            description: 'Ce service représente le niveau le plus élevé de finition. Il inclut un traitement esthétique complet du véhicule avec des produits haut de gamme visant à restaurer l\'éclat de la carrosserie et à protéger durablement les surfaces.',
             price: 10000,
             duration: 75,
-            category: 'deluxe',
+            category: 'prestige',
+            products: JSON.stringify([
+              'Shampoing automobile premium',
+              'Polish rénovateur pour raviver la peinture',
+              'Cire protectrice pour prolonger la brillance',
+              'Nettoyant et brillant pour pneus',
+              'Produits spécialisés pour plastiques et surfaces sensibles',
+              'Désodorisant longue durée pour un intérieur agréable'
+            ]),
             isActive: true,
           },
         }),

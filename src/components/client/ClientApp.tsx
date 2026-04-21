@@ -446,10 +446,10 @@ function HomeContent({
               className="bg-white rounded-lg p-3 text-center shadow-sm active:bg-[#F5F5F5] transition-colors"
             >
               <div className="w-10 h-10 mx-auto mb-2 bg-[#FFF3E0] rounded-lg flex items-center justify-center">
-                {service.category === 'basic' && <Zap className="w-5 h-5 text-[#FF9800]" />}
-                {service.category === 'standard' && <Droplets className="w-5 h-5 text-[#FF9800]" />}
+                {(service.category === 'essentiel' || service.category === 'basic') && <Zap className="w-5 h-5 text-[#FF9800]" />}
+                {(service.category === 'confort' || service.category === 'standard') && <Droplets className="w-5 h-5 text-[#FF9800]" />}
                 {service.category === 'premium' && <Sparkles className="w-5 h-5 text-[#FF9800]" />}
-                {service.category === 'deluxe' && <Crown className="w-5 h-5 text-[#FF9800]" />}
+                {(service.category === 'prestige' || service.category === 'deluxe') && <Crown className="w-5 h-5 text-[#FF9800]" />}
               </div>
               <p className="text-xs font-medium text-[#212121] truncate">{service.name}</p>
               <p className="text-xs text-[#FF9800] font-bold mt-0.5">{(service.price / 1000)}K</p>
@@ -473,10 +473,10 @@ function HomeContent({
                 {/* Service Icon & Category */}
                 <div className="flex items-center gap-3">
                   <div className="w-14 h-14 bg-[#FFF3E0] rounded-xl flex items-center justify-center">
-                    {selectedService.category === 'basic' && <Zap className="w-7 h-7 text-[#FF9800]" />}
-                    {selectedService.category === 'standard' && <Droplets className="w-7 h-7 text-[#FF9800]" />}
+                    {(selectedService.category === 'essentiel' || selectedService.category === 'basic') && <Zap className="w-7 h-7 text-[#FF9800]" />}
+                    {(selectedService.category === 'confort' || selectedService.category === 'standard') && <Droplets className="w-7 h-7 text-[#FF9800]" />}
                     {selectedService.category === 'premium' && <Sparkles className="w-7 h-7 text-[#FF9800]" />}
-                    {selectedService.category === 'deluxe' && <Crown className="w-7 h-7 text-[#FF9800]" />}
+                    {(selectedService.category === 'prestige' || selectedService.category === 'deluxe') && <Crown className="w-7 h-7 text-[#FF9800]" />}
                   </div>
                   <div>
                     <Badge className="bg-[#FFF3E0] text-[#FF9800] capitalize">
@@ -486,19 +486,46 @@ function HomeContent({
                   </div>
                 </div>
 
+                {/* Duration & Price Info */}
+                <div className="flex items-center gap-3 bg-[#FAFAFA] rounded-xl p-3">
+                  <div className="flex items-center gap-2 text-[#757575]">
+                    <Clock className="w-4 h-4" />
+                    <span className="text-sm">{selectedService.duration} min</span>
+                  </div>
+                  <div className="flex-1" />
+                  <span className="text-xl font-bold text-[#FF9800]">{selectedService.price?.toLocaleString()} F</span>
+                </div>
+
                 {/* Description */}
                 {selectedService.description && (
                   <div>
                     <p className="text-sm font-medium text-[#212121] mb-1">Description</p>
-                    <p className="text-sm text-[#757575]">{selectedService.description}</p>
+                    <p className="text-sm text-[#757575] leading-relaxed">{selectedService.description}</p>
                   </div>
                 )}
 
-                {/* Price */}
-                <div className="flex items-center justify-between bg-[#FAFAFA] rounded-xl p-3">
-                  <span className="text-sm text-[#757575]">Prix</span>
-                  <span className="text-xl font-bold text-[#FF9800]">{selectedService.price?.toLocaleString()} F</span>
-                </div>
+                {/* Products Used */}
+                {selectedService.products && (
+                  <div>
+                    <p className="text-sm font-medium text-[#212121] mb-2">Produits utilisés</p>
+                    <div className="bg-[#F5F5F5] rounded-xl p-3 space-y-2">
+                      {(() => {
+                        try {
+                          const products = JSON.parse(selectedService.products);
+                          return products.map((product: string, index: number) => (
+                            <div key={index} className="flex items-start gap-2">
+                              <CheckCircle className="w-4 h-4 text-[#4CAF50] mt-0.5 flex-shrink-0" />
+                              <span className="text-sm text-[#616161]">{product}</span>
+                            </div>
+                          ));
+                        } catch {
+                          return null;
+                        }
+                      })()}
+                    </div>
+                  </div>
+                )}
+
 
                 {/* Active Promotions */}
                 {promotions.length > 0 && (
