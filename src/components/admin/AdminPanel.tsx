@@ -199,6 +199,33 @@ interface User {
   createdAt: string;
 }
 
+// Extended User interface with all fields for full management
+interface ExtendedUser {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  role: string;
+  orders: number;
+  status: string;
+  isActive: boolean;
+  plateNumber?: string;
+  carColor?: string;
+  pin?: string;
+  createdAt: string;
+  updatedAt?: string;
+  washer?: {
+    id: string;
+    isAvailable: boolean;
+    isVerified: boolean;
+    rating: number;
+    totalRatings: number;
+    completedJobs: number;
+    totalEarnings: number;
+  } | null;
+  walletBalance?: number;
+}
+
 interface Washer {
   id: string;
   name: string;
@@ -273,7 +300,7 @@ export function AdminPanel() {
   const [ordersByService, setOrdersByService] = useState<{name: string, count: number}[]>([]);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<ExtendedUser[]>([]);
   const [washers, setWashers] = useState<Washer[]>([]);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [deposits, setDeposits] = useState<Deposit[]>([]);
@@ -576,8 +603,8 @@ export function AdminPanel() {
       <nav className="fixed bottom-10 left-0 right-0 bg-white border-t border-[#E0E0E0] flex justify-around items-center h-14 z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
         {[
           { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+          { id: 'users', icon: Users, label: 'Utilis.' },
           { id: 'orders', icon: Clock, label: 'Commandes' },
-          { id: 'deposits', icon: Wallet, label: 'Recharges' },
           { id: 'promotions', icon: Tag, label: 'Promos' },
           { id: 'settings', icon: Settings, label: 'Plus' },
         ].map((tab) => {
@@ -869,61 +896,371 @@ function AdminOrders({ orders, statusFilter, setStatusFilter, searchQuery, setSe
   );
 }
 
-// Admin Users
+// Admin Users - Full Management
 function AdminUsers({ users, searchQuery, setSearchQuery, isLoading, onRefresh }: { 
-  users: User[];
+  users: ExtendedUser[];
   searchQuery: string;
   setSearchQuery: (v: string) => void;
   isLoading: boolean;
   onRefresh: () => void;
 }) {
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingUser, setEditingUser] = useState<ExtendedUser | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<ExtendedUser | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [allUsers, setAllUsers] = useState<ExtendedUser[]>([]);
+  
+  // Form state for new user
+  const [newUser, setNewUser] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    pin: '1234',
+    role: 'CLIENT' as 'CLIENT' | 'WASHER' | 'ADMIN',
+  });
+
+  // Form state for editing user
+  const [editForm, setEditForm] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    pin: '',
+    role: 'CLIENT' as 'CLIENT' | 'WASHER' | 'ADMIN',
+    isActive: true,
+  });
+
+  // Fetch users with role filter
+  const fetchUsersWithFilter = useCallback(async () => {
+    setIsSaving(true);
+    try {
+      const params = new URLSearchParams({ 
+        search: searchQuery,
+        role: roleFilter,
+        limit: '100'
+      });
+      const res = await fetch(`/api/admin/users?${params}`);
+      const data = await res.json();
+      
+      if (data.success) {
+        setAllUsers(data.users);
+      }
+    } catch (error) {
+      console.error('Fetch users error:', error);
+      toast.error('Erreur lors du chargement');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [searchQuery, roleFilter]);
+
+  useEffect(() => {
+    fetchUsersWithFilter();
+  }, [fetchUsersWithFilter]);
+
+  // Use allUsers if available, otherwise fall back to passed users
+  const displayUsers = allUsers.length > 0 || searchQuery || roleFilter !== 'all' ? allUsers : users;
+
+  // Create new user
+  const handleCreateUser = async () => {
+    if (!newUser.phone) {
+      toast.error('Le numéro de téléphone est requis');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...newUser,
+          createWasher: newUser.role === 'WASHER',
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        toast.success('Utilisateur créé avec succès');
+        setShowAddModal(false);
+        setNewUser({ name: '', phone: '', email: '', pin: '1234', role: 'CLIENT' });
+        fetchUsersWithFilter();
+      } else {
+        toast.error(data.error || 'Erreur lors de la création');
+      }
+    } catch (error) {
+      toast.error('Erreur lors de la création');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Open edit modal
+  const openEditModal = (user: ExtendedUser) => {
+    setEditingUser(user);
+    setEditForm({
+      name: user.name || '',
+      phone: user.phone,
+      email: user.email || '',
+      pin: user.pin || '1234',
+      role: user.role as 'CLIENT' | 'WASHER' | 'ADMIN',
+      isActive: user.isActive,
+    });
+    setShowEditModal(true);
+  };
+
+  // Update user
+  const handleUpdateUser = async () => {
+    if (!editingUser) return;
+
+    setIsSaving(true);
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: editingUser.id,
+          name: editForm.name,
+          phone: editForm.phone,
+          email: editForm.email,
+          pin: editForm.pin,
+          role: editForm.role,
+          isActive: editForm.isActive,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        toast.success('Utilisateur mis à jour');
+        setShowEditModal(false);
+        setEditingUser(null);
+        fetchUsersWithFilter();
+      } else {
+        toast.error(data.error || 'Erreur lors de la mise à jour');
+      }
+    } catch (error) {
+      toast.error('Erreur lors de la mise à jour');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Toggle user active status
+  const handleToggleStatus = async (user: ExtendedUser) => {
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          isActive: !user.isActive,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        toast.success(user.isActive ? 'Utilisateur désactivé' : 'Utilisateur activé');
+        fetchUsersWithFilter();
+      }
+    } catch (error) {
+      toast.error('Erreur');
+    }
+  };
+
+  // Delete user
+  const handleDeleteUser = async () => {
+    if (!deleteConfirm) return;
+
+    setIsSaving(true);
+    try {
+      const res = await fetch(`/api/admin/users?userId=${deleteConfirm.id}`, {
+        method: 'DELETE',
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        toast.success('Utilisateur supprimé');
+        setDeleteConfirm(null);
+        fetchUsersWithFilter();
+      } else {
+        toast.error(data.error || 'Erreur lors de la suppression');
+      }
+    } catch (error) {
+      toast.error('Erreur lors de la suppression');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Get role badge
+  const getRoleBadge = (role: string) => {
+    const styles: Record<string, string> = {
+      ADMIN: 'bg-red-100 text-red-800',
+      WASHER: 'bg-orange-100 text-orange-800',
+      CLIENT: 'bg-blue-100 text-blue-800',
+    };
+    const labels: Record<string, string> = {
+      ADMIN: 'Admin',
+      WASHER: 'Laveur',
+      CLIENT: 'Client',
+    };
+    return <Badge className={styles[role] || 'bg-gray-100 text-gray-800'}>{labels[role] || role}</Badge>;
+  };
+
+  // Get avatar color based on role
+  const getAvatarColor = (role: string) => {
+    const colors: Record<string, string> = {
+      ADMIN: 'bg-red-100 text-red-600',
+      WASHER: 'bg-orange-100 text-orange-600',
+      CLIENT: 'bg-blue-100 text-blue-600',
+    };
+    return colors[role] || 'bg-gray-100 text-gray-600';
+  };
+
   return (
     <div className="p-4 space-y-4">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="font-semibold text-lg text-[#212121]">Clients</h2>
-        <button onClick={onRefresh} disabled={isLoading} className="text-[#FF9800]">
-          <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
-        </button>
+        <h2 className="font-semibold text-lg text-[#212121]">Gestion des utilisateurs</h2>
+        <div className="flex items-center gap-2">
+          <button onClick={fetchUsersWithFilter} disabled={isLoading || isSaving} className="text-[#FF9800]">
+            <RefreshCw className={`w-5 h-5 ${(isLoading || isSaving) ? 'animate-spin' : ''}`} />
+          </button>
+          <Button 
+            size="sm" 
+            className="bg-[#FF9800] hover:bg-[#F57C00]"
+            onClick={() => setShowAddModal(true)}
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            Ajouter
+          </Button>
+        </div>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#9E9E9E]" />
-        <Input
-          placeholder="Rechercher un client..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10 bg-white"
-        />
+      {/* Search and Filters */}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#9E9E9E]" />
+          <Input
+            placeholder="Rechercher par nom, téléphone, email..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 bg-white"
+          />
+        </div>
+        <Select value={roleFilter} onValueChange={setRoleFilter}>
+          <SelectTrigger className="w-32 bg-white">
+            <SelectValue placeholder="Rôle" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous</SelectItem>
+            <SelectItem value="CLIENT">Clients</SelectItem>
+            <SelectItem value="WASHER">Laveurs</SelectItem>
+            <SelectItem value="ADMIN">Admins</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Stats Summary */}
+      <div className="grid grid-cols-3 gap-2">
+        <div className="bg-blue-50 rounded-lg p-2 text-center">
+          <div className="text-lg font-bold text-blue-600">
+            {displayUsers.filter(u => u.role === 'CLIENT').length}
+          </div>
+          <div className="text-xs text-blue-800">Clients</div>
+        </div>
+        <div className="bg-orange-50 rounded-lg p-2 text-center">
+          <div className="text-lg font-bold text-orange-600">
+            {displayUsers.filter(u => u.role === 'WASHER').length}
+          </div>
+          <div className="text-xs text-orange-800">Laveurs</div>
+        </div>
+        <div className="bg-red-50 rounded-lg p-2 text-center">
+          <div className="text-lg font-bold text-red-600">
+            {displayUsers.filter(u => u.role === 'ADMIN').length}
+          </div>
+          <div className="text-xs text-red-800">Admins</div>
+        </div>
       </div>
 
       {/* Users List */}
-      {isLoading ? (
+      {isLoading || isSaving ? (
         <div className="flex justify-center py-8">
           <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
         </div>
-      ) : users.length > 0 ? (
-        <div className="space-y-3">
-          {users.map((user) => (
-            <Card key={user.id} className="border-0 shadow-sm">
-              <CardContent className="p-4">
+      ) : displayUsers.length > 0 ? (
+        <div className="space-y-2 max-h-[calc(100vh-400px)] overflow-y-auto">
+          {displayUsers.map((user) => (
+            <Card key={user.id} className={`border-0 shadow-sm ${!user.isActive ? 'opacity-60' : ''}`}>
+              <CardContent className="p-3">
                 <div className="flex items-center gap-3">
                   <Avatar className="w-10 h-10">
-                    <AvatarFallback className="bg-[#E3F2FD] text-[#2196F3]">
-                      {user.name.charAt(0)}
+                    <AvatarFallback className={getAvatarColor(user.role)}>
+                      {user.name?.charAt(0) || '?'}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex-1">
-                    <h3 className="font-medium text-[#212121]">{user.name}</h3>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-medium text-[#212121] truncate">{user.name || 'N/A'}</h3>
+                      {getRoleBadge(user.role)}
+                    </div>
                     <p className="text-xs text-[#757575]">{user.phone}</p>
+                    {user.email && <p className="text-xs text-[#9E9E9E]">{user.email}</p>}
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium">{user.orders} commandes</p>
-                    <Badge className={user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
-                      {user.status === 'active' ? 'Actif' : 'Inactif'}
-                    </Badge>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 p-0"
+                      onClick={() => openEditModal(user)}
+                    >
+                      <Edit className="w-4 h-4 text-blue-500" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 p-0"
+                      onClick={() => handleToggleStatus(user)}
+                    >
+                      {user.isActive ? (
+                        <CheckCircle className="w-4 h-4 text-green-500" />
+                      ) : (
+                        <XCircle className="w-4 h-4 text-red-500" />
+                      )}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 p-0"
+                      onClick={() => setDeleteConfirm(user)}
+                      disabled={user.role === 'ADMIN'} // Don't allow deleting admins
+                    >
+                      <Trash2 className="w-4 h-4 text-red-400" />
+                    </Button>
                   </div>
                 </div>
+                
+                {/* Additional info for washers */}
+                {user.role === 'WASHER' && user.washer && (
+                  <div className="mt-2 pt-2 border-t border-[#F5F5F5] flex justify-between text-xs text-[#757575]">
+                    <div className="flex items-center gap-1">
+                      <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
+                      <span>{user.washer.rating > 0 ? user.washer.rating.toFixed(1) : '-'}</span>
+                    </div>
+                    <span>{user.washer.completedJobs} jobs</span>
+                    <span className="text-green-600 font-medium">{user.washer.totalEarnings.toLocaleString()} F</span>
+                  </div>
+                )}
+                
+                {/* Wallet balance for clients */}
+                {user.role === 'CLIENT' && (
+                  <div className="mt-2 pt-2 border-t border-[#F5F5F5] flex justify-between text-xs">
+                    <span className="text-[#757575]">{user.orders} commandes</span>
+                    <span className="text-green-600 font-medium">
+                      Solde: {(user.walletBalance || 0).toLocaleString()} F
+                    </span>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
@@ -931,9 +1268,230 @@ function AdminUsers({ users, searchQuery, setSearchQuery, isLoading, onRefresh }
       ) : (
         <div className="bg-white rounded-2xl p-8 text-center">
           <Users className="w-12 h-12 text-[#9E9E9E] mx-auto mb-3" />
-          <p className="text-[#757575]">Aucun client trouvé</p>
+          <p className="text-[#757575]">Aucun utilisateur trouvé</p>
         </div>
       )}
+
+      {/* Add User Modal */}
+      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Ajouter un utilisateur</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-phone">Téléphone *</Label>
+              <Input
+                id="new-phone"
+                value={newUser.phone}
+                onChange={(e) => setNewUser({ ...newUser, phone: e.target.value })}
+                placeholder="Ex: 90123456"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="new-name">Nom complet</Label>
+              <Input
+                id="new-name"
+                value={newUser.name}
+                onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                placeholder="Nom de l'utilisateur"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="new-email">Email</Label>
+              <Input
+                id="new-email"
+                type="email"
+                value={newUser.email}
+                onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                placeholder="email@exemple.com"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="new-pin">Code PIN</Label>
+              <Input
+                id="new-pin"
+                value={newUser.pin}
+                onChange={(e) => setNewUser({ ...newUser, pin: e.target.value })}
+                placeholder="1234"
+                maxLength={4}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="new-role">Rôle</Label>
+              <Select value={newUser.role} onValueChange={(v: any) => setNewUser({ ...newUser, role: v })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="CLIENT">Client</SelectItem>
+                  <SelectItem value="WASHER">Laveur</SelectItem>
+                  <SelectItem value="ADMIN">Administrateur</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddModal(false)} disabled={isSaving}>
+              Annuler
+            </Button>
+            <Button 
+              className="bg-[#FF9800] hover:bg-[#F57C00]"
+              onClick={handleCreateUser}
+              disabled={isSaving || !newUser.phone}
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Création...
+                </>
+              ) : (
+                'Créer'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit User Modal */}
+      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Modifier l'utilisateur</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-phone">Téléphone</Label>
+              <Input
+                id="edit-phone"
+                value={editForm.phone}
+                onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                placeholder="Ex: 90123456"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">Nom complet</Label>
+              <Input
+                id="edit-name"
+                value={editForm.name}
+                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                placeholder="Nom de l'utilisateur"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="edit-email">Email</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={editForm.email}
+                onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                placeholder="email@exemple.com"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="edit-pin">Code PIN</Label>
+              <Input
+                id="edit-pin"
+                value={editForm.pin}
+                onChange={(e) => setEditForm({ ...editForm, pin: e.target.value })}
+                placeholder="1234"
+                maxLength={4}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="edit-role">Rôle</Label>
+              <Select value={editForm.role} onValueChange={(v: any) => setEditForm({ ...editForm, role: v })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="CLIENT">Client</SelectItem>
+                  <SelectItem value="WASHER">Laveur</SelectItem>
+                  <SelectItem value="ADMIN">Administrateur</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <Label htmlFor="edit-active">Compte actif</Label>
+              <Switch
+                id="edit-active"
+                checked={editForm.isActive}
+                onCheckedChange={(checked) => setEditForm({ ...editForm, isActive: checked })}
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditModal(false)} disabled={isSaving}>
+              Annuler
+            </Button>
+            <Button 
+              className="bg-[#FF9800] hover:bg-[#F57C00]"
+              onClick={handleUpdateUser}
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Enregistrement...
+                </>
+              ) : (
+                'Enregistrer'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Modal */}
+      <Dialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Confirmer la suppression</DialogTitle>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <p className="text-sm text-[#757575]">
+              Êtes-vous sûr de vouloir supprimer <strong>{deleteConfirm?.name || 'cet utilisateur'}</strong> ?
+            </p>
+            <p className="text-xs text-red-500 mt-2">
+              Cette action est irréversible. Les utilisateurs avec des commandes ne peuvent pas être supprimés.
+            </p>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteConfirm(null)} disabled={isSaving}>
+              Annuler
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={handleDeleteUser}
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Suppression...
+                </>
+              ) : (
+                'Supprimer'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

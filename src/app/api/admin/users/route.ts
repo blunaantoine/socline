@@ -63,11 +63,11 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PATCH /api/admin/users - Update user status or role
+// PATCH /api/admin/users - Update user (full edit)
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json();
-    const { userId, isActive, role, name, pin } = body;
+    const { userId, isActive, role, name, pin, email, phone } = body;
 
     if (!userId) {
       return NextResponse.json({ error: 'ID utilisateur requis' }, { status: 400 });
@@ -76,8 +76,23 @@ export async function PATCH(request: NextRequest) {
     const updateData: any = {};
     if (isActive !== undefined) updateData.isActive = isActive;
     if (role) updateData.role = role;
-    if (name !== undefined) updateData.name = name;
+    if (name !== undefined) updateData.name = name || null;
     if (pin !== undefined) updateData.pin = pin;
+    if (email !== undefined) updateData.email = email || null;
+    if (phone !== undefined) updateData.phone = phone;
+
+    // Check if phone is being changed and if it already exists
+    if (phone) {
+      const existingUser = await db.user.findFirst({
+        where: {
+          phone,
+          NOT: { id: userId },
+        },
+      });
+      if (existingUser) {
+        return NextResponse.json({ error: 'Ce numéro de téléphone est déjà utilisé' }, { status: 400 });
+      }
+    }
 
     const user = await db.user.update({
       where: { id: userId },
@@ -102,6 +117,26 @@ export async function PATCH(request: NextRequest) {
             completedJobs: 0,
           },
         });
+      }
+    }
+
+    // If demoting from washer to client, optionally delete washer profile
+    if (role === 'CLIENT') {
+      const existingWasher = await db.washer.findUnique({
+        where: { userId: user.id },
+      });
+
+      if (existingWasher) {
+        // Check if washer has orders
+        const washerOrders = await db.order.count({
+          where: { washerId: existingWasher.id },
+        });
+
+        if (washerOrders === 0) {
+          await db.washer.delete({
+            where: { userId: user.id },
+          });
+        }
       }
     }
 
@@ -144,17 +179,18 @@ export async function DELETE(request: NextRequest) {
   }
 }
 
-// GET /api/admin/users - Get all users (clients)
+// GET /api/admin/users - Get all users with filtering by role
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || '';
+    const roleFilter = searchParams.get('role') || 'all'; // all, CLIENT, WASHER, ADMIN
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '20');
+    const limit = parseInt(searchParams.get('limit') || '50');
     const skip = (page - 1) * limit;
 
-    const where = {
-      role: 'CLIENT' as const,
+    const where: any = {
+      ...(roleFilter !== 'all' && { role: roleFilter as any }),
       ...(search && {
         OR: [
           { name: { contains: search } },
@@ -172,10 +208,29 @@ export async function GET(request: NextRequest) {
           name: true,
           phone: true,
           email: true,
+          role: true,
           isActive: true,
           createdAt: true,
+          updatedAt: true,
           plateNumber: true,
           carColor: true,
+          pin: true,
+          washer: {
+            select: {
+              id: true,
+              isAvailable: true,
+              isVerified: true,
+              rating: true,
+              totalRatings: true,
+              completedJobs: true,
+              totalEarnings: true,
+            },
+          },
+          wallet: {
+            select: {
+              balance: true,
+            },
+          },
           _count: {
             select: { clientOrders: true },
           },
@@ -194,11 +249,25 @@ export async function GET(request: NextRequest) {
         name: u.name || 'N/A',
         phone: u.phone,
         email: u.email || '',
+        role: u.role,
         orders: u._count.clientOrders,
         status: u.isActive ? 'active' : 'inactive',
+        isActive: u.isActive,
         plateNumber: u.plateNumber,
         carColor: u.carColor,
+        pin: u.pin,
         createdAt: u.createdAt,
+        updatedAt: u.updatedAt,
+        washer: u.washer ? {
+          id: u.washer.id,
+          isAvailable: u.washer.isAvailable,
+          isVerified: u.washer.isVerified,
+          rating: u.washer.rating,
+          totalRatings: u.washer.totalRatings,
+          completedJobs: u.washer.completedJobs,
+          totalEarnings: u.washer.totalEarnings,
+        } : null,
+        walletBalance: u.wallet?.balance || 0,
       })),
       pagination: {
         page,
