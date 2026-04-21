@@ -326,10 +326,10 @@ function HomeContent({
 
       {/* Hero Banner - Promotions Carousel with auto-scroll */}
       {promotions.length > 0 && currentPromo && (
-        <div className="relative">
+        <div className="relative overflow-hidden">
           <div 
-            key={currentPromo.id}
-            className="bg-gradient-to-r from-[#FF9800] to-[#F57C00] rounded-lg p-4 shadow-md transition-opacity duration-500"
+            key={currentPromoIndex}
+            className="bg-gradient-to-r from-[#FF9800] to-[#F57C00] rounded-lg p-4 shadow-md animate-slide-in"
           >
             <p className="text-white/90 text-xs font-medium mb-1">Offre spéciale</p>
             <h2 className="text-white text-lg font-bold mb-2">
