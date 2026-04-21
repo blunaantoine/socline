@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -14,7 +15,7 @@ import {
 import {
   Wallet, ArrowDownLeft, ArrowUpRight, Clock, Plus, 
   Loader2, CheckCircle, XCircle, ArrowLeft, Phone,
-  CreditCard, ChevronRight, Sparkles
+  CreditCard, ChevronRight, Sparkles, RefreshCw, History
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -33,6 +34,7 @@ interface Transaction {
   amount: number;
   status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
   description: string | null;
+  paymentMethod?: string | null;
   orderId: string | null;
   balanceAfter: number;
   createdAt: string;
@@ -62,6 +64,20 @@ const TRANSACTION_ICONS: Record<string, any> = {
   BONUS: Sparkles,
 };
 
+const STATUS_LABELS: Record<string, string> = {
+  PENDING: 'En attente',
+  COMPLETED: 'Complété',
+  FAILED: 'Échoué',
+  CANCELLED: 'Annulé',
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  PENDING: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+  COMPLETED: 'bg-green-100 text-green-800 border-green-200',
+  FAILED: 'bg-red-100 text-red-800 border-red-200',
+  CANCELLED: 'bg-gray-100 text-gray-800 border-gray-200',
+};
+
 const AMOUNT_OPTIONS = [
   { value: 1000, label: '1 000 F' },
   { value: 2000, label: '2 000 F' },
@@ -75,32 +91,41 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
   const { user } = useAuthStore();
   const [wallet, setWallet] = useState<WalletData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [showDeposit, setShowDeposit] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [depositAmount, setDepositAmount] = useState<number>(0);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'mixx' | 'flooz'>('mixx');
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Fetch wallet data
-  useEffect(() => {
-    const fetchWallet = async () => {
-      if (!user?.id) return;
+  const fetchWallet = async (showRefreshLoader = false) => {
+    if (!user?.id) return;
 
+    if (showRefreshLoader) {
+      setIsRefreshing(true);
+    } else {
       setIsLoading(true);
-      try {
-        const res = await fetch(`/api/wallet?userId=${user.id}`);
-        const data = await res.json();
+    }
+    
+    try {
+      const res = await fetch(`/api/wallet?userId=${user.id}`);
+      const data = await res.json();
 
-        if (data.success) {
-          setWallet(data.wallet);
-        }
-      } catch (error) {
-        console.error('Error fetching wallet:', error);
-      } finally {
-        setIsLoading(false);
+      if (data.success) {
+        setWallet(data.wallet);
       }
-    };
+    } catch (error) {
+      console.error('Error fetching wallet:', error);
+      toast.error('Erreur lors du chargement du portefeuille');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
 
+  useEffect(() => {
     fetchWallet();
   }, [user?.id]);
 
@@ -135,6 +160,8 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
         setShowDeposit(false);
         setDepositAmount(0);
         setPhoneNumber('');
+        // Refresh wallet to show the pending transaction
+        fetchWallet(true);
       } else {
         toast.error(data.error || 'Erreur lors du rechargement');
       }
@@ -154,6 +181,17 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
     });
   };
 
+  const formatFullDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center bg-[#FAFAFA]">
@@ -166,13 +204,22 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
     <div className="flex flex-col h-full bg-[#FAFAFA]">
       {/* Header */}
       <div className="bg-gradient-to-r from-[#FF9800] to-[#F57C00] p-4 text-white flex-shrink-0">
-        <div className="flex items-center gap-3 mb-4">
-          {onBack && (
-            <button onClick={onBack} className="p-2 hover:bg-white/20 rounded-lg">
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-          )}
-          <h1 className="text-xl font-bold">Mon Portefeuille</h1>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            {onBack && (
+              <button onClick={onBack} className="p-2 hover:bg-white/20 rounded-lg">
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+            )}
+            <h1 className="text-xl font-bold">Mon Portefeuille</h1>
+          </div>
+          <button 
+            onClick={() => fetchWallet(true)} 
+            disabled={isRefreshing}
+            className="p-2 hover:bg-white/20 rounded-lg transition-all"
+          >
+            <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </button>
         </div>
 
         {/* Balance Card */}
@@ -191,8 +238,21 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
               <p className="font-semibold">{wallet?.totalDeposited?.toLocaleString() || 0} F</p>
             </div>
             <div className="flex-1">
-              <p className="text-xs text-white/60">Total dépensé</p>
-              <p className="font-semibold">{wallet?.totalSpent?.toLocaleString() || 0} F</p>
+              <button 
+                onClick={() => setShowHistory(true)}
+                className="w-full text-left hover:bg-white/10 rounded-lg p-1 -m-1 transition-all"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-white/60">Historique</p>
+                    <p className="font-semibold flex items-center gap-1">
+                      <History className="w-3 h-3" />
+                      Voir tout
+                    </p>
+                  </div>
+                  <ChevronRight className="w-4 h-4" />
+                </div>
+              </button>
             </div>
           </div>
         </div>
@@ -211,7 +271,18 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
 
       {/* Transactions */}
       <div className="flex-1 overflow-y-auto p-4 pb-28">
-        <h2 className="font-semibold text-[#212121] mb-3">Transactions récentes</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-semibold text-[#212121]">Transactions récentes</h2>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => setShowHistory(true)}
+            className="text-[#FF9800]"
+          >
+            Voir tout
+            <ChevronRight className="w-4 h-4 ml-1" />
+          </Button>
+        </div>
 
         {!wallet?.transactions || wallet.transactions.length === 0 ? (
           <div className="text-center py-12">
@@ -221,7 +292,7 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
           </div>
         ) : (
           <div className="space-y-2">
-            {wallet.transactions.map((tx) => {
+            {wallet.transactions.slice(0, 5).map((tx) => {
               const Icon = TRANSACTION_ICONS[tx.type] || CreditCard;
               return (
                 <Card key={tx.id} className="shadow-sm border-0">
@@ -234,15 +305,25 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
                       }`}>
                         <Icon className={`w-5 h-5 ${TRANSACTION_COLORS[tx.type]}`} />
                       </div>
-                      <div className="flex-1">
-                        <p className="font-medium text-[#212121]">
-                          {TRANSACTION_LABELS[tx.type]}
-                        </p>
-                        <p className="text-xs text-[#757575]">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-[#212121]">
+                            {TRANSACTION_LABELS[tx.type]}
+                          </p>
+                          <Badge variant="outline" className={`text-xs ${STATUS_COLORS[tx.status]}`}>
+                            {STATUS_LABELS[tx.status]}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-[#757575] truncate">
                           {tx.description || formatDate(tx.createdAt)}
                         </p>
+                        {tx.paymentMethod && (
+                          <p className="text-xs text-[#9E9E9E]">
+                            Via {tx.paymentMethod}
+                          </p>
+                        )}
                       </div>
-                      <div className="text-right">
+                      <div className="text-right flex-shrink-0">
                         <p className={`font-bold ${
                           tx.type === 'DEPOSIT' || tx.type === 'REFUND' || tx.type === 'BONUS'
                             ? 'text-green-600'
@@ -251,9 +332,11 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
                           {tx.type === 'DEPOSIT' || tx.type === 'REFUND' || tx.type === 'BONUS' ? '+' : '-'}
                           {tx.amount.toLocaleString()} F
                         </p>
-                        <p className="text-xs text-[#9E9E9E]">
-                          Solde: {tx.balanceAfter.toLocaleString()} F
-                        </p>
+                        {tx.status === 'COMPLETED' && (
+                          <p className="text-xs text-[#9E9E9E]">
+                            Solde: {tx.balanceAfter.toLocaleString()} F
+                          </p>
+                        )}
                       </div>
                     </div>
                   </CardContent>
@@ -401,6 +484,98 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
               className="w-full"
             >
               Annuler
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* History Modal */}
+      <Dialog open={showHistory} onOpenChange={setShowHistory}>
+        <DialogContent className="max-w-md max-h-[80vh] p-0 flex flex-col">
+          <div className="p-4 border-b border-[#E0E0E0] flex-shrink-0">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold text-[#212121] flex items-center gap-2">
+                <History className="w-5 h-5 text-[#FF9800]" />
+                Historique des transactions
+              </DialogTitle>
+            </DialogHeader>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4">
+            {!wallet?.transactions || wallet.transactions.length === 0 ? (
+              <div className="text-center py-12">
+                <Clock className="w-12 h-12 text-[#BDBDBD] mx-auto mb-3" />
+                <p className="text-[#757575]">Aucune transaction</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {wallet.transactions.map((tx) => {
+                  const Icon = TRANSACTION_ICONS[tx.type] || CreditCard;
+                  return (
+                    <Card key={tx.id} className="shadow-sm border-0">
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-3">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                            tx.type === 'DEPOSIT' || tx.type === 'REFUND' || tx.type === 'BONUS'
+                              ? 'bg-green-100'
+                              : 'bg-red-100'
+                          }`}>
+                            <Icon className={`w-5 h-5 ${TRANSACTION_COLORS[tx.type]}`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="font-medium text-[#212121]">
+                                {TRANSACTION_LABELS[tx.type]}
+                              </p>
+                              <Badge variant="outline" className={`text-xs ${STATUS_COLORS[tx.status]}`}>
+                                {STATUS_LABELS[tx.status]}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-[#757575] mt-1">
+                              {formatFullDate(tx.createdAt)}
+                            </p>
+                            {tx.paymentMethod && (
+                              <p className="text-xs text-[#9E9E9E] mt-1">
+                                Via {tx.paymentMethod}
+                              </p>
+                            )}
+                            {tx.description && (
+                              <p className="text-xs text-[#757575] mt-1">
+                                {tx.description}
+                              </p>
+                            )}
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className={`font-bold text-lg ${
+                              tx.type === 'DEPOSIT' || tx.type === 'REFUND' || tx.type === 'BONUS'
+                                ? 'text-green-600'
+                                : 'text-red-600'
+                            }`}>
+                              {tx.type === 'DEPOSIT' || tx.type === 'REFUND' || tx.type === 'BONUS' ? '+' : '-'}
+                              {tx.amount.toLocaleString()} F
+                            </p>
+                            {tx.status === 'COMPLETED' && (
+                              <p className="text-xs text-[#9E9E9E]">
+                                Solde: {tx.balanceAfter.toLocaleString()} F
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="p-4 border-t border-[#E0E0E0] flex-shrink-0">
+            <Button
+              variant="outline"
+              onClick={() => setShowHistory(false)}
+              className="w-full"
+            >
+              Fermer
             </Button>
           </div>
         </DialogContent>
