@@ -97,6 +97,7 @@ interface Promotion {
   discountType: string;
   discountValue: number;
   code: string | null;
+  displayType: string;
   image: string | null;
   startDate: string;
   endDate: string;
@@ -1599,6 +1600,7 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
     discountType: 'PERCENTAGE',
     discountValue: '',
     code: '',
+    displayType: 'TEXT',
     image: '',
     startDate: '',
     endDate: '',
@@ -1615,6 +1617,7 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
       discountType: 'PERCENTAGE',
       discountValue: '',
       code: '',
+      displayType: 'TEXT',
       image: '',
       startDate: '',
       endDate: '',
@@ -1682,6 +1685,7 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
       discountType: promo.discountType,
       discountValue: promo.discountValue.toString(),
       code: promo.code || '',
+      displayType: promo.displayType || 'TEXT',
       image: promo.image || '',
       startDate: new Date(promo.startDate).toISOString().split('T')[0],
       endDate: new Date(promo.endDate).toISOString().split('T')[0],
@@ -1834,46 +1838,80 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
               />
             </div>
 
-            {/* Image upload */}
+            {/* Display Type Selection */}
             <div>
-              <Label className="text-xs text-[#757575]">Image de la promotion (optionnel)</Label>
-              <div className="mt-1">
-                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-[#E0E0E0] rounded-lg cursor-pointer hover:bg-[#FAFAFA] transition-colors">
-                  {imagePreview ? (
-                    <div className="relative w-full h-full">
-                      <img 
-                        src={imagePreview} 
-                        alt="Preview" 
-                        className="w-full h-full object-cover rounded-lg"
-                      />
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setImagePreview(null);
-                          setFormData({ ...formData, image: '' });
-                        }}
-                        className="absolute top-1 right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center"
-                      >
-                        <XCircle className="w-4 h-4 text-white" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                      <ImageIcon className="w-8 h-8 text-[#9E9E9E] mb-2" />
-                      <p className="text-xs text-[#757575]">Cliquez pour ajouter une image</p>
-                      <p className="text-xs text-[#9E9E9E]">PNG, JPG (max 2MB)</p>
-                    </div>
-                  )}
-                  <input 
-                    type="file" 
-                    className="hidden" 
-                    accept="image/png, image/jpeg, image/jpg"
-                    onChange={handleImageChange}
-                  />
-                </label>
+              <Label className="text-xs text-[#757575]">Type d'affichage</Label>
+              <div className="flex gap-2 mt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormData({ ...formData, displayType: 'TEXT', image: '' });
+                    setImagePreview(null);
+                  }}
+                  className={`flex-1 py-2 px-3 rounded-lg border-2 text-sm font-medium transition-all ${
+                    formData.displayType === 'TEXT' 
+                      ? 'border-[#FF9800] bg-[#FFF3E0] text-[#FF9800]' 
+                      : 'border-[#E0E0E0] text-[#757575]'
+                  }`}
+                >
+                  Texte uniquement
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, displayType: 'IMAGE' })}
+                  className={`flex-1 py-2 px-3 rounded-lg border-2 text-sm font-medium transition-all ${
+                    formData.displayType === 'IMAGE' 
+                      ? 'border-[#FF9800] bg-[#FFF3E0] text-[#FF9800]' 
+                      : 'border-[#E0E0E0] text-[#757575]'
+                  }`}
+                >
+                  Avec image
+                </button>
               </div>
             </div>
+
+            {/* Image upload - only show if displayType is IMAGE */}
+            {formData.displayType === 'IMAGE' && (
+              <div>
+                <Label className="text-xs text-[#757575]">Image de la promotion *</Label>
+                <div className="mt-1">
+                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-[#E0E0E0] rounded-lg cursor-pointer hover:bg-[#FAFAFA] transition-colors">
+                    {imagePreview ? (
+                      <div className="relative w-full h-full">
+                        <img 
+                          src={imagePreview} 
+                          alt="Preview" 
+                          className="w-full h-full object-cover rounded-lg"
+                        />
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setImagePreview(null);
+                            setFormData({ ...formData, image: '' });
+                          }}
+                          className="absolute top-1 right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center"
+                        >
+                          <XCircle className="w-4 h-4 text-white" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                        <ImageIcon className="w-8 h-8 text-[#9E9E9E] mb-2" />
+                        <p className="text-xs text-[#757575]">Cliquez pour ajouter une image</p>
+                        <p className="text-xs text-[#9E9E9E]">PNG, JPG (max 2MB)</p>
+                      </div>
+                    )}
+                    <input 
+                      type="file" 
+                      className="hidden" 
+                      accept="image/png, image/jpeg, image/jpg"
+                      onChange={handleImageChange}
+                    />
+                  </label>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-2">
               <div>

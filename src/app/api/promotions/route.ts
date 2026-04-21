@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
       discountType = 'PERCENTAGE',
       discountValue,
       code,
+      displayType = 'TEXT',
       image,
       startDate,
       endDate,
@@ -70,7 +71,8 @@ export async function POST(request: NextRequest) {
         discountType,
         discountValue: parseFloat(discountValue),
         code: code?.toUpperCase() || null,
-        image: image || null,
+        displayType: displayType || 'TEXT',
+        image: displayType === 'IMAGE' ? (image || null) : null,
         startDate: new Date(startDate),
         endDate: new Date(endDate),
         maxUses: maxUses ? parseInt(maxUses) : null,
@@ -114,7 +116,11 @@ export async function PUT(request: NextRequest) {
     if (data.discountType) updateData.discountType = data.discountType;
     if (data.discountValue) updateData.discountValue = parseFloat(data.discountValue);
     if (data.code !== undefined) updateData.code = data.code?.toUpperCase() || null;
-    if (data.image !== undefined) updateData.image = data.image || null;
+    if (data.displayType) {
+      updateData.displayType = data.displayType;
+      // Only save image if displayType is IMAGE
+      updateData.image = data.displayType === 'IMAGE' ? (data.image || null) : null;
+    }
     if (data.startDate) updateData.startDate = new Date(data.startDate);
     if (data.endDate) updateData.endDate = new Date(data.endDate);
     if (data.maxUses !== undefined) updateData.maxUses = data.maxUses ? parseInt(data.maxUses) : null;

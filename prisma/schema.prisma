@@ -352,8 +352,9 @@ model Promotion {
   // Promo code (if type is PROMO_CODE)
   code            String?        @unique
   
-  // Image for the promotion banner
-  image           String?        // URL or base64 of the promotional image
+  // Display options
+  displayType     String         @default("TEXT") // TEXT or IMAGE
+  image           String?        // URL or base64 of the promotional image (only if displayType is IMAGE)
   
   // Validity
   startDate       DateTime
