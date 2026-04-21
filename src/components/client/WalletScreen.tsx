@@ -15,7 +15,8 @@ import {
 import {
   Wallet, ArrowDownLeft, ArrowUpRight, Clock, Plus, 
   Loader2, CheckCircle, XCircle, ArrowLeft, Phone,
-  CreditCard, ChevronRight, Sparkles, RefreshCw, History
+  CreditCard, ChevronRight, Sparkles, RefreshCw, History,
+  Copy, ExternalLink, AlertCircle, Check
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -35,9 +36,23 @@ interface Transaction {
   status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
   description: string | null;
   paymentMethod?: string | null;
+  ussdCode?: string | null;
+  ussdConfirmedAt?: string | null;
   orderId: string | null;
   balanceAfter: number;
   createdAt: string;
+}
+
+interface Operator {
+  id: string;
+  name: string;
+  displayName: string;
+  ussdPattern: string;
+  recipientNumber: string;
+  color: string;
+  minAmount: number;
+  maxAmount: number;
+  isActive: boolean;
 }
 
 const TRANSACTION_LABELS: Record<string, string> = {
@@ -87,17 +102,40 @@ const AMOUNT_OPTIONS = [
   { value: 50000, label: '50 000 F' },
 ];
 
+type DepositStep = 'amount' | 'operator' | 'phone' | 'ussd' | 'confirm';
+
+interface DepositState {
+  step: DepositStep;
+  amount: number;
+  operatorId: string;
+  phoneNumber: string;
+  transactionId: string;
+  ussdCode: string;
+  ussdLink: string;
+  recipientNumber: string;
+}
+
 export function WalletScreen({ onBack }: { onBack?: () => void }) {
   const { user } = useAuthStore();
   const [wallet, setWallet] = useState<WalletData | null>(null);
+  const [operators, setOperators] = useState<Operator[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showDeposit, setShowDeposit] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const [depositAmount, setDepositAmount] = useState<number>(0);
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'mixx' | 'flooz'>('mixx');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [copied, setCopied] = useState(false);
+  
+  const [deposit, setDeposit] = useState<DepositState>({
+    step: 'amount',
+    amount: 0,
+    operatorId: '',
+    phoneNumber: '',
+    transactionId: '',
+    ussdCode: '',
+    ussdLink: '',
+    recipientNumber: '',
+  });
 
   // Fetch wallet data
   const fetchWallet = async (showRefreshLoader = false) => {
@@ -125,18 +163,50 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
     }
   };
 
+  // Fetch operators
+  const fetchOperators = async () => {
+    try {
+      const res = await fetch('/api/operators?activeOnly=true');
+      const data = await res.json();
+
+      if (data.success) {
+        setOperators(data.operators);
+      }
+    } catch (error) {
+      console.error('Error fetching operators:', error);
+    }
+  };
+
   useEffect(() => {
     fetchWallet();
+    fetchOperators();
   }, [user?.id]);
 
-  const handleDeposit = async () => {
-    if (!user?.id || depositAmount <= 0) {
-      toast.error('Veuillez entrer un montant valide');
-      return;
-    }
+  // Get selected operator
+  const selectedOperator = operators.find(o => o.id === deposit.operatorId);
 
-    if (!phoneNumber || phoneNumber.length < 8) {
-      toast.error('Veuillez entrer un numéro de téléphone valide');
+  // Handle deposit flow
+  const handleNextStep = () => {
+    const steps: DepositStep[] = ['amount', 'operator', 'phone', 'ussd', 'confirm'];
+    const currentIndex = steps.indexOf(deposit.step);
+    
+    if (currentIndex < steps.length - 1) {
+      setDeposit(prev => ({ ...prev, step: steps[currentIndex + 1] }));
+    }
+  };
+
+  const handlePrevStep = () => {
+    const steps: DepositStep[] = ['amount', 'operator', 'phone', 'ussd', 'confirm'];
+    const currentIndex = steps.indexOf(deposit.step);
+    
+    if (currentIndex > 0) {
+      setDeposit(prev => ({ ...prev, step: steps[currentIndex - 1] }));
+    }
+  };
+
+  const handleCreateTransaction = async () => {
+    if (!user?.id || deposit.amount <= 0 || !deposit.operatorId || !deposit.phoneNumber) {
+      toast.error('Veuillez remplir tous les champs');
       return;
     }
 
@@ -147,29 +217,90 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: user.id,
-          amount: depositAmount,
-          phoneNumber,
-          paymentMethod: paymentMethod === 'mixx' ? 'Mixx by Yas' : 'Flooz',
+          amount: deposit.amount,
+          phoneNumber: deposit.phoneNumber,
+          operatorId: deposit.operatorId,
         }),
       });
 
       const data = await res.json();
 
       if (data.success) {
-        toast.success('Demande de rechargement envoyée ! En attente de validation.');
-        setShowDeposit(false);
-        setDepositAmount(0);
-        setPhoneNumber('');
-        // Refresh wallet to show the pending transaction
-        fetchWallet(true);
+        setDeposit(prev => ({
+          ...prev,
+          transactionId: data.transaction.id,
+          ussdCode: data.transaction.ussdCode,
+          ussdLink: data.transaction.ussdLink,
+          recipientNumber: data.transaction.recipientNumber,
+        }));
+        handleNextStep();
       } else {
-        toast.error(data.error || 'Erreur lors du rechargement');
+        toast.error(data.error || 'Erreur lors de la création de la transaction');
       }
     } catch (error) {
-      toast.error('Erreur lors du rechargement');
+      toast.error('Erreur lors de la création de la transaction');
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handleLaunchUssd = () => {
+    if (deposit.ussdLink) {
+      window.location.href = deposit.ussdLink;
+    }
+  };
+
+  const handleCopyUssd = async () => {
+    if (deposit.ussdCode) {
+      await navigator.clipboard.writeText(deposit.ussdCode);
+      setCopied(true);
+      toast.success('Code USSD copié !');
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleConfirmPayment = async () => {
+    if (!deposit.transactionId || !user?.id) return;
+
+    setIsProcessing(true);
+    try {
+      const res = await fetch('/api/wallet', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transactionId: deposit.transactionId,
+          userId: user.id,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        toast.success('Confirmation enregistrée ! Un administrateur validera votre paiement.');
+        setShowDeposit(false);
+        resetDeposit();
+        fetchWallet(true);
+      } else {
+        toast.error(data.error || 'Erreur lors de la confirmation');
+      }
+    } catch (error) {
+      toast.error('Erreur lors de la confirmation');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const resetDeposit = () => {
+    setDeposit({
+      step: 'amount',
+      amount: 0,
+      operatorId: '',
+      phoneNumber: '',
+      transactionId: '',
+      ussdCode: '',
+      ussdLink: '',
+      recipientNumber: '',
+    });
   };
 
   const formatDate = (dateStr: string) => {
@@ -260,7 +391,10 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
         {/* Quick Actions */}
         <div className="flex gap-3 mt-4">
           <Button
-            onClick={() => setShowDeposit(true)}
+            onClick={() => {
+              resetDeposit();
+              setShowDeposit(true);
+            }}
             className="flex-1 bg-white text-[#FF9800] hover:bg-white/90"
           >
             <Plus className="w-4 h-4 mr-2" />
@@ -347,144 +481,329 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
         )}
       </div>
 
-      {/* Deposit Modal */}
-      <Dialog open={showDeposit} onOpenChange={setShowDeposit}>
+      {/* Deposit Modal with USSD Flow */}
+      <Dialog open={showDeposit} onOpenChange={(open) => {
+        setShowDeposit(open);
+        if (!open) resetDeposit();
+      }}>
         <DialogContent className="max-w-md p-0">
           <div className="p-4 border-b border-[#E0E0E0]">
             <DialogHeader>
-              <DialogTitle className="text-xl font-bold text-[#212121]">
-                Recharger le portefeuille
+              <DialogTitle className="text-xl font-bold text-[#212121] flex items-center gap-2">
+                {deposit.step === 'ussd' || deposit.step === 'confirm' ? (
+                  <>
+                    <Phone className="w-5 h-5 text-[#FF9800]" />
+                    Paiement USSD
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-5 h-5 text-[#FF9800]" />
+                    Recharger le portefeuille
+                  </>
+                )}
               </DialogTitle>
             </DialogHeader>
           </div>
 
-          <div className="p-4 space-y-4">
-            {/* Amount Selection */}
-            <div>
-              <label className="text-sm text-[#757575] mb-2 block">Montant</label>
-              <div className="grid grid-cols-3 gap-2">
-                {AMOUNT_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    onClick={() => setDepositAmount(opt.value)}
-                    className={`p-3 rounded-lg text-sm font-medium transition-all ${
-                      depositAmount === opt.value
-                        ? 'bg-[#FF9800] text-white'
-                        : 'bg-[#F5F5F5] text-[#757575] hover:bg-[#E0E0E0]'
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-              <Input
-                type="number"
-                placeholder="Ou entrez un montant"
-                value={depositAmount || ''}
-                onChange={(e) => setDepositAmount(parseInt(e.target.value) || 0)}
-                className="mt-2"
-              />
+          <div className="p-4">
+            {/* Step indicator */}
+            <div className="flex items-center justify-center gap-2 mb-4">
+              {['amount', 'operator', 'phone', 'ussd'].map((step, index) => (
+                <div key={step} className="flex items-center">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
+                    ['amount', 'operator', 'phone', 'ussd', 'confirm'].indexOf(deposit.step) >= index
+                      ? 'bg-[#FF9800] text-white'
+                      : 'bg-[#E0E0E0] text-[#757575]'
+                  }`}>
+                    {index + 1}
+                  </div>
+                  {index < 3 && (
+                    <div className={`w-6 h-0.5 ${
+                      ['amount', 'operator', 'phone', 'ussd', 'confirm'].indexOf(deposit.step) > index
+                        ? 'bg-[#FF9800]'
+                        : 'bg-[#E0E0E0]'
+                    }`} />
+                  )}
+                </div>
+              ))}
             </div>
 
-            {/* Payment Method */}
-            <div>
-              <label className="text-sm text-[#757575] mb-2 block">Méthode de paiement</label>
-              <div className="space-y-2">
-                <button
-                  onClick={() => setPaymentMethod('mixx')}
-                  className={`w-full p-3 rounded-lg flex items-center gap-3 transition-all ${
-                    paymentMethod === 'mixx'
-                      ? 'bg-[#FF9800] text-white'
-                      : 'bg-[#F5F5F5] text-[#212121]'
-                  }`}
-                >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    paymentMethod === 'mixx' ? 'bg-white/20' : 'bg-white'
-                  }`}>
-                    <Phone className="w-4 h-4" />
-                  </div>
-                  <div className="text-left">
-                    <p className="font-medium">Mixx by Yas</p>
-                    <p className={`text-xs ${paymentMethod === 'mixx' ? 'text-white/80' : 'text-[#757575]'}`}>
-                      Togo Telecom
-                    </p>
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => setPaymentMethod('flooz')}
-                  className={`w-full p-3 rounded-lg flex items-center gap-3 transition-all ${
-                    paymentMethod === 'flooz'
-                      ? 'bg-[#FF9800] text-white'
-                      : 'bg-[#F5F5F5] text-[#212121]'
-                  }`}
-                >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    paymentMethod === 'flooz' ? 'bg-white/20' : 'bg-white'
-                  }`}>
-                    <Phone className="w-4 h-4" />
-                  </div>
-                  <div className="text-left">
-                    <p className="font-medium">Flooz</p>
-                    <p className={`text-xs ${paymentMethod === 'flooz' ? 'text-white/80' : 'text-[#757575]'}`}>
-                      Moov Africa
-                    </p>
-                  </div>
-                </button>
-
-
+            {/* Step: Amount */}
+            {deposit.step === 'amount' && (
+              <div className="space-y-4">
+                <p className="text-sm text-[#757575]">Choisissez un montant à recharger</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {AMOUNT_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setDeposit(prev => ({ ...prev, amount: opt.value }))}
+                      className={`p-3 rounded-lg text-sm font-medium transition-all ${
+                        deposit.amount === opt.value
+                          ? 'bg-[#FF9800] text-white'
+                          : 'bg-[#F5F5F5] text-[#757575] hover:bg-[#E0E0E0]'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                <Input
+                  type="number"
+                  placeholder="Ou entrez un montant personnalisé"
+                  value={deposit.amount || ''}
+                  onChange={(e) => setDeposit(prev => ({ ...prev, amount: parseInt(e.target.value) || 0 }))}
+                />
               </div>
-            </div>
+            )}
 
-            {/* Phone Number */}
-            {(paymentMethod === 'mixx' || paymentMethod === 'flooz') && (
-              <div>
-                <label className="text-sm text-[#757575] mb-2 block">Numéro de téléphone</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#757575]">+228</span>
-                  <Input
-                    type="tel"
-                    placeholder="90 12 34 56"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                    className="pl-14"
-                  />
+            {/* Step: Operator */}
+            {deposit.step === 'operator' && (
+              <div className="space-y-3">
+                <p className="text-sm text-[#757575]">Sélectionnez votre opérateur Mobile Money</p>
+                {operators.length === 0 ? (
+                  <div className="text-center py-8">
+                    <AlertCircle className="w-10 h-10 text-[#BDBDBD] mx-auto mb-2" />
+                    <p className="text-[#757575]">Aucun opérateur disponible</p>
+                  </div>
+                ) : (
+                  operators.map((op) => (
+                    <button
+                      key={op.id}
+                      onClick={() => setDeposit(prev => ({ ...prev, operatorId: op.id }))}
+                      className={`w-full p-4 rounded-xl flex items-center gap-3 transition-all ${
+                        deposit.operatorId === op.id
+                          ? 'ring-2 ring-[#FF9800] bg-[#FFF8F0]'
+                          : 'bg-[#F5F5F5] hover:bg-[#E0E0E0]'
+                      }`}
+                    >
+                      <div 
+                        className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold"
+                        style={{ backgroundColor: op.color }}
+                      >
+                        {op.name.charAt(0)}
+                      </div>
+                      <div className="text-left flex-1">
+                        <p className="font-semibold text-[#212121]">{op.displayName}</p>
+                        <p className="text-xs text-[#757575]">
+                          Min: {op.minAmount.toLocaleString()} F | Max: {op.maxAmount.toLocaleString()} F
+                        </p>
+                      </div>
+                      {deposit.operatorId === op.id && (
+                        <Check className="w-5 h-5 text-[#FF9800]" />
+                      )}
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* Step: Phone */}
+            {deposit.step === 'phone' && (
+              <div className="space-y-4">
+                <p className="text-sm text-[#757575]">
+                  Entrez votre numéro {selectedOperator?.displayName}
+                </p>
+                <div className="bg-[#FFF8F0] rounded-lg p-4 mb-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[#757575]">Montant à recharger</span>
+                    <span className="font-bold text-[#FF9800] text-xl">
+                      {deposit.amount.toLocaleString()} F
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm text-[#757575] mb-2 block">Numéro de téléphone</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#757575] font-medium">+228</span>
+                    <Input
+                      type="tel"
+                      placeholder="90 12 34 56"
+                      value={deposit.phoneNumber}
+                      onChange={(e) => setDeposit(prev => ({ 
+                        ...prev, 
+                        phoneNumber: e.target.value.replace(/\D/g, '').slice(0, 8) 
+                      }))}
+                      className="pl-14 h-12 text-lg"
+                    />
+                  </div>
+                  <p className="text-xs text-[#9E9E9E] mt-2">
+                    Ce numéro sera utilisé pour vérifier votre paiement
+                  </p>
                 </div>
               </div>
             )}
 
-            {/* Summary */}
-            <div className="bg-[#FFF8F0] rounded-lg p-4">
-              <div className="flex justify-between items-center">
-                <span className="text-[#757575]">Montant à recharger</span>
-                <span className="font-bold text-[#FF9800] text-lg">
-                  {depositAmount.toLocaleString()} F
-                </span>
+            {/* Step: USSD */}
+            {deposit.step === 'ussd' && (
+              <div className="space-y-4">
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <div className="flex gap-2">
+                    <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0" />
+                    <div>
+                      <p className="font-medium text-yellow-800">Instructions importantes</p>
+                      <p className="text-sm text-yellow-700 mt-1">
+                        1. Lancez le code USSD ci-dessous<br/>
+                        2. Entrez votre code PIN pour valider<br/>
+                        3. Revenez ici et cliquez sur "J'ai payé"
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-[#212121] rounded-xl p-4 text-center">
+                  <p className="text-white/60 text-xs mb-2">Code USSD</p>
+                  <p className="text-white text-2xl font-mono font-bold tracking-wider">
+                    {deposit.ussdCode}
+                  </p>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={handleCopyUssd}
+                    className="flex-1"
+                  >
+                    {copied ? <Check className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
+                    {copied ? 'Copié !' : 'Copier'}
+                  </Button>
+                  <Button
+                    onClick={handleLaunchUssd}
+                    className="flex-1 bg-[#FF9800] hover:bg-[#F57C00]"
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Lancer
+                  </Button>
+                </div>
+
+                <div className="bg-[#F5F5F5] rounded-lg p-3 text-center">
+                  <p className="text-xs text-[#757575]">
+                    Le numéro destinataire est : <span className="font-mono font-bold">{deposit.recipientNumber}</span>
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* Step: Confirm */}
+            {deposit.step === 'confirm' && (
+              <div className="space-y-4">
+                <div className="text-center py-4">
+                  <div className="w-16 h-16 bg-[#FFF8F0] rounded-full flex items-center justify-center mx-auto mb-4">
+                    <CheckCircle className="w-8 h-8 text-[#FF9800]" />
+                  </div>
+                  <p className="font-semibold text-[#212121] text-lg">Avez-vous validé le paiement ?</p>
+                  <p className="text-sm text-[#757575] mt-2">
+                    Confirmez uniquement si vous avez entré votre code PIN et reçu une confirmation de la part de {selectedOperator?.displayName}
+                  </p>
+                </div>
+
+                <div className="bg-[#F5F5F5] rounded-lg p-4 space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-[#757575]">Montant</span>
+                    <span className="font-semibold">{deposit.amount.toLocaleString()} F</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#757575]">Opérateur</span>
+                    <span className="font-semibold">{selectedOperator?.displayName}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#757575]">Numéro</span>
+                    <span className="font-semibold">+228 {deposit.phoneNumber}</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Actions */}
           <div className="p-4 border-t border-[#E0E0E0] space-y-2">
-            <Button
-              onClick={handleDeposit}
-              disabled={isProcessing || depositAmount <= 0}
-              className="w-full bg-[#FF9800] hover:bg-[#F57C00] h-12"
-            >
-              {isProcessing ? (
-                <Loader2 className="w-5 h-5 animate-spin mr-2" />
-              ) : (
-                <CheckCircle className="w-5 h-5 mr-2" />
-              )}
-              Confirmer le rechargement
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setShowDeposit(false)}
-              className="w-full"
-            >
-              Annuler
-            </Button>
+            {/* Step-specific actions */}
+            {deposit.step === 'amount' && (
+              <Button
+                onClick={handleNextStep}
+                disabled={deposit.amount <= 0}
+                className="w-full bg-[#FF9800] hover:bg-[#F57C00] h-12"
+              >
+                Continuer
+                <ChevronRight className="w-4 h-4 ml-2" />
+              </Button>
+            )}
+
+            {deposit.step === 'operator' && (
+              <>
+                <Button
+                  onClick={handleNextStep}
+                  disabled={!deposit.operatorId}
+                  className="w-full bg-[#FF9800] hover:bg-[#F57C00] h-12"
+                >
+                  Continuer
+                  <ChevronRight className="w-4 h-4 ml-2" />
+                </Button>
+                <Button variant="outline" onClick={handlePrevStep} className="w-full">
+                  Retour
+                </Button>
+              </>
+            )}
+
+            {deposit.step === 'phone' && (
+              <>
+                <Button
+                  onClick={handleCreateTransaction}
+                  disabled={isProcessing || deposit.phoneNumber.length < 8}
+                  className="w-full bg-[#FF9800] hover:bg-[#F57C00] h-12"
+                >
+                  {isProcessing ? (
+                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                  ) : (
+                    <>
+                      Générer le code USSD
+                      <ChevronRight className="w-4 h-4 ml-2" />
+                    </>
+                  )}
+                </Button>
+                <Button variant="outline" onClick={handlePrevStep} className="w-full">
+                  Retour
+                </Button>
+              </>
+            )}
+
+            {deposit.step === 'ussd' && (
+              <>
+                <Button
+                  onClick={handleNextStep}
+                  className="w-full bg-[#FF9800] hover:bg-[#F57C00] h-12"
+                >
+                  J'ai payé
+                  <CheckCircle className="w-4 h-4 ml-2" />
+                </Button>
+                <Button variant="outline" onClick={() => setDeposit(prev => ({ ...prev, step: 'phone' }))} className="w-full">
+                  Modifier le numéro
+                </Button>
+              </>
+            )}
+
+            {deposit.step === 'confirm' && (
+              <>
+                <Button
+                  onClick={handleConfirmPayment}
+                  disabled={isProcessing}
+                  className="w-full bg-green-600 hover:bg-green-700 h-12"
+                >
+                  {isProcessing ? (
+                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                  ) : (
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                  )}
+                  Confirmer le paiement
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setDeposit(prev => ({ ...prev, step: 'ussd' }))} 
+                  className="w-full"
+                >
+                  Non, revenir au code USSD
+                </Button>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -542,6 +861,11 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
                             {tx.description && (
                               <p className="text-xs text-[#757575] mt-1">
                                 {tx.description}
+                              </p>
+                            )}
+                            {tx.ussdConfirmedAt && (
+                              <p className="text-xs text-green-600 mt-1">
+                                ✓ Payé le {formatDate(tx.ussdConfirmedAt)}
                               </p>
                             )}
                           </div>

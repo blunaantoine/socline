@@ -171,6 +171,38 @@ export async function POST() {
       });
     }
 
+    // Create Mobile Money operators if they don't exist
+    const existingOperators = await db.mobileMoneyOperator.count();
+    if (existingOperators === 0) {
+      // Mixx by Yas (Togo Telecom)
+      await db.mobileMoneyOperator.create({
+        data: {
+          name: 'Mixx by Yas',
+          displayName: 'Mixx by Yas (Togo Telecom)',
+          ussdPattern: '*145*1*{montant}*{numero}*2#',
+          recipientNumber: '90000000',
+          color: '#0066CC',
+          minAmount: 100,
+          maxAmount: 500000,
+          isActive: true,
+        },
+      });
+
+      // Flooz (Moov Africa)
+      await db.mobileMoneyOperator.create({
+        data: {
+          name: 'Flooz',
+          displayName: 'Flooz (Moov Africa)',
+          ussdPattern: '*155*1*{montant}*{numero}*2#',
+          recipientNumber: '95000000',
+          color: '#E60000',
+          minAmount: 100,
+          maxAmount: 500000,
+          isActive: true,
+        },
+      });
+    }
+
     return NextResponse.json({ 
       success: true, 
       message: 'Database seeded successfully',

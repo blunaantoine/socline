@@ -1180,40 +1180,405 @@ function AdminFinances({ stats }: { stats: Stats | null }) {
 // Admin Settings
 function AdminSettings() {
   const { logout } = useAuthStore();
-  
+  const [activeSection, setActiveSection] = useState<'general' | 'operators'>('general');
+  const [operators, setOperators] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [editingOperator, setEditingOperator] = useState<any>(null);
+  const [showOperatorForm, setShowOperatorForm] = useState(false);
+  const [operatorForm, setOperatorForm] = useState({
+    name: '',
+    displayName: '',
+    ussdPattern: '',
+    recipientNumber: '',
+    color: '#FF9800',
+    minAmount: '100',
+    maxAmount: '500000',
+    isActive: true,
+  });
+
+  const fetchOperators = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/operators');
+      const data = await res.json();
+      if (data.success) {
+        setOperators(data.operators);
+      }
+    } catch (error) {
+      console.error('Error fetching operators:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeSection === 'operators') {
+      fetchOperators();
+    }
+  }, [activeSection, fetchOperators]);
+
+  const handleSaveOperator = async () => {
+    try {
+      const res = await fetch('/api/operators', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingOperator?.id,
+          ...operatorForm,
+          minAmount: parseInt(operatorForm.minAmount),
+          maxAmount: parseInt(operatorForm.maxAmount),
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        toast.success(editingOperator ? 'Opérateur mis à jour' : 'Opérateur créé');
+        setShowOperatorForm(false);
+        setEditingOperator(null);
+        resetOperatorForm();
+        fetchOperators();
+      } else {
+        toast.error(data.error || 'Erreur');
+      }
+    } catch (error) {
+      toast.error('Erreur lors de la sauvegarde');
+    }
+  };
+
+  const handleEditOperator = (op: any) => {
+    setEditingOperator(op);
+    setOperatorForm({
+      name: op.name,
+      displayName: op.displayName,
+      ussdPattern: op.ussdPattern,
+      recipientNumber: op.recipientNumber,
+      color: op.color,
+      minAmount: op.minAmount.toString(),
+      maxAmount: op.maxAmount.toString(),
+      isActive: op.isActive,
+    });
+    setShowOperatorForm(true);
+  };
+
+  const handleDeleteOperator = async (id: string) => {
+    if (!confirm('Supprimer cet opérateur ?')) return;
+    
+    try {
+      const res = await fetch(`/api/operators?id=${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('Opérateur supprimé');
+        fetchOperators();
+      }
+    } catch (error) {
+      toast.error('Erreur lors de la suppression');
+    }
+  };
+
+  const resetOperatorForm = () => {
+    setOperatorForm({
+      name: '',
+      displayName: '',
+      ussdPattern: '',
+      recipientNumber: '',
+      color: '#FF9800',
+      minAmount: '100',
+      maxAmount: '500000',
+      isActive: true,
+    });
+    setEditingOperator(null);
+  };
+
+  const handleToggleOperator = async (op: any) => {
+    try {
+      const res = await fetch('/api/operators', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: op.id,
+          isActive: !op.isActive,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        toast.success(op.isActive ? 'Opérateur désactivé' : 'Opérateur activé');
+        fetchOperators();
+      }
+    } catch (error) {
+      toast.error('Erreur');
+    }
+  };
+
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-4 space-y-4 pb-28">
       <h2 className="font-semibold text-lg text-[#212121]">Paramètres</h2>
 
-      <Card className="border-0 shadow-sm">
-        <CardContent className="p-4 space-y-4">
-          <div>
-            <Label className="text-xs text-[#757575]">Nom de l&apos;entreprise</Label>
-            <Input defaultValue="Socline" className="mt-1" />
-          </div>
-          <div>
-            <Label className="text-xs text-[#757575]">Téléphone</Label>
-            <Input defaultValue="+228 90 12 34 56" className="mt-1" />
-          </div>
-          <div>
-            <Label className="text-xs text-[#757575]">Commission (%)</Label>
-            <Input type="number" defaultValue="15" className="mt-1" />
-          </div>
-        </CardContent>
-      </Card>
+      {/* Section Tabs */}
+      <div className="flex gap-2">
+        <Button
+          variant={activeSection === 'general' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setActiveSection('general')}
+          className={activeSection === 'general' ? 'bg-[#FF9800] hover:bg-[#F57C00]' : ''}
+        >
+          Général
+        </Button>
+        <Button
+          variant={activeSection === 'operators' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setActiveSection('operators')}
+          className={activeSection === 'operators' ? 'bg-[#FF9800] hover:bg-[#F57C00]' : ''}
+        >
+          <Phone className="w-4 h-4 mr-1" />
+          Opérateurs
+        </Button>
+      </div>
 
-      <Button className="w-full bg-[#FF9800] hover:bg-[#F57C00]">
-        Enregistrer
-      </Button>
+      {activeSection === 'general' && (
+        <>
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-4 space-y-4">
+              <div>
+                <Label className="text-xs text-[#757575]">Nom de l&apos;entreprise</Label>
+                <Input defaultValue="Socline" className="mt-1" />
+              </div>
+              <div>
+                <Label className="text-xs text-[#757575]">Téléphone</Label>
+                <Input defaultValue="+228 90 12 34 56" className="mt-1" />
+              </div>
+              <div>
+                <Label className="text-xs text-[#757575]">Commission (%)</Label>
+                <Input type="number" defaultValue="15" className="mt-1" />
+              </div>
+            </CardContent>
+          </Card>
 
-      <Button
-        onClick={logout}
-        variant="outline"
-        className="w-full border-red-200 text-red-500 hover:bg-red-50"
-      >
-        <LogOut className="w-4 h-4 mr-2" />
-        Déconnexion
-      </Button>
+          <Button className="w-full bg-[#FF9800] hover:bg-[#F57C00]">
+            Enregistrer
+          </Button>
+
+          <Button
+            onClick={logout}
+            variant="outline"
+            className="w-full border-red-200 text-red-500 hover:bg-red-50"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Déconnexion
+          </Button>
+        </>
+      )}
+
+      {activeSection === 'operators' && (
+        <>
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-[#757575]">Configuration des opérateurs Mobile Money</p>
+            <Button
+              size="sm"
+              className="bg-[#FF9800] hover:bg-[#F57C00]"
+              onClick={() => {
+                resetOperatorForm();
+                setShowOperatorForm(true);
+              }}
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              Ajouter
+            </Button>
+          </div>
+
+          {/* Operator Form */}
+          {showOperatorForm && (
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4 space-y-3">
+                <h3 className="font-semibold text-[#212121]">
+                  {editingOperator ? 'Modifier l\'opérateur' : 'Nouvel opérateur'}
+                </h3>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs text-[#757575]">Nom court</Label>
+                    <Input
+                      value={operatorForm.name}
+                      onChange={(e) => setOperatorForm({ ...operatorForm, name: e.target.value })}
+                      placeholder="Mixx by Yas"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-[#757575]">Nom complet</Label>
+                    <Input
+                      value={operatorForm.displayName}
+                      onChange={(e) => setOperatorForm({ ...operatorForm, displayName: e.target.value })}
+                      placeholder="Mixx by Yas (Togo Telecom)"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-xs text-[#757575]">Pattern USSD</Label>
+                  <Input
+                    value={operatorForm.ussdPattern}
+                    onChange={(e) => setOperatorForm({ ...operatorForm, ussdPattern: e.target.value })}
+                    placeholder="*145*1*{montant}*{numero}*2#"
+                    className="mt-1 font-mono text-sm"
+                  />
+                  <p className="text-[10px] text-[#9E9E9E] mt-1">
+                    Utilisez {'{montant}'} et {'{numero}'} comme variables
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs text-[#757575]">Numéro destinataire</Label>
+                    <Input
+                      value={operatorForm.recipientNumber}
+                      onChange={(e) => setOperatorForm({ ...operatorForm, recipientNumber: e.target.value })}
+                      placeholder="90000000"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-[#757575]">Couleur</Label>
+                    <div className="flex gap-2 mt-1">
+                      <Input
+                        type="color"
+                        value={operatorForm.color}
+                        onChange={(e) => setOperatorForm({ ...operatorForm, color: e.target.value })}
+                        className="w-10 h-9 p-1"
+                      />
+                      <Input
+                        value={operatorForm.color}
+                        onChange={(e) => setOperatorForm({ ...operatorForm, color: e.target.value })}
+                        className="flex-1 font-mono text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs text-[#757575]">Montant min (F)</Label>
+                    <Input
+                      type="number"
+                      value={operatorForm.minAmount}
+                      onChange={(e) => setOperatorForm({ ...operatorForm, minAmount: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-[#757575]">Montant max (F)</Label>
+                    <Input
+                      type="number"
+                      value={operatorForm.maxAmount}
+                      onChange={(e) => setOperatorForm({ ...operatorForm, maxAmount: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={operatorForm.isActive}
+                    onCheckedChange={(v) => setOperatorForm({ ...operatorForm, isActive: v })}
+                  />
+                  <Label className="text-xs text-[#757575]">Actif</Label>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    className="flex-1 bg-[#FF9800] hover:bg-[#F57C00]"
+                    onClick={handleSaveOperator}
+                  >
+                    {editingOperator ? 'Mettre à jour' : 'Créer'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowOperatorForm(false);
+                      resetOperatorForm();
+                    }}
+                  >
+                    Annuler
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Operators List */}
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+            </div>
+          ) : operators.length > 0 ? (
+            <div className="space-y-3">
+              {operators.map((op) => (
+                <Card key={op.id} className={`border-0 shadow-sm ${!op.isActive ? 'opacity-60' : ''}`}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg"
+                        style={{ backgroundColor: op.color }}
+                      >
+                        {op.name.charAt(0)}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-medium text-[#212121]">{op.displayName}</h3>
+                          <Badge className={op.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
+                            {op.isActive ? 'Actif' : 'Inactif'}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-[#757575] font-mono">{op.ussdPattern}</p>
+                        <p className="text-xs text-[#9E9E9E]">Destinataire: {op.recipientNumber}</p>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleEditOperator(op)}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleToggleOperator(op)}
+                        >
+                          {op.isActive ? (
+                            <XCircle className="w-4 h-4 text-red-500" />
+                          ) : (
+                            <CheckCircle className="w-4 h-4 text-green-500" />
+                          )}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDeleteOperator(op.id)}
+                        >
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl p-8 text-center">
+              <Phone className="w-12 h-12 text-[#9E9E9E] mx-auto mb-3" />
+              <p className="text-[#757575]">Aucun opérateur configuré</p>
+              <Button
+                className="mt-4 bg-[#FF9800] hover:bg-[#F57C00]"
+                onClick={() => setShowOperatorForm(true)}
+              >
+                Ajouter un opérateur
+              </Button>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

@@ -507,8 +507,15 @@ model WalletTransaction {
   
   // External payment reference (for deposits)
   externalRef     String?
-  phoneNumber     String?           // For mobile money deposits
+  phoneNumber     String?           // Phone number used for deposit
   paymentMethod   String?           // "Mixx by Yas", "Flooz", etc.
+  
+  // USSD confirmation
+  ussdCode        String?           // USSD code generated
+  ussdConfirmedAt DateTime?         // When user confirmed payment
+  
+  // Admin validation
+  adminNotes      String?           // Notes from admin validation
   
   // Description
   description     String?
@@ -520,4 +527,29 @@ model WalletTransaction {
   updatedAt       DateTime          @updatedAt
   
   @@map("wallet_transactions")
+}
+
+// Mobile Money Operator configuration
+model MobileMoneyOperator {
+  id              String   @id @default(cuid())
+  name            String   @unique // "Mixx by Yas", "Flooz"
+  displayName     String   // "Mixx by Yas (Togo Telecom)", "Flooz (Moov Africa)"
+  
+  // USSD Configuration
+  ussdPattern     String   // "*145*1*{montant}*{numero}*2#"
+  recipientNumber String   // "90000000" - numéro destinataire pour les paiements
+  
+  // Display
+  logo            String?  // URL du logo
+  color           String   // Couleur theme "#FF6600"
+  isActive        Boolean  @default(true)
+  
+  // Validation settings
+  minAmount       Float    @default(100)
+  maxAmount       Float    @default(500000)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@map("mobile_money_operators")
 }
