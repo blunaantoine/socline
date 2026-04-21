@@ -135,7 +135,7 @@ export function ClientApp() {
     }, 4000); // Change every 4 seconds
     
     return () => clearInterval(interval);
-  }, [promotions.length]);
+  }, [promotions]);
 
   // Get user location
   const getUserLocation = useCallback(() => {

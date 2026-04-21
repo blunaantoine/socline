@@ -154,21 +154,56 @@ export async function POST() {
       const endDate = new Date();
       endDate.setMonth(endDate.getMonth() + 3); // 3 months from now
 
-      await db.promotion.create({
-        data: {
-          name: 'sur votre 1er lavage',
-          description: 'Profitez de 20% de réduction sur votre premier lavage auto avec Socline',
-          type: 'GLOBAL',
-          discountType: 'PERCENTAGE',
-          discountValue: 20,
-          code: 'WELCOME20',
-          startDate: now,
-          endDate: endDate,
-          maxUses: 1000,
-          maxUsesPerUser: 1,
-          isActive: true,
-        },
-      });
+      await Promise.all([
+        db.promotion.create({
+          data: {
+            name: 'sur votre 1er lavage',
+            description: 'Profitez de 20% de réduction sur votre premier lavage auto avec Socline',
+            type: 'GLOBAL',
+            discountType: 'PERCENTAGE',
+            discountValue: 20,
+            code: 'WELCOME20',
+            displayType: 'TEXT',
+            startDate: now,
+            endDate: endDate,
+            maxUses: 1000,
+            maxUsesPerUser: 1,
+            isActive: true,
+          },
+        }),
+        db.promotion.create({
+          data: {
+            name: 'Weekend Special',
+            description: '15% de réduction sur tous les lavages ce weekend',
+            type: 'GLOBAL',
+            discountType: 'PERCENTAGE',
+            discountValue: 15,
+            code: 'WEEKEND15',
+            displayType: 'TEXT',
+            startDate: now,
+            endDate: endDate,
+            maxUses: 500,
+            maxUsesPerUser: 5,
+            isActive: true,
+          },
+        }),
+        db.promotion.create({
+          data: {
+            name: 'Parrainage',
+            description: 'Invitez un ami et recevez 1000F de réduction',
+            type: 'GLOBAL',
+            discountType: 'FIXED',
+            discountValue: 1000,
+            code: 'PARRAIN1K',
+            displayType: 'TEXT',
+            startDate: now,
+            endDate: endDate,
+            maxUses: null,
+            maxUsesPerUser: 10,
+            isActive: true,
+          },
+        }),
+      ]);
     }
 
     // Create Mobile Money operators if they don't exist
