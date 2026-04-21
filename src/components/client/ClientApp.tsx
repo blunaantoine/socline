@@ -337,7 +337,7 @@ function HomeContent({
                 <img 
                   src={currentPromo.image} 
                   alt={currentPromo.name}
-                  className="w-full h-36 object-cover"
+                  className="w-full h-48 object-cover"
                   style={{ objectPosition: currentPromo.imagePosition || 'center' }}
                 />
                 <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/60 to-transparent">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuthStore, useAppStore } from '@/store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,9 +36,145 @@ import {
   TrendingUp, Clock, Star, Settings, Bell, Plus,
   CheckCircle, XCircle, AlertCircle, Search,
   ChevronDown, Download, Eye, Edit, Trash2, Tag,
-  RefreshCw, Loader2, ArrowLeft, LogOut, Percent, Wallet, Phone, Image as ImageIcon
+  RefreshCw, Loader2, ArrowLeft, LogOut, Percent, Wallet, Phone, Image as ImageIcon, Move
 } from 'lucide-react';
 import { toast } from 'sonner';
+
+// Component to drag and position image
+function ImagePositionEditor({ 
+  imageSrc, 
+  position, 
+  onPositionChange, 
+  onRemove 
+}: { 
+  imageSrc: string; 
+  position: string; 
+  onPositionChange: (pos: string) => void;
+  onRemove: () => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Parse position to get x,y percentages
+  const parsePosition = (pos: string): { x: number; y: number } => {
+    if (pos.includes('%')) {
+      const parts = pos.split(' ').map(p => parseInt(p.replace('%', '')));
+      return { y: parts[0] || 50, x: parts[1] || 50 };
+    }
+    // Handle named positions
+    const positions: Record<string, { x: number; y: number }> = {
+      'top left': { x: 0, y: 0 },
+      'top center': { x: 50, y: 0 },
+      'top right': { x: 100, y: 0 },
+      'center left': { x: 0, y: 50 },
+      'center': { x: 50, y: 50 },
+      'center right': { x: 100, y: 50 },
+      'bottom left': { x: 0, y: 100 },
+      'bottom center': { x: 50, y: 100 },
+      'bottom right': { x: 100, y: 100 },
+    };
+    return positions[pos] || { x: 50, y: 50 };
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setIsDragging(true);
+  };
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMove = (clientX: number, clientY: number) => {
+      if (!containerRef.current) return;
+      
+      const rect = containerRef.current.getBoundingClientRect();
+      const x = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+      const y = Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100));
+      
+      onPositionChange(`${Math.round(y)}% ${Math.round(x)}%`);
+    };
+
+    const handleMouseMove = (e: MouseEvent) => handleMove(e.clientX, e.clientY);
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 1) {
+        handleMove(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    };
+
+    const handleEnd = () => setIsDragging(false);
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleEnd);
+    window.addEventListener('touchmove', handleTouchMove);
+    window.addEventListener('touchend', handleEnd);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleEnd);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleEnd);
+    };
+  }, [isDragging, onPositionChange]);
+
+  const pos = parsePosition(position);
+
+  return (
+    <div className="relative w-full h-full">
+      {/* Instructions */}
+      <div className="absolute top-2 left-2 z-10 bg-black/50 text-white text-[10px] px-2 py-1 rounded-full flex items-center gap-1">
+        <Move className="w-3 h-3" />
+        Glissez pour ajuster
+      </div>
+      
+      {/* Remove button */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onRemove();
+        }}
+        className="absolute top-2 right-2 z-10 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+      >
+        <XCircle className="w-4 h-4 text-white" />
+      </button>
+      
+      {/* Image container */}
+      <div 
+        ref={containerRef}
+        className="w-full h-full cursor-move overflow-hidden rounded-lg relative"
+        onMouseDown={handleMouseDown}
+        onTouchStart={handleTouchStart}
+      >
+        <img 
+          src={imageSrc} 
+          alt="Preview" 
+          className="w-full h-full object-cover select-none"
+          style={{ objectPosition: position }}
+          onLoad={() => setIsLoaded(true)}
+          draggable={false}
+        />
+        
+        {/* Crosshair indicator */}
+        <div 
+          className="absolute w-4 h-4 pointer-events-none transition-all duration-75"
+          style={{ 
+            left: `${pos.x}%`, 
+            top: `${pos.y}%`,
+            transform: 'translate(-50%, -50%)'
+          }}
+        >
+          <div className={`w-4 h-4 border-2 border-white rounded-full ${isDragging ? 'bg-[#FF9800]/50' : 'bg-transparent'} shadow-lg`} />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 interface Order {
   id: string;
@@ -1880,27 +2016,17 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
                 <div>
                   <Label className="text-xs text-[#757575]">Image de la promotion *</Label>
                   <div className="mt-1">
-                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-[#E0E0E0] rounded-lg cursor-pointer hover:bg-[#FAFAFA] transition-colors">
+                    <label className={`flex flex-col items-center justify-center w-full ${imagePreview ? 'h-48' : 'h-32'} border-2 border-dashed border-[#E0E0E0] rounded-lg ${!imagePreview ? 'cursor-pointer hover:bg-[#FAFAFA]' : ''} transition-colors`}>
                       {imagePreview ? (
-                        <div className="relative w-full h-full overflow-hidden rounded-lg">
-                          <img 
-                            src={imagePreview} 
-                            alt="Preview" 
-                            className="w-full h-full object-cover rounded-lg"
-                            style={{ objectPosition: formData.imagePosition }}
-                          />
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              setImagePreview(null);
-                              setFormData({ ...formData, image: '' });
-                            }}
-                            className="absolute top-1 right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center"
-                          >
-                            <XCircle className="w-4 h-4 text-white" />
-                          </button>
-                        </div>
+                        <ImagePositionEditor
+                          imageSrc={imagePreview}
+                          position={formData.imagePosition}
+                          onPositionChange={(pos) => setFormData({ ...formData, imagePosition: pos })}
+                          onRemove={() => {
+                            setImagePreview(null);
+                            setFormData({ ...formData, image: '', imagePosition: 'center' });
+                          }}
+                        />
                       ) : (
                         <div className="flex flex-col items-center justify-center pt-5 pb-6">
                           <ImageIcon className="w-8 h-8 text-[#9E9E9E] mb-2" />
@@ -1917,99 +2043,6 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
                     </label>
                   </div>
                 </div>
-
-                {/* Image Position Control */}
-                {imagePreview && (
-                  <div>
-                    <Label className="text-xs text-[#757575]">Position de l&apos;image</Label>
-                    <p className="text-[10px] text-[#9E9E9E] mb-2">Ajustez la zone visible de l&apos;image</p>
-                    
-                    {/* Position Grid */}
-                    <div className="grid grid-cols-3 gap-1 p-2 bg-[#FAFAFA] rounded-lg">
-                      {[
-                        { pos: 'top left', label: '↖' },
-                        { pos: 'top center', label: '↑' },
-                        { pos: 'top right', label: '↗' },
-                        { pos: 'center left', label: '←' },
-                        { pos: 'center', label: '●' },
-                        { pos: 'center right', label: '→' },
-                        { pos: 'bottom left', label: '↙' },
-                        { pos: 'bottom center', label: '↓' },
-                        { pos: 'bottom right', label: '↘' },
-                      ].map(({ pos, label }) => (
-                        <button
-                          key={pos}
-                          type="button"
-                          onClick={() => setFormData({ ...formData, imagePosition: pos })}
-                          className={`h-10 rounded flex items-center justify-center text-sm font-medium transition-all ${
-                            formData.imagePosition === pos
-                              ? 'bg-[#FF9800] text-white'
-                              : 'bg-white border border-[#E0E0E0] text-[#757575] hover:border-[#FF9800]'
-                          }`}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Fine-tune sliders */}
-                    <div className="mt-3 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-[#757575] w-8">H: {formData.imagePosition.includes('left') ? '0%' : formData.imagePosition.includes('right') ? '100%' : '50%'}</span>
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          value={
-                            formData.imagePosition.includes('left') ? 0 :
-                            formData.imagePosition.includes('right') ? 100 : 50
-                          }
-                          onChange={(e) => {
-                            const h = parseInt(e.target.value);
-                            const v = formData.imagePosition.includes('top') ? 0 :
-                                     formData.imagePosition.includes('bottom') ? 100 : 50;
-                            const newPos = `${v}% ${h}%`;
-                            setFormData({ ...formData, imagePosition: newPos });
-                          }}
-                          className="flex-1 h-1 accent-[#FF9800]"
-                        />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-[#757575] w-8">V: {formData.imagePosition.includes('top') ? '0%' : formData.imagePosition.includes('bottom') ? '100%' : '50%'}</span>
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          value={
-                            formData.imagePosition.includes('top') ? 0 :
-                            formData.imagePosition.includes('bottom') ? 100 : 50
-                          }
-                          onChange={(e) => {
-                            const v = parseInt(e.target.value);
-                            const h = formData.imagePosition.includes('left') ? 0 :
-                                     formData.imagePosition.includes('right') ? 100 : 50;
-                            const newPos = `${v}% ${h}%`;
-                            setFormData({ ...formData, imagePosition: newPos });
-                          }}
-                          className="flex-1 h-1 accent-[#FF9800]"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Preview with current position */}
-                    <div className="mt-3 p-2 bg-[#F5F5F5] rounded-lg">
-                      <p className="text-[10px] text-[#9E9E9E] mb-1">Aperçu avec position actuelle</p>
-                      <div className="w-full h-20 rounded overflow-hidden bg-[#E0E0E0]">
-                        <img 
-                          src={imagePreview} 
-                          alt="Preview" 
-                          className="w-full h-full object-cover"
-                          style={{ objectPosition: formData.imagePosition }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
