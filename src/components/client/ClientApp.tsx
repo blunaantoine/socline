@@ -29,6 +29,7 @@ import { NotificationCenter } from './NotificationCenter';
 import { WalletScreen } from './WalletScreen';
 import { CarsManager } from './CarsManager';
 import { SubscriptionPanel } from './SubscriptionPanel';
+import { ActivityHistory, AddressesManager, AccountSettings } from './ClientSettings';
 
 const navItems = [
   { id: 'home', icon: Home, label: 'Accueil' },
@@ -709,6 +710,19 @@ function ProfileContent({ user, onLogout }: { user: any; onLogout: () => void })
     window.open(`https://wa.me/${supportWhatsApp.replace(/\+/g, '')}?text=${message}`, '_blank');
   };
 
+  // Render sub-sections if active
+  if (activeSection === 'history') {
+    return <ActivityHistory userId={user?.id} onBack={() => setActiveSection(null)} />;
+  }
+
+  if (activeSection === 'addresses') {
+    return <AddressesManager userId={user?.id} onBack={() => setActiveSection(null)} />;
+  }
+
+  if (activeSection === 'settings') {
+    return <AccountSettings userId={user?.id} userPhone={user?.phone} onBack={() => setActiveSection(null)} />;
+  }
+
   return (
     <div className="p-4 space-y-3 pb-28">
       {/* Profile Card - Android style */}
@@ -746,7 +760,7 @@ function ProfileContent({ user, onLogout }: { user: any; onLogout: () => void })
         </div>
       </div>
 
-      {/* Support Client - Nouveau */}
+      {/* Support Client */}
       <div className="bg-gradient-to-r from-[#FF9800] to-[#F57C00] rounded-lg p-4 shadow-sm">
         <div className="flex items-center gap-3 mb-3">
           <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
@@ -778,19 +792,22 @@ function ProfileContent({ user, onLogout }: { user: any; onLogout: () => void })
       {/* Menu - Android List style */}
       <div className="bg-white rounded-lg overflow-hidden shadow-sm">
         {[
-          { icon: Clock, label: 'Historique', action: () => toast.info('Historique bientôt disponible') },
-          { icon: MapPin, label: 'Adresses', action: () => toast.info('Gestion des adresses bientôt disponible') },
-          { icon: Settings, label: 'Paramètres', action: () => toast.info('Paramètres bientôt disponibles') },
+          { icon: Clock, label: 'Historique', section: 'history', description: 'Toutes vos activités' },
+          { icon: MapPin, label: 'Adresses', section: 'addresses', description: 'Gérez vos adresses' },
+          { icon: Settings, label: 'Paramètres', section: 'settings', description: 'Modifiez votre compte' },
         ].map((item, index) => (
           <button
             key={index}
-            onClick={item.action}
+            onClick={() => setActiveSection(item.section)}
             className="w-full flex items-center gap-3 p-4 hover:bg-[#F5F5F5] active:bg-[#EEEEEE] transition-colors border-b border-[#F5F5F5] last:border-0"
           >
-            <div className="w-8 h-8 bg-[#FFF3E0] rounded flex items-center justify-center">
-              <item.icon className="w-4 h-4 text-[#FF9800]" />
+            <div className="w-10 h-10 bg-[#FFF3E0] rounded-full flex items-center justify-center">
+              <item.icon className="w-5 h-5 text-[#FF9800]" />
             </div>
-            <span className="flex-1 text-left text-[#212121] text-sm">{item.label}</span>
+            <div className="flex-1 text-left">
+              <span className="text-[#212121] text-sm font-medium">{item.label}</span>
+              <p className="text-xs text-[#9E9E9E]">{item.description}</p>
+            </div>
             <ChevronRight className="w-5 h-5 text-[#BDBDBD]" />
           </button>
         ))}

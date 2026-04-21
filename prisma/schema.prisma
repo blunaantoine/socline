@@ -17,6 +17,13 @@ enum UserRole {
   ADMIN
 }
 
+// Address type enum
+enum AddressType {
+  HOME
+  WORK
+  OTHER
+}
+
 // Order status enum
 enum OrderStatus {
   PENDING       // Waiting for washer
@@ -96,8 +103,32 @@ model User {
   wallet        Wallet?
   cars          Car[]     // User's cars (max 10)
   subscriptions UserSubscription[] // User's subscriptions
+  addresses     Address[] // User's saved addresses
 
   @@map("users")
+}
+
+// Address model (saved user addresses)
+model Address {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Address details
+  label         String      // e.g., "Maison", "Boulot", "Chez maman"
+  type          AddressType @default(HOME)
+  address       String      // Full address
+  latitude      Float?
+  longitude     Float?
+
+  // Additional info
+  instructions  String?     // Delivery instructions
+  isDefault     Boolean     @default(false)
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@map("addresses")
 }
 
 // Car model (for client vehicles)
