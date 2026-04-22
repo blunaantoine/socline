@@ -11,7 +11,7 @@ import {
   Power, MapPin, Clock, Star, DollarSign, CheckCircle, 
   Navigation, Phone, MessageCircle, Car, AlertCircle,
   Wallet, TrendingUp, Calendar, LogOut, Settings, Home,
-  RefreshCw, Loader2, ArrowLeft
+  RefreshCw, Loader2, ArrowLeft, Crown
 } from 'lucide-react';
 import type { Order, OrderStatus, Conversation } from '@/types';
 import { ChatView } from '@/components/chat/ChatView';
@@ -147,6 +147,28 @@ export function WasherApp() {
     if (!currentOrder) return;
     
     try {
+      // If this is a subscription order and completing, validate subscription first
+      if (currentOrder.isSubscriptionOrder && newStatus === 'COMPLETED') {
+        const res = await fetch('/api/subscriptions/validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderId: currentOrder.id,
+            washerId: user?.id,
+            action: 'VALIDATE',
+          }),
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          setCurrentOrder(null);
+          fetchMyOrders();
+          return;
+        }
+      }
+
+      // Regular status update
       const res = await fetch('/api/orders', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -646,6 +668,17 @@ function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat }: {
             <Car className="w-5 h-5 mr-2" />
             Commencer le lavage
           </Button>
+        )}
+
+        {order.status === 'IN_PROGRESS' && order.isSubscriptionOrder && !order.subscriptionValidated && (
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-2">
+            <p className="text-sm text-purple-800 font-medium">
+              ⚠️ Cette commande utilise un abonnement
+            </p>
+            <p className="text-xs text-purple-600">
+              Le client a une séance. Veuillez valider cette séance pour terminer le lavage.
+            </p>
+          </div>
         )}
 
         {order.status === 'IN_PROGRESS' && (

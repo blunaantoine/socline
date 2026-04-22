@@ -23,6 +23,13 @@ export async function GET(request: NextRequest) {
           include: {
             client: { select: { id: true, name: true, phone: true } },
             service: true,
+            subscriptionUsage: {
+              include: {
+                subscription: {
+                  include: { plan: true },
+                },
+              },
+            },
           },
           orderBy: { createdAt: 'desc' },
         });
@@ -32,6 +39,13 @@ export async function GET(request: NextRequest) {
           include: {
             client: { select: { id: true, name: true, phone: true } },
             service: true,
+            subscriptionUsage: {
+              include: {
+                subscription: {
+                  include: { plan: true },
+                },
+              },
+            },
           },
           orderBy: { createdAt: 'desc' },
         });
@@ -45,12 +59,29 @@ export async function GET(request: NextRequest) {
           washer: { include: { user: { select: { name: true, phone: true } } } },
           payment: true,
           review: true,
+          subscriptionUsage: {
+            include: {
+              subscription: {
+                include: { plan: true },
+              },
+            },
+          },
         },
         orderBy: { createdAt: 'desc' },
       });
     }
 
-    return NextResponse.json({ success: true, orders });
+    // Add subscription info to each order
+    const ordersWithSubscription = orders.map(order => ({
+      ...order,
+      subscriptionInfo: order.isSubscriptionOrder ? {
+        validated: order.subscriptionValidated,
+        planName: order.subscriptionUsage?.subscription?.plan?.displayName || 'Abonnement',
+        status: order.subscriptionUsage?.status || 'PENDING',
+      } : null,
+    }));
+
+    return NextResponse.json({ success: true, orders: ordersWithSubscription });
   } catch (error) {
     console.error('Get orders error:', error);
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
@@ -64,7 +95,7 @@ export async function POST(request: NextRequest) {
     const { 
       clientId, serviceId, isHomeService, address, 
       latitude, longitude, totalPrice, scheduledAt,
-      promoCode, discount
+      promoCode, discount, useSubscription
     } = body;
 
     // Validate required fields
@@ -96,9 +127,40 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Service non trouvé' }, { status: 400 });
     }
 
+    // Check subscription if useSubscription is true
+    let subscription = null;
+    if (useSubscription) {
+      subscription = await db.userSubscription.findFirst({
+        where: {
+          userId: clientId,
+          isActive: true,
+          isExpired: false,
+          endDate: { gte: new Date() },
+          remainingWashes: { gt: 0 },
+        },
+        include: {
+          plan: { include: { service: true } },
+        },
+      });
+
+      if (!subscription) {
+        return NextResponse.json({ 
+          error: 'Aucun abonnement actif trouvé. Veuillez souscrire à un abonnement ou payer normalement.' 
+        }, { status: 400 });
+      }
+
+      // Verify service matches subscription's service
+      if (subscription.plan.serviceId !== serviceId) {
+        return NextResponse.json({ 
+          error: `Cet abonnement est valable pour le service "${subscription.plan.service?.name || 'Non spécifié'}", pas pour "${service.name}".` 
+        }, { status: 400 });
+      }
+    }
+
     // Generate order number
     const orderNumber = `WG${Date.now().toString().slice(-8)}`;
 
+    // Create order with subscription info if applicable
     const order = await db.order.create({
       data: {
         orderNumber,
@@ -109,12 +171,14 @@ export async function POST(request: NextRequest) {
         latitude,
         longitude,
         basePrice: service.price,
-        discount: discount ?? 0,
-        promoCode: promoCode ?? null,
-        totalPrice: totalPrice ?? service.price,
-        commission: (totalPrice ?? service.price) * 0.15,
+        discount: useSubscription ? service.price : (discount ?? 0), // Full discount for subscription
+        promoCode: useSubscription ? null : (promoCode ?? null),
+        totalPrice: useSubscription ? 0 : (totalPrice ?? service.price), // Free for subscription
+        commission: useSubscription ? 0 : ((totalPrice ?? service.price) * 0.15),
         status: 'PENDING',
         scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+        isSubscriptionOrder: useSubscription || false,
+        subscriptionId: subscription?.id || null,
       },
       include: {
         client: { select: { id: true, name: true, phone: true } },
@@ -122,15 +186,37 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Increment promo code usage if applied
-    if (promoCode) {
+    // Create subscription usage record if using subscription
+    if (useSubscription && subscription) {
+      await db.subscriptionUsage.create({
+        data: {
+          subscriptionId: subscription.id,
+          orderId: order.id,
+          serviceName: service.name,
+          washType: 'standard',
+          address: address,
+          status: 'PENDING',
+        },
+      });
+    }
+
+    // Increment promo code usage if applied (only for non-subscription orders)
+    if (!useSubscription && promoCode) {
       await db.promotion.updateMany({
         where: { code: promoCode },
         data: { currentUses: { increment: 1 } },
       });
     }
 
-    return NextResponse.json({ success: true, order });
+    return NextResponse.json({ 
+      success: true, 
+      order,
+      isSubscriptionOrder: useSubscription,
+      subscriptionInfo: subscription ? {
+        planName: subscription.plan.displayName,
+        remainingWashes: subscription.remainingWashes,
+      } : null,
+    });
   } catch (error) {
     console.error('Create order error:', error);
     return NextResponse.json({ error: 'Erreur lors de la création de la commande' }, { status: 500 });

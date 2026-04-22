@@ -243,6 +243,13 @@ model Service {
   @@map("services")
 }
 
+// Subscription usage status enum
+enum SubscriptionUsageStatus {
+  PENDING     // Created but not yet validated
+  VALIDATED   // Validated by washer
+  CANCELLED   // Cancelled before validation
+}
+
 // Order model
 model Order {
   id              String       @id @default(cuid())
@@ -279,6 +286,12 @@ model Order {
   totalPrice      Float
   commission      Float        @default(0)  // Platform commission
   
+  // Subscription usage (if order uses subscription)
+  subscriptionId       String?
+  isSubscriptionOrder  Boolean      @default(false)  // True if this order uses a subscription session
+  subscriptionValidated    Boolean      @default(false)  // True once washer validates the session
+  subscriptionValidatedAt  DateTime?
+  
   // Status
   status          OrderStatus  @default(PENDING)
   
@@ -302,6 +315,7 @@ model Order {
   review          Review?
   tracking        TrackingEvent[]
   conversation    Conversation?
+  subscriptionUsage  SubscriptionUsage?
 
   @@map("orders")
 }
@@ -685,14 +699,16 @@ model UserSubscription {
   @@map("user_subscriptions")
 }
 
+
 // Subscription Usage (Historique d'utilisation)
 model SubscriptionUsage {
   id               String   @id @default(cuid())
   subscriptionId   String
   subscription     UserSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
   
-  // Order reference
-  orderId          String?  // Référence à la commande
+  // Order reference (one-to-one)
+  orderId          String?  @unique
+  order            Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
   
   // Usage details
   usedAt           DateTime @default(now())
@@ -702,7 +718,16 @@ model SubscriptionUsage {
   // Location
   address          String?
   
-  createdAt        DateTime @default(now())
+  // Validation status
+  status           SubscriptionUsageStatus @default(PENDING)
+  validatedAt      DateTime?   // When washer validated
+  validatedBy      String?     // Washer ID who validated
   
+  // Admin can override
+  adminNotes       String?
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
   @@map("subscription_usages")
 }

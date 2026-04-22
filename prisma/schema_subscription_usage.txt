@@ -1,0 +1,21 @@
+// Subscription Usage (Historique d'utilisation)
+model SubscriptionUsage {
+  id               String   @id @default(cuid())
+  subscriptionId   String
+  subscription     UserSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  
+  // Order reference
+  orderId          String?  // Référence à la commande
+  
+  // Usage details
+  usedAt           DateTime @default(now())
+  serviceName      String   // Nom du service au moment de l'utilisation
+  washType         String   // "standard" ou "bonus"
+  
+  // Location
+  address          String?
+  
+  createdAt        DateTime @default(now())
+  
+  @@map("subscription_usages")
+}

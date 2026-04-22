@@ -40,6 +40,8 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
   const [isValidatingPromo, setIsValidatingPromo] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLoadingServices, setIsLoadingServices] = useState(true);
+  const [activeSubscription, setActiveSubscription] = useState<any>(null);
+  const [useSubscription, setUseSubscription] = useState(false);
 
   // Fetch services on mount
   useEffect(() => {
@@ -84,6 +86,31 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
     };
     fetchWallet();
   }, [user?.id]);
+
+  // Fetch active subscription for current service
+  useEffect(() => {
+    const fetchSubscription = async () => {
+      if (!user?.id || !selectedService) return;
+      try {
+        const res = await fetch(`/api/subscriptions/user?userId=${user.id}`);
+        const data = await res.json();
+        if (data.success && data.subscriptions) {
+          // Find active subscription for this service
+          const active = data.subscriptions.find((sub: any) => 
+            sub.isActive && 
+            !sub.isExpired && 
+            sub.remainingWashes > 0 &&
+            sub.plan?.serviceId === selectedService.id
+          );
+          setActiveSubscription(active || null);
+          setUseSubscription(!!active);
+        }
+      } catch (error) {
+        console.error('Error fetching subscription:', error);
+      }
+    };
+    fetchSubscription();
+  }, [user?.id, selectedService]);
 
   const goToStep = (newStep: StepType) => {
     setStep(newStep);
@@ -145,6 +172,10 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
 
   const getFinalPrice = () => {
     if (!selectedService) return 0;
+    // If using subscription, price is 0
+    if (useSubscription && activeSubscription) {
+      return 0;
+    }
     const basePrice = selectedService.price;
     if (appliedPromo) {
       return Math.max(0, basePrice - appliedPromo.discountAmount);
@@ -185,6 +216,7 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
           promoCode: appliedPromo?.code || null,
           discount: appliedPromo?.discountAmount || 0,
           scheduledAt: scheduledTime === 'later' ? scheduledDate : null,
+          useSubscription: useSubscription && activeSubscription,
         }),
       });
 
@@ -545,6 +577,41 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
         {/* Step 4: Payment */}
         {step === 'payment' && selectedService && (
           <div className="space-y-4">
+            {/* Active Subscription Banner */}
+            {activeSubscription && (
+              <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-4 text-white">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                    <Crown className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold">{activeSubscription.plan?.displayName || 'Abonnement'}</h3>
+                      <Badge className="bg-white/20 text-white text-xs">Actif</Badge>
+                    </div>
+                    <p className="text-sm text-white/80 mt-1">
+                      {activeSubscription.remainingWashes} séance{activeSubscription.remainingWashes > 1 ? 's' : ''} restante{activeSubscription.remainingWashes > 1 ? 's' : ''}
+                    </p>
+                    <div className="mt-3 flex items-center gap-2">
+                      <button
+                        onClick={() => setUseSubscription(!useSubscription)}
+                        className={`relative w-12 h-6 rounded-full transition-colors ${
+                          useSubscription ? 'bg-white' : 'bg-white/30'
+                        }`}
+                      >
+                        <div className={`absolute top-1 w-4 h-4 rounded-full transition-all ${
+                          useSubscription ? 'left-7 bg-purple-500' : 'left-1 bg-white'
+                        }`} />
+                      </button>
+                      <span className="text-sm">
+                        {useSubscription ? 'Utiliser mon abonnement' : 'Payer normalement'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Order Summary */}
             <div className="bg-white rounded-lg p-4">
               <h3 className="font-semibold text-[#212121] mb-3">Récapitulatif</h3>
@@ -566,61 +633,84 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
                   <span>{scheduledTime === 'now' ? 'Maintenant' : new Date(scheduledDate).toLocaleString('fr-FR')}</span>
                 </div>
                 <hr className="my-2" />
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Prix de base</span>
-                  <span>{selectedService.price.toLocaleString()} F</span>
-                </div>
-                {appliedPromo && (
-                  <div className="flex justify-between text-sm text-green-600">
-                    <span>Réduction</span>
-                    <span>-{appliedPromo.discountAmount.toLocaleString()} F</span>
-                  </div>
+                
+                {useSubscription && activeSubscription ? (
+                  <>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Prix de base</span>
+                      <span className="line-through text-gray-400">{selectedService.price.toLocaleString()} F</span>
+                    </div>
+                    <div className="flex justify-between text-sm text-purple-600">
+                      <span>Abonnement</span>
+                      <span>1 séance déduite</span>
+                    </div>
+                    <div className="flex justify-between text-lg font-bold pt-2">
+                      <span>Total</span>
+                      <span className="text-purple-600">GRATUIT</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Prix de base</span>
+                      <span>{selectedService.price.toLocaleString()} F</span>
+                    </div>
+                    {appliedPromo && (
+                      <div className="flex justify-between text-sm text-green-600">
+                        <span>Réduction</span>
+                        <span>-{appliedPromo.discountAmount.toLocaleString()} F</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-lg font-bold pt-2">
+                      <span>Total</span>
+                      <span className="text-[#FF9800]">{getFinalPrice().toLocaleString()} F</span>
+                    </div>
+                  </>
                 )}
-                <div className="flex justify-between text-lg font-bold pt-2">
-                  <span>Total</span>
-                  <span className="text-[#FF9800]">{getFinalPrice().toLocaleString()} F</span>
-                </div>
               </div>
             </div>
 
-            {/* Promo Code */}
-            <div className="bg-white rounded-lg p-4">
-              <Label className="font-medium mb-3 block">Code promo</Label>
-              {appliedPromo ? (
-                <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg p-3">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-green-600" />
-                    <span className="font-bold text-green-700">{appliedPromo.code}</span>
+            {/* Promo Code - only show if not using subscription */}
+            {!useSubscription && (
+              <div className="bg-white rounded-lg p-4">
+                <Label className="font-medium mb-3 block">Code promo</Label>
+                {appliedPromo ? (
+                  <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg p-3">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                      <span className="font-bold text-green-700">{appliedPromo.code}</span>
+                    </div>
+                    <button onClick={handleRemovePromo} className="text-red-500 text-sm font-medium">
+                      Supprimer
+                    </button>
                   </div>
-                  <button onClick={handleRemovePromo} className="text-red-500 text-sm font-medium">
-                    Supprimer
-                  </button>
-                </div>
-              ) : (
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Entrez votre code"
-                    value={promoCode}
-                    onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                    className="border-2 focus:border-[#FF9800] h-10"
-                  />
-                  <Button
-                    variant="outline"
-                    className="border-[#FF9800] text-[#FF9800]"
-                    onClick={handleApplyPromo}
-                    disabled={!promoCode || isValidatingPromo}
-                  >
-                    {isValidatingPromo ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Appliquer'}
-                  </Button>
-                </div>
-              )}
-              {promoError && <p className="text-sm text-red-500 mt-2">{promoError}</p>}
-            </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Entrez votre code"
+                      value={promoCode}
+                      onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                      className="border-2 focus:border-[#FF9800] h-10"
+                    />
+                    <Button
+                      variant="outline"
+                      className="border-[#FF9800] text-[#FF9800]"
+                      onClick={handleApplyPromo}
+                      disabled={!promoCode || isValidatingPromo}
+                    >
+                      {isValidatingPromo ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Appliquer'}
+                    </Button>
+                  </div>
+                )}
+                {promoError && <p className="text-sm text-red-500 mt-2">{promoError}</p>}
+              </div>
+            )}
 
-            {/* Payment Method */}
-            <div className="bg-white rounded-lg p-4">
-              <Label className="font-medium mb-3 block">Mode de paiement</Label>
-              <div className="space-y-3">
+            {/* Payment Method - only show if not using subscription */}
+            {!useSubscription && (
+              <div className="bg-white rounded-lg p-4">
+                <Label className="font-medium mb-3 block">Mode de paiement</Label>
+                <div className="space-y-3">
                 {/* Wallet */}
                 <button
                   className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
@@ -670,6 +760,7 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
                 </button>
               </div>
             </div>
+            )}
 
             <Button 
               className="w-full h-14 bg-[#FF9800] hover:bg-[#F57C00] text-white text-lg rounded-xl font-semibold"
@@ -678,6 +769,8 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
             >
               {isProcessing ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
+              ) : useSubscription && activeSubscription ? (
+                'Confirmer avec mon abonnement'
               ) : (
                 `Confirmer ${getFinalPrice().toLocaleString()} F`
               )}
