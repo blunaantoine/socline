@@ -41,7 +41,7 @@ import {
   X
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { LeafletMap } from '@/components/map/LeafletMap';
+import { DynamicLeafletMap } from '@/components/map/DynamicLeafletMap';
 
 // Types
 interface Address {
@@ -492,7 +492,7 @@ export function AddressesManager({ userId, onBack }: { userId: string; onBack: (
 
         {/* Map */}
         <div className="flex-1 relative">
-          <LeafletMap
+          <DynamicLeafletMap
             center={selectedPosition ? [selectedPosition.lat, selectedPosition.lng] : [6.1725, 1.2314]}
             zoom={14}
             selectedPosition={selectedPosition ? [selectedPosition.lat, selectedPosition.lng] : null}

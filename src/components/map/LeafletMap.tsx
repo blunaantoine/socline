@@ -33,7 +33,9 @@ const createColoredIcon = (color: string) => {
 };
 
 // Set default icon
-L.Marker.prototype.options.icon = defaultIcon;
+if (typeof window !== 'undefined') {
+  L.Marker.prototype.options.icon = defaultIcon;
+}
 
 // Default center: Lomé, Togo
 const defaultCenter: [number, number] = [6.1725, 1.2314];
@@ -89,6 +91,11 @@ export function LeafletMap({
   selectedPosition,
 }: LeafletMapProps) {
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // Get user location
   useEffect(() => {
@@ -129,6 +136,18 @@ export function LeafletMap({
     }
     return result;
   }, [markers, selectedPosition]);
+
+  // Don't render on server side
+  if (!isClient) {
+    return (
+      <div 
+        className={`rounded-xl overflow-hidden bg-gray-100 flex items-center justify-center ${className}`} 
+        style={{ height }}
+      >
+        <div className="text-gray-400">Chargement de la carte...</div>
+      </div>
+    );
+  }
 
   return (
     <div className={`rounded-xl overflow-hidden ${className}`} style={{ height }}>

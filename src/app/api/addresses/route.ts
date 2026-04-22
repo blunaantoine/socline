@@ -36,6 +36,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Champs requis manquants' }, { status: 400 });
     }
 
+    // Verify user exists
+    const user = await db.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return NextResponse.json({ error: 'Utilisateur non trouvé. Veuillez vous reconnecter.' }, { status: 404 });
+    }
+
     // If this is default, remove default from other addresses
     if (isDefault) {
       await db.address.updateMany({
@@ -60,6 +66,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, address: newAddress });
   } catch (error) {
     console.error('Create address error:', error);
-    return NextResponse.json({ error: 'Erreur lors de la création' }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Erreur lors de la création';
+    return NextResponse.json({ error: errorMessage, details: String(error) }, { status: 500 });
   }
 }
