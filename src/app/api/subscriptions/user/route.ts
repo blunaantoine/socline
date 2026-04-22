@@ -229,29 +229,12 @@ export async function PATCH(request: NextRequest) {
         washType = 'bonus';
       }
 
-      // Update subscription
-      const updated = await db.userSubscription.update({
-        where: { id: subscriptionId },
-        data: {
-          usedWashes: { increment: 1 },
-          remainingWashes: { decrement: 1 },
-        },
-      });
+      // NOTE: Do NOT deduct washes here! 
+      // Washes will be deducted when the WASHER validates the session
+      // This prevents double-counting between USE_WASH and validation
 
-      // Check for bonus wash (Prestige plan)
-      if (subscription.plan.bonusWashes > 0 && 
-          updated.usedWashes === updated.totalWashes && 
-          !subscription.bonusWashEarned) {
-        await db.userSubscription.update({
-          where: { id: subscriptionId },
-          data: {
-            bonusWashEarned: true,
-            remainingWashes: { increment: 1 },
-          },
-        });
-      }
-
-      // Create usage record
+      // Create usage record with PENDING status
+      // The washer will validate it after completing the wash
       const usage = await db.subscriptionUsage.create({
         data: {
           subscriptionId,
@@ -259,13 +242,15 @@ export async function PATCH(request: NextRequest) {
           serviceName: serviceName || subscription.plan.service?.name || 'Lavage',
           washType,
           address,
+          status: 'PENDING', // Will be VALIDATED by washer
         },
       });
 
       return NextResponse.json({
         success: true,
-        remainingWashes: updated.remainingWashes,
-        bonusEarned: updated.bonusWashEarned,
+        message: 'Séance enregistrée. En attente de validation par le laveur.',
+        remainingWashes: subscription.remainingWashes, // Not decremented yet
+        bonusEarned: subscription.bonusWashEarned,
         usage,
       });
     }

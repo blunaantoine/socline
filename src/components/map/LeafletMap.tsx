@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useSyncExternalStore } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents, Circle } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -39,6 +39,11 @@ if (typeof window !== 'undefined') {
 
 // Default center: Lomé, Togo
 const defaultCenter: [number, number] = [6.1725, 1.2314];
+
+// Helper for client-side only rendering (recommended React 18 pattern)
+const emptySubscribe = () => () => {};
+const getSnapshot = () => true;
+const getServerSnapshot = () => false;
 
 interface MapMarker {
   id: string;
@@ -91,11 +96,8 @@ export function LeafletMap({
   selectedPosition,
 }: LeafletMapProps) {
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
+  // Use useSyncExternalStore for client-side detection (React 18+ recommended pattern)
+  const isClient = useSyncExternalStore(emptySubscribe, getSnapshot, getServerSnapshot);
 
   // Get user location
   useEffect(() => {

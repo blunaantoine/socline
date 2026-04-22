@@ -625,6 +625,7 @@ export function AdminPanel() {
                 </button>
                 <h2 className="font-semibold text-lg text-[#212121]">
                   {subTab === 'deposits' && 'Demandes de recharge'}
+                  {subTab === 'subscriptions' && 'Abonnements'}
                   {subTab === 'promotions' && 'Promotions'}
                   {subTab === 'services' && 'Services'}
                   {subTab === 'finances' && 'Finances'}
@@ -640,6 +641,7 @@ export function AdminPanel() {
                   onAction={handleDepositAction}
                 />
               )}
+              {subTab === 'subscriptions' && <AdminSubscriptions />}
               {subTab === 'promotions' && (
                 <AdminPromotions
                   promotions={promotions}
@@ -2010,6 +2012,13 @@ function AdminPlusMenu({ depositsCount, onSelect }: {
       color: '#4CAF50',
     },
     {
+      id: 'subscriptions',
+      icon: Tag,
+      label: 'Abonnements',
+      description: 'Gérer les abonnements et validations',
+      color: '#E91E63',
+    },
+    {
       id: 'promotions',
       icon: Tag,
       label: 'Promotions',
@@ -2979,6 +2988,354 @@ function AdminDeposits({ deposits, isLoading, onRefresh, onAction }: {
           <Wallet className="w-12 h-12 text-[#9E9E9E] mx-auto mb-3" />
           <p className="text-[#757575]">Aucune demande de recharge en attente</p>
         </div>
+      )}
+    </div>
+  );
+}
+
+// Admin Subscriptions - Manage subscriptions and session validations
+interface SubscriptionData {
+  id: string;
+  user: {
+    id: string;
+    name: string;
+    phone: string;
+    email: string | null;
+  };
+  plan: {
+    id: string;
+    name: string;
+    displayName: string;
+    service?: { name: string } | null;
+  };
+  duration: string;
+  paidAmount: number;
+  totalWashes: number;
+  usedWashes: number;
+  remainingWashes: number;
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+  isExpired: boolean;
+  createdAt: string;
+  recentUsages: Array<{
+    id: string;
+    status: string;
+    usedAt: string;
+    serviceName: string;
+  }>;
+  totalUsages: number;
+}
+
+interface SubscriptionUsage {
+  id: string;
+  subscriptionId: string;
+  orderId: string | null;
+  usedAt: string;
+  serviceName: string;
+  washType: string;
+  address: string | null;
+  status: string;
+  validatedAt: string | null;
+  validatedBy: string | null;
+  adminNotes: string | null;
+  subscription: {
+    user: {
+      id: string;
+      name: string;
+      phone: string;
+    };
+    plan: {
+      name: string;
+      displayName: string;
+    };
+  };
+  order?: {
+    id: string;
+    orderNumber: string;
+    status: string;
+    washer?: {
+      id: string;
+      user: {
+        name: string;
+        phone: string;
+      };
+    } | null;
+  } | null;
+}
+
+function AdminSubscriptions() {
+  const [isLoading, setIsLoading] = useState(false);
+  const [subscriptions, setSubscriptions] = useState<SubscriptionData[]>([]);
+  const [usages, setUsages] = useState<SubscriptionUsage[]>([]);
+  const [statusFilter, setStatusFilter] = useState('active');
+  const [viewMode, setViewMode] = useState<'list' | 'validations'>('validations');
+  const [stats, setStats] = useState({
+    pendingValidations: 0,
+    totalActive: 0,
+    totalExpired: 0,
+  });
+  const [usageStats, setUsageStats] = useState({
+    pending: 0,
+    validated: 0,
+    cancelled: 0,
+  });
+
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      // Fetch subscriptions
+      const subRes = await fetch(`/api/admin/subscriptions?status=${statusFilter}`);
+      const subData = await subRes.json();
+      if (subData.success) {
+        setSubscriptions(subData.subscriptions);
+        setStats(subData.stats);
+      }
+
+      // Fetch pending usages
+      const usageRes = await fetch('/api/admin/subscriptions/usages?status=PENDING');
+      const usageData = await usageRes.json();
+      if (usageData.success) {
+        setUsages(usageData.usages);
+        setUsageStats(usageData.stats);
+      }
+    } catch (error) {
+      console.error('Fetch subscriptions error:', error);
+      toast.error('Erreur lors du chargement');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [statusFilter]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleValidateUsage = async (usageId: string, action: 'VALIDATE' | 'CANCEL') => {
+    try {
+      const res = await fetch('/api/admin/subscriptions/usages', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usageId, action }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        toast.success(action === 'VALIDATE' ? 'Séance validée' : 'Séance annulée');
+        fetchData();
+      } else {
+        toast.error(data.error || 'Erreur');
+      }
+    } catch (error) {
+      toast.error('Erreur lors du traitement');
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    const styles: Record<string, string> = {
+      PENDING: 'bg-yellow-100 text-yellow-800',
+      VALIDATED: 'bg-green-100 text-green-800',
+      CANCELLED: 'bg-red-100 text-red-800',
+    };
+    const labels: Record<string, string> = {
+      PENDING: 'En attente',
+      VALIDATED: 'Validée',
+      CANCELLED: 'Annulée',
+    };
+    return <Badge className={styles[status] || 'bg-gray-100 text-gray-800'}>{labels[status] || status}</Badge>;
+  };
+
+  return (
+    <div className="p-4 space-y-4">
+      {/* Toggle View */}
+      <div className="flex bg-[#F5F5F5] rounded-lg p-1">
+        <button
+          onClick={() => setViewMode('validations')}
+          className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+            viewMode === 'validations'
+              ? 'bg-white text-[#FF9800] shadow-sm'
+              : 'text-[#757575]'
+          }`}
+        >
+          Validations ({usageStats.pending})
+        </button>
+        <button
+          onClick={() => setViewMode('list')}
+          className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+            viewMode === 'list'
+              ? 'bg-white text-[#FF9800] shadow-sm'
+              : 'text-[#757575]'
+          }`}
+        >
+          Abonnements ({stats.totalActive})
+        </button>
+      </div>
+
+      {viewMode === 'validations' ? (
+        <>
+          {/* Pending Validations */}
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+            </div>
+          ) : usages.length > 0 ? (
+            <div className="space-y-3">
+              {usages.map((usage) => (
+                <Card key={usage.id} className="border-0 shadow-sm">
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <p className="font-semibold text-[#212121]">
+                          {usage.subscription.user.name || 'Client'}
+                        </p>
+                        <p className="text-sm text-[#757575]">
+                          +228 {usage.subscription.user.phone}
+                        </p>
+                      </div>
+                      {getStatusBadge(usage.status)}
+                    </div>
+                    
+                    <div className="bg-[#F5F5F5] rounded-lg p-3 space-y-2 mb-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-[#757575]">Plan</span>
+                        <span className="text-sm font-medium">{usage.subscription.plan.displayName}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-[#757575]">Service</span>
+                        <span className="text-sm font-medium">{usage.serviceName}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-[#757575]">Date</span>
+                        <span className="text-sm font-medium">
+                          {new Date(usage.usedAt).toLocaleString('fr-FR', {
+                            day: 'numeric',
+                            month: 'short',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                      </div>
+                      {usage.order?.washer && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-[#757575]">Laveur</span>
+                          <span className="text-sm font-medium">{usage.order.washer.user.name}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {usage.status === 'PENDING' && (
+                      <div className="flex gap-2">
+                        <Button
+                          className="flex-1 bg-green-600 hover:bg-green-700"
+                          onClick={() => handleValidateUsage(usage.id, 'VALIDATE')}
+                        >
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Valider
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          className="flex-1"
+                          onClick={() => handleValidateUsage(usage.id, 'CANCEL')}
+                        >
+                          <XCircle className="w-4 h-4 mr-2" />
+                          Annuler
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl p-8 text-center">
+              <CheckCircle className="w-12 h-12 text-[#4CAF50] mx-auto mb-3" />
+              <p className="text-[#757575]">Aucune séance en attente de validation</p>
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          {/* Filter */}
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="bg-white">
+              <SelectValue placeholder="Filtrer par statut" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="active">Actifs ({stats.totalActive})</SelectItem>
+              <SelectItem value="expired">Expirés ({stats.totalExpired})</SelectItem>
+              <SelectItem value="all">Tous</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Stats Cards */}
+          <div className="grid grid-cols-2 gap-3">
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4 text-center">
+                <p className="text-2xl font-bold text-[#4CAF50]">{stats.totalActive}</p>
+                <p className="text-xs text-[#757575]">Abonnements actifs</p>
+              </CardContent>
+            </Card>
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4 text-center">
+                <p className="text-2xl font-bold text-[#FF9800]">{stats.pendingValidations}</p>
+                <p className="text-xs text-[#757575]">En attente</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Subscriptions List */}
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+            </div>
+          ) : subscriptions.length > 0 ? (
+            <div className="space-y-3 max-h-[50vh] overflow-y-auto">
+              {subscriptions.map((sub) => (
+                <Card key={sub.id} className="border-0 shadow-sm">
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <p className="font-semibold text-[#212121]">
+                          {sub.user.name || 'Client'}
+                        </p>
+                        <p className="text-sm text-[#757575]">+228 {sub.user.phone}</p>
+                      </div>
+                      <Badge className={sub.isActive && !sub.isExpired ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
+                        {sub.plan.displayName}
+                      </Badge>
+                    </div>
+                    
+                    <div className="bg-[#F5F5F5] rounded-lg p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-[#757575]">Séances</span>
+                        <span className="text-sm font-medium">
+                          {sub.remainingWashes} / {sub.totalWashes} restantes
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-[#757575]">Expire le</span>
+                        <span className="text-sm font-medium">
+                          {new Date(sub.endDate).toLocaleDateString('fr-FR')}
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                        <div
+                          className="bg-[#4CAF50] h-2 rounded-full"
+                          style={{ width: `${(sub.remainingWashes / sub.totalWashes) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl p-8 text-center">
+              <Tag className="w-12 h-12 text-[#9E9E9E] mx-auto mb-3" />
+              <p className="text-[#757575]">Aucun abonnement trouvé</p>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
