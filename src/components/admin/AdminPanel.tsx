@@ -625,7 +625,8 @@ export function AdminPanel() {
                 </button>
                 <h2 className="font-semibold text-lg text-[#212121]">
                   {subTab === 'deposits' && 'Demandes de recharge'}
-                  {subTab === 'subscriptions' && 'Abonnements'}
+                  {subTab === 'subscription-plans' && 'Forfaits Abonnements'}
+                  {subTab === 'subscriptions' && 'Abonnements Clients'}
                   {subTab === 'promotions' && 'Promotions'}
                   {subTab === 'services' && 'Services'}
                   {subTab === 'finances' && 'Finances'}
@@ -641,6 +642,7 @@ export function AdminPanel() {
                   onAction={handleDepositAction}
                 />
               )}
+              {subTab === 'subscription-plans' && <AdminSubscriptionPlans />}
               {subTab === 'subscriptions' && <AdminSubscriptions />}
               {subTab === 'promotions' && (
                 <AdminPromotions
@@ -2012,18 +2014,25 @@ function AdminPlusMenu({ depositsCount, onSelect }: {
       color: '#4CAF50',
     },
     {
-      id: 'subscriptions',
+      id: 'subscription-plans',
       icon: Tag,
-      label: 'Abonnements',
-      description: 'Gérer les abonnements et validations',
+      label: 'Forfaits Abonnements',
+      description: 'Créer et modifier les forfaits',
       color: '#E91E63',
     },
     {
-      id: 'promotions',
+      id: 'subscriptions',
       icon: Tag,
+      label: 'Abonnements Clients',
+      description: 'Gérer les abonnements et validations',
+      color: '#9C27B0',
+    },
+    {
+      id: 'promotions',
+      icon: Percent,
       label: 'Promotions',
       description: 'Gérer les codes promo et offres',
-      color: '#9C27B0',
+      color: '#FF5722',
     },
     {
       id: 'services',
@@ -2989,6 +2998,522 @@ function AdminDeposits({ deposits, isLoading, onRefresh, onAction }: {
           <p className="text-[#757575]">Aucune demande de recharge en attente</p>
         </div>
       )}
+    </div>
+  );
+}
+
+// Admin Subscription Plans - Manage subscription plans (forfaits)
+interface SubscriptionPlanData {
+  id: string;
+  name: string;
+  displayName: string;
+  description: string | null;
+  price: number;
+  quarterlyPrice: number | null;
+  yearlyPrice: number | null;
+  washCount: number;
+  serviceId: string;
+  service: {
+    id: string;
+    name: string;
+    price: number;
+  };
+  priority: number;
+  bonusWashes: number;
+  freeOptions: number;
+  includesExpress: boolean;
+  includesVip: boolean;
+  features: string | null;
+  isActive: boolean;
+  displayOrder: number;
+  subscribersCount: number;
+  createdAt: string;
+}
+
+function AdminSubscriptionPlans() {
+  const [plans, setPlans] = useState<SubscriptionPlanData[]>([]);
+  const [services, setServices] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [editingPlan, setEditingPlan] = useState<SubscriptionPlanData | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<SubscriptionPlanData | null>(null);
+
+  const [formData, setFormData] = useState({
+    name: '',
+    displayName: '',
+    description: '',
+    price: '',
+    quarterlyPrice: '',
+    yearlyPrice: '',
+    washCount: '4',
+    serviceId: '',
+    priority: '0',
+    bonusWashes: '0',
+    freeOptions: '0',
+    includesExpress: false,
+    includesVip: false,
+    features: '',
+    isActive: true,
+    displayOrder: '0',
+  });
+
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [plansRes, servicesRes] = await Promise.all([
+        fetch('/api/subscription-plans'),
+        fetch('/api/services')
+      ]);
+      
+      const plansData = await plansRes.json();
+      const servicesData = await servicesRes.json();
+      
+      if (plansData.success) {
+        setPlans(plansData.plans);
+      }
+      if (servicesData.success) {
+        setServices(servicesData.services.filter((s: any) => s.isActive));
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      toast.error('Erreur lors du chargement');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      displayName: '',
+      description: '',
+      price: '',
+      quarterlyPrice: '',
+      yearlyPrice: '',
+      washCount: '4',
+      serviceId: '',
+      priority: '0',
+      bonusWashes: '0',
+      freeOptions: '0',
+      includesExpress: false,
+      includesVip: false,
+      features: '',
+      isActive: true,
+      displayOrder: '0',
+    });
+    setEditingPlan(null);
+    setShowForm(false);
+  };
+
+  const handleEdit = (plan: SubscriptionPlanData) => {
+    setEditingPlan(plan);
+    setFormData({
+      name: plan.name,
+      displayName: plan.displayName,
+      description: plan.description || '',
+      price: plan.price.toString(),
+      quarterlyPrice: plan.quarterlyPrice?.toString() || '',
+      yearlyPrice: plan.yearlyPrice?.toString() || '',
+      washCount: plan.washCount.toString(),
+      serviceId: plan.serviceId,
+      priority: plan.priority.toString(),
+      bonusWashes: plan.bonusWashes.toString(),
+      freeOptions: plan.freeOptions.toString(),
+      includesExpress: plan.includesExpress,
+      includesVip: plan.includesVip,
+      features: plan.features || '',
+      isActive: plan.isActive,
+      displayOrder: plan.displayOrder.toString(),
+    });
+    setShowForm(true);
+  };
+
+  const handleSubmit = async () => {
+    if (!formData.name || !formData.displayName || !formData.price || !formData.washCount || !formData.serviceId) {
+      toast.error('Veuillez remplir tous les champs obligatoires');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const method = editingPlan ? 'PUT' : 'POST';
+      const body = editingPlan
+        ? { id: editingPlan.id, ...formData }
+        : formData;
+
+      const res = await fetch('/api/subscription-plans', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        toast.success(editingPlan ? 'Forfait mis à jour' : 'Forfait créé');
+        resetForm();
+        fetchData();
+      } else {
+        toast.error(data.error || 'Erreur');
+      }
+    } catch (error) {
+      toast.error('Erreur lors de la sauvegarde');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleToggleActive = async (plan: SubscriptionPlanData) => {
+    try {
+      const res = await fetch('/api/subscription-plans', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: plan.id, isActive: !plan.isActive }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        toast.success(plan.isActive ? 'Forfait désactivé' : 'Forfait activé');
+        fetchData();
+      }
+    } catch (error) {
+      toast.error('Erreur');
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteConfirm) return;
+
+    setIsSaving(true);
+    try {
+      const res = await fetch(`/api/subscription-plans?id=${deleteConfirm.id}`, {
+        method: 'DELETE',
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        toast.success('Forfait supprimé');
+        setDeleteConfirm(null);
+        fetchData();
+      } else {
+        toast.error(data.error || 'Erreur lors de la suppression');
+      }
+    } catch (error) {
+      toast.error('Erreur lors de la suppression');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const getPriorityLabel = (priority: number) => {
+    const labels: Record<number, string> = {
+      0: 'Normale',
+      1: 'Légère',
+      2: 'Priorité',
+      3: 'Maximale',
+    };
+    return labels[priority] || 'Normale';
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-[#757575]">Gérez les forfaits d&apos;abonnement disponibles</p>
+        <Button
+          onClick={() => {
+            resetForm();
+            setShowForm(true);
+          }}
+          className="bg-[#FF9800] hover:bg-[#F57C00]"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Nouveau forfait
+        </Button>
+      </div>
+
+      {/* Form */}
+      {showForm && (
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4 space-y-3">
+            <h3 className="font-semibold text-[#212121]">
+              {editingPlan ? 'Modifier le forfait' : 'Nouveau forfait'}
+            </h3>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs text-[#757575]">Nom technique *</Label>
+                <Input
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value.toUpperCase() })}
+                  placeholder="ESSENTIEL"
+                  className="mt-1 uppercase"
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-[#757575]">Nom affiché *</Label>
+                <Input
+                  value={formData.displayName}
+                  onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
+                  placeholder="Abonnement Essentiel"
+                  className="mt-1"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs text-[#757575]">Description</Label>
+              <Input
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Description du forfait"
+                className="mt-1"
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs text-[#757575]">Service associé *</Label>
+              <Select value={formData.serviceId} onValueChange={(v) => setFormData({ ...formData, serviceId: v })}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Sélectionner un service" />
+                </SelectTrigger>
+                <SelectContent>
+                  {services.map((service) => (
+                    <SelectItem key={service.id} value={service.id}>
+                      {service.name} ({service.price.toLocaleString()} F)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <Label className="text-xs text-[#757575]">Prix mensuel (F) *</Label>
+                <Input
+                  type="number"
+                  value={formData.price}
+                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                  placeholder="15000"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-[#757575]">Prix trimestriel (F)</Label>
+                <Input
+                  type="number"
+                  value={formData.quarterlyPrice}
+                  onChange={(e) => setFormData({ ...formData, quarterlyPrice: e.target.value })}
+                  placeholder="40000"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-[#757575]">Prix annuel (F)</Label>
+                <Input
+                  type="number"
+                  value={formData.yearlyPrice}
+                  onChange={(e) => setFormData({ ...formData, yearlyPrice: e.target.value })}
+                  placeholder="150000"
+                  className="mt-1"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs text-[#757575]">Nombre de lavages *</Label>
+                <Input
+                  type="number"
+                  value={formData.washCount}
+                  onChange={(e) => setFormData({ ...formData, washCount: e.target.value })}
+                  placeholder="4"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-[#757575]">Priorité</Label>
+                <Select value={formData.priority} onValueChange={(v) => setFormData({ ...formData, priority: v })}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">Normale</SelectItem>
+                    <SelectItem value="1">Légère</SelectItem>
+                    <SelectItem value="2">Priorité</SelectItem>
+                    <SelectItem value="3">Maximale</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs text-[#757575]">Lavages bonus</Label>
+                <Input
+                  type="number"
+                  value={formData.bonusWashes}
+                  onChange={(e) => setFormData({ ...formData, bonusWashes: e.target.value })}
+                  placeholder="0"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-[#757575]">Options gratuites</Label>
+                <Input
+                  type="number"
+                  value={formData.freeOptions}
+                  onChange={(e) => setFormData({ ...formData, freeOptions: e.target.value })}
+                  placeholder="0"
+                  className="mt-1"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-4">
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={formData.includesExpress}
+                  onCheckedChange={(v) => setFormData({ ...formData, includesExpress: v })}
+                />
+                <Label className="text-xs text-[#757575]">Service express inclus</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={formData.includesVip}
+                  onCheckedChange={(v) => setFormData({ ...formData, includesVip: v })}
+                />
+                <Label className="text-xs text-[#757575]">Accès VIP</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={formData.isActive}
+                  onCheckedChange={(v) => setFormData({ ...formData, isActive: v })}
+                />
+                <Label className="text-xs text-[#757575]">Actif</Label>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <Button onClick={handleSubmit} className="flex-1 bg-[#FF9800] hover:bg-[#F57C00]" disabled={isSaving}>
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                {editingPlan ? 'Mettre à jour' : 'Créer'}
+              </Button>
+              <Button variant="outline" onClick={resetForm}>
+                Annuler
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Plans List */}
+      {isLoading ? (
+        <div className="flex justify-center py-8">
+          <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+        </div>
+      ) : plans.length > 0 ? (
+        <div className="space-y-3">
+          {plans.map((plan) => (
+            <Card key={plan.id} className={`border-0 shadow-sm ${!plan.isActive ? 'opacity-60' : ''}`}>
+              <CardContent className="p-4">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-medium text-[#212121]">{plan.displayName}</h3>
+                      <Badge variant="outline" className="text-xs">{plan.name}</Badge>
+                      <Badge className={plan.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
+                        {plan.isActive ? 'Actif' : 'Inactif'}
+                      </Badge>
+                    </div>
+                    {plan.description && (
+                      <p className="text-xs text-[#757575] mt-1">{plan.description}</p>
+                    )}
+                    <div className="flex flex-wrap items-center gap-4 mt-2 text-xs text-[#757575]">
+                      <span><strong>Service:</strong> {plan.service?.name || 'N/A'}</span>
+                      <span><strong>Lavages:</strong> {plan.washCount}</span>
+                      <span><strong>Priorité:</strong> {getPriorityLabel(plan.priority)}</span>
+                      <span><strong>Abonnés:</strong> {plan.subscribersCount}</span>
+                    </div>
+                    {plan.bonusWashes > 0 && (
+                      <span className="text-xs text-[#4CAF50] mt-1 block">+{plan.bonusWashes} lavage(s) bonus</span>
+                    )}
+                    {(plan.includesExpress || plan.includesVip) && (
+                      <div className="flex gap-2 mt-1">
+                        {plan.includesExpress && <Badge className="bg-blue-100 text-blue-800 text-[10px]">Express</Badge>}
+                        {plan.includesVip && <Badge className="bg-purple-100 text-purple-800 text-[10px]">VIP</Badge>}
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-right flex flex-col items-end gap-2">
+                    <div>
+                      <p className="font-bold text-[#FF9800] text-lg">{plan.price.toLocaleString()} F<span className="text-xs font-normal text-[#757575]">/mois</span></p>
+                      {plan.quarterlyPrice && (
+                        <p className="text-xs text-[#757575]">{plan.quarterlyPrice.toLocaleString()} F /trimestre</p>
+                      )}
+                      {plan.yearlyPrice && (
+                        <p className="text-xs text-[#757575]">{plan.yearlyPrice.toLocaleString()} F /an</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button size="sm" variant="ghost" onClick={() => handleEdit(plan)}>
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => handleToggleActive(plan)}>
+                        {plan.isActive ? (
+                          <XCircle className="w-4 h-4 text-red-500" />
+                        ) : (
+                          <CheckCircle className="w-4 h-4 text-green-500" />
+                        )}
+                      </Button>
+                      {plan.subscribersCount === 0 && (
+                        <Button size="sm" variant="ghost" onClick={() => setDeleteConfirm(plan)}>
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-8 bg-white rounded-lg">
+          <Tag className="w-12 h-12 mx-auto text-gray-400" />
+          <p className="mt-4 text-gray-500">Aucun forfait configuré</p>
+          <Button className="mt-4 bg-[#FF9800] hover:bg-[#F57C00]" onClick={() => setShowForm(true)}>
+            Créer un forfait
+          </Button>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Supprimer le forfait ?</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-[#757575]">
+              Êtes-vous sûr de vouloir supprimer le forfait <strong>{deleteConfirm?.displayName}</strong> ?
+            </p>
+            <p className="text-xs text-red-500 mt-2">Cette action est irréversible.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteConfirm(null)}>
+              Annuler
+            </Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={isSaving}>
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Supprimer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
