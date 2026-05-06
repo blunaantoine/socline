@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 import { useAuthStore, useAppStore } from '@/store';
 import { ClientApp } from '@/components/client/ClientApp';
 import { WasherApp } from '@/components/washer/WasherApp';
@@ -9,24 +9,28 @@ import { AuthScreen } from '@/components/client/AuthScreen';
 import { Toaster } from '@/components/ui/sonner';
 import { Loader2 } from 'lucide-react';
 
+// Custom hook for client-side hydration without useEffect setState
+function useHydrated() {
+  return useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
+}
+
 export default function SoclineApp() {
   const { isAuthenticated, user } = useAuthStore();
   const { currentView, setView } = useAppStore();
-  
-  // Track if component is mounted (for Zustand persist hydration)
-  const [mounted, setMounted] = useState(false);
 
-  // Wait for Zustand persist to hydrate from localStorage
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  // Check if hydrated from localStorage (client-side only)
+  const mounted = useHydrated();
 
   useEffect(() => {
-    if (mounted && isAuthenticated && user) {
+    if (isAuthenticated && user) {
       const view = user.role === 'ADMIN' ? 'admin' : user.role === 'WASHER' ? 'washer' : 'client';
       setView(view);
     }
-  }, [mounted, isAuthenticated, user, setView]);
+  }, [isAuthenticated, user, setView]);
 
   // Show loading screen during hydration
   if (!mounted) {
