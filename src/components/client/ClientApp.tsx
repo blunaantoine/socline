@@ -63,7 +63,19 @@ export function ClientApp() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [showTracking, setShowTracking] = useState(true);
-  const [promotions, setPromotions] = useState<any[]>([]);
+  const [promotions, setPromotions] = useState<
+    Array<{
+      id: string;
+      name: string;
+      discountType: string;
+      discountValue: number;
+      code?: string;
+      description?: string;
+      displayType?: string;
+      image?: string;
+      imagePosition?: string;
+    }>
+  >([]);
   const [currentPromoIndex, setCurrentPromoIndex] = useState(0);
   const [walletBalance, setWalletBalance] = useState(0);
   
@@ -219,7 +231,7 @@ export function ClientApp() {
     <div className="flex-1 flex flex-col bg-[#FAFAFA] relative">
       {/* Android Status Bar */}
       <div className="h-6 bg-[#FF9800] flex items-center justify-between px-4 flex-shrink-0">
-        <span className="text-white text-xs font-medium">9:41</span>
+        <span className="text-white text-xs font-medium">{new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
         <div className="flex items-center gap-1">
           {/* Signal Network Bars - de petite à grande */}
           <div className="flex items-end gap-0.5">

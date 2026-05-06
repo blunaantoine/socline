@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { hashPin, verifyPin, generateToken, setAuthCookie } from '@/lib/auth';
+import { 
+  hashPin, verifyPin, generateToken, setAuthCookie,
+  isLoginRateLimited, recordFailedLogin, clearLoginAttempts
+} from '@/lib/auth';
 
 // POST /api/auth/login - Login with phone + PIN
 export async function POST(request: NextRequest) {
@@ -26,12 +29,25 @@ export async function POST(request: NextRequest) {
 
     const cleanPhone = phone.replace(/\s/g, '');
 
+    // Check rate limiting
+    const rateLimit = isLoginRateLimited(cleanPhone);
+    if (rateLimit.limited) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: `Trop de tentatives. Réessayez dans ${rateLimit.remainingTime} minute(s).` 
+        },
+        { status: 429 }
+      );
+    }
+
     // Find user
     const user = await db.user.findUnique({
       where: { phone: cleanPhone },
     });
 
     if (!user) {
+      recordFailedLogin(cleanPhone);
       return NextResponse.json(
         { success: false, error: 'Numéro non enregistré' },
         { status: 400 }
@@ -40,6 +56,7 @@ export async function POST(request: NextRequest) {
 
     // Verify PIN with bcrypt
     if (!user.pin || !(await verifyPin(pin, user.pin))) {
+      recordFailedLogin(cleanPhone);
       return NextResponse.json(
         { success: false, error: 'PIN incorrect' },
         { status: 400 }
@@ -53,6 +70,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Clear rate limiting on successful login
+    clearLoginAttempts(cleanPhone);
 
     // Generate auth token and set cookie
     const token = generateToken();

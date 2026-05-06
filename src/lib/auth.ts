@@ -6,6 +6,51 @@ import { NextRequest, NextResponse } from 'next/server';
 const SALT_ROUNDS = 10;
 const TOKEN_COOKIE_NAME = 'socline_token';
 
+// Simple in-memory rate limiting for login attempts
+// In production, use Redis or a database
+const loginAttempts = new Map<string, { count: number; lastAttempt: number }>();
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOGIN_BLOCK_DURATION = 15 * 60 * 1000; // 15 minutes
+
+// Check if login is rate limited
+export function isLoginRateLimited(phone: string): { limited: boolean; remainingTime?: number } {
+  const attempts = loginAttempts.get(phone);
+  
+  if (!attempts) {
+    return { limited: false };
+  }
+  
+  const now = Date.now();
+  const timeSinceLastAttempt = now - attempts.lastAttempt;
+  
+  // Reset if block duration has passed
+  if (timeSinceLastAttempt > LOGIN_BLOCK_DURATION) {
+    loginAttempts.delete(phone);
+    return { limited: false };
+  }
+  
+  // Check if still blocked
+  if (attempts.count >= MAX_LOGIN_ATTEMPTS) {
+    const remainingTime = Math.ceil((LOGIN_BLOCK_DURATION - timeSinceLastAttempt) / 1000 / 60);
+    return { limited: true, remainingTime };
+  }
+  
+  return { limited: false };
+}
+
+// Record a failed login attempt
+export function recordFailedLogin(phone: string): void {
+  const attempts = loginAttempts.get(phone) || { count: 0, lastAttempt: 0 };
+  attempts.count += 1;
+  attempts.lastAttempt = Date.now();
+  loginAttempts.set(phone, attempts);
+}
+
+// Clear login attempts after successful login
+export function clearLoginAttempts(phone: string): void {
+  loginAttempts.delete(phone);
+}
+
 // Hash a PIN code
 export async function hashPin(pin: string): Promise<string> {
   return bcrypt.hash(pin, SALT_ROUNDS);

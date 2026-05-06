@@ -15,9 +15,21 @@ import {
   RefreshCw, Loader2, ArrowLeft, Crown, Edit, Bell, Banknote
 } from 'lucide-react';
 import { HideableBalanceDark, HideableBalanceLight } from '@/components/ui/hideable-balance';
-import type { Order, OrderStatus, Conversation } from '@/types';
+import type { Order, OrderStatus, Conversation, User } from '@/types';
 import { ChatView } from '@/components/chat/ChatView';
 import { toast } from 'sonner';
+
+// Washer stats type
+interface WasherStats {
+  name: string;
+  rating: number;
+  totalRatings: number;
+  completedJobs: number;
+  totalEarnings: number;
+  todayEarnings: number;
+  todayJobs: number;
+  balance: number;
+}
 
 export function WasherApp() {
   const { user, logout } = useAuthStore();
@@ -28,7 +40,14 @@ export function WasherApp() {
   const [pendingOrders, setPendingOrders] = useState<Order[]>([]);
   const [showChat, setShowChat] = useState(false);
   const [conversation, setConversation] = useState<Conversation | null>(null);
-  const [washerData, setWasherData] = useState<any>(null);
+  const [washerData, setWasherData] = useState<{
+    rating?: number;
+    totalRatings?: number;
+    completedJobs?: number;
+    totalEarnings?: number;
+    todayEarnings?: number;
+    todayJobs?: number;
+  } | null>(null);
   const [isRefreshingBalance, setIsRefreshingBalance] = useState(false);
   const [profileSection, setProfileSection] = useState<string | null>(null);
 
@@ -223,7 +242,7 @@ export function WasherApp() {
     <div className="flex-1 flex flex-col bg-[#FAFAFA] overflow-hidden">
       {/* Android Status Bar */}
       <div className="h-6 bg-[#4CAF50] flex items-center justify-between px-4 flex-shrink-0 sticky top-0 z-50">
-        <span className="text-white text-xs font-medium">9:41</span>
+        <span className="text-white text-xs font-medium">{new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
         <div className="flex items-center gap-1">
           {/* Signal Network Bars */}
           <div className="flex items-end gap-0.5">
@@ -375,7 +394,7 @@ export function WasherApp() {
 
 // Washer Dashboard
 function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccept, onRefresh, onRefreshBalance, isRefreshingBalance, acceptedOrders }: { 
-  stats: any; 
+  stats: WasherStats; 
   isAvailable: boolean;
   isLoading: boolean;
   pendingOrders: Order[];
@@ -901,7 +920,7 @@ function WasherOrderHistory({ orders, onBack }: {
 
 // Washer Earnings
 function WasherEarnings({ stats, onBack, onRefreshBalance, isRefreshingBalance, washerId }: { 
-  stats: any;
+  stats: WasherStats;
   onBack: () => void;
   onRefreshBalance: () => void;
   isRefreshingBalance: boolean;
@@ -1223,8 +1242,8 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, isRefreshingBalance, 
 
 // Washer Profile
 function WasherProfile({ user, stats, onLogout, onBack, onNavigate }: { 
-  user: any; 
-  stats: any; 
+  user: User | null; 
+  stats: WasherStats; 
   onLogout: () => void;
   onBack: () => void;
   onNavigate: (section: string) => void;
@@ -1326,7 +1345,7 @@ function WasherProfile({ user, stats, onLogout, onBack, onNavigate }: {
 function WasherProfileSection({ section, onBack, user }: { 
   section: string; 
   onBack: () => void;
-  user: any;
+  user: User | null;
 }) {
   const [name, setName] = useState(user?.name || '');
   const [isSaving, setIsSaving] = useState(false);
