@@ -315,19 +315,6 @@ export function ClientApp() {
           })}
         </nav>
       )}
-
-      {/* Android Navigation Bar - FIXED at very bottom */}
-      <div className="fixed bottom-0 left-0 right-0 h-10 bg-black flex items-center justify-center gap-16 z-50">
-        <button className="w-8 h-8 flex items-center justify-center">
-          <div className="w-5 h-5 border-2 border-white rounded-full"></div>
-        </button>
-        <button className="w-8 h-8 flex items-center justify-center">
-          <div className="w-5 h-5 border-2 border-white rounded"></div>
-        </button>
-        <button className="w-8 h-8 flex items-center justify-center">
-          <div className="w-4 h-4 border-2 border-white rotate-45"></div>
-        </button>
-      </div>
     </div>
   );
 }
