@@ -11,10 +11,11 @@ import {
   Power, MapPin, Clock, Star, DollarSign, CheckCircle, 
   Navigation, Phone, MessageCircle, Car, AlertCircle,
   Wallet, TrendingUp, Calendar, LogOut, Settings, Home,
-  RefreshCw, Loader2, ArrowLeft, Crown
+  RefreshCw, Loader2, ArrowLeft, Crown, Edit, Bell
 } from 'lucide-react';
 import type { Order, OrderStatus, Conversation } from '@/types';
 import { ChatView } from '@/components/chat/ChatView';
+import { toast } from 'sonner';
 
 export function WasherApp() {
   const { user, logout } = useAuthStore();
@@ -25,6 +26,9 @@ export function WasherApp() {
   const [pendingOrders, setPendingOrders] = useState<Order[]>([]);
   const [showChat, setShowChat] = useState(false);
   const [conversation, setConversation] = useState<Conversation | null>(null);
+  const [washerData, setWasherData] = useState<any>(null);
+  const [isRefreshingBalance, setIsRefreshingBalance] = useState(false);
+  const [profileSection, setProfileSection] = useState<string | null>(null);
 
   // Fetch conversation for current order
   const fetchConversation = useCallback(async (orderId: string) => {
@@ -48,15 +52,35 @@ export function WasherApp() {
     }
   }, [fetchConversation]);
 
-  // Get washer stats from user or defaults
+  // Fetch washer data (stats, balance)
+  const fetchWasherData = useCallback(async () => {
+    if (!user) return;
+    
+    setIsRefreshingBalance(true);
+    try {
+      const res = await fetch(`/api/washers/${user.id}`);
+      const data = await res.json();
+      
+      if (data.success && data.washer) {
+        setWasherData(data.washer);
+      }
+    } catch (error) {
+      console.error('Fetch washer data error:', error);
+    } finally {
+      setIsRefreshingBalance(false);
+    }
+  }, [user]);
+
+  // Get washer stats from washerData or defaults
   const washerStats = {
     name: user?.name || 'Laveur',
-    rating: 0,
-    totalRatings: 0,
-    completedJobs: 0,
-    totalEarnings: 0,
-    todayEarnings: 0,
-    todayJobs: 0,
+    rating: washerData?.rating || 0,
+    totalRatings: washerData?.totalRatings || 0,
+    completedJobs: washerData?.completedJobs || 0,
+    totalEarnings: washerData?.totalEarnings || 0,
+    todayEarnings: washerData?.todayEarnings || 0,
+    todayJobs: washerData?.todayJobs || 0,
+    balance: washerData?.totalEarnings || 0,
   };
 
   // Fetch pending orders
@@ -106,6 +130,7 @@ export function WasherApp() {
   useEffect(() => {
     fetchPendingOrders();
     fetchMyOrders();
+    fetchWasherData();
     
     // Poll for new orders every 10 seconds when available
     const interval = setInterval(() => {
@@ -115,7 +140,7 @@ export function WasherApp() {
     }, 10000);
     
     return () => clearInterval(interval);
-  }, [isAvailable, fetchPendingOrders, fetchMyOrders]);
+  }, [isAvailable, fetchPendingOrders, fetchMyOrders, fetchWasherData]);
 
   // Accept order
   const handleAcceptOrder = async (order: Order) => {
@@ -250,7 +275,7 @@ export function WasherApp() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto pb-28">
+      <div className="flex-1 overflow-y-auto pb-16">
         {activeTab === 'dashboard' && (
           <WasherDashboard 
             stats={washerStats} 
@@ -259,6 +284,9 @@ export function WasherApp() {
             pendingOrders={pendingOrders}
             onAccept={handleAcceptOrder}
             onRefresh={fetchPendingOrders}
+            onRefreshBalance={fetchWasherData}
+            isRefreshingBalance={isRefreshingBalance}
+            acceptedOrders={orders.filter(o => ['ACCEPTED', 'EN_ROUTE', 'ARRIVED', 'IN_PROGRESS'].includes(o.status))}
           />
         )}
         {activeTab === 'active' && (
@@ -267,6 +295,8 @@ export function WasherApp() {
             onUpdateStatus={handleUpdateStatus} 
             onBack={() => setActiveTab('dashboard')}
             onOpenChat={handleOpenChat}
+            acceptedOrders={orders.filter(o => ['ACCEPTED', 'EN_ROUTE', 'ARRIVED', 'IN_PROGRESS'].includes(o.status))}
+            onSelectOrder={setCurrentOrder}
           />
         )}
         {activeTab === 'history' && (
@@ -278,21 +308,32 @@ export function WasherApp() {
         {activeTab === 'earnings' && (
           <WasherEarnings 
             stats={washerStats} 
-            onBack={() => setActiveTab('dashboard')} 
+            onBack={() => setActiveTab('dashboard')}
+            onRefreshBalance={fetchWasherData}
+            isRefreshingBalance={isRefreshingBalance}
           />
         )}
         {activeTab === 'profile' && (
-          <WasherProfile 
-            user={user} 
-            stats={washerStats} 
-            onLogout={logout} 
-            onBack={() => setActiveTab('dashboard')}
-          />
+          profileSection ? (
+            <WasherProfileSection 
+              section={profileSection} 
+              onBack={() => setProfileSection(null)}
+              user={user}
+            />
+          ) : (
+            <WasherProfile 
+              user={user} 
+              stats={washerStats} 
+              onLogout={logout} 
+              onBack={() => setActiveTab('dashboard')}
+              onNavigate={setProfileSection}
+            />
+          )
         )}
       </div>
 
       {/* Android Bottom Navigation - FIXED at bottom */}
-      <nav className="fixed bottom-10 left-0 right-0 bg-white border-t border-[#E0E0E0] flex justify-around items-center h-14 z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E0E0E0] flex justify-around items-center h-14 z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
         {[
           { id: 'dashboard', icon: Home, label: 'Accueil' },
           { id: 'active', icon: Car, label: 'Active' },
@@ -330,13 +371,16 @@ export function WasherApp() {
 }
 
 // Washer Dashboard
-function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccept, onRefresh }: { 
+function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccept, onRefresh, onRefreshBalance, isRefreshingBalance, acceptedOrders }: { 
   stats: any; 
   isAvailable: boolean;
   isLoading: boolean;
   pendingOrders: Order[];
   onAccept: (order: Order) => void;
   onRefresh: () => void;
+  onRefreshBalance: () => void;
+  isRefreshingBalance: boolean;
+  acceptedOrders: Order[];
 }) {
   return (
     <div className="p-4 space-y-4">
@@ -352,6 +396,29 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
           </div>
         </div>
       )}
+
+      {/* Balance Card with Refresh */}
+      <Card className="bg-gradient-to-r from-[#4CAF50] to-[#2E7D32] text-white border-0">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm opacity-80">Solde disponible</p>
+              <p className="text-2xl font-bold">{stats.balance.toLocaleString()} F</p>
+            </div>
+            <button 
+              onClick={onRefreshBalance}
+              disabled={isRefreshingBalance}
+              className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition-colors"
+            >
+              {isRefreshingBalance ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <RefreshCw className="w-5 h-5" />
+              )}
+            </button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Today Stats */}
       <div className="grid grid-cols-2 gap-3">
@@ -385,6 +452,45 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
           </CardContent>
         </Card>
       </div>
+
+      {/* Accepted Orders - Active tracking */}
+      {acceptedOrders.length > 0 && (
+        <div>
+          <h2 className="font-semibold text-[#212121] mb-3">Commandes en cours ({acceptedOrders.length})</h2>
+          <div className="space-y-3">
+            {acceptedOrders.map((order) => (
+              <Card key={order.id} className="border-0 shadow-sm border-l-4 border-l-[#4CAF50]">
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="font-medium text-[#212121]">{order.client?.name || 'Client'}</p>
+                      <p className="text-sm text-[#757575]">{order.service?.name || 'Service'}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${
+                          order.status === 'ACCEPTED' ? 'bg-blue-100 text-blue-800' :
+                          order.status === 'EN_ROUTE' ? 'bg-yellow-100 text-yellow-800' :
+                          order.status === 'ARRIVED' ? 'bg-purple-100 text-purple-800' :
+                          order.status === 'IN_PROGRESS' ? 'bg-green-100 text-green-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {order.status === 'ACCEPTED' && 'Acceptée'}
+                          {order.status === 'EN_ROUTE' && 'En route'}
+                          {order.status === 'ARRIVED' && 'Arrivé'}
+                          {order.status === 'IN_PROGRESS' && 'En cours'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-[#4CAF50]">{order.totalPrice?.toLocaleString()} F</p>
+                      <p className="text-xs text-[#757575]">{order.address?.substring(0, 20)}...</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Pending Orders */}
       <div>
@@ -480,11 +586,13 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
 }
 
 // Active Order View
-function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat }: { 
+function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat, acceptedOrders, onSelectOrder }: { 
   order: Order | null; 
   onUpdateStatus: (status: OrderStatus) => void;
   onBack: () => void;
   onOpenChat: (order: Order) => void;
+  acceptedOrders: Order[];
+  onSelectOrder: (order: Order | null) => void;
 }) {
 
   const steps = [
@@ -495,27 +603,66 @@ function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat }: {
     { status: 'COMPLETED', label: 'Terminée', icon: CheckCircle },
   ];
 
+  // If no specific order selected, show list of accepted orders
   if (!order) {
     return (
-      <div className="p-4">
+      <div className="p-4 space-y-4">
         {/* Back Button */}
         <button 
           onClick={onBack}
-          className="flex items-center gap-2 text-[#4CAF50] mb-4"
+          className="flex items-center gap-2 text-[#4CAF50]"
         >
           <ArrowLeft className="w-5 h-5" />
           <span>Retour</span>
         </button>
         
-        <div className="bg-white rounded-2xl p-8 text-center shadow-sm">
-          <div className="w-16 h-16 bg-[#F5F5F5] rounded-full flex items-center justify-center mx-auto mb-4">
-            <Car className="w-8 h-8 text-[#9E9E9E]" />
+        <h2 className="font-semibold text-lg text-[#212121]">Commandes actives</h2>
+        
+        {acceptedOrders.length > 0 ? (
+          <div className="space-y-3">
+            {acceptedOrders.map((o) => (
+              <Card 
+                key={o.id} 
+                className="border-0 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => onSelectOrder(o)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="font-medium text-[#212121]">{o.client?.name || 'Client'}</p>
+                      <p className="text-sm text-[#757575]">{o.service?.name || 'Service'}</p>
+                      <span className={`inline-block text-xs px-2 py-0.5 rounded-full mt-1 ${
+                        o.status === 'ACCEPTED' ? 'bg-blue-100 text-blue-800' :
+                        o.status === 'EN_ROUTE' ? 'bg-yellow-100 text-yellow-800' :
+                        o.status === 'ARRIVED' ? 'bg-purple-100 text-purple-800' :
+                        o.status === 'IN_PROGRESS' ? 'bg-green-100 text-green-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {o.status === 'ACCEPTED' && 'Acceptée'}
+                        {o.status === 'EN_ROUTE' && 'En route'}
+                        {o.status === 'ARRIVED' && 'Arrivé'}
+                        {o.status === 'IN_PROGRESS' && 'En cours'}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-[#4CAF50]">{o.totalPrice?.toLocaleString()} F</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
-          <p className="font-medium text-[#757575]">Aucune commande active</p>
-          <p className="text-sm text-[#9E9E9E] mt-1">
-            Les nouvelles commandes apparaîtront ici.
-          </p>
-        </div>
+        ) : (
+          <div className="bg-white rounded-2xl p-8 text-center shadow-sm">
+            <div className="w-16 h-16 bg-[#F5F5F5] rounded-full flex items-center justify-center mx-auto mb-4">
+              <Car className="w-8 h-8 text-[#9E9E9E]" />
+            </div>
+            <p className="font-medium text-[#757575]">Aucune commande active</p>
+            <p className="text-sm text-[#9E9E9E] mt-1">
+              Les nouvelles commandes apparaîtront ici.
+            </p>
+          </div>
+        )}
       </div>
     );
   }
@@ -741,9 +888,11 @@ function WasherOrderHistory({ orders, onBack }: {
 }
 
 // Washer Earnings
-function WasherEarnings({ stats, onBack }: { 
+function WasherEarnings({ stats, onBack, onRefreshBalance, isRefreshingBalance }: { 
   stats: any;
   onBack: () => void;
+  onRefreshBalance: () => void;
+  isRefreshingBalance: boolean;
 }) {
   return (
     <div className="p-4 space-y-4">
@@ -758,14 +907,29 @@ function WasherEarnings({ stats, onBack }: {
       
       <h2 className="font-semibold text-lg text-[#212121]">Revenus</h2>
 
-      {/* Total Earnings */}
+      {/* Total Earnings with Refresh */}
       <Card className="bg-gradient-to-r from-[#4CAF50] to-[#2E7D32] text-white border-0">
         <CardContent className="p-6">
-          <p className="text-sm opacity-80">Total des gains</p>
-          <p className="text-3xl font-bold mt-1">{stats.totalEarnings.toLocaleString()} F</p>
-          <div className="flex items-center gap-2 mt-2">
-            <TrendingUp className="w-4 h-4" />
-            <span className="text-sm">Commencez à gagner!</span>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm opacity-80">Total des gains</p>
+              <p className="text-3xl font-bold mt-1">{stats.totalEarnings.toLocaleString()} F</p>
+              <div className="flex items-center gap-2 mt-2">
+                <TrendingUp className="w-4 h-4" />
+                <span className="text-sm">Commencez à gagner!</span>
+              </div>
+            </div>
+            <button 
+              onClick={onRefreshBalance}
+              disabled={isRefreshingBalance}
+              className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition-colors"
+            >
+              {isRefreshingBalance ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <RefreshCw className="w-5 h-5" />
+              )}
+            </button>
           </div>
         </CardContent>
       </Card>
@@ -807,11 +971,12 @@ function WasherEarnings({ stats, onBack }: {
 }
 
 // Washer Profile
-function WasherProfile({ user, stats, onLogout, onBack }: { 
+function WasherProfile({ user, stats, onLogout, onBack, onNavigate }: { 
   user: any; 
   stats: any; 
   onLogout: () => void;
   onBack: () => void;
+  onNavigate: (section: string) => void;
 }) {
   return (
     <div className="p-4 space-y-4">
@@ -835,6 +1000,9 @@ function WasherProfile({ user, stats, onLogout, onBack }: {
               <h2 className="font-bold text-[#212121]">{user?.name || 'Laveur'}</h2>
               <p className="text-sm text-[#757575]">+228 {user?.phone || ''}</p>
             </div>
+            <Button variant="outline" size="sm" onClick={() => onNavigate('edit-profile')}>
+              <Edit className="w-4 h-4" />
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -863,13 +1031,15 @@ function WasherProfile({ user, stats, onLogout, onBack }: {
       {/* Menu */}
       <Card className="border-0 shadow-sm overflow-hidden">
         {[
-          { icon: Car, label: 'Mes services' },
-          { icon: Clock, label: 'Horaires' },
-          { icon: Wallet, label: 'Paiements' },
-          { icon: Settings, label: 'Paramètres' },
+          { icon: Car, label: 'Mes services', section: 'services' },
+          { icon: Clock, label: 'Horaires', section: 'schedule' },
+          { icon: Wallet, label: 'Paiements', section: 'payments' },
+          { icon: Bell, label: 'Notifications', section: 'notifications' },
+          { icon: Settings, label: 'Paramètres', section: 'settings' },
         ].map((item, index) => (
           <button
             key={index}
+            onClick={() => onNavigate(item.section)}
             className="w-full flex items-center gap-3 p-4 hover:bg-[#F5F5F5] transition-colors border-b border-[#F5F5F5] last:border-0"
           >
             <div className="w-8 h-8 bg-[#E8F5E9] rounded-lg flex items-center justify-center">
@@ -890,6 +1060,163 @@ function WasherProfile({ user, stats, onLogout, onBack }: {
         <LogOut className="w-5 h-5 mr-2" />
         Déconnexion
       </Button>
+    </div>
+  );
+}
+
+// Washer Profile Section
+function WasherProfileSection({ section, onBack, user }: { 
+  section: string; 
+  onBack: () => void;
+  user: any;
+}) {
+  const [name, setName] = useState(user?.name || '');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const getSectionTitle = () => {
+    switch (section) {
+      case 'services': return 'Mes services';
+      case 'schedule': return 'Horaires';
+      case 'payments': return 'Paiements';
+      case 'notifications': return 'Notifications';
+      case 'settings': return 'Paramètres';
+      case 'edit-profile': return 'Modifier le profil';
+      default: return 'Paramètres';
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    setIsSaving(true);
+    try {
+      const res = await fetch('/api/user/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user?.id, name }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('Profil mis à jour');
+        onBack();
+      } else {
+        toast.error(data.error || 'Erreur');
+      }
+    } catch (error) {
+      toast.error('Erreur lors de la sauvegarde');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="p-4 space-y-4">
+      {/* Back Button */}
+      <button 
+        onClick={onBack}
+        className="flex items-center gap-2 text-[#4CAF50]"
+      >
+        <ArrowLeft className="w-5 h-5" />
+        <span>Retour</span>
+      </button>
+      
+      <h2 className="font-semibold text-lg text-[#212121]">{getSectionTitle()}</h2>
+
+      {section === 'edit-profile' && (
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4 space-y-4">
+            <div>
+              <label className="text-sm text-[#757575]">Nom complet</label>
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Votre nom"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <label className="text-sm text-[#757575]">Téléphone</label>
+              <Input
+                value={user?.phone || ''}
+                disabled
+                className="mt-1 bg-gray-50"
+              />
+            </div>
+            <Button 
+              onClick={handleSaveProfile} 
+              className="w-full bg-[#4CAF50] hover:bg-[#43A047]"
+              disabled={isSaving}
+            >
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Enregistrer
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {section === 'services' && (
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4">
+            <p className="text-[#757575] text-sm">
+              Gérez les services que vous proposez. Cette fonctionnalité sera bientôt disponible.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {section === 'schedule' && (
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4">
+            <p className="text-[#757575] text-sm">
+              Définissez vos horaires de disponibilité. Cette fonctionnalité sera bientôt disponible.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {section === 'payments' && (
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4">
+            <p className="text-[#757575] text-sm">
+              Gérez vos informations bancaires pour les retraits. Cette fonctionnalité sera bientôt disponible.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {section === 'notifications' && (
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-[#212121]">Notifications push</p>
+                <p className="text-xs text-[#757575]">Recevoir les alertes de nouvelles commandes</p>
+              </div>
+              <Switch defaultChecked />
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-[#212121]">Notifications SMS</p>
+                <p className="text-xs text-[#757575]">Recevoir les mises à jour par SMS</p>
+              </div>
+              <Switch />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {section === 'settings' && (
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4 space-y-4">
+            <div>
+              <p className="font-medium text-[#212121]">Langue</p>
+              <p className="text-sm text-[#757575]">Français</p>
+            </div>
+            <div>
+              <p className="font-medium text-[#212121]">Version de l&apos;application</p>
+              <p className="text-sm text-[#757575]">1.0.0</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

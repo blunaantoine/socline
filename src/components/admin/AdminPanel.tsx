@@ -555,7 +555,7 @@ export function AdminPanel() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto pb-28">
+      <div className="flex-1 overflow-y-auto pb-16">
         {activeTab === 'dashboard' && (
           <AdminDashboard 
             stats={stats}
@@ -667,7 +667,7 @@ export function AdminPanel() {
       </div>
 
       {/* Android Bottom Navigation - FIXED at bottom */}
-      <nav className="fixed bottom-10 left-0 right-0 bg-white border-t border-[#E0E0E0] flex justify-around items-center h-14 z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E0E0E0] flex justify-around items-center h-14 z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
         {[
           { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
           { id: 'users', icon: Users, label: 'Utilis.' },

@@ -260,7 +260,7 @@ export function ClientApp() {
         )}
 
         {/* Content - scrollable area */}
-        <div className={`flex-1 overflow-y-auto ${activeTab !== 'chat' ? 'pb-28' : ''}`}>
+        <div className={`flex-1 overflow-y-auto ${activeTab !== 'chat' ? 'pb-16' : ''}`}>
           {activeTab === 'home' && (
             <HomeContent
               services={services}
@@ -284,7 +284,7 @@ export function ClientApp() {
             />
           )}
           {activeTab === 'subscriptions' && (
-            <div className="p-4 pb-28">
+            <div className="p-4 pb-16">
               <SubscriptionPanel userId={user?.id || ''} walletBalance={walletBalance} />
             </div>
           )}
@@ -297,7 +297,7 @@ export function ClientApp() {
 
       {/* Android Bottom Navigation - FIXED at bottom */}
       {activeTab !== 'chat' && (
-        <nav className="fixed bottom-10 left-0 right-0 bg-white border-t border-[#E0E0E0] flex justify-around items-center h-14 z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
+        <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E0E0E0] flex justify-around items-center h-14 z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
           {navItems.map((item) => {
             const isActive = activeTab === item.id;
             return (
@@ -711,7 +711,7 @@ function ProfileContent({ user, onLogout }: { user: any; onLogout: () => void })
   }
 
   return (
-    <div className="p-4 space-y-3 pb-28">
+    <div className="p-4 space-y-3 pb-16">
       {/* Profile Card - Android style */}
       <div className="bg-white rounded-lg p-4 shadow-sm">
         <div className="flex items-center gap-3">
