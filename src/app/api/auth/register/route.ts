@@ -1,17 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { randomBytes } from 'crypto';
-
-// Generate random token
-function generateToken(): string {
-  return randomBytes(32).toString('hex');
-}
+import { hashPin, generateToken, setAuthCookie } from '@/lib/auth';
 
 // POST /api/auth/register - Register new client
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, phone, plateNumber, carColor, pin } = body;
+    const { name, phone, plateNumber, carColor, pin, otp } = body;
 
     // Validate required fields
     if (!name || !phone || !pin) {
@@ -20,6 +15,23 @@ export async function POST(request: NextRequest) {
           success: false, 
           error: 'Nom, téléphone et PIN sont requis' 
         },
+        { status: 400 }
+      );
+    }
+
+    // Validate OTP (must be 6 digits, test code is 123456)
+    if (!otp || otp.length !== 6) {
+      return NextResponse.json(
+        { success: false, error: 'Code OTP invalide' },
+        { status: 400 }
+      );
+    }
+
+    // For testing: accept 123456 as valid OTP
+    // In production, verify against stored OTP
+    if (otp !== '123456') {
+      return NextResponse.json(
+        { success: false, error: 'Code OTP incorrect' },
         { status: 400 }
       );
     }
@@ -36,7 +48,7 @@ export async function POST(request: NextRequest) {
     const cleanPhone = phone.replace(/\s/g, '');
     if (!/^[79]\d{7}$/.test(cleanPhone)) {
       return NextResponse.json(
-        { success: false, error: 'Numéro de téléphone invalide (8 chiffres commençant par 7 ou 9)' },
+        { success: false, error: 'Numéro de téléphone inval (8 chiffres commençant par 7 ou 9)' },
         { status: 400 }
       );
     }
@@ -53,20 +65,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create user with all fields
+    // Hash the PIN before storing
+    const hashedPin = await hashPin(pin);
+
+    // Create user with hashed PIN
     const user = await db.user.create({
       data: {
         phone: cleanPhone,
         name,
         plateNumber: plateNumber?.toUpperCase() || 'NON DEFINI',
         carColor: carColor || 'Non défini',
-        pin, // In production, hash this!
+        pin: hashedPin,
         role: 'CLIENT',
       },
     });
 
-    // Generate auth token
+    // Generate auth token and set cookie
     const token = generateToken();
+    await setAuthCookie(token);
 
     return NextResponse.json({
       success: true,

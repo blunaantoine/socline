@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireAdmin } from '@/lib/auth';
 
 // GET /api/admin/deposits - Get all pending deposits
 export async function GET(request: NextRequest) {
+  // Check admin authorization
+  const { authorized, response } = await requireAdmin(request);
+  if (!authorized) return response;
+
   try {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status') || 'PENDING';
@@ -10,7 +15,7 @@ export async function GET(request: NextRequest) {
     const transactions = await db.walletTransaction.findMany({
       where: {
         type: 'DEPOSIT',
-        status: status as any,
+        status: status as 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED',
       },
       include: {
         wallet: {
@@ -53,6 +58,10 @@ export async function GET(request: NextRequest) {
 
 // PATCH /api/admin/deposits - Validate or reject a deposit
 export async function PATCH(request: NextRequest) {
+  // Check admin authorization
+  const { authorized, response } = await requireAdmin(request);
+  if (!authorized) return response;
+
   try {
     const body = await request.json();
     const { transactionId, action } = body; // action: 'validate' or 'reject'

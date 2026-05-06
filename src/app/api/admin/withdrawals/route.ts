@@ -1,14 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireAdmin } from '@/lib/auth';
 
 // GET /api/admin/withdrawals - Get pending withdrawals
 export async function GET(request: NextRequest) {
+  // Check admin authorization
+  const { authorized, response } = await requireAdmin(request);
+  if (!authorized) return response;
+
   try {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status') || 'PENDING';
 
     const withdrawals = await db.washerWithdrawal.findMany({
-      where: { status: status as any },
+      where: { status: status as 'PENDING' | 'APPROVED' | 'PROCESSING' | 'COMPLETED' | 'REJECTED' },
       orderBy: { createdAt: 'desc' },
       include: {
         washer: {
@@ -40,6 +45,10 @@ export async function GET(request: NextRequest) {
 
 // PATCH /api/admin/withdrawals - Approve or reject withdrawal
 export async function PATCH(request: NextRequest) {
+  // Check admin authorization
+  const { authorized, response } = await requireAdmin(request);
+  if (!authorized) return response;
+
   try {
     const body = await request.json();
     const { withdrawalId, action } = body;

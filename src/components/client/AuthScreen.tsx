@@ -320,10 +320,11 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
 
     setIsLoading(true);
     try {
+      // Send OTP along with registration data for verification
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, phone, plateNumber, carColor, pin }),
+        body: JSON.stringify({ name, phone, plateNumber, carColor, pin, otp }),
       });
       
       const data = await res.json();

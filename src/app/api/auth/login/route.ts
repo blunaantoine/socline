@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { randomBytes } from 'crypto';
-
-// Generate random token
-function generateToken(): string {
-  return randomBytes(32).toString('hex');
-}
+import { hashPin, verifyPin, generateToken, setAuthCookie } from '@/lib/auth';
 
 // POST /api/auth/login - Login with phone + PIN
 export async function POST(request: NextRequest) {
@@ -43,8 +38,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify PIN (in production, compare hashed values)
-    if (user.pin !== pin) {
+    // Verify PIN with bcrypt
+    if (!user.pin || !(await verifyPin(pin, user.pin))) {
       return NextResponse.json(
         { success: false, error: 'PIN incorrect' },
         { status: 400 }
@@ -59,8 +54,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate auth token
+    // Generate auth token and set cookie
     const token = generateToken();
+    await setAuthCookie(token);
 
     return NextResponse.json({
       success: true,

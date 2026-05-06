@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireAdmin } from '@/lib/auth';
+import { hashPin } from '@/lib/auth';
 
 // POST /api/admin/users - Create a new user (client or washer)
 export async function POST(request: NextRequest) {
+  // Check admin authorization
+  const { authorized, response } = await requireAdmin(request);
+  if (!authorized) return response;
+
   try {
     const body = await request.json();
     const { name, phone, email, role, pin, createWasher } = body;
@@ -20,13 +26,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Un utilisateur avec ce numéro existe déjà' }, { status: 400 });
     }
 
+    // Hash PIN before storing
+    const hashedPin = await hashPin(pin || '1234');
+
     // Create user
     const user = await db.user.create({
       data: {
         phone,
         name: name || null,
         email: email || null,
-        pin: pin || '1234',
+        pin: hashedPin,
         role: role || 'CLIENT',
         isActive: true,
       },
@@ -65,6 +74,10 @@ export async function POST(request: NextRequest) {
 
 // PATCH /api/admin/users - Update user (full edit)
 export async function PATCH(request: NextRequest) {
+  // Check admin authorization
+  const { authorized, response } = await requireAdmin(request);
+  if (!authorized) return response;
+
   try {
     const body = await request.json();
     const { userId, isActive, role, name, pin, email, phone } = body;
@@ -73,11 +86,11 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'ID utilisateur requis' }, { status: 400 });
     }
 
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     if (isActive !== undefined) updateData.isActive = isActive;
     if (role) updateData.role = role;
     if (name !== undefined) updateData.name = name || null;
-    if (pin !== undefined) updateData.pin = pin;
+    if (pin !== undefined) updateData.pin = await hashPin(pin);
     if (email !== undefined) updateData.email = email || null;
     if (phone !== undefined) updateData.phone = phone;
 
@@ -149,6 +162,10 @@ export async function PATCH(request: NextRequest) {
 
 // DELETE /api/admin/users - Delete a user
 export async function DELETE(request: NextRequest) {
+  // Check admin authorization
+  const { authorized, response } = await requireAdmin(request);
+  if (!authorized) return response;
+
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
@@ -181,6 +198,10 @@ export async function DELETE(request: NextRequest) {
 
 // GET /api/admin/users - Get all users with filtering by role
 export async function GET(request: NextRequest) {
+  // Check admin authorization
+  const { authorized, response } = await requireAdmin(request);
+  if (!authorized) return response;
+
   try {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || '';
@@ -189,8 +210,8 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50');
     const skip = (page - 1) * limit;
 
-    const where: any = {
-      ...(roleFilter !== 'all' && { role: roleFilter as any }),
+    const where: Record<string, unknown> = {
+      ...(roleFilter !== 'all' && { role: roleFilter }),
       ...(search && {
         OR: [
           { name: { contains: search } },
@@ -214,7 +235,6 @@ export async function GET(request: NextRequest) {
           updatedAt: true,
           plateNumber: true,
           carColor: true,
-          pin: true,
           washer: {
             select: {
               id: true,
@@ -255,7 +275,6 @@ export async function GET(request: NextRequest) {
         isActive: u.isActive,
         plateNumber: u.plateNumber,
         carColor: u.carColor,
-        pin: u.pin,
         createdAt: u.createdAt,
         updatedAt: u.updatedAt,
         washer: u.washer ? {

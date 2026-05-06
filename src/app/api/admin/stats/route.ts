@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireAdmin } from '@/lib/auth';
 
 // GET /api/admin/stats - Get dashboard statistics
 export async function GET(request: NextRequest) {
+  // Check admin authorization
+  const { authorized, response } = await requireAdmin(request);
+  if (!authorized) return response;
+
   try {
     // Get date ranges
     const today = new Date();

@@ -187,6 +187,7 @@ interface Order {
   amount: number;
   status: string;
   createdAt: string;
+  time?: string;
   address?: string;
 }
 
@@ -315,7 +316,8 @@ interface Withdrawal {
 
 export function AdminPanel() {
   const { user, logout } = useAuthStore();
-  const { setView } = useAppStore();
+  // setView available if needed for navigation
+  useAppStore();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isLoading, setIsLoading] = useState(false);
   const [stats, setStats] = useState<Stats | null>(null);
@@ -464,7 +466,6 @@ export function AdminPanel() {
   useEffect(() => {
     fetchDeposits();
     fetchWithdrawals();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Load data based on active tab or subTab
@@ -585,7 +586,7 @@ export function AdminPanel() {
     <div className="flex-1 flex flex-col bg-[#FAFAFA] overflow-hidden">
       {/* Android Status Bar */}
       <div className="h-6 bg-[#FF9800] flex items-center justify-between px-4 flex-shrink-0 sticky top-0 z-50">
-        <span className="text-white text-xs font-medium">9:41</span>
+        <span className="text-white text-xs font-medium">{new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
         <div className="flex items-center gap-1">
           {/* Signal Network Bars */}
           <div className="flex items-end gap-0.5">
