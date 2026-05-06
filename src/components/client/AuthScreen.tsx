@@ -182,7 +182,7 @@ _____________________                  _____________________
                 { step: 1, title: 'Télécharger le contrat', desc: 'Cliquez sur le bouton ci-dessus' },
                 { step: 2, title: 'Remplir et signer', desc: 'Complétez toutes les informations' },
                 { step: 3, title: 'Préparer vos documents', desc: 'Carte d\'identité ou électeur' },
-                { step: 4, title: 'Contacter le support', desc: '+228 90 34 56 78 (WhatsApp)' },
+                { step: 4, title: 'Contacter le support', desc: '+228 71 99 81 55 (WhatsApp)' },
               ].map((item) => (
                 <div key={item.step} className="flex items-start gap-3">
                   <div className="w-6 h-6 bg-[#4CAF50] text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">
@@ -203,13 +203,13 @@ _____________________                  _____________________
             <p className="text-sm opacity-90 mt-1">Contactez notre équipe support</p>
             <div className="flex gap-2 mt-3">
               <a
-                href="tel:+22890345678"
+                href="tel:+22871998155"
                 className="flex-1 bg-white text-[#4CAF50] rounded-lg py-2 text-center font-medium text-sm"
               >
                 Appeler
               </a>
               <a
-                href="https://wa.me/22890345678?text=Bonjour, je souhaite devenir laveur sur Socline"
+                href="https://wa.me/22871998155?text=Bonjour, je souhaite devenir laveur sur Socline"
                 className="flex-1 bg-[#25D366] text-white rounded-lg py-2 text-center font-medium text-sm"
               >
                 WhatsApp
