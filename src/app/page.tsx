@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuthStore, useAppStore } from '@/store';
 import { ClientApp } from '@/components/client/ClientApp';
 import { WasherApp } from '@/components/washer/WasherApp';
@@ -10,25 +10,26 @@ import { Toaster } from '@/components/ui/sonner';
 import { Loader2 } from 'lucide-react';
 
 export default function SoclineApp() {
-  const { isAuthenticated, user, login } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const { currentView, setView } = useAppStore();
+  
+  // Track if component is mounted (for Zustand persist hydration)
+  const [mounted, setMounted] = useState(false);
 
-  // Detect if we're on the client
-  const isClient = useSyncExternalStore(
-    () => () => {},
-    () => true,
-    () => false
-  );
+  // Wait for Zustand persist to hydrate from localStorage
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
-    if (isAuthenticated && user) {
+    if (mounted && isAuthenticated && user) {
       const view = user.role === 'ADMIN' ? 'admin' : user.role === 'WASHER' ? 'washer' : 'client';
       setView(view);
     }
-  }, [isAuthenticated, user, setView]);
+  }, [mounted, isAuthenticated, user, setView]);
 
-  // Show loading screen during SSR
-  if (!isClient) {
+  // Show loading screen during hydration
+  if (!mounted) {
     return (
       <div className="min-h-screen bg-[#FF9800] flex items-center justify-center">
         <div className="text-center">
