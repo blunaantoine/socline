@@ -387,9 +387,11 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
       <div className="flex-1 flex flex-col bg-gradient-to-b from-[#FF9800] to-[#F57C00]">
         {/* Logo Section */}
         <div className="flex-1 flex flex-col items-center justify-center p-8">
-          <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mb-6 shadow-lg">
-            <Car className="w-12 h-12 text-[#FF9800]" />
-          </div>
+          <img 
+            src="/android-chrome-192x192.png" 
+            alt="Socline" 
+            className="w-24 h-24 mb-6 object-contain"
+          />
           <h1 className="text-3xl font-bold text-white mb-2">Socline</h1>
           <p className="text-white/80 text-center">Votre lavage auto à domicile</p>
         </div>
@@ -402,13 +404,12 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
           >
             Se connecter
           </Button>
-          <Button
+          <button
             onClick={() => setMode('register')}
-            variant="outline"
-            className="w-full h-14 border-2 border-white text-white hover:bg-white/10 rounded-2xl font-semibold text-lg"
+            className="w-full h-14 border-2 border-white text-white bg-transparent hover:bg-white/10 rounded-2xl font-semibold text-lg transition-colors"
           >
             Créer un compte
-          </Button>
+          </button>
           
           {/* Discrete Washer Link */}
           <button
