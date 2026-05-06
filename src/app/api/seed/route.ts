@@ -129,7 +129,7 @@ export async function POST() {
         },
       });
 
-      // Create washer profile
+      // Create washer profile with 20 000 XOF balance for demo
       await db.washer.create({
         data: {
           userId: washerUser.id,
@@ -137,12 +137,12 @@ export async function POST() {
           isVerified: true,
           rating: 0,
           totalRatings: 0,
-          totalEarnings: 0,
+          totalEarnings: 20000, // 20 000 XOF for withdrawal demo
           completedJobs: 0,
         },
       });
     } else {
-      // Check if washer profile exists
+      // Check if washer profile exists and update balance
       const existingWasher = await db.washer.findUnique({ where: { userId: washerUser.id } });
       if (!existingWasher) {
         await db.washer.create({
@@ -152,9 +152,15 @@ export async function POST() {
             isVerified: true,
             rating: 0,
             totalRatings: 0,
-            totalEarnings: 0,
+            totalEarnings: 20000, // 20 000 XOF for withdrawal demo
             completedJobs: 0,
           },
+        });
+      } else {
+        // Update existing washer balance to 20 000 XOF for demo
+        await db.washer.update({
+          where: { userId: washerUser.id },
+          data: { totalEarnings: 20000 },
         });
       }
     }
