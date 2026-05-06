@@ -160,11 +160,11 @@ export async function POST() {
     }
 
     // Create admin user if doesn't exist
-    let adminUser = await db.user.findUnique({ where: { phone: '90345678' } });
+    let adminUser = await db.user.findUnique({ where: { phone: '71998155' } });
     if (!adminUser) {
       adminUser = await db.user.create({
         data: {
-          phone: '90345678',
+          phone: '71998155',
           name: 'Admin Socline',
           role: 'ADMIN',
           pin: '1234',
@@ -272,7 +272,7 @@ export async function POST() {
       testUsers: {
         client: { phone: '90123456', pin: '1234', role: 'CLIENT' },
         washer: { phone: '90234567', pin: '1234', role: 'WASHER' },
-        admin: { phone: '90345678', pin: '1234', role: 'ADMIN' },
+        admin: { phone: '71998155', pin: '1234', role: 'ADMIN' },
       }
     });
   } catch (error) {

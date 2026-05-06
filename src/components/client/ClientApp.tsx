@@ -685,8 +685,8 @@ function ProfileContent({ user, onLogout }: { user: any; onLogout: () => void })
   const [activeSection, setActiveSection] = useState<string | null>(null);
 
   // Support client info
-  const supportPhone = '+22890345678';
-  const supportWhatsApp = '+22890345678';
+  const supportPhone = '+22871998155';
+  const supportWhatsApp = '+22871998155';
 
   const handleCallSupport = () => {
     window.open(`tel:${supportPhone}`, '_self');
