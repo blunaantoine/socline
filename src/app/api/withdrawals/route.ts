@@ -5,17 +5,29 @@ import { db } from '@/lib/db';
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const washerId = searchParams.get('washerId');
+    const userId = searchParams.get('washerId');
 
-    if (!washerId) {
+    if (!userId) {
       return NextResponse.json(
         { success: false, error: 'ID laveur requis' },
         { status: 400 }
       );
     }
 
+    // Get washer by userId
+    const washer = await db.washer.findUnique({
+      where: { userId },
+    });
+
+    if (!washer) {
+      return NextResponse.json({
+        success: true,
+        withdrawals: [],
+      });
+    }
+
     const withdrawals = await db.washerWithdrawal.findMany({
-      where: { washerId },
+      where: { washerId: washer.id },
       orderBy: { createdAt: 'desc' },
       take: 20,
     });

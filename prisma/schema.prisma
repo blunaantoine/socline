@@ -189,6 +189,7 @@ model Washer {
 
   // Relations
   orders         Order[]
+  withdrawals    WasherWithdrawal[]
   stationId      String?
   station        Station? @relation(fields: [stationId], references: [id])
 
@@ -745,6 +746,7 @@ enum WithdrawalStatus {
 model WasherWithdrawal {
   id              String            @id @default(cuid())
   washerId        String
+  washer          Washer            @relation(fields: [washerId], references: [id], onDelete: Cascade)
   
   // Amount
   amount          Float             // Montant demandé

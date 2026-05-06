@@ -36,7 +36,7 @@ import {
   TrendingUp, Clock, Star, Settings, Bell, Plus,
   CheckCircle, XCircle, AlertCircle, Search,
   ChevronDown, Download, Eye, Edit, Trash2, Tag,
-  RefreshCw, Loader2, ArrowLeft, LogOut, Percent, Wallet, Phone, Image as ImageIcon, Move
+  RefreshCw, Loader2, ArrowLeft, LogOut, Percent, Wallet, Phone, Image as ImageIcon, Move, Banknote
 } from 'lucide-react';
 import { HideableBalanceLight } from '@/components/ui/hideable-balance';
 import { toast } from 'sonner';
@@ -291,6 +291,28 @@ interface Deposit {
   };
 }
 
+interface Withdrawal {
+  id: string;
+  washerId: string;
+  amount: number;
+  fee: number;
+  phoneNumber: string;
+  operator: string;
+  status: string;
+  adminNotes: string | null;
+  transactionRef: string | null;
+  createdAt: string;
+  washer?: {
+    id: string;
+    userId: string;
+    user?: {
+      id: string;
+      name: string;
+      phone: string;
+    };
+  };
+}
+
 export function AdminPanel() {
   const { user, logout } = useAuthStore();
   const { setView } = useAppStore();
@@ -305,6 +327,7 @@ export function AdminPanel() {
   const [washers, setWashers] = useState<Washer[]>([]);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [deposits, setDeposits] = useState<Deposit[]>([]);
+  const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [subTab, setSubTab] = useState<string | null>(null); // For "Plus" menu sub-navigation
@@ -420,9 +443,27 @@ export function AdminPanel() {
     }
   }, []);
 
-  // Pre-fetch deposits for badge count on mount
+  // Fetch withdrawals
+  const fetchWithdrawals = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/admin/withdrawals?status=PENDING');
+      const data = await res.json();
+
+      if (data.success) {
+        setWithdrawals(data.withdrawals);
+      }
+    } catch (error) {
+      console.error('Fetch withdrawals error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Pre-fetch deposits and withdrawals for badge count on mount
   useEffect(() => {
     fetchDeposits();
+    fetchWithdrawals();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -442,6 +483,8 @@ export function AdminPanel() {
         fetchPromotions();
       } else if (subTab === 'deposits') {
         fetchDeposits();
+      } else if (subTab === 'withdrawals') {
+        fetchWithdrawals();
       } else if (subTab === 'operators') {
         // Operators are loaded in AdminSettings
       }
@@ -450,7 +493,7 @@ export function AdminPanel() {
     } else if (activeTab === 'deposits') {
       fetchDeposits();
     }
-  }, [activeTab, subTab, fetchStats, fetchOrders, fetchUsers, fetchWashers, fetchPromotions, fetchDeposits]);
+  }, [activeTab, subTab, fetchStats, fetchOrders, fetchUsers, fetchWashers, fetchPromotions, fetchDeposits, fetchWithdrawals]);
 
   // Handle washer verification
   const handleVerifyWasher = async (washerId: string, action: 'verify' | 'reject') => {
@@ -484,6 +527,27 @@ export function AdminPanel() {
       if (data.success) {
         toast.success(action === 'validate' ? 'Rechargement validé' : 'Rechargement rejeté');
         fetchDeposits();
+      } else {
+        toast.error(data.error || 'Erreur');
+      }
+    } catch (error) {
+      toast.error('Erreur lors du traitement');
+    }
+  };
+
+  // Handle withdrawal action
+  const handleWithdrawalAction = async (withdrawalId: string, action: 'approve' | 'reject') => {
+    try {
+      const res = await fetch('/api/admin/withdrawals', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ withdrawalId, action }),
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        toast.success(action === 'approve' ? 'Retrait approuvé' : 'Retrait rejeté');
+        fetchWithdrawals();
       } else {
         toast.error(data.error || 'Erreur');
       }
@@ -626,6 +690,7 @@ export function AdminPanel() {
                 </button>
                 <h2 className="font-semibold text-lg text-[#212121]">
                   {subTab === 'deposits' && 'Demandes de recharge'}
+                  {subTab === 'withdrawals' && 'Retraits Laveurs'}
                   {subTab === 'subscription-plans' && 'Forfaits Abonnements'}
                   {subTab === 'subscriptions' && 'Abonnements Clients'}
                   {subTab === 'promotions' && 'Promotions'}
@@ -641,6 +706,14 @@ export function AdminPanel() {
                   isLoading={isLoading}
                   onRefresh={fetchDeposits}
                   onAction={handleDepositAction}
+                />
+              )}
+              {subTab === 'withdrawals' && (
+                <AdminWithdrawals
+                  withdrawals={withdrawals}
+                  isLoading={isLoading}
+                  onRefresh={fetchWithdrawals}
+                  onAction={handleWithdrawalAction}
                 />
               )}
               {subTab === 'subscription-plans' && <AdminSubscriptionPlans />}
@@ -661,6 +734,7 @@ export function AdminPanel() {
             // Show "Plus" menu
             <AdminPlusMenu
               depositsCount={deposits.filter(d => d.status === 'PENDING').length}
+              withdrawalsCount={withdrawals.filter(w => w.status === 'PENDING').length}
               onSelect={setSubTab}
             />
           )
@@ -2004,8 +2078,9 @@ function AdminFinances({ stats }: { stats: Stats | null }) {
 }
 
 // Admin Plus Menu - Main menu for "Plus" tab
-function AdminPlusMenu({ depositsCount, onSelect }: {
+function AdminPlusMenu({ depositsCount, withdrawalsCount, onSelect }: {
   depositsCount: number;
+  withdrawalsCount: number;
   onSelect: (tab: string) => void;
 }) {
   const { logout } = useAuthStore();
@@ -2018,6 +2093,14 @@ function AdminPlusMenu({ depositsCount, onSelect }: {
       description: 'Valider les rechargements de portefeuille',
       badge: depositsCount > 0 ? depositsCount : undefined,
       color: '#4CAF50',
+    },
+    {
+      id: 'withdrawals',
+      icon: Banknote,
+      label: 'Retraits Laveurs',
+      description: 'Valider les demandes de retrait',
+      badge: withdrawalsCount > 0 ? withdrawalsCount : undefined,
+      color: '#9C27B0',
     },
     {
       id: 'subscription-plans',
@@ -3002,6 +3085,95 @@ function AdminDeposits({ deposits, isLoading, onRefresh, onAction }: {
         <div className="bg-white rounded-2xl p-8 text-center">
           <Wallet className="w-12 h-12 text-[#9E9E9E] mx-auto mb-3" />
           <p className="text-[#757575]">Aucune demande de recharge en attente</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Admin Withdrawals (Retraits Laveurs)
+function AdminWithdrawals({ withdrawals, isLoading, onRefresh, onAction }: { 
+  withdrawals: Withdrawal[];
+  isLoading: boolean;
+  onRefresh: () => void;
+  onAction: (id: string, action: 'approve' | 'reject') => void;
+}) {
+  return (
+    <div className="p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="font-semibold text-lg text-[#212121]">Demandes de retrait</h2>
+        <button onClick={onRefresh} disabled={isLoading} className="text-[#FF9800]">
+          <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+        </button>
+      </div>
+
+      {/* Pending Withdrawals */}
+      {isLoading ? (
+        <div className="flex justify-center py-8">
+          <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+        </div>
+      ) : withdrawals.length > 0 ? (
+        <div className="space-y-3">
+          {withdrawals.map((withdrawal) => (
+            <Card key={withdrawal.id} className="border-0 shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-medium text-[#212121]">{withdrawal.washer?.user?.name || 'Laveur'}</h3>
+                      <Badge className="bg-yellow-100 text-yellow-800">En attente</Badge>
+                    </div>
+                    <p className="text-xs text-[#757575]">{withdrawal.washer?.user?.phone || 'N/A'}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xl font-bold text-[#9C27B0]">{withdrawal.amount.toLocaleString()} XOF</p>
+                  </div>
+                </div>
+                
+                <div className="bg-[#F5F5F5] rounded-lg p-3 space-y-2 mb-3">
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-4 h-4 text-[#757575]" />
+                    <span className="text-sm text-[#212121]">+228 {withdrawal.phoneNumber}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Wallet className="w-4 h-4 text-[#757575]" />
+                    <span className="text-sm text-[#212121]">{withdrawal.operator}</span>
+                  </div>
+                  <div className="text-xs text-[#9E9E9E]">
+                    {new Date(withdrawal.createdAt).toLocaleString('fr-FR', {
+                      day: 'numeric',
+                      month: 'short',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    className="flex-1 bg-green-600 hover:bg-green-700"
+                    onClick={() => onAction(withdrawal.id, 'approve')}
+                  >
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Approuver
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    className="flex-1"
+                    onClick={() => onAction(withdrawal.id, 'reject')}
+                  >
+                    <XCircle className="w-4 h-4 mr-2" />
+                    Rejeter
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl p-8 text-center">
+          <Banknote className="w-12 h-12 text-[#9E9E9E] mx-auto mb-3" />
+          <p className="text-[#757575]">Aucune demande de retrait en attente</p>
         </div>
       )}
     </div>
