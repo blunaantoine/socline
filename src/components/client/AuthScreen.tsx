@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -223,7 +223,7 @@ _____________________                  _____________________
 }
 
 export function AuthScreen({ onComplete }: AuthScreenProps) {
-  const [mode, setMode] = useState<'welcome' | 'login' | 'register' | 'washer-info'>('welcome');
+  const [mode, setMode] = useState<'welcome' | 'login' | 'register' | 'verify-otp' | 'washer-info'>('welcome');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPin, setShowPin] = useState(false);
@@ -237,9 +237,23 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
   
+  // OTP fields
+  const [otp, setOtp] = useState('');
+  const [sentOtp, setSentOtp] = useState('');
+  const [resendTimer, setResendTimer] = useState(0);
+  
   const { login } = useAuthStore();
 
-  const handleRegister = async () => {
+  // Timer for resend OTP
+  useEffect(() => {
+    if (resendTimer > 0) {
+      const timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendTimer]);
+
+  // Send OTP for registration
+  const handleSendOtp = async () => {
     setError(null);
     
     if (!name.trim()) {
@@ -268,6 +282,39 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
     }
     if (pin !== confirmPin) {
       setError('Les codes PIN ne correspondent pas');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone }),
+      });
+      
+      const data = await res.json();
+      
+      if (data.success) {
+        setSentOtp(data.otp || '123456');
+        setMode('verify-otp');
+        setResendTimer(60);
+      } else {
+        setError(data.error || 'Erreur lors de l\'envoi du code');
+      }
+    } catch {
+      setError('Erreur de connexion. Réessayez.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Verify OTP and complete registration
+  const handleVerifyOtp = async () => {
+    setError(null);
+    
+    if (otp.length !== 6) {
+      setError('Le code doit contenir 6 chiffres');
       return;
     }
 
@@ -470,6 +517,90 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
     );
   }
 
+  // OTP Verification Screen
+  if (mode === 'verify-otp') {
+    return (
+      <div className="flex-1 flex flex-col bg-[#FFF8F0]">
+        {/* Header */}
+        <div className="bg-[#FF9800] p-4 pt-8 pb-12 rounded-b-3xl">
+          <button onClick={() => setMode('register')} className="text-white mb-4">
+            <ArrowLeft className="w-6 h-6" />
+          </button>
+          <h1 className="text-2xl font-bold text-white">Vérification</h1>
+          <p className="text-white/80 mt-1">Entrez le code envoyé au +228 {phone}</p>
+        </div>
+
+        {/* Form */}
+        <div className="flex-1 p-6 -mt-6">
+          <div className="bg-white rounded-2xl p-6 shadow-sm space-y-4">
+            {error && (
+              <div className="flex items-center gap-2 text-red-500 bg-red-50 p-3 rounded-xl">
+                <AlertCircle className="w-5 h-5" />
+                <span className="text-sm">{error}</span>
+              </div>
+            )}
+            
+            {/* OTP Input */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-[#757575]">Code de vérification (6 chiffres)</label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9E9E9E]" />
+                <Input
+                  type="text"
+                  placeholder="123456"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  className="pl-10 h-14 bg-[#F5F5F5] border-0 rounded-xl text-center text-2xl tracking-widest"
+                  maxLength={6}
+                />
+              </div>
+              <p className="text-xs text-[#9E9E9E] text-center">
+                Code de test: <span className="font-mono font-bold">123456</span>
+              </p>
+            </div>
+
+            <Button
+              onClick={handleVerifyOtp}
+              disabled={isLoading || otp.length !== 6}
+              className="w-full h-12 bg-[#FF9800] hover:bg-[#F57C00] text-white rounded-xl font-semibold"
+            >
+              {isLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <>
+                  <CheckCircle className="w-5 h-5 mr-2" />
+                  Vérifier et créer mon compte
+                </>
+              )}
+            </Button>
+
+            {/* Resend OTP */}
+            <div className="text-center pt-2">
+              {resendTimer > 0 ? (
+                <p className="text-sm text-[#9E9E9E]">
+                  Renvoyer le code dans {resendTimer}s
+                </p>
+              ) : (
+                <button
+                  onClick={handleSendOtp}
+                  className="text-sm text-[#FF9800] font-semibold"
+                >
+                  Renvoyer le code
+                </button>
+              )}
+            </div>
+          </div>
+
+          <p className="text-center mt-4 text-[#757575]">
+            <button onClick={() => setMode('register')} className="text-[#FF9800] font-semibold">
+              Modifier le numéro
+            </button>
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   // Register Screen
   return (
     <div className="flex-1 flex flex-col bg-[#FFF8F0]">
@@ -620,7 +751,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
           </div>
 
           <Button
-            onClick={handleRegister}
+            onClick={handleSendOtp}
             disabled={isLoading}
             className="w-full h-12 bg-[#FF9800] hover:bg-[#F57C00] text-white rounded-xl font-semibold"
           >
@@ -629,7 +760,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
             ) : (
               <>
                 <CheckCircle className="w-5 h-5 mr-2" />
-                Créer mon compte
+                Continuer
               </>
             )}
           </Button>
