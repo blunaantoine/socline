@@ -13,6 +13,7 @@ import {
   Wallet, TrendingUp, Calendar, LogOut, Settings, Home,
   RefreshCw, Loader2, ArrowLeft, Crown, Edit, Bell
 } from 'lucide-react';
+import { HideableBalanceDark, HideableBalanceLight } from '@/components/ui/hideable-balance';
 import type { Order, OrderStatus, Conversation } from '@/types';
 import { ChatView } from '@/components/chat/ChatView';
 import { toast } from 'sonner';
@@ -403,7 +404,12 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm opacity-80">Solde disponible</p>
-              <p className="text-2xl font-bold">{stats.balance.toLocaleString()} F</p>
+              <HideableBalanceDark
+                balance={stats.balance}
+                currency="F"
+                size="lg"
+                storageKey="hide-washer-balance"
+              />
             </div>
             <button 
               onClick={onRefreshBalance}
@@ -430,9 +436,13 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
               </div>
               <div>
                 <p className="text-xs text-[#757575]">Aujourd&apos;hui</p>
-                <p className="text-lg font-bold text-[#4CAF50]">
-                  {stats.todayEarnings.toLocaleString()} F
-                </p>
+                <HideableBalanceLight
+                  balance={stats.todayEarnings}
+                  currency="F"
+                  size="md"
+                  storageKey="hide-washer-today-earnings"
+                  balanceClassName="text-[#4CAF50]"
+                />
               </div>
             </div>
           </CardContent>
@@ -913,7 +923,13 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, isRefreshingBalance }
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm opacity-80">Total des gains</p>
-              <p className="text-3xl font-bold mt-1">{stats.totalEarnings.toLocaleString()} F</p>
+              <HideableBalanceDark
+                balance={stats.totalEarnings}
+                currency="F"
+                size="xl"
+                storageKey="hide-washer-total-earnings"
+                className="mt-1"
+              />
               <div className="flex items-center gap-2 mt-2">
                 <TrendingUp className="w-4 h-4" />
                 <span className="text-sm">Commencez à gagner!</span>
@@ -958,7 +974,13 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, isRefreshingBalance }
           <div className="flex justify-between items-center">
             <div>
               <p className="text-sm text-[#757575]">Solde disponible</p>
-              <p className="text-xl font-bold text-[#4CAF50]">{stats.totalEarnings.toLocaleString()} F</p>
+              <HideableBalanceLight
+                balance={stats.totalEarnings}
+                currency="F"
+                size="lg"
+                storageKey="hide-washer-withdraw-balance"
+                balanceClassName="text-[#4CAF50]"
+              />
             </div>
             <Button className="bg-[#4CAF50] hover:bg-[#43A047] rounded-xl" disabled>
               Retirer
@@ -1021,7 +1043,14 @@ function WasherProfile({ user, stats, onLogout, onBack, onNavigate }: {
               <div className="text-xs text-[#757575]">Note</div>
             </div>
             <div className="text-center">
-              <div className="text-xl font-bold text-[#2196F3]">{stats.totalEarnings.toLocaleString()}F</div>
+              <HideableBalanceLight
+                balance={stats.totalEarnings}
+                currency="F"
+                size="md"
+                storageKey="hide-washer-profile-earnings"
+                balanceClassName="text-[#2196F3]"
+                showToggle={false}
+              />
               <div className="text-xs text-[#757575]">Gains</div>
             </div>
           </div>

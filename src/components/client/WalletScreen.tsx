@@ -18,6 +18,7 @@ import {
   CreditCard, ChevronRight, Sparkles, RefreshCw, History,
   Copy, ExternalLink, AlertCircle, Check
 } from 'lucide-react';
+import { HideableBalanceDark } from '@/components/ui/hideable-balance';
 import { toast } from 'sonner';
 
 interface WalletData {
@@ -356,12 +357,12 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
         {/* Balance Card */}
         <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4">
           <p className="text-white/80 text-sm mb-1">Solde disponible</p>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold">
-              {wallet?.balance?.toLocaleString() || 0}
-            </span>
-            <span className="text-lg">F CFA</span>
-          </div>
+          <HideableBalanceDark
+            balance={wallet?.balance || 0}
+            currency="F CFA"
+            size="xl"
+            storageKey="hide-client-wallet-balance"
+          />
 
           <div className="flex gap-4 mt-4 pt-4 border-t border-white/20">
             <div className="flex-1">

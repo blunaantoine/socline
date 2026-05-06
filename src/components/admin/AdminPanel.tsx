@@ -38,6 +38,7 @@ import {
   ChevronDown, Download, Eye, Edit, Trash2, Tag,
   RefreshCw, Loader2, ArrowLeft, LogOut, Percent, Wallet, Phone, Image as ImageIcon, Move
 } from 'lucide-react';
+import { HideableBalanceLight } from '@/components/ui/hideable-balance';
 import { toast } from 'sonner';
 
 // Component to drag and position image
@@ -745,7 +746,13 @@ function AdminDashboard({ stats, revenueByDay, ordersByService, recentOrders, is
               </div>
               <div>
                 <p className="text-xs text-[#757575]">Revenus aujourd&apos;hui</p>
-                <p className="text-xl font-bold text-[#4CAF50]">{stats.todayRevenue.toLocaleString()} F</p>
+                <HideableBalanceLight
+                  balance={stats.todayRevenue}
+                  currency="F"
+                  size="lg"
+                  storageKey="hide-admin-today-revenue"
+                  balanceClassName="text-[#4CAF50]"
+                />
               </div>
             </div>
           </CardContent>
@@ -1952,17 +1959,25 @@ function AdminFinances({ stats }: { stats: Stats | null }) {
         <Card className="border-0 shadow-sm">
           <CardContent className="p-4">
             <p className="text-xs text-[#757575]">Revenus totaux</p>
-            <p className="text-xl font-bold text-[#4CAF50]">
-              {stats?.totalRevenue?.toLocaleString() || 0} F
-            </p>
+            <HideableBalanceLight
+              balance={stats?.totalRevenue || 0}
+              currency="F"
+              size="lg"
+              storageKey="hide-admin-total-revenue"
+              balanceClassName="text-[#4CAF50]"
+            />
           </CardContent>
         </Card>
         <Card className="border-0 shadow-sm">
           <CardContent className="p-4">
             <p className="text-xs text-[#757575]">Ce mois</p>
-            <p className="text-xl font-bold text-[#2196F3]">
-              {stats?.monthRevenue?.toLocaleString() || 0} F
-            </p>
+            <HideableBalanceLight
+              balance={stats?.monthRevenue || 0}
+              currency="F"
+              size="lg"
+              storageKey="hide-admin-month-revenue"
+              balanceClassName="text-[#2196F3]"
+            />
           </CardContent>
         </Card>
       </div>
@@ -1972,9 +1987,13 @@ function AdminFinances({ stats }: { stats: Stats | null }) {
           <div className="flex justify-between items-center">
             <div>
               <p className="text-xs text-[#757575]">Commissions (15%)</p>
-              <p className="text-xl font-bold text-[#FF9800]">
-                {((stats?.totalRevenue || 0) * 0.15).toLocaleString()} F
-              </p>
+              <HideableBalanceLight
+                balance={((stats?.totalRevenue || 0) * 0.15)}
+                currency="F"
+                size="lg"
+                storageKey="hide-admin-commissions"
+                balanceClassName="text-[#FF9800]"
+              />
             </div>
             <TrendingUp className="w-8 h-8 text-[#FF9800]" />
           </div>
