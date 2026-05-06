@@ -21,10 +21,10 @@ const sizeClasses = {
 };
 
 const maskedValues = {
-  sm: '**** F',
-  md: '**** F',
-  lg: '***** F',
-  xl: '******* F',
+  sm: '**** XOF',
+  md: '**** XOF',
+  lg: '***** XOF',
+  xl: '******* XOF',
 };
 
 // Helper function to get initial hidden state from localStorage
@@ -36,7 +36,7 @@ function getInitialHiddenState(storageKey: string): boolean {
 
 export function HideableBalance({
   balance,
-  currency = 'F',
+  currency = 'XOF',
   size = 'lg',
   className = '',
   balanceClassName = '',
@@ -82,7 +82,7 @@ export function HideableBalance({
 // Version for dark backgrounds (default)
 export function HideableBalanceDark({
   balance,
-  currency = 'F',
+  currency = 'XOF',
   size = 'lg',
   className = '',
   balanceClassName = '',
@@ -127,7 +127,7 @@ export function HideableBalanceDark({
 // Version for light backgrounds
 export function HideableBalanceLight({
   balance,
-  currency = 'F',
+  currency = 'XOF',
   size = 'lg',
   className = '',
   balanceClassName = '',

@@ -406,7 +406,7 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
               <p className="text-sm opacity-80">Solde disponible</p>
               <HideableBalanceDark
                 balance={stats.balance}
-                currency="F"
+                currency="XOF"
                 size="lg"
                 storageKey="hide-washer-balance"
               />
@@ -438,7 +438,7 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
                 <p className="text-xs text-[#757575]">Aujourd&apos;hui</p>
                 <HideableBalanceLight
                   balance={stats.todayEarnings}
-                  currency="F"
+                  currency="XOF"
                   size="md"
                   storageKey="hide-washer-today-earnings"
                   balanceClassName="text-[#4CAF50]"
@@ -491,7 +491,7 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-[#4CAF50]">{order.totalPrice?.toLocaleString()} F</p>
+                      <p className="font-bold text-[#4CAF50]">{order.totalPrice?.toLocaleString()} XOF</p>
                       <p className="text-xs text-[#757575]">{order.address?.substring(0, 20)}...</p>
                     </div>
                   </div>
@@ -532,7 +532,7 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
                           <p className="font-bold text-lg">{order.service?.name || 'Service'}</p>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-xl">{order.totalPrice?.toLocaleString()} F</p>
+                          <p className="font-bold text-xl">{order.totalPrice?.toLocaleString()} XOF</p>
                           <p className="text-sm opacity-80">{order.service?.duration || 30} min</p>
                         </div>
                       </div>
@@ -655,7 +655,7 @@ function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat, acceptedOr
                       </span>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-[#4CAF50]">{o.totalPrice?.toLocaleString()} F</p>
+                      <p className="font-bold text-[#4CAF50]">{o.totalPrice?.toLocaleString()} XOF</p>
                     </div>
                   </div>
                 </CardContent>
@@ -776,7 +776,7 @@ function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat, acceptedOr
           <div className="flex justify-between pt-2 border-t border-[#F5F5F5]">
             <span className="text-[#757575]">Vos gains</span>
             <span className="font-bold text-[#4CAF50]">
-              {((order.totalPrice || 0) - (order.commission || 0)).toLocaleString()} F
+              {((order.totalPrice || 0) - (order.commission || 0)).toLocaleString()} XOF
             </span>
           </div>
         </CardContent>
@@ -874,7 +874,7 @@ function WasherOrderHistory({ orders, onBack }: {
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-[#4CAF50]">
-                      {((order.totalPrice || 0) - (order.commission || 0)).toLocaleString()} F
+                      {((order.totalPrice || 0) - (order.commission || 0)).toLocaleString()} XOF
                     </p>
                   </div>
                 </div>
@@ -925,7 +925,7 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, isRefreshingBalance }
               <p className="text-sm opacity-80">Total des gains</p>
               <HideableBalanceDark
                 balance={stats.totalEarnings}
-                currency="F"
+                currency="XOF"
                 size="xl"
                 storageKey="hide-washer-total-earnings"
                 className="mt-1"
@@ -1033,7 +1033,7 @@ function WasherProfile({ user, stats, onLogout, onBack, onNavigate }: {
             <div className="text-center">
               <HideableBalanceLight
                 balance={stats.totalEarnings}
-                currency="F"
+                currency="XOF"
                 size="md"
                 storageKey="hide-washer-profile-earnings"
                 balanceClassName="text-[#2196F3]"

@@ -219,7 +219,7 @@ export function ActivityHistory({ userId, onBack }: { userId: string; onBack: ()
                           : activity.type === 'TRANSACTION'
                             ? '-'
                             : ''}
-                        {activity.amount?.toLocaleString()} F
+                        {activity.amount?.toLocaleString()} XOF
                       </span>
                     )}
                   </div>

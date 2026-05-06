@@ -102,7 +102,7 @@ export async function PATCH(request: NextRequest) {
         data: {
           userId: transaction.wallet.userId,
           title: 'Rechargement validé',
-          message: `Votre rechargement de ${transaction.amount.toLocaleString()} F a été validé avec succès.`,
+          message: `Votre rechargement de ${transaction.amount.toLocaleString()} XOF a été validé avec succès.`,
           type: 'PAYMENT',
         },
       });
@@ -128,7 +128,7 @@ export async function PATCH(request: NextRequest) {
         data: {
           userId: transaction.wallet.userId,
           title: 'Rechargement échoué',
-          message: `Votre demande de rechargement de ${transaction.amount.toLocaleString()} F a échoué. Veuillez réessayer.`,
+          message: `Votre demande de rechargement de ${transaction.amount.toLocaleString()} XOF a échoué. Veuillez réessayer.`,
           type: 'PAYMENT',
         },
       });

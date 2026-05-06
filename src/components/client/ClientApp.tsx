@@ -508,7 +508,7 @@ function HomeContent({
                     <span className="text-sm">{selectedService.duration} min</span>
                   </div>
                   <div className="flex-1" />
-                  <span className="text-xl font-bold text-[#FF9800]">{selectedService.price?.toLocaleString()} F</span>
+                  <span className="text-xl font-bold text-[#FF9800]">{selectedService.price?.toLocaleString()} XOF</span>
                 </div>
 
                 {/* Description */}
@@ -555,7 +555,7 @@ function HomeContent({
                               <p className="text-xs opacity-90">
                                 {promo.discountType === 'PERCENTAGE' 
                                   ? `-${promo.discountValue}% de réduction`
-                                  : `-${promo.discountValue?.toLocaleString()} F de réduction`}
+                                  : `-${promo.discountValue?.toLocaleString()} XOF de réduction`}
                               </p>
                             </div>
                             {promo.code && (

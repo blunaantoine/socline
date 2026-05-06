@@ -199,7 +199,7 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
                 <p className="text-sm text-gray-500">{order.address}</p>
               </div>
               <span className="text-xl font-bold text-blue-600">
-                {order.totalPrice.toLocaleString()} FCFA
+                {order.totalPrice.toLocaleString()} XOF
               </span>
             </div>
           </CardContent>
@@ -377,7 +377,7 @@ function OrderCompleted({ order, onBack, onGoHome }: { order: Order; onBack?: ()
               <div className="mt-3 p-3 bg-[#F5F5F5] rounded-xl">
                 <div className="text-xs text-[#757575]">Total payé</div>
                 <div className="text-xl font-bold text-[#FF9800]">
-                  {order.totalPrice.toLocaleString()} F
+                  {order.totalPrice.toLocaleString()} XOF
                 </div>
               </div>
             </CardContent>

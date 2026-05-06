@@ -95,12 +95,12 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const AMOUNT_OPTIONS = [
-  { value: 1000, label: '1 000 F' },
-  { value: 2000, label: '2 000 F' },
-  { value: 5000, label: '5 000 F' },
-  { value: 10000, label: '10 000 F' },
-  { value: 20000, label: '20 000 F' },
-  { value: 50000, label: '50 000 F' },
+  { value: 1000, label: '1 000 XOF' },
+  { value: 2000, label: '2 000 XOF' },
+  { value: 5000, label: '5 000 XOF' },
+  { value: 10000, label: '10 000 XOF' },
+  { value: 20000, label: '20 000 XOF' },
+  { value: 50000, label: '50 000 XOF' },
 ];
 
 type DepositStep = 'amount' | 'operator' | 'phone' | 'ussd' | 'confirm';
@@ -359,7 +359,7 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
           <p className="text-white/80 text-sm mb-1">Solde disponible</p>
           <HideableBalanceDark
             balance={wallet?.balance || 0}
-            currency="F CFA"
+            currency="XOF"
             size="xl"
             storageKey="hide-client-wallet-balance"
           />
@@ -465,11 +465,11 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
                             : 'text-red-600'
                         }`}>
                           {tx.type === 'DEPOSIT' || tx.type === 'REFUND' || tx.type === 'BONUS' ? '+' : '-'}
-                          {tx.amount.toLocaleString()} F
+                          {tx.amount.toLocaleString()} XOF
                         </p>
                         {tx.status === 'COMPLETED' && (
                           <p className="text-xs text-[#9E9E9E]">
-                            Solde: {tx.balanceAfter.toLocaleString()} F
+                            Solde: {tx.balanceAfter.toLocaleString()} XOF
                           </p>
                         )}
                       </div>
@@ -586,7 +586,7 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
                       <div className="text-left flex-1">
                         <p className="font-semibold text-[#212121]">{op.displayName}</p>
                         <p className="text-xs text-[#757575]">
-                          Min: {op.minAmount.toLocaleString()} F | Max: {op.maxAmount.toLocaleString()} F
+                          Min: {op.minAmount.toLocaleString()} XOF | Max: {op.maxAmount.toLocaleString()} XOF
                         </p>
                       </div>
                       {deposit.operatorId === op.id && (
@@ -608,7 +608,7 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
                   <div className="flex justify-between items-center">
                     <span className="text-[#757575]">Montant à recharger</span>
                     <span className="font-bold text-[#FF9800] text-xl">
-                      {deposit.amount.toLocaleString()} F
+                      {deposit.amount.toLocaleString()} XOF
                     </span>
                   </div>
                 </div>
@@ -704,7 +704,7 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
                 <div className="bg-[#F5F5F5] rounded-lg p-3 space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-[#757575]">Montant</span>
-                    <span className="font-semibold">{deposit.amount.toLocaleString()} F</span>
+                    <span className="font-semibold">{deposit.amount.toLocaleString()} XOF</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-[#757575]">Opérateur</span>
@@ -881,11 +881,11 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
                                 : 'text-red-600'
                             }`}>
                               {tx.type === 'DEPOSIT' || tx.type === 'REFUND' || tx.type === 'BONUS' ? '+' : '-'}
-                              {tx.amount.toLocaleString()} F
+                              {tx.amount.toLocaleString()} XOF
                             </p>
                             {tx.status === 'COMPLETED' && (
                               <p className="text-xs text-[#9E9E9E]">
-                                Solde: {tx.balanceAfter.toLocaleString()} F
+                                Solde: {tx.balanceAfter.toLocaleString()} XOF
                               </p>
                             )}
                           </div>

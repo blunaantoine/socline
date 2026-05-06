@@ -211,11 +211,11 @@ function OrderCard({ order, onViewDetails }: { order: Order; onViewDetails: () =
           {/* Price */}
           <div className="text-right flex-shrink-0">
             <div className="font-bold text-[#FF9800]">
-              {order.totalPrice.toLocaleString()} F
+              {order.totalPrice.toLocaleString()} XOF
             </div>
             {order.discount > 0 && (
               <div className="text-xs text-green-600">
-                -{order.discount.toLocaleString()} F
+                -{order.discount.toLocaleString()} XOF
               </div>
             )}
           </div>
@@ -291,11 +291,11 @@ function OrderDetails({ order, onClose }: { order: Order; onClose: () => void })
             </div>
             <div className="text-right">
               <div className="font-bold text-[#FF9800] text-lg">
-                {order.totalPrice.toLocaleString()} F
+                {order.totalPrice.toLocaleString()} XOF
               </div>
               {order.discount > 0 && (
                 <div className="text-xs text-green-600">
-                  Réduction: -{order.discount.toLocaleString()} F
+                  Réduction: -{order.discount.toLocaleString()} XOF
                 </div>
               )}
             </div>
@@ -421,7 +421,7 @@ function OrderDetails({ order, onClose }: { order: Order; onClose: () => void })
                 <p className="font-bold text-green-700">{order.promoCode}</p>
               </div>
               <span className="text-green-600 font-medium">
-                -{order.discount.toLocaleString()} F
+                -{order.discount.toLocaleString()} XOF
               </span>
             </div>
           </div>
@@ -502,17 +502,17 @@ function OrderDetails({ order, onClose }: { order: Order; onClose: () => void })
         <div className="bg-[#FAFAFA] rounded-lg p-4 space-y-2">
           <div className="flex justify-between text-sm">
             <span className="text-[#757575]">Sous-total</span>
-            <span className="text-[#212121]">{order.basePrice.toLocaleString()} F</span>
+            <span className="text-[#212121]">{order.basePrice.toLocaleString()} XOF</span>
           </div>
           {order.discount > 0 && (
             <div className="flex justify-between text-sm">
               <span className="text-green-600">Réduction</span>
-              <span className="text-green-600">-{order.discount.toLocaleString()} F</span>
+              <span className="text-green-600">-{order.discount.toLocaleString()} XOF</span>
             </div>
           )}
           <div className="flex justify-between font-bold pt-2 border-t border-[#E0E0E0]">
             <span className="text-[#212121]">Total</span>
-            <span className="text-[#FF9800]">{order.totalPrice.toLocaleString()} F</span>
+            <span className="text-[#FF9800]">{order.totalPrice.toLocaleString()} XOF</span>
           </div>
         </div>
       </div>

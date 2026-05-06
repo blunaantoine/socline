@@ -99,13 +99,13 @@ export async function POST(request: NextRequest) {
     // Validate amount limits
     if (amount < operator.minAmount) {
       return NextResponse.json({ 
-        error: `Montant minimum: ${operator.minAmount.toLocaleString()} F` 
+        error: `Montant minimum: ${operator.minAmount.toLocaleString()} XOF` 
       }, { status: 400 });
     }
 
     if (amount > operator.maxAmount) {
       return NextResponse.json({ 
-        error: `Montant maximum: ${operator.maxAmount.toLocaleString()} F` 
+        error: `Montant maximum: ${operator.maxAmount.toLocaleString()} XOF` 
       }, { status: 400 });
     }
 

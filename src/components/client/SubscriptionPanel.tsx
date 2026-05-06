@@ -365,7 +365,7 @@ export function SubscriptionPanel({ userId, walletBalance }: SubscriptionPanelPr
                     </div>
                     <div className="text-right">
                       <div className="font-bold text-lg text-[#FF9800]">
-                        {plan.price.toLocaleString()} F
+                        {plan.price.toLocaleString()} XOF
                       </div>
                       <div className="text-xs text-[#757575]">/mois</div>
                     </div>
@@ -455,7 +455,7 @@ export function SubscriptionPanel({ userId, walletBalance }: SubscriptionPanelPr
                     <SelectItem value="MONTHLY">
                       <div className="flex justify-between w-full">
                         <span>1 mois</span>
-                        <span className="ml-4 font-medium">{selectedPlan.price.toLocaleString()} F</span>
+                        <span className="ml-4 font-medium">{selectedPlan.price.toLocaleString()} XOF</span>
                       </div>
                     </SelectItem>
                     <SelectItem value="QUARTERLY">
@@ -463,7 +463,7 @@ export function SubscriptionPanel({ userId, walletBalance }: SubscriptionPanelPr
                         <span>3 mois</span>
                         <div className="ml-4 flex items-center gap-2">
                           <Badge className="bg-green-100 text-green-800 text-xs">-{getDiscount(selectedPlan, 'QUARTERLY')}%</Badge>
-                          <span className="font-medium">{getPrice(selectedPlan, 'QUARTERLY').toLocaleString()} F</span>
+                          <span className="font-medium">{getPrice(selectedPlan, 'QUARTERLY').toLocaleString()} XOF</span>
                         </div>
                       </div>
                     </SelectItem>
@@ -472,7 +472,7 @@ export function SubscriptionPanel({ userId, walletBalance }: SubscriptionPanelPr
                         <span>1 an</span>
                         <div className="ml-4 flex items-center gap-2">
                           <Badge className="bg-green-100 text-green-800 text-xs">-{getDiscount(selectedPlan, 'YEARLY')}%</Badge>
-                          <span className="font-medium">{getPrice(selectedPlan, 'YEARLY').toLocaleString()} F</span>
+                          <span className="font-medium">{getPrice(selectedPlan, 'YEARLY').toLocaleString()} XOF</span>
                         </div>
                       </div>
                     </SelectItem>
@@ -492,7 +492,7 @@ export function SubscriptionPanel({ userId, walletBalance }: SubscriptionPanelPr
                 </div>
                 <div className="flex justify-between text-sm font-bold pt-2 border-t border-[#FFE0B2]">
                   <span>Total</span>
-                  <span className="text-[#FF9800]">{getPrice(selectedPlan, selectedDuration).toLocaleString()} F</span>
+                  <span className="text-[#FF9800]">{getPrice(selectedPlan, selectedDuration).toLocaleString()} XOF</span>
                 </div>
               </div>
 
@@ -500,7 +500,7 @@ export function SubscriptionPanel({ userId, walletBalance }: SubscriptionPanelPr
               <div className="flex items-center justify-between text-sm">
                 <span className="text-[#757575]">Votre solde</span>
                 <span className={`font-medium ${walletBalance >= getPrice(selectedPlan, selectedDuration) ? 'text-green-600' : 'text-red-500'}`}>
-                  {walletBalance.toLocaleString()} F
+                  {walletBalance.toLocaleString()} XOF
                 </span>
               </div>
 

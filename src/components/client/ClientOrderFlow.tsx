@@ -410,7 +410,7 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
                         <p className="text-sm text-[#757575] mt-1">{service.description}</p>
                         <div className="flex justify-between items-center mt-3">
                           <span className="text-xl font-bold text-[#FF9800]">
-                            {service.price.toLocaleString()} F
+                            {service.price.toLocaleString()} XOF
                           </span>
                           <span className="text-sm text-[#FF9800] font-medium">Choisir →</span>
                         </div>
@@ -638,7 +638,7 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
                   <>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Prix de base</span>
-                      <span className="line-through text-gray-400">{selectedService.price.toLocaleString()} F</span>
+                      <span className="line-through text-gray-400">{selectedService.price.toLocaleString()} XOF</span>
                     </div>
                     <div className="flex justify-between text-sm text-purple-600">
                       <span>Abonnement</span>
@@ -653,17 +653,17 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
                   <>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Prix de base</span>
-                      <span>{selectedService.price.toLocaleString()} F</span>
+                      <span>{selectedService.price.toLocaleString()} XOF</span>
                     </div>
                     {appliedPromo && (
                       <div className="flex justify-between text-sm text-green-600">
                         <span>Réduction</span>
-                        <span>-{appliedPromo.discountAmount.toLocaleString()} F</span>
+                        <span>-{appliedPromo.discountAmount.toLocaleString()} XOF</span>
                       </div>
                     )}
                     <div className="flex justify-between text-lg font-bold pt-2">
                       <span>Total</span>
-                      <span className="text-[#FF9800]">{getFinalPrice().toLocaleString()} F</span>
+                      <span className="text-[#FF9800]">{getFinalPrice().toLocaleString()} XOF</span>
                     </div>
                   </>
                 )}
@@ -725,7 +725,7 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
                       </div>
                       <div>
                         <span className="font-medium text-[#212121]">Portefeuille</span>
-                        <p className="text-sm text-gray-500">Solde: {walletBalance.toLocaleString()} F</p>
+                        <p className="text-sm text-gray-500">Solde: {walletBalance.toLocaleString()} XOF</p>
                       </div>
                     </div>
                     {walletBalance >= getFinalPrice() ? (
@@ -772,7 +772,7 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
               ) : useSubscription && activeSubscription ? (
                 'Confirmer avec mon abonnement'
               ) : (
-                `Confirmer ${getFinalPrice().toLocaleString()} F`
+                `Confirmer ${getFinalPrice().toLocaleString()} XOF`
               )}
             </Button>
           </div>

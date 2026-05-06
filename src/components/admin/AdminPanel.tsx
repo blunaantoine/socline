@@ -748,7 +748,7 @@ function AdminDashboard({ stats, revenueByDay, ordersByService, recentOrders, is
                 <p className="text-xs text-[#757575]">Revenus aujourd&apos;hui</p>
                 <HideableBalanceLight
                   balance={stats.todayRevenue}
-                  currency="F"
+                  currency="XOF"
                   size="lg"
                   storageKey="hide-admin-today-revenue"
                   balanceClassName="text-[#4CAF50]"
@@ -860,7 +860,7 @@ function AdminDashboard({ stats, revenueByDay, ordersByService, recentOrders, is
                   <p className="text-xs text-[#757575]">{order.service}</p>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold text-[#FF9800]">{order.amount.toLocaleString()} F</p>
+                  <p className="font-bold text-[#FF9800]">{order.amount.toLocaleString()} XOF</p>
                   <p className="text-xs text-[#757575]">{order.time}</p>
                 </div>
               </div>
@@ -934,7 +934,7 @@ function AdminOrders({ orders, statusFilter, setStatusFilter, searchQuery, setSe
                     <p className="text-xs text-[#757575]">{order.service}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-[#FF9800]">{order.amount.toLocaleString()} F</p>
+                    <p className="font-bold text-[#FF9800]">{order.amount.toLocaleString()} XOF</p>
                     {getStatusBadge(order.status)}
                   </div>
                 </div>
@@ -1349,7 +1349,7 @@ function AdminUsers({ users, searchQuery, setSearchQuery, isLoading, onRefresh }
                       <span>{user.washer.rating > 0 ? user.washer.rating.toFixed(1) : '-'}</span>
                     </div>
                     <span>{user.washer.completedJobs} jobs</span>
-                    <span className="text-green-600 font-medium">{user.washer.totalEarnings.toLocaleString()} F</span>
+                    <span className="text-green-600 font-medium">{user.washer.totalEarnings.toLocaleString()} XOF</span>
                   </div>
                 )}
                 
@@ -1358,7 +1358,7 @@ function AdminUsers({ users, searchQuery, setSearchQuery, isLoading, onRefresh }
                   <div className="mt-2 pt-2 border-t border-[#F5F5F5] flex justify-between text-xs">
                     <span className="text-[#757575]">{user.orders} commandes</span>
                     <span className="text-green-600 font-medium">
-                      Solde: {(user.walletBalance || 0).toLocaleString()} F
+                      Solde: {(user.walletBalance || 0).toLocaleString()} XOF
                     </span>
                   </div>
                 )}
@@ -1709,7 +1709,7 @@ function AdminWashers({ washers, isLoading, onRefresh, onVerify }: {
                 </div>
                 <div className="flex justify-between mt-3 pt-3 border-t border-[#F5F5F5] text-xs text-[#757575]">
                   <span>{washer.completedJobs} jobs</span>
-                  <span className="font-medium text-[#4CAF50]">{washer.earnings.toLocaleString()} F gagnés</span>
+                  <span className="font-medium text-[#4CAF50]">{washer.earnings.toLocaleString()} XOF gagnés</span>
                 </div>
               </CardContent>
             </Card>
@@ -1844,7 +1844,7 @@ function AdminServices() {
                     <p className="text-xs text-[#757575] mt-1">{service.duration} min</p>
                   </div>
                   <div className="text-right flex flex-col items-end gap-2">
-                    <p className="font-bold text-[#FF9800] text-lg">{service.price.toLocaleString()} F</p>
+                    <p className="font-bold text-[#FF9800] text-lg">{service.price.toLocaleString()} XOF</p>
                     <div className="flex items-center gap-2">
                       <Badge className={service.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
                         {service.isActive ? 'Actif' : 'Inactif'}
@@ -1961,7 +1961,7 @@ function AdminFinances({ stats }: { stats: Stats | null }) {
             <p className="text-xs text-[#757575]">Revenus totaux</p>
             <HideableBalanceLight
               balance={stats?.totalRevenue || 0}
-              currency="F"
+              currency="XOF"
               size="lg"
               storageKey="hide-admin-total-revenue"
               balanceClassName="text-[#4CAF50]"
@@ -1973,7 +1973,7 @@ function AdminFinances({ stats }: { stats: Stats | null }) {
             <p className="text-xs text-[#757575]">Ce mois</p>
             <HideableBalanceLight
               balance={stats?.monthRevenue || 0}
-              currency="F"
+              currency="XOF"
               size="lg"
               storageKey="hide-admin-month-revenue"
               balanceClassName="text-[#2196F3]"
@@ -1989,7 +1989,7 @@ function AdminFinances({ stats }: { stats: Stats | null }) {
               <p className="text-xs text-[#757575]">Commissions (15%)</p>
               <HideableBalanceLight
                 balance={((stats?.totalRevenue || 0) * 0.15)}
-                currency="F"
+                currency="XOF"
                 size="lg"
                 storageKey="hide-admin-commissions"
                 balanceClassName="text-[#FF9800]"
@@ -2954,7 +2954,7 @@ function AdminDeposits({ deposits, isLoading, onRefresh, onAction }: {
                     <p className="text-xs text-[#757575]">{deposit.user?.phone}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xl font-bold text-[#FF9800]">{deposit.amount.toLocaleString()} F</p>
+                    <p className="text-xl font-bold text-[#FF9800]">{deposit.amount.toLocaleString()} XOF</p>
                   </div>
                 </div>
                 
@@ -3289,7 +3289,7 @@ function AdminSubscriptionPlans() {
                 <SelectContent>
                   {services.map((service) => (
                     <SelectItem key={service.id} value={service.id}>
-                      {service.name} ({service.price.toLocaleString()} F)
+                      {service.name} ({service.price.toLocaleString()} XOF)
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -3456,12 +3456,12 @@ function AdminSubscriptionPlans() {
                   </div>
                   <div className="text-right flex flex-col items-end gap-2">
                     <div>
-                      <p className="font-bold text-[#FF9800] text-lg">{plan.price.toLocaleString()} F<span className="text-xs font-normal text-[#757575]">/mois</span></p>
+                      <p className="font-bold text-[#FF9800] text-lg">{plan.price.toLocaleString()} XOF<span className="text-xs font-normal text-[#757575]">/mois</span></p>
                       {plan.quarterlyPrice && (
-                        <p className="text-xs text-[#757575]">{plan.quarterlyPrice.toLocaleString()} F /trimestre</p>
+                        <p className="text-xs text-[#757575]">{plan.quarterlyPrice.toLocaleString()} XOF /trimestre</p>
                       )}
                       {plan.yearlyPrice && (
-                        <p className="text-xs text-[#757575]">{plan.yearlyPrice.toLocaleString()} F /an</p>
+                        <p className="text-xs text-[#757575]">{plan.yearlyPrice.toLocaleString()} XOF /an</p>
                       )}
                     </div>
                     <div className="flex items-center gap-1">

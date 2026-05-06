@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     if (promotion.minOrderAmount && orderAmount < promotion.minOrderAmount) {
       return NextResponse.json({ 
         success: false, 
-        error: `Montant minimum: ${promotion.minOrderAmount.toLocaleString()} F` 
+        error: `Montant minimum: ${promotion.minOrderAmount.toLocaleString()} XOF` 
       }, { status: 400 });
     }
 
