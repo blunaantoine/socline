@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
   Car, Phone, User, Lock, Palette, ArrowLeft, 
-  Eye, EyeOff, CheckCircle, Loader2, AlertCircle 
+  Eye, EyeOff, CheckCircle, Loader2, AlertCircle,
+  FileText, Download, IdCard, CreditCard, ChevronRight
 } from 'lucide-react';
 import { useAuthStore } from '@/store';
 
@@ -26,11 +27,207 @@ const CAR_COLORS = [
   { id: 'Jaune', label: 'Jaune', color: '#eab308' },
 ];
 
+// Washer Registration Info Component
+function WasherRegistrationInfo({ onBack }: { onBack: () => void }) {
+  const handleDownloadContract = () => {
+    // Create a simple contract PDF content as a data URL
+    const contractContent = `
+CONTRAT DE PARTENARIAT - SOCLINE
+================================
+
+ENTRE LES SOUSSIGNÉS :
+
+La société SOCLINE, représentée par son Directeur, ci-après dénommée "LA SOCIÉTÉ"
+
+ET
+
+M./Mme _________________________, né(e) le ____/____/________ à _____________________,
+demeurant à ___________________________________________________________________,
+titulaire de la pièce d'identité n° ____________________________________________,
+
+ci-après dénommé(e) "LE PARTENAIRE"
+
+IL A ÉTÉ CONVENU CE QUI SUIT :
+
+ARTICLE 1 - OBJET
+Le présent contrat a pour objet de définir les conditions dans lesquelles LE PARTENAIRE 
+fournira des services de lavage automobile pour le compte de LA SOCIÉTÉ via l'application SOCLINE.
+
+ARTICLE 2 - ENGAGEMENTS DU PARTENAIRE
+- Effectuer les prestations de lavage avec professionnalisme
+- Respecter les délais convenus avec les clients
+- Maintenir son véhicule en bon état de fonctionnement
+- Fournir les produits nécessaires aux prestations
+- Respecter les règles de sécurité et d'hygiène
+
+ARTICLE 3 - RÉMUNÉRATION
+LE PARTENAIRE perçoit une commission de 80% sur chaque prestation réalisée.
+Les paiements sont effectués chaque semaine.
+
+ARTICLE 4 - PIÈCES À FOURNIR
+- Copie de la carte d'identité nationale OU carte d'électeur
+- Photo d'identité récente
+- Contrat signé
+
+ARTICLE 5 - DURÉE
+Le présent contrat est conclu pour une durée indéterminée.
+
+ARTICLE 6 - RÉSILIATION
+Chaque partie peut résilier le contrat avec un préavis de 15 jours.
+
+Fait à Lomé, le ____/____/________
+
+SIGNATURES :
+
+LE PARTENAIRE                          LA SOCIÉTÉ
+_____________________                  _____________________
+    `;
+
+    const blob = new Blob([contractContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Contrat_Socline_Laveur.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="flex-1 flex flex-col bg-[#FFF8F0]">
+      {/* Header */}
+      <div className="bg-[#4CAF50] p-4 pt-8 pb-12 rounded-b-3xl">
+        <button onClick={onBack} className="text-white mb-4">
+          <ArrowLeft className="w-6 h-6" />
+        </button>
+        <h1 className="text-2xl font-bold text-white">Devenir Laveur</h1>
+        <p className="text-white/80 mt-1">Rejoignez notre équipe de partenaires</p>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 p-4 -mt-6 overflow-y-auto pb-8">
+        <div className="bg-white rounded-2xl p-4 shadow-sm space-y-4">
+          {/* Intro */}
+          <div className="text-center py-4 border-b border-[#F5F5F5]">
+            <div className="w-16 h-16 bg-[#E8F5E9] rounded-full flex items-center justify-center mx-auto mb-3">
+              <Car className="w-8 h-8 text-[#4CAF50]" />
+            </div>
+            <h2 className="font-bold text-[#212121] text-lg">Avantages du partenaire</h2>
+            <ul className="text-sm text-[#757575] mt-2 space-y-1">
+              <li>✓ Revenus attractifs (80% par prestation)</li>
+              <li>✓ Horaires flexibles</li>
+              <li>✓ Paiements hebdomadaires</li>
+              <li>✓ Formation et support</li>
+            </ul>
+          </div>
+
+          {/* Documents Required */}
+          <div className="space-y-3">
+            <h3 className="font-semibold text-[#212121] flex items-center gap-2">
+              <FileText className="w-5 h-5 text-[#4CAF50]" />
+              Documents requis
+            </h3>
+            
+            <div className="bg-[#F5F5F5] rounded-xl p-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-[#E3F2FD] rounded-full flex items-center justify-center flex-shrink-0">
+                  <IdCard className="w-5 h-5 text-[#2196F3]" />
+                </div>
+                <div>
+                  <p className="font-medium text-[#212121]">Carte d&apos;identité nationale</p>
+                  <p className="text-sm text-[#757575]">OU</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-[#FFF3E0] rounded-full flex items-center justify-center flex-shrink-0">
+                  <CreditCard className="w-5 h-5 text-[#FF9800]" />
+                </div>
+                <div>
+                  <p className="font-medium text-[#212121]">Carte d&apos;électeur</p>
+                  <p className="text-sm text-[#757575]">Valide et lisible</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Contract */}
+          <div className="space-y-3">
+            <h3 className="font-semibold text-[#212121] flex items-center gap-2">
+              <FileText className="w-5 h-5 text-[#4CAF50]" />
+              Contrat de partenariat
+            </h3>
+            
+            <div className="bg-[#E8F5E9] rounded-xl p-4">
+              <p className="text-sm text-[#757575] mb-3">
+                Téléchargez le contrat, remplissez-le, signez-le et envoyez-le avec vos documents.
+              </p>
+              <Button
+                onClick={handleDownloadContract}
+                className="w-full bg-[#4CAF50] hover:bg-[#43A047] text-white"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Télécharger le contrat
+              </Button>
+            </div>
+          </div>
+
+          {/* Process */}
+          <div className="space-y-3">
+            <h3 className="font-semibold text-[#212121]">Processus d&apos;inscription</h3>
+            
+            <div className="space-y-2">
+              {[
+                { step: 1, title: 'Télécharger le contrat', desc: 'Cliquez sur le bouton ci-dessus' },
+                { step: 2, title: 'Remplir et signer', desc: 'Complétez toutes les informations' },
+                { step: 3, title: 'Préparer vos documents', desc: 'Carte d\'identité ou électeur' },
+                { step: 4, title: 'Contacter le support', desc: '+228 90 34 56 78 (WhatsApp)' },
+              ].map((item) => (
+                <div key={item.step} className="flex items-start gap-3">
+                  <div className="w-6 h-6 bg-[#4CAF50] text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">
+                    {item.step}
+                  </div>
+                  <div>
+                    <p className="font-medium text-[#212121] text-sm">{item.title}</p>
+                    <p className="text-xs text-[#757575]">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Contact */}
+          <div className="bg-gradient-to-r from-[#4CAF50] to-[#43A047] rounded-xl p-4 text-white">
+            <p className="font-semibold">Besoin d&apos;aide ?</p>
+            <p className="text-sm opacity-90 mt-1">Contactez notre équipe support</p>
+            <div className="flex gap-2 mt-3">
+              <a
+                href="tel:+22890345678"
+                className="flex-1 bg-white text-[#4CAF50] rounded-lg py-2 text-center font-medium text-sm"
+              >
+                Appeler
+              </a>
+              <a
+                href="https://wa.me/22890345678?text=Bonjour, je souhaite devenir laveur sur Socline"
+                className="flex-1 bg-[#25D366] text-white rounded-lg py-2 text-center font-medium text-sm"
+              >
+                WhatsApp
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function AuthScreen({ onComplete }: AuthScreenProps) {
-  const [mode, setMode] = useState<'welcome' | 'login' | 'register'>('welcome');
+  const [mode, setMode] = useState<'welcome' | 'login' | 'register' | 'washer-info'>('welcome');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPin, setShowPin] = useState(false);
+  const [showConfirmPin, setShowConfirmPin] = useState(false);
   
   // Form fields
   const [name, setName] = useState('');
@@ -38,6 +235,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
   const [plateNumber, setPlateNumber] = useState('');
   const [carColor, setCarColor] = useState('');
   const [pin, setPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
   
   const { login } = useAuthStore();
 
@@ -62,6 +260,14 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
     }
     if (pin.length !== 4) {
       setError('Le PIN doit contenir 4 chiffres');
+      return;
+    }
+    if (confirmPin.length !== 4) {
+      setError('Veuillez confirmer votre PIN');
+      return;
+    }
+    if (pin !== confirmPin) {
+      setError('Les codes PIN ne correspondent pas');
       return;
     }
 
@@ -123,6 +329,11 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
     }
   };
 
+  // Washer Info Screen
+  if (mode === 'washer-info') {
+    return <WasherRegistrationInfo onBack={() => setMode('welcome')} />;
+  }
+
   // Welcome Screen
   if (mode === 'welcome') {
     return (
@@ -151,6 +362,17 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
           >
             Créer un compte
           </Button>
+          
+          {/* Discrete Washer Link */}
+          <button
+            onClick={() => setMode('washer-info')}
+            className="w-full text-center text-white/60 text-sm hover:text-white/80 transition-colors mt-4 py-2"
+          >
+            <span className="flex items-center justify-center gap-1">
+              Devenir partenaire laveur
+              <ChevronRight className="w-4 h-4" />
+            </span>
+          </button>
         </div>
       </div>
     );
@@ -232,9 +454,17 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
           <p className="text-center mt-4 text-[#757575]">
             Pas encore de compte?{' '}
             <button onClick={() => setMode('register')} className="text-[#FF9800] font-semibold">
-              S'inscrire
+              S&apos;inscrire
             </button>
           </p>
+          
+          {/* Discrete Washer Link */}
+          <button
+            onClick={() => setMode('washer-info')}
+            className="w-full text-center text-[#9E9E9E] text-sm hover:text-[#757575] transition-colors mt-4"
+          >
+            Devenir partenaire laveur ?
+          </button>
         </div>
       </div>
     );
@@ -361,6 +591,34 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
             <p className="text-xs text-[#9E9E9E]">Ce PIN sera utilisé pour vous connecter</p>
           </div>
 
+          {/* Confirm PIN */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-[#757575]">Confirmer le code PIN</label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9E9E9E]" />
+              <Input
+                type={showConfirmPin ? 'text' : 'password'}
+                placeholder="••••"
+                value={confirmPin}
+                onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                className="pl-10 pr-10 h-12 bg-[#F5F5F5] border-0 rounded-xl"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPin(!showConfirmPin)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9E9E9E]"
+              >
+                {showConfirmPin ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
+            {confirmPin.length > 0 && pin === confirmPin && (
+              <p className="text-xs text-green-600 flex items-center gap-1">
+                <CheckCircle className="w-3 h-3" />
+                Les codes correspondent
+              </p>
+            )}
+          </div>
+
           <Button
             onClick={handleRegister}
             disabled={isLoading}
@@ -383,6 +641,14 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
             Se connecter
           </button>
         </p>
+        
+        {/* Discrete Washer Link */}
+        <button
+          onClick={() => setMode('washer-info')}
+          className="w-full text-center text-[#9E9E9E] text-sm hover:text-[#757575] transition-colors mt-4"
+        >
+          Devenir partenaire laveur ?
+        </button>
       </div>
     </div>
   );
