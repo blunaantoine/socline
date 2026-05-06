@@ -7,11 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
   Power, MapPin, Clock, Star, DollarSign, CheckCircle, 
   Navigation, Phone, MessageCircle, Car, AlertCircle,
   Wallet, TrendingUp, Calendar, LogOut, Settings, Home,
-  RefreshCw, Loader2, ArrowLeft, Crown, Edit, Bell
+  RefreshCw, Loader2, ArrowLeft, Crown, Edit, Bell, Banknote
 } from 'lucide-react';
 import { HideableBalanceDark, HideableBalanceLight } from '@/components/ui/hideable-balance';
 import type { Order, OrderStatus, Conversation } from '@/types';
@@ -312,6 +313,7 @@ export function WasherApp() {
             onBack={() => setActiveTab('dashboard')}
             onRefreshBalance={fetchWasherData}
             isRefreshingBalance={isRefreshingBalance}
+            washerId={user?.id || ''}
           />
         )}
         {activeTab === 'profile' && (
@@ -898,12 +900,116 @@ function WasherOrderHistory({ orders, onBack }: {
 }
 
 // Washer Earnings
-function WasherEarnings({ stats, onBack, onRefreshBalance, isRefreshingBalance }: { 
+function WasherEarnings({ stats, onBack, onRefreshBalance, isRefreshingBalance, washerId }: { 
   stats: any;
   onBack: () => void;
   onRefreshBalance: () => void;
   isRefreshingBalance: boolean;
+  washerId: string;
 }) {
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [operator, setOperator] = useState('Mixx by Yas');
+  const [isLoading, setIsLoading] = useState(false);
+  const [withdrawals, setWithdrawals] = useState<any[]>([]);
+
+  // Fetch withdrawals
+  useEffect(() => {
+    const fetchWithdrawals = async () => {
+      try {
+        const res = await fetch(`/api/withdrawals?washerId=${washerId}`);
+        const data = await res.json();
+        if (data.success) {
+          setWithdrawals(data.withdrawals);
+        }
+      } catch (error) {
+        console.error('Fetch withdrawals error:', error);
+      }
+    };
+    
+    if (washerId) {
+      fetchWithdrawals();
+    }
+  }, [washerId]);
+
+  const handleWithdraw = async () => {
+    const amount = parseFloat(withdrawAmount);
+    
+    if (!amount || amount < 500) {
+      toast.error('Le montant minimum est de 500 XOF');
+      return;
+    }
+    
+    if (amount > stats.totalEarnings) {
+      toast.error('Solde insuffisant');
+      return;
+    }
+    
+    if (!phoneNumber || phoneNumber.length < 8) {
+      toast.error('Numéro de téléphone inval');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/withdrawals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          washerId,
+          amount,
+          phoneNumber,
+          operator,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        toast.success('Demande de retrait envoyée!');
+        setShowWithdrawModal(false);
+        setWithdrawAmount('');
+        setPhoneNumber('');
+        onRefreshBalance();
+        // Refresh withdrawals
+        const res2 = await fetch(`/api/withdrawals?washerId=${washerId}`);
+        const data2 = await res2.json();
+        if (data2.success) {
+          setWithdrawals(data2.withdrawals);
+        }
+      } else {
+        toast.error(data.error || 'Erreur lors de la demande');
+      }
+    } catch (error) {
+      toast.error('Erreur de connexion');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    const styles: Record<string, string> = {
+      PENDING: 'bg-yellow-100 text-yellow-800',
+      APPROVED: 'bg-blue-100 text-blue-800',
+      PROCESSING: 'bg-purple-100 text-purple-800',
+      COMPLETED: 'bg-green-100 text-green-800',
+      REJECTED: 'bg-red-100 text-red-800',
+    };
+    const labels: Record<string, string> = {
+      PENDING: 'En attente',
+      APPROVED: 'Approuvé',
+      PROCESSING: 'En cours',
+      COMPLETED: 'Terminé',
+      REJECTED: 'Refusé',
+    };
+    return (
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[status] || 'bg-gray-100 text-gray-800'}`}>
+        {labels[status] || status}
+      </span>
+    );
+  };
+
   return (
     <div className="p-4 space-y-4">
       {/* Back Button */}
@@ -951,11 +1057,18 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, isRefreshingBalance }
           </div>
           {/* Withdraw Button */}
           <Button 
+            onClick={() => setShowWithdrawModal(true)}
             className="w-full mt-4 bg-white text-[#4CAF50] hover:bg-white/90 font-semibold"
-            disabled
+            disabled={stats.totalEarnings < 500}
           >
+            <Banknote className="w-4 h-4 mr-2" />
             Retirer
           </Button>
+          {stats.totalEarnings < 500 && (
+            <p className="text-xs text-center mt-2 opacity-80">
+              Minimum 500 XOF pour retirer
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -965,17 +1078,153 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, isRefreshingBalance }
           <CardContent className="p-4 text-center">
             <Calendar className="w-6 h-6 text-[#2196F3] mx-auto mb-2" />
             <p className="text-xs text-[#757575]">Cette semaine</p>
-            <p className="text-lg font-bold text-[#212121]">0 F</p>
+            <p className="text-lg font-bold text-[#212121]">0 XOF</p>
           </CardContent>
         </Card>
         <Card className="border-0 shadow-sm">
           <CardContent className="p-4 text-center">
             <Calendar className="w-6 h-6 text-[#4CAF50] mx-auto mb-2" />
             <p className="text-xs text-[#757575]">Ce mois</p>
-            <p className="text-lg font-bold text-[#212121]">0 F</p>
+            <p className="text-lg font-bold text-[#212121]">0 XOF</p>
           </CardContent>
         </Card>
       </div>
+
+      {/* Withdrawal History */}
+      {withdrawals.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="font-semibold text-[#212121]">Historique des retraits</h3>
+          <div className="space-y-2">
+            {withdrawals.map((w) => (
+              <Card key={w.id} className="border-0 shadow-sm">
+                <CardContent className="p-3 flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold text-[#212121]">{w.amount.toLocaleString()} XOF</p>
+                    <p className="text-xs text-[#757575]">{w.phoneNumber} • {w.operator}</p>
+                    <p className="text-xs text-[#9E9E9E]">
+                      {new Date(w.createdAt).toLocaleDateString('fr-FR')}
+                    </p>
+                  </div>
+                  {getStatusBadge(w.status)}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Withdraw Modal */}
+      <Dialog open={showWithdrawModal} onOpenChange={setShowWithdrawModal}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Banknote className="w-5 h-5 text-[#4CAF50]" />
+              Demande de retrait
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 pt-4">
+            {/* Available Balance */}
+            <div className="bg-[#E8F5E9] rounded-xl p-3 text-center">
+              <p className="text-sm text-[#757575]">Solde disponible</p>
+              <p className="text-xl font-bold text-[#4CAF50]">{stats.totalEarnings.toLocaleString()} XOF</p>
+            </div>
+
+            {/* Amount */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-[#757575]">Montant à retirer</label>
+              <div className="relative">
+                <Input
+                  type="number"
+                  placeholder="500"
+                  value={withdrawAmount}
+                  onChange={(e) => setWithdrawAmount(e.target.value)}
+                  className="h-12 text-lg"
+                  min="500"
+                  max={stats.totalEarnings}
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#757575]">XOF</span>
+              </div>
+              <p className="text-xs text-[#9E9E9E]">Minimum: 500 XOF • Frais: 1% (min 50 XOF)</p>
+            </div>
+
+            {/* Operator */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-[#757575]">Opérateur Mobile Money</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setOperator('Mixx by Yas')}
+                  className={`p-3 rounded-xl border-2 transition-all ${
+                    operator === 'Mixx by Yas' 
+                      ? 'border-[#4CAF50] bg-[#E8F5E9]' 
+                      : 'border-gray-200'
+                  }`}
+                >
+                  <span className="font-medium text-sm">Mixx by Yas</span>
+                </button>
+                <button
+                  onClick={() => setOperator('Flooz')}
+                  className={`p-3 rounded-xl border-2 transition-all ${
+                    operator === 'Flooz' 
+                      ? 'border-[#4CAF50] bg-[#E8F5E9]' 
+                      : 'border-gray-200'
+                  }`}
+                >
+                  <span className="font-medium text-sm">Flooz</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Phone Number */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-[#757575]">Numéro de réception</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#757575]">+228</span>
+                <Input
+                  type="tel"
+                  placeholder="90 12 34 56"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                  className="pl-14 h-12"
+                />
+              </div>
+            </div>
+
+            {/* Summary */}
+            {withdrawAmount && parseFloat(withdrawAmount) >= 500 && (
+              <div className="bg-[#F5F5F5] rounded-xl p-3 space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#757575]">Montant</span>
+                  <span>{parseFloat(withdrawAmount).toLocaleString()} XOF</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#757575]">Frais (1%)</span>
+                  <span>{Math.max(Math.round(parseFloat(withdrawAmount) * 0.01), 50).toLocaleString()} XOF</span>
+                </div>
+                <div className="flex justify-between font-semibold pt-1 border-t">
+                  <span>Vous recevrez</span>
+                  <span className="text-[#4CAF50]">
+                    {(parseFloat(withdrawAmount) - Math.max(Math.round(parseFloat(withdrawAmount) * 0.01), 50)).toLocaleString()} XOF
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Submit Button */}
+            <Button
+              onClick={handleWithdraw}
+              disabled={isLoading || !withdrawAmount || parseFloat(withdrawAmount) < 500 || phoneNumber.length < 8}
+              className="w-full h-12 bg-[#4CAF50] hover:bg-[#43A047] text-white font-semibold"
+            >
+              {isLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                'Confirmer la demande'
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

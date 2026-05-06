@@ -731,3 +731,43 @@ model SubscriptionUsage {
 
   @@map("subscription_usages")
 }
+
+// Washer Withdrawal Status
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  PROCESSING
+  COMPLETED
+  REJECTED
+}
+
+// Washer Withdrawal (Demande de retrait)
+model WasherWithdrawal {
+  id              String            @id @default(cuid())
+  washerId        String
+  
+  // Amount
+  amount          Float             // Montant demandé
+  fee             Float             @default(0) // Frais de retrait
+  
+  // Payment method
+  phoneNumber     String            // Numéro Mobile Money
+  operator        String            // "Mixx by Yas", "Flooz"
+  
+  // Status
+  status          WithdrawalStatus  @default(PENDING)
+  
+  // Admin validation
+  adminNotes      String?
+  processedBy     String?           // Admin ID
+  processedAt     DateTime?
+  
+  // Transaction reference
+  transactionRef  String?           // Référence de la transaction Mobile Money
+  
+  // Timestamps
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@map("washer_withdrawals")
+}
