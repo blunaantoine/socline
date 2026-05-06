@@ -921,7 +921,7 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, isRefreshingBalance }
       <Card className="bg-gradient-to-r from-[#4CAF50] to-[#2E7D32] text-white border-0">
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
-            <div>
+            <div className="flex-1">
               <p className="text-sm opacity-80">Total des gains</p>
               <HideableBalanceDark
                 balance={stats.totalEarnings}
@@ -935,18 +935,27 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, isRefreshingBalance }
                 <span className="text-sm">Commencez à gagner!</span>
               </div>
             </div>
-            <button 
-              onClick={onRefreshBalance}
-              disabled={isRefreshingBalance}
-              className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition-colors"
-            >
-              {isRefreshingBalance ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <RefreshCw className="w-5 h-5" />
-              )}
-            </button>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={onRefreshBalance}
+                disabled={isRefreshingBalance}
+                className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition-colors"
+              >
+                {isRefreshingBalance ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-5 h-5" />
+                )}
+              </button>
+            </div>
           </div>
+          {/* Withdraw Button */}
+          <Button 
+            className="w-full mt-4 bg-white text-[#4CAF50] hover:bg-white/90 font-semibold"
+            disabled
+          >
+            Retirer
+          </Button>
         </CardContent>
       </Card>
 
@@ -967,27 +976,6 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, isRefreshingBalance }
           </CardContent>
         </Card>
       </div>
-
-      {/* Withdraw */}
-      <Card className="border-0 shadow-sm">
-        <CardContent className="p-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <p className="text-sm text-[#757575]">Solde disponible</p>
-              <HideableBalanceLight
-                balance={stats.totalEarnings}
-                currency="F"
-                size="lg"
-                storageKey="hide-washer-withdraw-balance"
-                balanceClassName="text-[#4CAF50]"
-              />
-            </div>
-            <Button className="bg-[#4CAF50] hover:bg-[#43A047] rounded-xl" disabled>
-              Retirer
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
