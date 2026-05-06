@@ -66,11 +66,28 @@ export async function verifyPin(pin: string, hashedPin: string): Promise<boolean
   return pin === hashedPin;
 }
 
-// Generate a secure token
-export function generateToken(): string {
+// Generate a secure token with userId embedded
+export function generateToken(userId: string): string {
   const array = new Uint8Array(32);
   crypto.getRandomValues(array);
-  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+  const randomPart = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+  // Format: userId.randomToken (base64 encoded for safety)
+  const payload = JSON.stringify({ userId, random: randomPart });
+  return Buffer.from(payload).toString('base64');
+}
+
+// Parse token to get userId
+function parseToken(token: string): { userId: string; random: string } | null {
+  try {
+    const payload = Buffer.from(token, 'base64').toString('utf-8');
+    const parsed = JSON.parse(payload);
+    if (parsed.userId && parsed.random) {
+      return parsed;
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 // Set auth cookie
@@ -112,10 +129,13 @@ export async function getCurrentUser(): Promise<Session | null> {
     const token = await getAuthCookie();
     if (!token) return null;
 
-    // For now, we use a simple token stored in a cookie
-    // In production, you'd verify this against a sessions table or use JWT
-    const user = await db.user.findFirst({
-      where: { isActive: true },
+    // Parse the token to get userId
+    const parsed = parseToken(token);
+    if (!parsed || !parsed.userId) return null;
+
+    // Find the user by ID from the token
+    const user = await db.user.findUnique({
+      where: { id: parsed.userId },
       select: {
         id: true,
         phone: true,
@@ -124,6 +144,8 @@ export async function getCurrentUser(): Promise<Session | null> {
         isActive: true,
       },
     });
+
+    if (!user || !user.isActive) return null;
 
     return user;
   } catch {

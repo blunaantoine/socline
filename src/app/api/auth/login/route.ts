@@ -74,8 +74,8 @@ export async function POST(request: NextRequest) {
     // Clear rate limiting on successful login
     clearLoginAttempts(cleanPhone);
 
-    // Generate auth token and set cookie
-    const token = generateToken();
+    // Generate auth token with userId and set cookie
+    const token = generateToken(user.id);
     await setAuthCookie(token);
 
     return NextResponse.json({

@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Generate auth token and set cookie
-    const token = generateToken();
+    const token = generateToken(user.id);
     await setAuthCookie(token);
 
     return NextResponse.json({

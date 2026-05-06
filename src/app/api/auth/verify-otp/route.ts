@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { randomBytes } from 'crypto';
-
-// Generate random token
-function generateToken(): string {
-  return randomBytes(32).toString('hex');
-}
+import { generateToken, setAuthCookie } from '@/lib/auth';
 
 // POST /api/auth/verify-otp - Verify OTP and login/register
 export async function POST(request: NextRequest) {
@@ -54,8 +49,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Generate auth token
-    const token = generateToken();
+    // Generate auth token and set cookie
+    const token = generateToken(user.id);
+    await setAuthCookie(token);
 
     return NextResponse.json({
       success: true,
