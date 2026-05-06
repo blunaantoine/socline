@@ -90,8 +90,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Calculate fee (1% with min 50 XOF)
-    const fee = Math.max(Math.round(amount * 0.01), 50);
+    // No fee
+    const fee = 0;
 
     // Create withdrawal request
     const withdrawal = await db.washerWithdrawal.create({

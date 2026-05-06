@@ -1145,7 +1145,7 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, isRefreshingBalance, 
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#757575]">XOF</span>
               </div>
-              <p className="text-xs text-[#9E9E9E]">Minimum: 500 XOF • Frais: 1% (min 50 XOF)</p>
+              <p className="text-xs text-[#9E9E9E]">Minimum: 500 XOF</p>
             </div>
 
             {/* Operator */}
@@ -1192,19 +1192,11 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, isRefreshingBalance, 
 
             {/* Summary */}
             {withdrawAmount && parseFloat(withdrawAmount) >= 500 && (
-              <div className="bg-[#F5F5F5] rounded-xl p-3 space-y-1">
-                <div className="flex justify-between text-sm">
-                  <span className="text-[#757575]">Montant</span>
-                  <span>{parseFloat(withdrawAmount).toLocaleString()} XOF</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-[#757575]">Frais (1%)</span>
-                  <span>{Math.max(Math.round(parseFloat(withdrawAmount) * 0.01), 50).toLocaleString()} XOF</span>
-                </div>
-                <div className="flex justify-between font-semibold pt-1 border-t">
-                  <span>Vous recevrez</span>
+              <div className="bg-[#F5F5F5] rounded-xl p-3">
+                <div className="flex justify-between font-semibold">
+                  <span>Montant à recevoir</span>
                   <span className="text-[#4CAF50]">
-                    {(parseFloat(withdrawAmount) - Math.max(Math.round(parseFloat(withdrawAmount) * 0.01), 50)).toLocaleString()} XOF
+                    {parseFloat(withdrawAmount).toLocaleString()} XOF
                   </span>
                 </div>
               </div>
