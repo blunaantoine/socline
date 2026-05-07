@@ -341,11 +341,19 @@ export function AdminPanel() {
       const res = await fetch('/api/admin/stats');
       const data = await res.json();
       
+      if (res.status === 401) {
+        toast.error('Session expirée, veuillez vous reconnecter');
+        logout();
+        return;
+      }
+      
       if (data.success) {
         setStats(data.stats);
         setRevenueByDay(data.charts.revenueByDay);
         setOrdersByService(data.charts.ordersByService);
         setRecentOrders(data.recentOrders);
+      } else {
+        toast.error(data.error || 'Erreur lors du chargement');
       }
     } catch (error) {
       console.error('Fetch stats error:', error);
@@ -353,7 +361,7 @@ export function AdminPanel() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [logout]);
 
   // Fetch orders
   const fetchOrders = useCallback(async () => {
@@ -384,15 +392,24 @@ export function AdminPanel() {
       const res = await fetch(`/api/admin/users?${params}`);
       const data = await res.json();
       
+      if (res.status === 401) {
+        toast.error('Session expirée, veuillez vous reconnecter');
+        logout();
+        return;
+      }
+      
       if (data.success) {
         setUsers(data.users);
+      } else {
+        toast.error(data.error || 'Erreur lors du chargement');
       }
     } catch (error) {
       console.error('Fetch users error:', error);
+      toast.error('Erreur lors du chargement des utilisateurs');
     } finally {
       setIsLoading(false);
     }
-  }, [searchQuery]);
+  }, [searchQuery, logout]);
 
   // Fetch washers
   const fetchWashers = useCallback(async () => {
@@ -779,10 +796,28 @@ function AdminDashboard({ stats, revenueByDay, ordersByService, recentOrders, is
   isLoading: boolean;
   onRefresh: () => void;
 }) {
-  if (isLoading || !stats) {
+  if (isLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+      <div className="flex-1 flex items-center justify-center min-h-[300px]">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin mx-auto" />
+          <p className="text-sm text-[#757575] mt-2">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!stats) {
+    return (
+      <div className="flex-1 flex items-center justify-center min-h-[300px]">
+        <div className="text-center p-4">
+          <AlertCircle className="w-12 h-12 text-[#FF9800] mx-auto mb-3" />
+          <p className="text-[#757575] mb-3">Impossible de charger les statistiques</p>
+          <Button onClick={onRefresh} variant="outline" className="text-[#FF9800] border-[#FF9800]">
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Réessayer
+          </Button>
+        </div>
       </div>
     );
   }
