@@ -1,0 +1,840 @@
+     1→'use client';
+     2→
+     3→import { useState, useEffect, useCallback } from 'react';
+     4→import { useAppStore, useServicesStore, useOrdersStore, useStationsStore, useWashersStore, useAuthStore } from '@/store';
+     5→import { Card, CardContent } from '@/components/ui/card';
+     6→import { Badge } from '@/components/ui/badge';
+     7→import { Input } from '@/components/ui/input';
+     8→import {
+     9→  Dialog,
+    10→  DialogContent,
+    11→  DialogHeader,
+    12→  DialogTitle,
+    13→} from '@/components/ui/dialog';
+    14→import {
+    15→  MapPin, Search, Star, Clock, Car,
+    16→  CheckCircle, Phone, Loader2,
+    17→  Zap, Droplets, Sparkles, Crown, RefreshCw, ExternalLink,
+    18→  Home, Calendar, MessageCircle, User, Bell, Settings, LogOut, Wallet, Copy, Plus, ChevronRight, Headphones, MessageSquare
+    19→} from 'lucide-react';
+    20→import { toast } from 'sonner';
+    21→import { ClientOrderFlow } from './ClientOrderFlow';
+    22→import { OrderTracking } from './OrderTracking';
+    23→import { OrderHistory } from './OrderHistory';
+    24→import { GoogleMap } from '@/components/map/GoogleMap';
+    25→import { useGooglePlaces, GooglePlaceStation } from '@/hooks/useGooglePlaces';
+    26→import { AuthScreen } from './AuthScreen';
+    27→import { ChatList } from '@/components/chat/ChatList';
+    28→import { NotificationCenter } from './NotificationCenter';
+    29→import { WalletScreen } from './WalletScreen';
+    30→import { CarsManager } from './CarsManager';
+    31→import { SubscriptionPanel } from './SubscriptionPanel';
+    32→import { ActivityHistory, AddressesManager, AccountSettings } from './ClientSettings';
+    33→
+    34→const navItems = [
+    35→  { id: 'home', icon: Home, label: 'Accueil' },
+    36→  { id: 'booking', icon: Calendar, label: 'Réserver' },
+    37→  { id: 'subscriptions', icon: Crown, label: 'Abonnements' },
+    38→  { id: 'wallet', icon: Wallet, label: 'Portefeuille' },
+    39→  { id: 'profile', icon: User, label: 'Profil' },
+    40→];
+    41→
+    42→const CAR_COLORS: Record<string, string> = {
+    43→  'Noir': 'bg-gray-900',
+    44→  'Blanc': 'bg-white border border-gray-300',
+    45→  'Gris': 'bg-gray-500',
+    46→  'Argent': 'bg-gray-400',
+    47→  'Bleu': 'bg-blue-500',
+    48→  'Rouge': 'bg-red-500',
+    49→  'Vert': 'bg-green-500',
+    50→  'Marron': 'bg-amber-800',
+    51→  'Beige': 'bg-amber-200',
+    52→  'Jaune': 'bg-yellow-400',
+    53→};
+    54→
+    55→export function ClientApp() {
+    56→  const { user, isAuthenticated, logout } = useAuthStore();
+    57→  const { userLocation, setUserLocation } = useAppStore();
+    58→  const { services, setServices } = useServicesStore();
+    59→  const { currentOrder, setCurrentOrder } = useOrdersStore();
+    60→  const { nearbyWashers, setNearbyWashers } = useWashersStore();
+    61→  const { stations, setStations } = useStationsStore();
+    62→  const [activeTab, setActiveTab] = useState('home');
+    63→  const [searchQuery, setSearchQuery] = useState('');
+    64→  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+    65→  const [showTracking, setShowTracking] = useState(true);
+    66→  const [promotions, setPromotions] = useState<
+    67→    Array<{
+    68→      id: string;
+    69→      name: string;
+    70→      discountType: string;
+    71→      discountValue: number;
+    72→      code?: string;
+    73→      description?: string;
+    74→      displayType?: string;
+    75→      image?: string;
+    76→      imagePosition?: string;
+    77→    }>
+    78→  >([]);
+    79→  const [currentPromoIndex, setCurrentPromoIndex] = useState(0);
+    80→  const [walletBalance, setWalletBalance] = useState(0);
+    81→  
+    82→  const { stations: googleStations, isLoading: isLoadingStations, searchCarWashes } = useGooglePlaces();
+    83→
+    84→  // Fetch wallet balance
+    85→  useEffect(() => {
+    86→    const fetchWallet = async () => {
+    87→      if (!user?.id) return;
+    88→      try {
+    89→        const res = await fetch(`/api/wallet?userId=${user.id}`);
+    90→        if (!res.ok) return;
+    91→        const contentType = res.headers.get('content-type');
+    92→        if (!contentType || !contentType.includes('application/json')) return;
+    93→        const data = await res.json();
+    94→        if (data.success && data.wallet) {
+    95→          setWalletBalance(data.wallet.balance);
+    96→        }
+    97→      } catch (error) {
+    98→        console.error('Error fetching wallet:', error);
+    99→      }
+   100→    };
+   101→    
+   102→    fetchWallet();
+   103→  }, [user?.id]);
+   104→
+   105→
+   106→  // Fetch real services from API
+   107→  useEffect(() => {
+   108→    const loadServices = async () => {
+   109→      try {
+   110→        // Seed database if needed
+   111→        const seedCheck = await fetch('/api/seed');
+   112→        if (seedCheck.ok) {
+   113→          const contentType = seedCheck.headers.get('content-type');
+   114→          if (contentType && contentType.includes('application/json')) {
+   115→            const seedData = await seedCheck.json();
+   116→            
+   117→            if (!seedData.seeded || seedData.servicesCount === 0) {
+   118→              await fetch('/api/seed', { method: 'POST' });
+   119→            }
+   120→          }
+   121→        }
+   122→
+   123→        // Fetch services
+   124→        const res = await fetch('/api/services');
+   125→        if (!res.ok) return;
+   126→        const resContentType = res.headers.get('content-type');
+   127→        if (!resContentType || !resContentType.includes('application/json')) return;
+   128→        const data = await res.json();
+   129→        
+   130→        if (data.success && data.services) {
+   131→          setServices(data.services);
+   132→          
+   133→          // Seed subscription plans after services are loaded
+   134→          await fetch('/api/subscriptions/seed', { method: 'POST' }).catch(() => {});
+   135→        }
+   136→      } catch (error) {
+   137→        console.error('Error loading services:', error);
+   138→      }
+   139→    };
+   140→
+   141→    loadServices();
+   142→  }, [setServices]);
+   143→
+   144→  // Search Google car washes
+   145→  useEffect(() => {
+   146→    if (userLocation) {
+   147→      searchCarWashes(userLocation.latitude, userLocation.longitude);
+   148→    }
+   149→  }, [userLocation, searchCarWashes]);
+   150→
+   151→  useEffect(() => {
+   152→    if (googleStations.length > 0) {
+   153→      const formattedStations = googleStations.map(s => ({
+   154→        id: s.id, name: s.name, address: s.address,
+   155→        latitude: s.latitude, longitude: s.longitude,
+   156→        rating: s.rating, totalRatings: s.totalRatings,
+   157→        isActive: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+   158→      }));
+   159→      setStations(formattedStations);
+   160→    }
+   161→  }, [googleStations, setStations]);
+   162→
+   163→  // Fetch active promotions
+   164→  useEffect(() => {
+   165→    const fetchPromotions = async () => {
+   166→      try {
+   167→        const res = await fetch('/api/promotions?active=true');
+   168→        if (!res.ok) return;
+   169→        const contentType = res.headers.get('content-type');
+   170→        if (!contentType || !contentType.includes('application/json')) return;
+   171→        const data = await res.json();
+   172→        
+   173→        if (data.success && data.promotions.length > 0) {
+   174→          setPromotions(data.promotions);
+   175→        }
+   176→      } catch (error) {
+   177→        console.error('Error fetching promotions:', error);
+   178→      }
+   179→    };
+   180→    
+   181→    fetchPromotions();
+   182→  }, []);
+   183→
+   184→  // Auto-scroll promotions carousel
+   185→  useEffect(() => {
+   186→    if (promotions.length <= 1) return;
+   187→    
+   188→    const interval = setInterval(() => {
+   189→      setCurrentPromoIndex((prev) => (prev + 1) % promotions.length);
+   190→    }, 4000); // Change every 4 seconds
+   191→    
+   192→    return () => clearInterval(interval);
+   193→  }, [promotions]);
+   194→
+   195→  // Get user location
+   196→  const getUserLocation = useCallback(() => {
+   197→    setIsLoadingLocation(true);
+   198→    if (navigator.geolocation) {
+   199→      navigator.geolocation.getCurrentPosition(
+   200→        (position) => {
+   201→          setUserLocation({ latitude: position.coords.latitude, longitude: position.coords.longitude, address: 'Ma position' });
+   202→          setIsLoadingLocation(false);
+   203→        },
+   204→        () => {
+   205→          setUserLocation({ latitude: 6.1725, longitude: 1.2314, address: 'Lomé, Togo' });
+   206→          setIsLoadingLocation(false);
+   207→        }
+   208→      );
+   209→    } else {
+   210→      setUserLocation({ latitude: 6.1725, longitude: 1.2314, address: 'Lomé, Togo' });
+   211→      setIsLoadingLocation(false);
+   212→    }
+   213→  }, [setUserLocation]);
+   214→
+   215→  useEffect(() => {
+   216→    const timer = setTimeout(getUserLocation, 0);
+   217→    return () => clearTimeout(timer);
+   218→  }, [getUserLocation]);
+   219→
+   220→  // Show auth screen if not authenticated
+   221→  if (!isAuthenticated || !user) {
+   222→    return (
+   223→      <div className="flex-1 flex flex-col overflow-hidden relative bg-white">
+   224→        <AuthScreen onComplete={() => {}} />
+   225→      </div>
+   226→    );
+   227→  }
+   228→
+   229→  // Show order tracking if active order
+   230→  if (currentOrder && showTracking && ['ACCEPTED', 'EN_ROUTE', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED'].includes(currentOrder.status)) {
+   231→    return (
+   232→      <OrderTracking 
+   233→        order={currentOrder} 
+   234→        onBack={() => {
+   235→          setShowTracking(false);
+   236→          if (currentOrder.status === 'COMPLETED') {
+   237→            setCurrentOrder(null);
+   238→          }
+   239→        }} 
+   240→      />
+   241→    );
+   242→  }
+   243→
+   244→  return (
+   245→    <div className="flex-1 flex flex-col bg-[#FAFAFA] relative">
+   246→      {/* Android Status Bar */}
+   247→      <div className="h-6 bg-[#FF9800] flex items-center justify-between px-4 flex-shrink-0">
+   248→        <span className="text-white text-xs font-medium">{new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
+   249→        <div className="flex items-center gap-1">
+   250→          {/* Signal Network Bars - de petite à grande */}
+   251→          <div className="flex items-end gap-0.5">
+   252→            <div className="w-1 h-1 bg-white rounded-sm"></div>
+   253→            <div className="w-1 h-2 bg-white rounded-sm"></div>
+   254→            <div className="w-1 h-3 bg-white rounded-sm"></div>
+   255→            <div className="w-1 h-4 bg-white rounded-sm"></div>
+   256→          </div>
+   257→          {/* Battery */}
+   258→          <div className="w-5 h-2.5 border border-white rounded-sm ml-1 relative">
+   259→            <div className="absolute inset-0.5 bg-white rounded-sm" style={{ width: '70%' }}></div>
+   260→          </div>
+   261→        </div>
+   262→      </div>
+   263→
+   264→      {/* Main Content */}
+   265→      <div className="flex-1 flex flex-col overflow-hidden">
+   266→        {/* App Bar (not shown on chat tab) */}
+   267→        {activeTab !== 'chat' && activeTab !== 'booking' && (
+   268→          <header className="bg-[#FF9800] px-4 py-3 flex items-center justify-between flex-shrink-0 shadow-md">
+   269→            <div className="flex items-center gap-3">
+   270→              <button onClick={getUserLocation} className="flex items-center gap-2">
+   271→                {isLoadingLocation ? (
+   272→                  <Loader2 className="w-5 h-5 text-white animate-spin" />
+   273→                ) : (
+   274→                  <MapPin className="w-5 h-5 text-white" />
+   275→                )}
+   276→                <div className="text-left">
+   277→                  <p className="text-xs text-white/80">Position</p>
+   278→                  <p className="text-sm font-medium text-white truncate max-w-[140px]">{userLocation?.address || 'Lomé'}</p>
+   279→                </div>
+   280→              </button>
+   281→            </div>
+   282→            <div className="flex items-center gap-2">
+   283→              <NotificationCenter />
+   284→            </div>
+   285→          </header>
+   286→        )}
+   287→
+   288→        {/* Content - scrollable area */}
+   289→        <div className={`flex-1 overflow-y-auto ${activeTab !== 'chat' ? 'pb-16' : ''}`}>
+   290→          {activeTab === 'home' && (
+   291→            <HomeContent
+   292→              services={services}
+   293→              nearbyWashers={nearbyWashers}
+   294→              googleStations={googleStations}
+   295→              isLoadingStations={isLoadingStations}
+   296→              userLocation={userLocation}
+   297→              onRefresh={() => userLocation && searchCarWashes(userLocation.latitude, userLocation.longitude)}
+   298→              onStartOrder={() => setActiveTab('booking')}
+   299→              searchQuery={searchQuery}
+   300→              setSearchQuery={setSearchQuery}
+   301→              promotions={promotions}
+   302→              currentPromoIndex={currentPromoIndex}
+   303→              setCurrentPromoIndex={setCurrentPromoIndex}
+   304→            />
+   305→          )}
+   306→          {activeTab === 'booking' && (
+   307→            <ClientOrderFlow 
+   308→              onBack={() => setActiveTab('home')} 
+   309→              onOrderComplete={() => setActiveTab('subscriptions')}
+   310→            />
+   311→          )}
+   312→          {activeTab === 'subscriptions' && (
+   313→            <div className="p-4 pb-16">
+   314→              <SubscriptionPanel userId={user?.id || ''} walletBalance={walletBalance} />
+   315→            </div>
+   316→          )}
+   317→          {activeTab === 'wallet' && <WalletScreen />}
+   318→          {activeTab === 'activity' && <OrderHistory />}
+   319→          {activeTab === 'chat' && <ChatList onBack={() => setActiveTab('home')} />}
+   320→          {activeTab === 'profile' && <ProfileContent user={user} onLogout={logout} />}
+   321→        </div>
+   322→      </div>
+   323→
+   324→      {/* Android Bottom Navigation - FIXED at bottom */}
+   325→      {activeTab !== 'chat' && (
+   326→        <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E0E0E0] flex justify-around items-center h-14 z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
+   327→          {navItems.map((item) => {
+   328→            const isActive = activeTab === item.id;
+   329→            return (
+   330→              <button
+   331→                key={item.id}
+   332→                onClick={() => setActiveTab(item.id)}
+   333→                className={`flex flex-col items-center justify-center py-1.5 px-4 transition-all ${
+   334→                  isActive ? 'text-[#FF9800]' : 'text-[#757575]'
+   335→                }`}
+   336→              >
+   337→                <item.icon className={`w-6 h-6 ${isActive ? 'fill-current' : ''}`} />
+   338→                <span className="text-[10px] font-medium mt-0.5">{item.label}</span>
+   339→              </button>
+   340→            );
+   341→          })}
+   342→        </nav>
+   343→      )}
+   344→    </div>
+   345→  );
+   346→}
+   347→
+   348→// Home Content - Android Material Design Style
+   349→function HomeContent({
+   350→  services, nearbyWashers, googleStations, isLoadingStations, userLocation,
+   351→  onRefresh, onStartOrder, searchQuery, setSearchQuery, 
+   352→  promotions, currentPromoIndex, setCurrentPromoIndex,
+   353→}: {
+   354→  services: any[]; nearbyWashers: any[]; googleStations: GooglePlaceStation[];
+   355→  isLoadingStations: boolean; userLocation: any; onRefresh: () => void;
+   356→  onStartOrder: () => void; searchQuery: string; setSearchQuery: (q: string) => void;
+   357→  promotions: any[]; currentPromoIndex: number; setCurrentPromoIndex: (i: number) => void;
+   358→}) {
+   359→  const currentPromo = promotions[currentPromoIndex];
+   360→  const [selectedService, setSelectedService] = useState<any | null>(null);
+   361→
+   362→  return (
+   363→    <div className="p-4 space-y-4">
+   364→      {/* Search - Android style */}
+   365→      <div className="relative">
+   366→        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#757575]" />
+   367→        <Input
+   368→          placeholder="Rechercher un service..."
+   369→          value={searchQuery}
+   370→          onChange={(e) => setSearchQuery(e.target.value)}
+   371→          className="pl-10 h-12 bg-white border-0 rounded-lg text-sm shadow-sm"
+   372→        />
+   373→      </div>
+   374→
+   375→      {/* Hero Banner - Promotions Carousel with auto-scroll */}
+   376→      {promotions.length > 0 && currentPromo && (
+   377→        <div className="relative overflow-hidden">
+   378→          <div 
+   379→            key={currentPromoIndex}
+   380→            className="rounded-lg shadow-md animate-slide-in overflow-hidden"
+   381→          >
+   382→            {currentPromo.displayType === 'IMAGE' && currentPromo.image ? (
+   383→              // Image mode - show image only, code can be copied via button below
+   384→              <div className="relative">
+   385→                <img 
+   386→                  src={currentPromo.image} 
+   387→                  alt={currentPromo.name}
+   388→                  className="w-full h-48 object-cover"
+   389→                  style={{ objectPosition: currentPromo.imagePosition || 'center' }}
+   390→                />
+   391→                <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/60 to-transparent">
+   392→                  <div className="flex items-center justify-between">
+   393→                    <div>
+   394→                      <span className="text-white font-bold text-sm">
+   395→                        {currentPromo.discountType === 'PERCENTAGE' 
+   396→                          ? `-${currentPromo.discountValue}%` 
+   397→                          : `-${currentPromo.discountValue.toLocaleString()}F`}
+   398→                      </span>
+   399→                    </div>
+   400→                    <div className="flex gap-2">
+   401→                      {currentPromo.code && (
+   402→                        <button
+   403→                          onClick={() => {
+   404→                            navigator.clipboard.writeText(currentPromo.code!);
+   405→                            toast.success('Code promo copié !');
+   406→                          }}
+   407→                          className="bg-white/20 backdrop-blur rounded px-2 py-1 inline-flex items-center gap-1 hover:bg-white/30 transition-colors active:scale-95"
+   408→                        >
+   409→                          <Copy className="w-3 h-3 text-white" />
+   410→                          <span className="text-white text-xs">Copier le code</span>
+   411→                        </button>
+   412→                      )}
+   413→                      <button
+   414→                        onClick={onStartOrder}
+   415→                        className="bg-white text-[#FF9800] px-3 py-1 rounded text-xs font-semibold"
+   416→                      >
+   417→                        Réserver
+   418→                      </button>
+   419→                    </div>
+   420→                  </div>
+   421→                </div>
+   422→              </div>
+   423→            ) : (
+   424→              // Text mode - show gradient background with all details
+   425→              <div className="bg-gradient-to-r from-[#FF9800] to-[#F57C00] p-4">
+   426→                <p className="text-white/90 text-xs font-medium mb-1">Offre spéciale</p>
+   427→                <h2 className="text-white text-lg font-bold mb-2">
+   428→                  {currentPromo.discountType === 'PERCENTAGE' 
+   429→                    ? `-${currentPromo.discountValue}% ${currentPromo.name}`
+   430→                    : `-${currentPromo.discountValue.toLocaleString()}F ${currentPromo.name}`}
+   431→                </h2>
+   432→                {currentPromo.description && (
+   433→                  <p className="text-white/80 text-sm mb-2">{currentPromo.description}</p>
+   434→                )}
+   435→                {currentPromo.code && (
+   436→                  <button
+   437→                    onClick={() => {
+   438→                      navigator.clipboard.writeText(currentPromo.code!);
+   439→                      toast.success('Code promo copié !');
+   440→                    }}
+   441→                    className="bg-white/20 rounded px-3 py-1.5 inline-flex items-center gap-2 mb-3 hover:bg-white/30 transition-colors active:scale-95"
+   442→                  >
+   443→                    <span className="text-white font-mono text-sm font-bold">{currentPromo.code}</span>
+   444→                    <Copy className="w-4 h-4 text-white/80" />
+   445→                  </button>
+   446→                )}
+   447→                <button
+   448→                  onClick={onStartOrder}
+   449→                  className="bg-white text-[#FF9800] px-4 py-2 rounded text-sm font-semibold"
+   450→                >
+   451→                  Réserver
+   452→                </button>
+   453→              </div>
+   454→            )}
+   455→          </div>
+   456→          
+   457→          {/* Carousel Dots Indicator */}
+   458→          {promotions.length > 1 && (
+   459→            <div className="flex justify-center gap-2 mt-3">
+   460→              {promotions.map((_, index) => (
+   461→                <button
+   462→                  key={index}
+   463→                  onClick={() => setCurrentPromoIndex(index)}
+   464→                  className={`h-2 rounded-full transition-all duration-300 ${
+   465→                    index === currentPromoIndex 
+   466→                      ? 'w-6 bg-[#FF9800]' 
+   467→                      : 'w-2 bg-[#BDBDBD]'
+   468→                  }`}
+   469→                />
+   470→              ))}
+   471→            </div>
+   472→          )}
+   473→        </div>
+   474→      )}
+   475→
+   476→      {/* Services - Android style */}
+   477→      <section>
+   478→        <div className="flex justify-between items-center mb-3">
+   479→          <h3 className="text-base font-bold text-[#212121]">Nos Services</h3>
+   480→          <button className="text-xs text-[#FF9800] font-medium">Voir tout</button>
+   481→        </div>
+   482→        <div className="grid grid-cols-4 gap-2">
+   483→          {services.map((service) => (
+   484→            <button
+   485→              key={service.id}
+   486→              onClick={() => setSelectedService(service)}
+   487→              className="bg-white rounded-lg p-3 text-center shadow-sm active:bg-[#F5F5F5] transition-colors"
+   488→            >
+   489→              <div className="w-10 h-10 mx-auto mb-2 bg-[#FFF3E0] rounded-lg flex items-center justify-center">
+   490→                {(service.category === 'essentiel' || service.category === 'basic') && <Zap className="w-5 h-5 text-[#FF9800]" />}
+   491→                {(service.category === 'confort' || service.category === 'standard') && <Droplets className="w-5 h-5 text-[#FF9800]" />}
+   492→                {service.category === 'premium' && <Sparkles className="w-5 h-5 text-[#FF9800]" />}
+   493→                {(service.category === 'prestige' || service.category === 'deluxe') && <Crown className="w-5 h-5 text-[#FF9800]" />}
+   494→              </div>
+   495→              <p className="text-xs font-medium text-[#212121] truncate">{service.name}</p>
+   496→              <p className="text-xs text-[#FF9800] font-bold mt-0.5">{(service.price / 1000)}K</p>
+   497→            </button>
+   498→          ))}
+   499→        </div>
+   500→      </section>
+   501→
+   502→      {/* Service Details Modal */}
+   503→      <Dialog open={!!selectedService} onOpenChange={() => setSelectedService(null)}>
+   504→        <DialogContent className="max-w-sm mx-auto rounded-2xl">
+   505→          {selectedService && (
+   506→            <>
+   507→              <DialogHeader>
+   508→                <DialogTitle className="text-left text-lg font-bold text-[#212121]">
+   509→                  {selectedService.name}
+   510→                </DialogTitle>
+   511→              </DialogHeader>
+   512→              
+   513→              <div className="space-y-4 py-2">
+   514→                {/* Service Icon & Category */}
+   515→                <div className="flex items-center gap-3">
+   516→                  <div className="w-14 h-14 bg-[#FFF3E0] rounded-xl flex items-center justify-center">
+   517→                    {(selectedService.category === 'essentiel' || selectedService.category === 'basic') && <Zap className="w-7 h-7 text-[#FF9800]" />}
+   518→                    {(selectedService.category === 'confort' || selectedService.category === 'standard') && <Droplets className="w-7 h-7 text-[#FF9800]" />}
+   519→                    {selectedService.category === 'premium' && <Sparkles className="w-7 h-7 text-[#FF9800]" />}
+   520→                    {(selectedService.category === 'prestige' || selectedService.category === 'deluxe') && <Crown className="w-7 h-7 text-[#FF9800]" />}
+   521→                  </div>
+   522→                  <div>
+   523→                    <Badge className="bg-[#FFF3E0] text-[#FF9800] capitalize">
+   524→                      {selectedService.category}
+   525→                    </Badge>
+   526→                    <p className="text-sm text-[#757575] mt-1">{selectedService.duration} minutes</p>
+   527→                  </div>
+   528→                </div>
+   529→
+   530→                {/* Duration & Price Info */}
+   531→                <div className="flex items-center gap-3 bg-[#FAFAFA] rounded-xl p-3">
+   532→                  <div className="flex items-center gap-2 text-[#757575]">
+   533→                    <Clock className="w-4 h-4" />
+   534→                    <span className="text-sm">{selectedService.duration} min</span>
+   535→                  </div>
+   536→                  <div className="flex-1" />
+   537→                  <span className="text-xl font-bold text-[#FF9800]">{selectedService.price?.toLocaleString()} XOF</span>
+   538→                </div>
+   539→
+   540→                {/* Description */}
+   541→                {selectedService.description && (
+   542→                  <div>
+   543→                    <p className="text-sm font-medium text-[#212121] mb-1">Description</p>
+   544→                    <p className="text-sm text-[#757575] leading-relaxed">{selectedService.description}</p>
+   545→                  </div>
+   546→                )}
+   547→
+   548→                {/* Products Used */}
+   549→                {selectedService.products && (
+   550→                  <div>
+   551→                    <p className="text-sm font-medium text-[#212121] mb-2">Produits utilisés</p>
+   552→                    <div className="bg-[#F5F5F5] rounded-xl p-3 space-y-2">
+   553→                      {(() => {
+   554→                        try {
+   555→                          const products = JSON.parse(selectedService.products);
+   556→                          return products.map((product: string, index: number) => (
+   557→                            <div key={index} className="flex items-start gap-2">
+   558→                              <CheckCircle className="w-4 h-4 text-[#4CAF50] mt-0.5 flex-shrink-0" />
+   559→                              <span className="text-sm text-[#616161]">{product}</span>
+   560→                            </div>
+   561→                          ));
+   562→                        } catch {
+   563→                          return null;
+   564→                        }
+   565→                      })()}
+   566→                    </div>
+   567→                  </div>
+   568→                )}
+   569→
+   570→
+   571→                {/* Active Promotions */}
+   572→                {promotions.length > 0 && (
+   573→                  <div>
+   574→                    <p className="text-sm font-medium text-[#212121] mb-2">Offres disponibles</p>
+   575→                    <div className="space-y-2">
+   576→                      {promotions.slice(0, 2).map((promo) => (
+   577→                        <div key={promo.id} className="bg-gradient-to-r from-[#FF9800] to-[#F57C00] rounded-xl p-3 text-white">
+   578→                          <div className="flex justify-between items-center">
+   579→                            <div>
+   580→                              <p className="font-bold text-sm">{promo.name}</p>
+   581→                              <p className="text-xs opacity-90">
+   582→                                {promo.discountType === 'PERCENTAGE' 
+   583→                                  ? `-${promo.discountValue}% de réduction`
+   584→                                  : `-${promo.discountValue?.toLocaleString()} XOF de réduction`}
+   585→                              </p>
+   586→                            </div>
+   587→                            {promo.code && (
+   588→                              <button
+   589→                                onClick={() => {
+   590→                                  navigator.clipboard.writeText(promo.code);
+   591→                                  toast.success('Code promo copié !');
+   592→                                }}
+   593→                                className="bg-white/20 rounded-lg px-2 py-1 text-xs font-mono"
+   594→                              >
+   595→                                {promo.code}
+   596→                              </button>
+   597→                            )}
+   598→                          </div>
+   599→                        </div>
+   600→                      ))}
+   601→                    </div>
+   602→                  </div>
+   603→                )}
+   604→
+   605→                {/* Action Button */}
+   606→                <button
+   607→                  onClick={() => {
+   608→                    setSelectedService(null);
+   609→                    onStartOrder();
+   610→                  }}
+   611→                  className="w-full bg-[#FF9800] hover:bg-[#F57C00] text-white font-semibold py-3 rounded-xl transition-colors"
+   612→                >
+   613→                  Réserver ce service
+   614→                </button>
+   615→              </div>
+   616→            </>
+   617→          )}
+   618→        </DialogContent>
+   619→      </Dialog>
+   620→
+   621→      {/* Available Washers */}
+   622→      <section>
+   623→        <div className="flex justify-between items-center mb-3">
+   624→          <h3 className="text-base font-bold text-[#212121]">Laveurs disponibles</h3>
+   625→          <button className="text-xs text-[#FF9800] font-medium">Voir tout</button>
+   626→        </div>
+   627→        <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4">
+   628→          {nearbyWashers.filter(w => w.isAvailable).map((washer) => (
+   629→            <div key={washer.id} className="flex-shrink-0 w-28 bg-white rounded-lg p-3 text-center shadow-sm">
+   630→              <div className="relative w-12 h-12 mx-auto mb-2">
+   631→                <div className="w-12 h-12 bg-[#FF9800] rounded-full flex items-center justify-center text-white font-bold">
+   632→                  {washer.user.name?.charAt(0)}
+   633→                </div>
+   634→                <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 rounded-full border-2 border-white" />
+   635→              </div>
+   636→              <p className="text-xs font-medium text-[#212121] truncate">{washer.user.name}</p>
+   637→              <div className="flex items-center justify-center gap-0.5 mt-1">
+   638→                <Star className="w-3 h-3 text-[#FFC107] fill-[#FFC107]" />
+   639→                <span className="text-xs text-[#757575]">{washer.rating.toFixed(1)}</span>
+   640→              </div>
+   641→            </div>
+   642→          ))}
+   643→        </div>
+   644→      </section>
+   645→
+   646→      {/* Stations */}
+   647→      <section>
+   648→        <div className="flex justify-between items-center mb-3">
+   649→          <h3 className="text-base font-bold text-[#212121]">Stations proches</h3>
+   650→          <button onClick={onRefresh} disabled={isLoadingStations} className="text-xs text-[#FF9800] font-medium flex items-center gap-1">
+   651→            {isLoadingStations ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+   652→          </button>
+   653→        </div>
+   654→        
+   655→        {isLoadingStations && googleStations.length === 0 ? (
+   656→          <div className="flex items-center justify-center py-6">
+   657→            <Loader2 className="w-5 h-5 animate-spin text-[#FF9800]" />
+   658→          </div>
+   659→        ) : googleStations.length === 0 ? (
+   660→          <div className="bg-white rounded-lg p-6 text-center shadow-sm">
+   661→            <MapPin className="w-8 h-8 text-[#9E9E9E] mx-auto mb-2" />
+   662→            <p className="text-sm text-[#757575]">Aucune station trouvée</p>
+   663→          </div>
+   664→        ) : (
+   665→          <div className="space-y-2">
+   666→            {googleStations.slice(0, 4).map((station) => (
+   667→              <div key={station.id} className="bg-white rounded-lg p-3 flex gap-3 shadow-sm">
+   668→                {station.photo ? (
+   669→                  <img src={station.photo} alt={station.name} className="w-14 h-14 rounded-lg object-cover" />
+   670→                ) : (
+   671→                  <div className="w-14 h-14 bg-[#FFF3E0] rounded-lg flex items-center justify-center">
+   672→                    <MapPin className="w-6 h-6 text-[#FF9800]" />
+   673→                  </div>
+   674→                )}
+   675→                <div className="flex-1 min-w-0">
+   676→                  <p className="font-medium text-[#212121] text-sm truncate">{station.name}</p>
+   677→                  <p className="text-xs text-[#757575] truncate">{station.address}</p>
+   678→                  <div className="flex items-center gap-2 mt-1">
+   679→                    {station.rating > 0 && (
+   680→                      <div className="flex items-center gap-0.5">
+   681→                        <Star className="w-3 h-3 text-[#FFC107] fill-[#FFC107]" />
+   682→                        <span className="text-xs text-[#757575]">{station.rating.toFixed(1)}</span>
+   683→                      </div>
+   684→                    )}
+   685→                    {station.isOpen !== null && (
+   686→                      <span className={`text-xs px-1.5 py-0.5 rounded ${station.isOpen ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+   687→                        {station.isOpen ? 'Ouvert' : 'Fermé'}
+   688→                      </span>
+   689→                    )}
+   690→                  </div>
+   691→                </div>
+   692→                <a
+   693→                  href={`https://www.google.com/maps/search/?api=1&query=${station.latitude},${station.longitude}`}
+   694→                  target="_blank"
+   695→                  rel="noopener noreferrer"
+   696→                  className="w-8 h-8 bg-[#FFF3E0] rounded flex items-center justify-center self-center"
+   697→                >
+   698→                  <ExternalLink className="w-4 h-4 text-[#FF9800]" />
+   699→                </a>
+   700→              </div>
+   701→            ))}
+   702→          </div>
+   703→        )}
+   704→      </section>
+   705→    </div>
+   706→  );
+   707→}
+   708→
+   709→// Profile Content - Android Material Design Style
+   710→function ProfileContent({ user, onLogout }: { user: any; onLogout: () => void }) {
+   711→  const [activeSection, setActiveSection] = useState<string | null>(null);
+   712→
+   713→  // Support client info
+   714→  const supportPhone = '+22871998155';
+   715→  const supportWhatsApp = '+22871998155';
+   716→
+   717→  const handleCallSupport = () => {
+   718→    window.open(`tel:${supportPhone}`, '_self');
+   719→  };
+   720→
+   721→  const handleWhatsAppSupport = () => {
+   722→    const message = encodeURIComponent('Bonjour, j\'ai besoin d\'aide avec l\'application Socline.');
+   723→    window.open(`https://wa.me/${supportWhatsApp.replace(/\+/g, '')}?text=${message}`, '_blank');
+   724→  };
+   725→
+   726→  // Render sub-sections if active
+   727→  if (activeSection === 'history') {
+   728→    return <ActivityHistory userId={user?.id} onBack={() => setActiveSection(null)} />;
+   729→  }
+   730→
+   731→  if (activeSection === 'addresses') {
+   732→    return <AddressesManager userId={user?.id} onBack={() => setActiveSection(null)} />;
+   733→  }
+   734→
+   735→  if (activeSection === 'settings') {
+   736→    return <AccountSettings userId={user?.id} userPhone={user?.phone} onBack={() => setActiveSection(null)} />;
+   737→  }
+   738→
+   739→  return (
+   740→    <div className="p-4 space-y-3 pb-16">
+   741→      {/* Profile Card - Android style */}
+   742→      <div className="bg-white rounded-lg p-4 shadow-sm">
+   743→        <div className="flex items-center gap-3">
+   744→          <div className="w-14 h-14 bg-[#FF9800] rounded-full flex items-center justify-center text-white text-xl font-bold">
+   745→            {user?.name?.charAt(0) || 'U'}
+   746→          </div>
+   747→          <div className="flex-1">
+   748→            <h2 className="font-bold text-[#212121]">{user?.name || 'Utilisateur'}</h2>
+   749→            <p className="text-sm text-[#757575]">+228 {user?.phone || '90 12 34 56'}</p>
+   750→          </div>
+   751→        </div>
+   752→      </div>
+   753→
+   754→      {/* Cars Section - Multi-car support */}
+   755→      <CarsManager userId={user?.id} />
+   756→
+   757→      {/* Stats */}
+   758→      <div className="bg-white rounded-lg p-4 shadow-sm">
+   759→        <h3 className="font-semibold text-[#212121] mb-3">Statistiques</h3>
+   760→        <div className="grid grid-cols-3 gap-4">
+   761→          <div className="text-center">
+   762→            <div className="text-xl font-bold text-[#FF9800]">0</div>
+   763→            <div className="text-xs text-[#757575]">Lavages</div>
+   764→          </div>
+   765→          <div className="text-center">
+   766→            <div className="text-xl font-bold text-[#4CAF50]">-</div>
+   767→            <div className="text-xs text-[#757575]">Note</div>
+   768→          </div>
+   769→          <div className="text-center">
+   770→            <div className="text-xl font-bold text-[#2196F3]">0F</div>
+   771→            <div className="text-xs text-[#757575]">Économisé</div>
+   772→          </div>
+   773→        </div>
+   774→      </div>
+   775→
+   776→      {/* Support Client */}
+   777→      <div className="bg-gradient-to-r from-[#FF9800] to-[#F57C00] rounded-lg p-4 shadow-sm">
+   778→        <div className="flex items-center gap-3 mb-3">
+   779→          <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+   780→            <Headphones className="w-5 h-5 text-white" />
+   781→          </div>
+   782→          <div>
+   783→            <h3 className="font-semibold text-white">Support Client</h3>
+   784→            <p className="text-xs text-white/80">Nous sommes là pour vous aider</p>
+   785→          </div>
+   786→        </div>
+   787→        <div className="flex gap-2">
+   788→          <button
+   789→            onClick={handleCallSupport}
+   790→            className="flex-1 bg-white rounded-lg py-2 px-3 flex items-center justify-center gap-2 text-[#FF9800] font-medium text-sm"
+   791→          >
+   792→            <Phone className="w-4 h-4" />
+   793→            Appeler
+   794→          </button>
+   795→          <button
+   796→            onClick={handleWhatsAppSupport}
+   797→            className="flex-1 bg-[#25D366] rounded-lg py-2 px-3 flex items-center justify-center gap-2 text-white font-medium text-sm"
+   798→          >
+   799→            <MessageSquare className="w-4 h-4" />
+   800→            WhatsApp
+   801→          </button>
+   802→        </div>
+   803→      </div>
+   804→
+   805→      {/* Menu - Android List style */}
+   806→      <div className="bg-white rounded-lg overflow-hidden shadow-sm">
+   807→        {[
+   808→          { icon: Clock, label: 'Historique', section: 'history', description: 'Toutes vos activités' },
+   809→          { icon: MapPin, label: 'Adresses', section: 'addresses', description: 'Gérez vos adresses' },
+   810→          { icon: Settings, label: 'Paramètres', section: 'settings', description: 'Modifiez votre compte' },
+   811→        ].map((item, index) => (
+   812→          <button
+   813→            key={index}
+   814→            onClick={() => setActiveSection(item.section)}
+   815→            className="w-full flex items-center gap-3 p-4 hover:bg-[#F5F5F5] active:bg-[#EEEEEE] transition-colors border-b border-[#F5F5F5] last:border-0"
+   816→          >
+   817→            <div className="w-10 h-10 bg-[#FFF3E0] rounded-full flex items-center justify-center">
+   818→              <item.icon className="w-5 h-5 text-[#FF9800]" />
+   819→            </div>
+   820→            <div className="flex-1 text-left">
+   821→              <span className="text-[#212121] text-sm font-medium">{item.label}</span>
+   822→              <p className="text-xs text-[#9E9E9E]">{item.description}</p>
+   823→            </div>
+   824→            <ChevronRight className="w-5 h-5 text-[#BDBDBD]" />
+   825→          </button>
+   826→        ))}
+   827→      </div>
+   828→
+   829→      {/* Logout Button - Android style */}
+   830→      <button
+   831→        onClick={onLogout}
+   832→        className="w-full h-12 border border-[#E0E0E0] text-red-500 bg-white rounded-lg font-semibold text-sm active:bg-red-50 transition-colors"
+   833→      >
+   834→        <LogOut className="w-4 h-4 inline mr-2" />
+   835→        Déconnexion
+   836→      </button>
+   837→    </div>
+   838→  );
+   839→}
+   840→

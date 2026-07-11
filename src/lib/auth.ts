@@ -115,8 +115,10 @@ export async function clearAuthCookie() {
 }
 
 // Session type
+// Note: `id` (not `userId`) because getCurrentUser() returns the User record
+// selected with `id: true` from the database.
 export interface Session {
-  userId: string;
+  id: string;
   phone: string;
   name: string | null;
   role: string;

@@ -23,16 +23,23 @@ export interface User {
   updatedAt: string;
 }
 
+// Washer types - INDEPENDENT uses app-defined services, STATION_OWNER manages their own station
+export type WasherType = 'INDEPENDENT' | 'STATION_OWNER';
+
 export interface Washer {
   id: string;
   userId: string;
   user: User;
+  washerType: WasherType;
   isAvailable: boolean;
   isVerified: boolean;
   rating: number;
   totalRatings: number;
   totalEarnings: number;
   completedJobs: number;
+  // Computed/aggregated stats (optional - returned by some endpoints, not the Prisma model)
+  todayEarnings?: number;
+  todayJobs?: number;
   latitude?: number;
   longitude?: number;
   address?: string;
@@ -64,6 +71,9 @@ export interface Station {
   updatedAt: string;
 }
 
+// Service source - APP (for independent washers) or STATION (custom station services)
+export type ServiceSource = 'APP' | 'STATION';
+
 export interface Service {
   id: string;
   name: string;
@@ -73,7 +83,9 @@ export interface Service {
   image?: string;
   category: string;
   isActive: boolean;
+  source?: ServiceSource;
   stationId?: string;
+  station?: Station;
   createdAt: string;
   updatedAt: string;
 }

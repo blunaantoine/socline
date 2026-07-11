@@ -19,18 +19,31 @@ import { parseJsonResponse } from '@/lib/json-helper';
 interface ClientOrderFlowProps {
   onBack: () => void;
   onOrderComplete?: () => void;
+  // Presets from ClientApp when the user clicks a specific service (e.g. a station service)
+  presetIsHomeService?: boolean;
+  presetStationId?: string | null;
+  presetAddress?: string;
 }
 
 type StepType = 'service' | 'location' | 'schedule' | 'payment';
 
-export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProps) {
+export function ClientOrderFlow({
+  onBack,
+  onOrderComplete,
+  presetIsHomeService = true,
+  presetStationId = null,
+  presetAddress = '',
+}: ClientOrderFlowProps) {
   const { services, selectedService, selectService, setServices } = useServicesStore();
   const { setCurrentOrder, addOrder } = useOrdersStore();
   const { userLocation } = useAppStore();
   const { user } = useAuthStore();
-  const [step, setStep] = useState<StepType>('service');
-  const [isHomeService, setIsHomeService] = useState(true);
-  const [address, setAddress] = useState(userLocation?.address || '');
+  // If a service was preselected (e.g. from a station service click), skip the service step
+  const [step, setStep] = useState<StepType>(selectedService ? 'location' : 'service');
+  const [isHomeService, setIsHomeService] = useState(presetIsHomeService);
+  const [address, setAddress] = useState(presetAddress || userLocation?.address || '');
+  // Station ID when ordering from a station service (isHomeService = false). Preset from ClientApp.
+  const [stationId, setStationId] = useState<string | null>(presetStationId);
   const [scheduledTime, setScheduledTime] = useState<'now' | 'later'>('now');
   const [scheduledDate, setScheduledDate] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'cash'>('cash');
@@ -214,6 +227,7 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
           clientId,
           serviceId: selectedService.id,
           isHomeService,
+          stationId: stationId || null,
           address,
           latitude: userLocation?.latitude,
           longitude: userLocation?.longitude,
@@ -438,8 +452,8 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
                 <button
                   className={`flex-1 p-4 rounded-lg border-2 text-center transition-all ${
                     isHomeService ? 'border-[#FF9800] bg-[#FFF8F0]' : 'border-gray-200 bg-white'
-                  }`}
-                  onClick={() => setIsHomeService(true)}
+                  } ${stationId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  onClick={() => !stationId && setIsHomeService(true)}
                 >
                   <MapPin className="w-6 h-6 mx-auto mb-2 text-[#FF9800]" />
                   <span className="font-medium text-[#212121]">À domicile</span>
@@ -448,8 +462,8 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
                 <button
                   className={`flex-1 p-4 rounded-lg border-2 text-center transition-all ${
                     !isHomeService ? 'border-[#FF9800] bg-[#FFF8F0]' : 'border-gray-200 bg-white'
-                  }`}
-                  onClick={() => setIsHomeService(false)}
+                  } ${stationId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  onClick={() => !stationId && setIsHomeService(false)}
                 >
                   <CheckCircle className="w-6 h-6 mx-auto mb-2 text-[#FF9800]" />
                   <span className="font-medium text-[#212121]">En station</span>
@@ -477,22 +491,33 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {[
-                    { name: 'Auto Shine Lomé', addr: 'Centre-ville, Lomé', distance: '1.2 km' },
-                    { name: 'Car Wash Bè', addr: 'Bè, Lomé', distance: '2.5 km' },
-                  ].map((station, i) => (
-                    <button
-                      key={i}
-                      className={`w-full p-3 rounded-lg border-2 text-left transition-all ${
-                        address === station.addr ? 'border-[#FF9800] bg-[#FFF8F0]' : 'border-gray-200'
-                      }`}
-                      onClick={() => setAddress(station.addr)}
-                    >
-                      <div className="font-medium text-[#212121]">{station.name}</div>
-                      <div className="text-sm text-gray-500">{station.addr}</div>
-                      <div className="text-xs text-[#FF9800]">{station.distance}</div>
-                    </button>
-                  ))}
+                  {stationId && presetAddress ? (
+                    <div className="w-full p-3 rounded-lg border-2 text-left border-[#FF9800] bg-[#FFF8F0]">
+                      <div className="font-medium text-[#212121] flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-[#FF9800]" />
+                        Station sélectionnée
+                      </div>
+                      <div className="text-sm text-gray-500 mt-1">{presetAddress}</div>
+                      <div className="text-xs text-[#FF9800] mt-1">Station prédéfinie lors de la sélection du service</div>
+                    </div>
+                  ) : (
+                    [
+                      { name: 'Auto Shine Lomé', addr: 'Centre-ville, Lomé', distance: '1.2 km' },
+                      { name: 'Car Wash Bè', addr: 'Bè, Lomé', distance: '2.5 km' },
+                    ].map((station, i) => (
+                      <button
+                        key={i}
+                        className={`w-full p-3 rounded-lg border-2 text-left transition-all ${
+                          address === station.addr ? 'border-[#FF9800] bg-[#FFF8F0]' : 'border-gray-200'
+                        }`}
+                        onClick={() => setAddress(station.addr)}
+                      >
+                        <div className="font-medium text-[#212121]">{station.name}</div>
+                        <div className="text-sm text-gray-500">{station.addr}</div>
+                        <div className="text-xs text-[#FF9800]">{station.distance}</div>
+                      </button>
+                    ))
+                  )}
                 </div>
               )}
             </div>
