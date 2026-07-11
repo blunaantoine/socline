@@ -293,6 +293,15 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
         body: JSON.stringify({ phone }),
       });
       
+      if (!res.ok) {
+        setError('Erreur du serveur. Réessayez.');
+        return;
+      }
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        setError('Réponse invalide du serveur');
+        return;
+      }
       const data = await res.json();
       
       if (data.success) {
@@ -327,6 +336,15 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
         body: JSON.stringify({ name, phone, plateNumber, carColor, pin, otp }),
       });
       
+      if (!res.ok) {
+        setError('Erreur du serveur. Réessayez.');
+        return;
+      }
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        setError('Réponse invalide du serveur');
+        return;
+      }
       const data = await res.json();
       
       if (data.success) {
@@ -362,6 +380,15 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
         body: JSON.stringify({ phone, pin }),
       });
       
+      if (!res.ok) {
+        setError('Erreur du serveur. Réessayez.');
+        return;
+      }
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        setError('Réponse invalide du serveur');
+        return;
+      }
       const data = await res.json();
       
       if (data.success) {

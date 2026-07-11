@@ -87,6 +87,9 @@ export function ClientApp() {
       if (!user?.id) return;
       try {
         const res = await fetch(`/api/wallet?userId=${user.id}`);
+        if (!res.ok) return;
+        const contentType = res.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) return;
         const data = await res.json();
         if (data.success && data.wallet) {
           setWalletBalance(data.wallet.balance);
@@ -106,21 +109,29 @@ export function ClientApp() {
       try {
         // Seed database if needed
         const seedCheck = await fetch('/api/seed');
-        const seedData = await seedCheck.json();
-        
-        if (!seedData.seeded || seedData.servicesCount === 0) {
-          await fetch('/api/seed', { method: 'POST' });
+        if (seedCheck.ok) {
+          const contentType = seedCheck.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const seedData = await seedCheck.json();
+            
+            if (!seedData.seeded || seedData.servicesCount === 0) {
+              await fetch('/api/seed', { method: 'POST' });
+            }
+          }
         }
 
         // Fetch services
         const res = await fetch('/api/services');
+        if (!res.ok) return;
+        const resContentType = res.headers.get('content-type');
+        if (!resContentType || !resContentType.includes('application/json')) return;
         const data = await res.json();
         
         if (data.success && data.services) {
           setServices(data.services);
           
           // Seed subscription plans after services are loaded
-          await fetch('/api/subscriptions/seed', { method: 'POST' });
+          await fetch('/api/subscriptions/seed', { method: 'POST' }).catch(() => {});
         }
       } catch (error) {
         console.error('Error loading services:', error);
@@ -154,6 +165,9 @@ export function ClientApp() {
     const fetchPromotions = async () => {
       try {
         const res = await fetch('/api/promotions?active=true');
+        if (!res.ok) return;
+        const contentType = res.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) return;
         const data = await res.json();
         
         if (data.success && data.promotions.length > 0) {
