@@ -19,7 +19,10 @@ import type { Order, OrderStatus, Conversation, User, Washer as WasherType } fro
 import { ChatView } from '@/components/chat/ChatView';
 import { toast } from 'sonner';
 import { parseJsonResponse } from '@/lib/json-helper';
+<<<<<<< HEAD
 import { StationDashboard } from '@/components/washer/StationDashboard';
+=======
+>>>>>>> f2ea71e (Fix: Safe JSON parsing across all 13 components (79 occurrences))
 
 // Washer stats type
 interface WasherStats {
@@ -79,7 +82,11 @@ export function WasherApp() {
       const res = await fetch(`/api/washers/${user.id}`);
       const data = await parseJsonResponse<any>(res);
       if (!data) return;
+<<<<<<< HEAD
 
+=======
+      
+>>>>>>> f2ea71e (Fix: Safe JSON parsing across all 13 components (79 occurrences))
       if (data.success && data.washer) {
         setWasherData(data.washer as WasherType);
       }
