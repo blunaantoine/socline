@@ -7,6 +7,7 @@ import { ChatView } from './ChatView';
 import {
   MessageCircle, Clock, Car, User, ChevronRight, Loader2, ArrowLeft
 } from 'lucide-react';
+import { parseJsonResponse } from '@/lib/json-helper';
 
 // Props optionnelles pour le callback de retour
 interface ChatListProps {
@@ -25,7 +26,8 @@ export function ChatList({ onBack }: ChatListProps) {
       try {
         setIsLoading(true);
         const res = await fetch(`/api/conversations?userId=${user.id}`);
-        const data = await res.json();
+        const data = await parseJsonResponse<any>(res);
+        if (!data) return;
         if (data.success) {
           setConversations(data.conversations);
         }

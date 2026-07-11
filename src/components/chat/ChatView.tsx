@@ -11,6 +11,7 @@ import {
   Check, CheckCheck, Navigation, Image as ImageIcon,
   Car, User, Clock
 } from 'lucide-react';
+import { parseJsonResponse } from '@/lib/json-helper';
 
 interface ChatViewProps {
   conversation: Conversation;
@@ -106,7 +107,8 @@ export function ChatView({ conversation, onBack }: ChatViewProps) {
     const fetchMessages = async () => {
       try {
         const res = await fetch(`/api/conversations/${conversation.id}/messages`);
-        const data = await res.json();
+        const data = await parseJsonResponse<any>(res);
+        if (!data) return;
         if (data.success) {
           setMessages(data.messages);
         }
@@ -162,7 +164,8 @@ export function ChatView({ conversation, onBack }: ChatViewProps) {
         }),
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
 
       if (data.success) {
         // Also emit via WebSocket for real-time

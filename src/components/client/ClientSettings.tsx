@@ -42,6 +42,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { DynamicLeafletMap } from '@/components/map/DynamicLeafletMap';
+import { parseJsonResponse } from '@/lib/json-helper';
 
 // Types
 interface Address {
@@ -77,7 +78,8 @@ export function ActivityHistory({ userId, onBack }: { userId: string; onBack: ()
     setIsLoading(true);
     try {
       const res = await fetch(`/api/user/activity?userId=${userId}&type=${filter}`);
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
       if (data.success) {
         setActivities(data.activities);
       }
@@ -265,7 +267,8 @@ export function AddressesManager({ userId, onBack }: { userId: string; onBack: (
     setIsLoading(true);
     try {
       const res = await fetch(`/api/addresses?userId=${userId}`);
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
       if (data.success) {
         setAddresses(data.addresses);
       }
@@ -333,7 +336,7 @@ export function AddressesManager({ userId, onBack }: { userId: string; onBack: (
           const response = await fetch(
             `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=fr`
           );
-          const data = await response.json();
+          const data = await parseJsonResponse<any>(response);
           if (data && data.display_name) {
             setFormData(prev => ({
               ...prev,
@@ -364,7 +367,7 @@ export function AddressesManager({ userId, onBack }: { userId: string; onBack: (
       const response = await fetch(
         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=fr`
       );
-      const data = await response.json();
+      const data = await parseJsonResponse<any>(response);
       if (data && data.display_name) {
         setFormData(prev => ({
           ...prev,
@@ -416,7 +419,8 @@ export function AddressesManager({ userId, onBack }: { userId: string; onBack: (
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...formData, userId })
         });
-        const data = await res.json();
+        const data = await parseJsonResponse<any>(res);
+        if (!data) return;
         if (data.success) {
           toast.success('Adresse mise à jour');
           resetForm();
@@ -431,7 +435,8 @@ export function AddressesManager({ userId, onBack }: { userId: string; onBack: (
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...formData, userId })
         });
-        const data = await res.json();
+        const data = await parseJsonResponse<any>(res);
+        if (!data) return;
         if (data.success) {
           toast.success('Adresse ajoutée');
           resetForm();
@@ -452,7 +457,8 @@ export function AddressesManager({ userId, onBack }: { userId: string; onBack: (
 
     try {
       const res = await fetch(`/api/addresses/${id}?userId=${userId}`, { method: 'DELETE' });
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
       if (data.success) {
         toast.success('Adresse supprimée');
         fetchAddresses();
@@ -790,7 +796,8 @@ export function AccountSettings({ userId, userPhone, onBack }: { userId: string;
           currentPin: pinForm.currentPin
         })
       });
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
       if (data.success) {
         toast.success('PIN modifié avec succès');
         setPinForm({ currentPin: '', newPin: '', confirmPin: '' });
@@ -825,7 +832,8 @@ export function AccountSettings({ userId, userPhone, onBack }: { userId: string;
           phone: phoneForm.newPhone
         })
       });
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
       if (data.success) {
         toast.success('Numéro modifié avec succès');
         setPhoneForm({ newPhone: '' });

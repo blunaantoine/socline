@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import type { Order, OrderStatus } from '@/types';
 import { toast } from 'sonner';
+import { parseJsonResponse } from '@/lib/json-helper';
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
   PENDING: 'En attente',
@@ -68,8 +69,9 @@ export function OrderHistory() {
       setIsLoading(true);
       try {
         const res = await fetch(`/api/orders?userId=${user.id}&role=CLIENT`);
-        const data = await res.json();
-        
+        const data = await parseJsonResponse<any>(res);
+        if (!data) return;
+
         if (data.success && data.orders) {
           setOrders(data.orders);
         }
