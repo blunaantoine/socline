@@ -15,10 +15,11 @@ import {
   RefreshCw, Loader2, ArrowLeft, Crown, Edit, Bell, Banknote
 } from 'lucide-react';
 import { HideableBalanceDark, HideableBalanceLight } from '@/components/ui/hideable-balance';
-import type { Order, OrderStatus, Conversation, User } from '@/types';
+import type { Order, OrderStatus, Conversation, User, Washer as WasherType } from '@/types';
 import { ChatView } from '@/components/chat/ChatView';
 import { toast } from 'sonner';
 import { parseJsonResponse } from '@/lib/json-helper';
+import { StationDashboard } from '@/components/washer/StationDashboard';
 
 // Washer stats type
 interface WasherStats {
@@ -41,14 +42,8 @@ export function WasherApp() {
   const [pendingOrders, setPendingOrders] = useState<Order[]>([]);
   const [showChat, setShowChat] = useState(false);
   const [conversation, setConversation] = useState<Conversation | null>(null);
-  const [washerData, setWasherData] = useState<{
-    rating?: number;
-    totalRatings?: number;
-    completedJobs?: number;
-    totalEarnings?: number;
-    todayEarnings?: number;
-    todayJobs?: number;
-  } | null>(null);
+  const [washerData, setWasherData] = useState<WasherType | null>(null);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isRefreshingBalance, setIsRefreshingBalance] = useState(false);
   const [profileSection, setProfileSection] = useState<string | null>(null);
 
@@ -75,23 +70,24 @@ export function WasherApp() {
     }
   }, [fetchConversation]);
 
-  // Fetch washer data (stats, balance)
+  // Fetch washer data (stats, balance, washerType, station)
   const fetchWasherData = useCallback(async () => {
     if (!user) return;
-    
+
     setIsRefreshingBalance(true);
     try {
       const res = await fetch(`/api/washers/${user.id}`);
       const data = await parseJsonResponse<any>(res);
       if (!data) return;
-      
+
       if (data.success && data.washer) {
-        setWasherData(data.washer);
+        setWasherData(data.washer as WasherType);
       }
     } catch (error) {
       console.error('Fetch washer data error:', error);
     } finally {
       setIsRefreshingBalance(false);
+      setIsInitialLoading(false);
     }
   }, [user]);
 
@@ -245,6 +241,30 @@ export function WasherApp() {
       console.error('Update order error:', error);
     }
   };
+
+  // If this washer is a STATION_OWNER, render the dedicated station dashboard
+  // instead of the independent washer interface.
+  if (washerData?.washerType === 'STATION_OWNER') {
+    return (
+      <StationDashboard
+        washer={washerData}
+        user={user}
+        onLogout={logout}
+      />
+    );
+  }
+
+  // While we are still determining the washer type (initial load), show a
+  // full-screen spinner so the user doesn't see the independent washer UI flash
+  // before we route them to the station dashboard.
+  if (isInitialLoading) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center bg-[#FAFAFA] min-h-screen">
+        <Loader2 className="w-10 h-10 text-[#FF9800] animate-spin mb-3" />
+        <p className="text-sm text-[#757575]">Chargement...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col bg-[#FAFAFA] overflow-hidden">

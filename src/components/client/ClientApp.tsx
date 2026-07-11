@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  MapPin, Search, Star, Clock, Car,
+  MapPin, Search, Star, Clock, Car, Building,
   CheckCircle, Phone, Loader2,
   Zap, Droplets, Sparkles, Crown, RefreshCw, ExternalLink,
   Home, Calendar, MessageCircle, User, Bell, Settings, LogOut, Wallet, Copy, Plus, ChevronRight, Headphones, MessageSquare
@@ -55,7 +55,7 @@ const CAR_COLORS: Record<string, string> = {
 export function ClientApp() {
   const { user, isAuthenticated, logout } = useAuthStore();
   const { userLocation, setUserLocation } = useAppStore();
-  const { services, setServices } = useServicesStore();
+  const { services, setServices, selectService } = useServicesStore();
   const { currentOrder, setCurrentOrder } = useOrdersStore();
   const { nearbyWashers, setNearbyWashers } = useWashersStore();
   const { stations, setStations } = useStationsStore();
@@ -78,6 +78,14 @@ export function ClientApp() {
   >([]);
   const [currentPromoIndex, setCurrentPromoIndex] = useState(0);
   const [walletBalance, setWalletBalance] = useState(0);
+  // Service tab toggle: independent washers (APP services) vs. stations (STATION services)
+  const [serviceTab, setServiceTab] = useState<'independent' | 'station'>('independent');
+  // Stations fetched from /api/stations (with embedded services) - separate from Google Places stations
+  const [appStations, setAppStations] = useState<any[]>([]);
+  // Order presets passed to ClientOrderFlow when navigating from a service/station click
+  const [presetIsHomeService, setPresetIsHomeService] = useState(true);
+  const [presetStationId, setPresetStationId] = useState<string | null>(null);
+  const [presetAddress, setPresetAddress] = useState('');
   
   const { stations: googleStations, isLoading: isLoadingStations, searchCarWashes } = useGooglePlaces();
 
@@ -120,8 +128,8 @@ export function ClientApp() {
           }
         }
 
-        // Fetch services
-        const res = await fetch('/api/services');
+        // Fetch services - explicitly request APP source (independent washers)
+        const res = await fetch('/api/services?source=APP');
         if (!res.ok) return;
         const resContentType = res.headers.get('content-type');
         if (!resContentType || !resContentType.includes('application/json')) return;
@@ -140,6 +148,25 @@ export function ClientApp() {
 
     loadServices();
   }, [setServices]);
+
+  // Fetch stations (with their embedded services) from /api/stations - for the Stations tab
+  useEffect(() => {
+    const fetchStations = async () => {
+      try {
+        const res = await fetch('/api/stations');
+        if (!res.ok) return;
+        const contentType = res.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) return;
+        const data = await res.json();
+        if (data.success && Array.isArray(data.stations)) {
+          setAppStations(data.stations);
+        }
+      } catch (error) {
+        console.error('Error fetching stations:', error);
+      }
+    };
+    fetchStations();
+  }, []);
 
   // Search Google car washes
   useEffect(() => {
@@ -295,18 +322,51 @@ export function ClientApp() {
               isLoadingStations={isLoadingStations}
               userLocation={userLocation}
               onRefresh={() => userLocation && searchCarWashes(userLocation.latitude, userLocation.longitude)}
-              onStartOrder={() => setActiveTab('booking')}
+              onStartOrder={() => {
+                // No preset - user picks service in booking flow
+                selectService(null);
+                setPresetIsHomeService(true);
+                setPresetStationId(null);
+                setPresetAddress('');
+                setActiveTab('booking');
+              }}
+              onStartOrderForService={(service, isHomeService, stationId, address) => {
+                // Preset selected service + home/station context
+                selectService(service);
+                setPresetIsHomeService(isHomeService);
+                setPresetStationId(stationId ?? null);
+                setPresetAddress(address || '');
+                setActiveTab('booking');
+              }}
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
               promotions={promotions}
               currentPromoIndex={currentPromoIndex}
               setCurrentPromoIndex={setCurrentPromoIndex}
+              serviceTab={serviceTab}
+              setServiceTab={setServiceTab}
+              appStations={appStations}
             />
           )}
           {activeTab === 'booking' && (
             <ClientOrderFlow 
-              onBack={() => setActiveTab('home')} 
-              onOrderComplete={() => setActiveTab('subscriptions')}
+              onBack={() => {
+                selectService(null);
+                setPresetIsHomeService(true);
+                setPresetStationId(null);
+                setPresetAddress('');
+                setActiveTab('home');
+              }} 
+              onOrderComplete={() => {
+                selectService(null);
+                setPresetIsHomeService(true);
+                setPresetStationId(null);
+                setPresetAddress('');
+                setActiveTab('subscriptions');
+              }}
+              presetIsHomeService={presetIsHomeService}
+              presetStationId={presetStationId}
+              presetAddress={presetAddress}
             />
           )}
           {activeTab === 'subscriptions' && (
@@ -348,16 +408,34 @@ export function ClientApp() {
 // Home Content - Android Material Design Style
 function HomeContent({
   services, nearbyWashers, googleStations, isLoadingStations, userLocation,
-  onRefresh, onStartOrder, searchQuery, setSearchQuery, 
+  onRefresh, onStartOrder, onStartOrderForService, searchQuery, setSearchQuery, 
   promotions, currentPromoIndex, setCurrentPromoIndex,
+  serviceTab, setServiceTab, appStations,
 }: {
   services: any[]; nearbyWashers: any[]; googleStations: GooglePlaceStation[];
   isLoadingStations: boolean; userLocation: any; onRefresh: () => void;
-  onStartOrder: () => void; searchQuery: string; setSearchQuery: (q: string) => void;
+  onStartOrder: () => void; 
+  onStartOrderForService: (service: any, isHomeService: boolean, stationId?: string | null, address?: string) => void;
+  searchQuery: string; setSearchQuery: (q: string) => void;
   promotions: any[]; currentPromoIndex: number; setCurrentPromoIndex: (i: number) => void;
+  serviceTab: 'independent' | 'station';
+  setServiceTab: (t: 'independent' | 'station') => void;
+  appStations: any[];
 }) {
   const currentPromo = promotions[currentPromoIndex];
   const [selectedService, setSelectedService] = useState<any | null>(null);
+  // Station clicked by the user - opens a modal showing its services
+  const [selectedStation, setSelectedStation] = useState<any | null>(null);
+
+  // Helper to safely parse a station's images JSON string into an array
+  const getStationImage = (station: any): string | null => {
+    try {
+      const images = JSON.parse(station?.images || '[]');
+      return Array.isArray(images) && images.length > 0 ? images[0] : null;
+    } catch {
+      return null;
+    }
+  };
 
   return (
     <div className="p-4 space-y-4">
@@ -473,30 +551,119 @@ function HomeContent({
         </div>
       )}
 
-      {/* Services - Android style */}
+      {/* Services section with Independent / Station toggle */}
       <section>
         <div className="flex justify-between items-center mb-3">
-          <h3 className="text-base font-bold text-[#212121]">Nos Services</h3>
-          <button className="text-xs text-[#FF9800] font-medium">Voir tout</button>
+          <h3 className="text-base font-bold text-[#212121]">
+            {serviceTab === 'independent' ? 'Laveurs Indépendants' : 'Stations de Lavage'}
+          </h3>
         </div>
-        <div className="grid grid-cols-4 gap-2">
-          {services.map((service) => (
-            <button
-              key={service.id}
-              onClick={() => setSelectedService(service)}
-              className="bg-white rounded-lg p-3 text-center shadow-sm active:bg-[#F5F5F5] transition-colors"
-            >
-              <div className="w-10 h-10 mx-auto mb-2 bg-[#FFF3E0] rounded-lg flex items-center justify-center">
-                {(service.category === 'essentiel' || service.category === 'basic') && <Zap className="w-5 h-5 text-[#FF9800]" />}
-                {(service.category === 'confort' || service.category === 'standard') && <Droplets className="w-5 h-5 text-[#FF9800]" />}
-                {service.category === 'premium' && <Sparkles className="w-5 h-5 text-[#FF9800]" />}
-                {(service.category === 'prestige' || service.category === 'deluxe') && <Crown className="w-5 h-5 text-[#FF9800]" />}
+        
+        {/* Tab toggle */}
+        <div className="bg-white rounded-lg p-1 flex gap-1 shadow-sm mb-3">
+          <button
+            onClick={() => setServiceTab('independent')}
+            className={`flex-1 py-2 rounded-md text-xs font-medium flex items-center justify-center gap-1.5 transition-colors ${
+              serviceTab === 'independent'
+                ? 'bg-[#FF9800] text-white shadow-sm'
+                : 'text-[#757575]'
+            }`}
+          >
+            <Car className="w-4 h-4" />
+            <span>Indépendants</span>
+          </button>
+          <button
+            onClick={() => setServiceTab('station')}
+            className={`flex-1 py-2 rounded-md text-xs font-medium flex items-center justify-center gap-1.5 transition-colors ${
+              serviceTab === 'station'
+                ? 'bg-[#FF9800] text-white shadow-sm'
+                : 'text-[#757575]'
+            }`}
+          >
+            <Building className="w-4 h-4" />
+            <span>Stations</span>
+          </button>
+        </div>
+        
+        {/* Independent washers - APP services grid (home service: washer comes to client) */}
+        {serviceTab === 'independent' && (
+          <>
+            <p className="text-xs text-[#757575] mb-2">Le laveur se déplace chez vous</p>
+            <div className="grid grid-cols-4 gap-2">
+              {services.length === 0 ? (
+                <div className="col-span-4 bg-white rounded-lg p-4 text-center shadow-sm">
+                  <p className="text-sm text-[#757575]">Aucun service disponible</p>
+                </div>
+              ) : services.map((service) => (
+                <button
+                  key={service.id}
+                  onClick={() => setSelectedService(service)}
+                  className="bg-white rounded-lg p-3 text-center shadow-sm active:bg-[#F5F5F5] transition-colors"
+                >
+                  <div className="w-10 h-10 mx-auto mb-2 bg-[#FFF3E0] rounded-lg flex items-center justify-center">
+                    {(service.category === 'essentiel' || service.category === 'basic') && <Zap className="w-5 h-5 text-[#FF9800]" />}
+                    {(service.category === 'confort' || service.category === 'standard') && <Droplets className="w-5 h-5 text-[#FF9800]" />}
+                    {service.category === 'premium' && <Sparkles className="w-5 h-5 text-[#FF9800]" />}
+                    {(service.category === 'prestige' || service.category === 'deluxe') && <Crown className="w-5 h-5 text-[#FF9800]" />}
+                  </div>
+                  <p className="text-xs font-medium text-[#212121] truncate">{service.name}</p>
+                  <p className="text-xs text-[#FF9800] font-bold mt-0.5">{(service.price / 1000)}K</p>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+        
+        {/* Stations list (station service: client goes to station) */}
+        {serviceTab === 'station' && (
+          <>
+            <p className="text-xs text-[#757575] mb-2">Vous vous rendez à la station</p>
+            {appStations.length === 0 ? (
+              <div className="bg-white rounded-lg p-6 text-center shadow-sm">
+                <Building className="w-8 h-8 text-[#9E9E9E] mx-auto mb-2" />
+                <p className="text-sm text-[#757575]">Aucune station disponible</p>
               </div>
-              <p className="text-xs font-medium text-[#212121] truncate">{service.name}</p>
-              <p className="text-xs text-[#FF9800] font-bold mt-0.5">{(service.price / 1000)}K</p>
-            </button>
-          ))}
-        </div>
+            ) : (
+              <div className="space-y-2">
+                {appStations.map((station) => {
+                  const image = getStationImage(station);
+                  const serviceCount = Array.isArray(station.services) ? station.services.length : 0;
+                  return (
+                    <button
+                      key={station.id}
+                      onClick={() => setSelectedStation(station)}
+                      className="w-full bg-white rounded-lg p-3 flex gap-3 shadow-sm active:bg-[#F5F5F5] transition-colors text-left"
+                    >
+                      {image ? (
+                        <img src={image} alt={station.name} className="w-16 h-16 rounded-lg object-cover flex-shrink-0" />
+                      ) : (
+                        <div className="w-16 h-16 bg-[#FFF3E0] rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Building className="w-7 h-7 text-[#FF9800]" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-[#212121] text-sm truncate">{station.name}</p>
+                        <p className="text-xs text-[#757575] truncate">{station.address}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          {station.rating > 0 && (
+                            <div className="flex items-center gap-0.5">
+                              <Star className="w-3 h-3 text-[#FFC107] fill-[#FFC107]" />
+                              <span className="text-xs text-[#757575]">{station.rating.toFixed(1)}</span>
+                            </div>
+                          )}
+                          {serviceCount > 0 && (
+                            <span className="text-xs text-[#757575]">{serviceCount} service{serviceCount > 1 ? 's' : ''}</span>
+                          )}
+                        </div>
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-[#BDBDBD] self-center flex-shrink-0" />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
       </section>
 
       {/* Service Details Modal */}
@@ -602,16 +769,106 @@ function HomeContent({
                   </div>
                 )}
 
-                {/* Action Button */}
+                {/* Action Button - Independent washer service = home service (washer comes to client) */}
                 <button
                   onClick={() => {
+                    const service = selectedService;
                     setSelectedService(null);
-                    onStartOrder();
+                    onStartOrderForService(service, true);
                   }}
                   className="w-full bg-[#FF9800] hover:bg-[#F57C00] text-white font-semibold py-3 rounded-xl transition-colors"
                 >
                   Réserver ce service
                 </button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Station Services Modal - shows the station's services, ordering = station service */}
+      <Dialog open={!!selectedStation} onOpenChange={() => setSelectedStation(null)}>
+        <DialogContent className="max-w-sm mx-auto rounded-2xl max-h-[85vh] overflow-y-auto">
+          {selectedStation && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-left text-lg font-bold text-[#212121]">
+                  {selectedStation.name}
+                </DialogTitle>
+              </DialogHeader>
+              
+              <div className="space-y-4 py-2">
+                {/* Station info card */}
+                <div className="bg-[#FAFAFA] rounded-xl p-3 space-y-1.5">
+                  <div className="flex items-start gap-2 text-sm text-[#616161]">
+                    <MapPin className="w-4 h-4 text-[#FF9800] mt-0.5 flex-shrink-0" />
+                    <span>{selectedStation.address}</span>
+                  </div>
+                  {selectedStation.phone && (
+                    <div className="flex items-center gap-2 text-sm text-[#616161]">
+                      <Phone className="w-4 h-4 text-[#FF9800]" />
+                      <span>{selectedStation.phone}</span>
+                    </div>
+                  )}
+                  {selectedStation.rating > 0 && (
+                    <div className="flex items-center gap-1 text-sm text-[#616161]">
+                      <Star className="w-4 h-4 text-[#FFC107] fill-[#FFC107]" />
+                      <span>{selectedStation.rating.toFixed(1)} ({selectedStation.totalRatings} avis)</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Description */}
+                {selectedStation.description && (
+                  <p className="text-sm text-[#757575] leading-relaxed">{selectedStation.description}</p>
+                )}
+
+                {/* Services list */}
+                <div>
+                  <p className="text-sm font-medium text-[#212121] mb-2">Services disponibles</p>
+                  {Array.isArray(selectedStation.services) && selectedStation.services.length > 0 ? (
+                    <div className="space-y-2">
+                      {selectedStation.services.map((service: any) => (
+                        <div key={service.id} className="bg-white border border-[#E0E0E0] rounded-lg p-3">
+                          <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 bg-[#FFF3E0] rounded-lg flex items-center justify-center flex-shrink-0">
+                              {(service.category === 'essentiel' || service.category === 'basic') && <Zap className="w-5 h-5 text-[#FF9800]" />}
+                              {(service.category === 'confort' || service.category === 'standard') && <Droplets className="w-5 h-5 text-[#FF9800]" />}
+                              {service.category === 'premium' && <Sparkles className="w-5 h-5 text-[#FF9800]" />}
+                              {(service.category === 'prestige' || service.category === 'deluxe') && <Crown className="w-5 h-5 text-[#FF9800]" />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-[#212121] text-sm">{service.name}</p>
+                              {service.description && (
+                                <p className="text-xs text-[#757575] mt-0.5 line-clamp-2">{service.description}</p>
+                              )}
+                              <div className="flex items-center justify-between mt-2">
+                                <span className="text-xs text-[#757575] flex items-center gap-1">
+                                  <Clock className="w-3 h-3" /> {service.duration} min
+                                </span>
+                                <span className="text-sm font-bold text-[#FF9800]">{service.price?.toLocaleString()} XOF</span>
+                              </div>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => {
+                              const station = selectedStation;
+                              setSelectedStation(null);
+                              onStartOrderForService(service, false, station.id, station.address);
+                            }}
+                            className="w-full mt-2 bg-[#FF9800] hover:bg-[#F57C00] text-white text-sm font-semibold py-2 rounded-lg transition-colors"
+                          >
+                            Réserver ce service
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="bg-[#FAFAFA] rounded-lg p-4 text-center">
+                      <p className="text-sm text-[#757575]">Aucun service disponible pour cette station</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </>
           )}

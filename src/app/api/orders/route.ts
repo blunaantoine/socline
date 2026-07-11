@@ -2,70 +2,78 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
 // GET /api/orders - Get orders (for washer or client)
+// Query params:
+//   - userId: string - User ID (required for role-based queries)
+//   - role: 'WASHER' | 'CLIENT'
+//   - status: OrderStatus - Filter by order status
+//   - stationId: string - Filter orders belonging to a specific station
+//                         (orders where Order.stationId or Service.stationId matches)
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
     const role = searchParams.get('role');
     const status = searchParams.get('status');
+    const stationId = searchParams.get('stationId');
 
-    if (!userId) {
-      return NextResponse.json({ error: 'userId required' }, { status: 400 });
-    }
+    // Common include for all queries
+    const baseInclude = {
+      client: { select: { id: true, name: true, phone: true } },
+      service: true,
+      subscriptionUsage: {
+        include: {
+          subscription: {
+            include: { plan: true },
+          },
+        },
+      },
+    };
 
     let orders;
 
-    if (role === 'WASHER') {
+    // Station-scoped query: list all orders linked to a station (via Order.stationId
+    // or via the service's stationId). This is used by STATION_OWNERs.
+    if (stationId) {
+      orders = await db.order.findMany({
+        where: {
+          OR: [
+            { stationId },
+            { service: { stationId } },
+          ],
+        },
+        include: baseInclude,
+        orderBy: { createdAt: 'desc' },
+      });
+    } else if (role === 'WASHER') {
+      if (!userId) {
+        return NextResponse.json({ error: 'userId required' }, { status: 400 });
+      }
       // Get orders assigned to washer or pending orders
       if (status === 'PENDING') {
         orders = await db.order.findMany({
           where: { status: 'PENDING' },
-          include: {
-            client: { select: { id: true, name: true, phone: true } },
-            service: true,
-            subscriptionUsage: {
-              include: {
-                subscription: {
-                  include: { plan: true },
-                },
-              },
-            },
-          },
+          include: baseInclude,
           orderBy: { createdAt: 'desc' },
         });
       } else {
         orders = await db.order.findMany({
           where: { washerId: userId },
-          include: {
-            client: { select: { id: true, name: true, phone: true } },
-            service: true,
-            subscriptionUsage: {
-              include: {
-                subscription: {
-                  include: { plan: true },
-                },
-              },
-            },
-          },
+          include: baseInclude,
           orderBy: { createdAt: 'desc' },
         });
       }
     } else {
+      if (!userId) {
+        return NextResponse.json({ error: 'userId required' }, { status: 400 });
+      }
       // Get client's orders
       orders = await db.order.findMany({
         where: { clientId: userId },
         include: {
-          service: true,
+          ...baseInclude,
           washer: { include: { user: { select: { name: true, phone: true } } } },
           payment: true,
           review: true,
-          subscriptionUsage: {
-            include: {
-              subscription: {
-                include: { plan: true },
-              },
-            },
-          },
         },
         orderBy: { createdAt: 'desc' },
       });
@@ -95,7 +103,7 @@ export async function POST(request: NextRequest) {
     const { 
       clientId, serviceId, isHomeService, address, 
       latitude, longitude, totalPrice, scheduledAt,
-      promoCode, discount, useSubscription
+      promoCode, discount, useSubscription, stationId
     } = body;
 
     // Validate required fields
@@ -167,6 +175,7 @@ export async function POST(request: NextRequest) {
         clientId,
         serviceId,
         isHomeService: isHomeService ?? true,
+        stationId: stationId || null,
         address,
         latitude,
         longitude,
@@ -183,6 +192,7 @@ export async function POST(request: NextRequest) {
       include: {
         client: { select: { id: true, name: true, phone: true } },
         service: true,
+        ...(stationId ? { station: true } : {}),
       },
     });
 

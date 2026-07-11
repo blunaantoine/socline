@@ -17,6 +17,18 @@ enum UserRole {
   ADMIN
 }
 
+// Washer type enum - Two types of washers
+enum WasherType {
+  INDEPENDENT   // Laveur indépendant - travaille avec les tarifs de l'app
+  STATION_OWNER // Propriétaire de station - crée ses propres offres/tarifs
+}
+
+// Service source enum - Who created the service
+enum ServiceSource {
+  APP       // Service créé par l'app (pour laveurs indépendants)
+  STATION   // Service créé par une station de lavage
+}
+
 // Address type enum
 enum AddressType {
   HOME
@@ -104,6 +116,7 @@ model User {
   cars          Car[]     // User's cars (max 10)
   subscriptions UserSubscription[] // User's subscriptions
   addresses     Address[] // User's saved addresses
+  stations      Station[] @relation("StationOwner") // Stations owned by this user (if station owner)
 
   @@map("users")
 }
@@ -162,6 +175,9 @@ model Washer {
   userId         String   @unique
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
+  // Washer type - INDEPENDENT or STATION_OWNER
+  washerType     WasherType @default(INDEPENDENT)
+  
   // Washer specific fields
   isAvailable    Boolean  @default(false)
   isVerified     Boolean  @default(false)
@@ -202,14 +218,19 @@ model Station {
   name        String
   description String?
   address     String
-  latitude    Float
-  longitude   Float
+  latitude    Float?
+  longitude   Float?
   phone       String?
   email       String?
   images      String?  // JSON array of image URLs
   rating      Float    @default(0)
   totalRatings Int     @default(0)
   isActive    Boolean  @default(true)
+  
+  // Owner relationship - the station owner (washer with type STATION_OWNER)
+  ownerId     String?  // User ID of the station owner
+  owner       User?    @relation("StationOwner", fields: [ownerId], references: [id])
+  
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -232,6 +253,10 @@ model Service {
   category    String   // e.g., "basic", "premium", "deluxe"
   products    String?  // JSON array of products used
   isActive    Boolean  @default(true)
+  
+  // Service source - APP (for independent washers) or STATION (custom station services)
+  source      ServiceSource @default(APP)
+  
   stationId   String?
   station     Station? @relation(fields: [stationId], references: [id], onDelete: SetNull)
   createdAt   DateTime @default(now())

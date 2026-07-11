@@ -1,0 +1,816 @@
+     1→'use client';
+     2→
+     3→import { useState, useEffect } from 'react';
+     4→import { Button } from '@/components/ui/button';
+     5→import { Input } from '@/components/ui/input';
+     6→import { 
+     7→  Car, Phone, User, Lock, Palette, ArrowLeft, 
+     8→  Eye, EyeOff, CheckCircle, Loader2, AlertCircle,
+     9→  FileText, Download, IdCard, CreditCard, ChevronRight
+    10→} from 'lucide-react';
+    11→import { useAuthStore } from '@/store';
+    12→
+    13→interface AuthScreenProps {
+    14→  onComplete: () => void;
+    15→}
+    16→
+    17→const CAR_COLORS = [
+    18→  { id: 'Noir', label: 'Noir', color: '#1a1a1a' },
+    19→  { id: 'Blanc', label: 'Blanc', color: '#ffffff' },
+    20→  { id: 'Gris', label: 'Gris', color: '#6b7280' },
+    21→  { id: 'Argent', label: 'Argent', color: '#9ca3af' },
+    22→  { id: 'Bleu', label: 'Bleu', color: '#3b82f6' },
+    23→  { id: 'Rouge', label: 'Rouge', color: '#ef4444' },
+    24→  { id: 'Vert', label: 'Vert', color: '#22c55e' },
+    25→  { id: 'Marron', label: 'Marron', color: '#78350f' },
+    26→  { id: 'Beige', label: 'Beige', color: '#d4b896' },
+    27→  { id: 'Jaune', label: 'Jaune', color: '#eab308' },
+    28→];
+    29→
+    30→// Washer Registration Info Component
+    31→function WasherRegistrationInfo({ onBack }: { onBack: () => void }) {
+    32→  const handleDownloadContract = () => {
+    33→    // Create a simple contract PDF content as a data URL
+    34→    const contractContent = `
+    35→CONTRAT DE PARTENARIAT - SOCLINE
+    36→================================
+    37→
+    38→ENTRE LES SOUSSIGNÉS :
+    39→
+    40→La société SOCLINE, représentée par son Directeur, ci-après dénommée "LA SOCIÉTÉ"
+    41→
+    42→ET
+    43→
+    44→M./Mme _________________________, né(e) le ____/____/________ à _____________________,
+    45→demeurant à ___________________________________________________________________,
+    46→titulaire de la pièce d'identité n° ____________________________________________,
+    47→
+    48→ci-après dénommé(e) "LE PARTENAIRE"
+    49→
+    50→IL A ÉTÉ CONVENU CE QUI SUIT :
+    51→
+    52→ARTICLE 1 - OBJET
+    53→Le présent contrat a pour objet de définir les conditions dans lesquelles LE PARTENAIRE 
+    54→fournira des services de lavage automobile pour le compte de LA SOCIÉTÉ via l'application SOCLINE.
+    55→
+    56→ARTICLE 2 - ENGAGEMENTS DU PARTENAIRE
+    57→- Effectuer les prestations de lavage avec professionnalisme
+    58→- Respecter les délais convenus avec les clients
+    59→- Maintenir son véhicule en bon état de fonctionnement
+    60→- Fournir les produits nécessaires aux prestations
+    61→- Respecter les règles de sécurité et d'hygiène
+    62→
+    63→ARTICLE 3 - RÉMUNÉRATION
+    64→LE PARTENAIRE perçoit une commission de 80% sur chaque prestation réalisée.
+    65→Les paiements sont effectués chaque semaine.
+    66→
+    67→ARTICLE 4 - PIÈCES À FOURNIR
+    68→- Copie de la carte d'identité nationale OU carte d'électeur
+    69→- Photo d'identité récente
+    70→- Contrat signé
+    71→
+    72→ARTICLE 5 - DURÉE
+    73→Le présent contrat est conclu pour une durée indéterminée.
+    74→
+    75→ARTICLE 6 - RÉSILIATION
+    76→Chaque partie peut résilier le contrat avec un préavis de 15 jours.
+    77→
+    78→Fait à Lomé, le ____/____/________
+    79→
+    80→SIGNATURES :
+    81→
+    82→LE PARTENAIRE                          LA SOCIÉTÉ
+    83→_____________________                  _____________________
+    84→    `;
+    85→
+    86→    const blob = new Blob([contractContent], { type: 'text/plain' });
+    87→    const url = URL.createObjectURL(blob);
+    88→    const a = document.createElement('a');
+    89→    a.href = url;
+    90→    a.download = 'Contrat_Socline_Laveur.txt';
+    91→    document.body.appendChild(a);
+    92→    a.click();
+    93→    document.body.removeChild(a);
+    94→    URL.revokeObjectURL(url);
+    95→  };
+    96→
+    97→  return (
+    98→    <div className="flex-1 flex flex-col bg-[#FFF8F0]">
+    99→      {/* Header */}
+   100→      <div className="bg-[#4CAF50] p-4 pt-8 pb-12 rounded-b-3xl">
+   101→        <button onClick={onBack} className="text-white mb-4">
+   102→          <ArrowLeft className="w-6 h-6" />
+   103→        </button>
+   104→        <h1 className="text-2xl font-bold text-white">Devenir Laveur</h1>
+   105→        <p className="text-white/80 mt-1">Rejoignez notre équipe de partenaires</p>
+   106→      </div>
+   107→
+   108→      {/* Content */}
+   109→      <div className="flex-1 p-4 -mt-6 overflow-y-auto pb-8">
+   110→        <div className="bg-white rounded-2xl p-4 shadow-sm space-y-4">
+   111→          {/* Intro */}
+   112→          <div className="text-center py-4 border-b border-[#F5F5F5]">
+   113→            <div className="w-16 h-16 bg-[#E8F5E9] rounded-full flex items-center justify-center mx-auto mb-3">
+   114→              <Car className="w-8 h-8 text-[#4CAF50]" />
+   115→            </div>
+   116→            <h2 className="font-bold text-[#212121] text-lg">Avantages du partenaire</h2>
+   117→            <ul className="text-sm text-[#757575] mt-2 space-y-1">
+   118→              <li>✓ Revenus attractifs (80% par prestation)</li>
+   119→              <li>✓ Horaires flexibles</li>
+   120→              <li>✓ Paiements hebdomadaires</li>
+   121→              <li>✓ Formation et support</li>
+   122→            </ul>
+   123→          </div>
+   124→
+   125→          {/* Documents Required */}
+   126→          <div className="space-y-3">
+   127→            <h3 className="font-semibold text-[#212121] flex items-center gap-2">
+   128→              <FileText className="w-5 h-5 text-[#4CAF50]" />
+   129→              Documents requis
+   130→            </h3>
+   131→            
+   132→            <div className="bg-[#F5F5F5] rounded-xl p-4 space-y-3">
+   133→              <div className="flex items-start gap-3">
+   134→                <div className="w-10 h-10 bg-[#E3F2FD] rounded-full flex items-center justify-center flex-shrink-0">
+   135→                  <IdCard className="w-5 h-5 text-[#2196F3]" />
+   136→                </div>
+   137→                <div>
+   138→                  <p className="font-medium text-[#212121]">Carte d&apos;identité nationale</p>
+   139→                  <p className="text-sm text-[#757575]">OU</p>
+   140→                </div>
+   141→              </div>
+   142→              
+   143→              <div className="flex items-start gap-3">
+   144→                <div className="w-10 h-10 bg-[#FFF3E0] rounded-full flex items-center justify-center flex-shrink-0">
+   145→                  <CreditCard className="w-5 h-5 text-[#FF9800]" />
+   146→                </div>
+   147→                <div>
+   148→                  <p className="font-medium text-[#212121]">Carte d&apos;électeur</p>
+   149→                  <p className="text-sm text-[#757575]">Valide et lisible</p>
+   150→                </div>
+   151→              </div>
+   152→            </div>
+   153→          </div>
+   154→
+   155→          {/* Contract */}
+   156→          <div className="space-y-3">
+   157→            <h3 className="font-semibold text-[#212121] flex items-center gap-2">
+   158→              <FileText className="w-5 h-5 text-[#4CAF50]" />
+   159→              Contrat de partenariat
+   160→            </h3>
+   161→            
+   162→            <div className="bg-[#E8F5E9] rounded-xl p-4">
+   163→              <p className="text-sm text-[#757575] mb-3">
+   164→                Téléchargez le contrat, remplissez-le, signez-le et envoyez-le avec vos documents.
+   165→              </p>
+   166→              <Button
+   167→                onClick={handleDownloadContract}
+   168→                className="w-full bg-[#4CAF50] hover:bg-[#43A047] text-white"
+   169→              >
+   170→                <Download className="w-4 h-4 mr-2" />
+   171→                Télécharger le contrat
+   172→              </Button>
+   173→            </div>
+   174→          </div>
+   175→
+   176→          {/* Process */}
+   177→          <div className="space-y-3">
+   178→            <h3 className="font-semibold text-[#212121]">Processus d&apos;inscription</h3>
+   179→            
+   180→            <div className="space-y-2">
+   181→              {[
+   182→                { step: 1, title: 'Télécharger le contrat', desc: 'Cliquez sur le bouton ci-dessus' },
+   183→                { step: 2, title: 'Remplir et signer', desc: 'Complétez toutes les informations' },
+   184→                { step: 3, title: 'Préparer vos documents', desc: 'Carte d\'identité ou électeur' },
+   185→                { step: 4, title: 'Contacter le support', desc: '+228 71 99 81 55 (WhatsApp)' },
+   186→              ].map((item) => (
+   187→                <div key={item.step} className="flex items-start gap-3">
+   188→                  <div className="w-6 h-6 bg-[#4CAF50] text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">
+   189→                    {item.step}
+   190→                  </div>
+   191→                  <div>
+   192→                    <p className="font-medium text-[#212121] text-sm">{item.title}</p>
+   193→                    <p className="text-xs text-[#757575]">{item.desc}</p>
+   194→                  </div>
+   195→                </div>
+   196→              ))}
+   197→            </div>
+   198→          </div>
+   199→
+   200→          {/* Contact */}
+   201→          <div className="bg-gradient-to-r from-[#4CAF50] to-[#43A047] rounded-xl p-4 text-white">
+   202→            <p className="font-semibold">Besoin d&apos;aide ?</p>
+   203→            <p className="text-sm opacity-90 mt-1">Contactez notre équipe support</p>
+   204→            <div className="flex gap-2 mt-3">
+   205→              <a
+   206→                href="tel:+22871998155"
+   207→                className="flex-1 bg-white text-[#4CAF50] rounded-lg py-2 text-center font-medium text-sm"
+   208→              >
+   209→                Appeler
+   210→              </a>
+   211→              <a
+   212→                href="https://wa.me/22871998155?text=Bonjour, je souhaite devenir laveur sur Socline"
+   213→                className="flex-1 bg-[#25D366] text-white rounded-lg py-2 text-center font-medium text-sm"
+   214→              >
+   215→                WhatsApp
+   216→              </a>
+   217→            </div>
+   218→          </div>
+   219→        </div>
+   220→      </div>
+   221→    </div>
+   222→  );
+   223→}
+   224→
+   225→export function AuthScreen({ onComplete }: AuthScreenProps) {
+   226→  const [mode, setMode] = useState<'welcome' | 'login' | 'register' | 'verify-otp' | 'washer-info'>('welcome');
+   227→  const [isLoading, setIsLoading] = useState(false);
+   228→  const [error, setError] = useState<string | null>(null);
+   229→  const [showPin, setShowPin] = useState(false);
+   230→  const [showConfirmPin, setShowConfirmPin] = useState(false);
+   231→  
+   232→  // Form fields
+   233→  const [name, setName] = useState('');
+   234→  const [phone, setPhone] = useState('');
+   235→  const [plateNumber, setPlateNumber] = useState('');
+   236→  const [carColor, setCarColor] = useState('');
+   237→  const [pin, setPin] = useState('');
+   238→  const [confirmPin, setConfirmPin] = useState('');
+   239→  
+   240→  // OTP fields
+   241→  const [otp, setOtp] = useState('');
+   242→  const [sentOtp, setSentOtp] = useState('');
+   243→  const [resendTimer, setResendTimer] = useState(0);
+   244→  
+   245→  const { login } = useAuthStore();
+   246→
+   247→  // Timer for resend OTP
+   248→  useEffect(() => {
+   249→    if (resendTimer > 0) {
+   250→      const timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
+   251→      return () => clearTimeout(timer);
+   252→    }
+   253→  }, [resendTimer]);
+   254→
+   255→  // Send OTP for registration
+   256→  const handleSendOtp = async () => {
+   257→    setError(null);
+   258→    
+   259→    if (!name.trim()) {
+   260→      setError('Veuillez entrer votre nom');
+   261→      return;
+   262→    }
+   263→    if (!phone.trim() || phone.length < 8) {
+   264→      setError('Numéro de téléphone inval');
+   265→      return;
+   266→    }
+   267→    if (!plateNumber.trim()) {
+   268→      setError('Veuillez entrer le numéro de plaque');
+   269→      return;
+   270→    }
+   271→    if (!carColor) {
+   272→      setError('Veuillez sélectionner la couleur de votre voiture');
+   273→      return;
+   274→    }
+   275→    if (pin.length !== 4) {
+   276→      setError('Le PIN doit contenir 4 chiffres');
+   277→      return;
+   278→    }
+   279→    if (confirmPin.length !== 4) {
+   280→      setError('Veuillez confirmer votre PIN');
+   281→      return;
+   282→    }
+   283→    if (pin !== confirmPin) {
+   284→      setError('Les codes PIN ne correspondent pas');
+   285→      return;
+   286→    }
+   287→
+   288→    setIsLoading(true);
+   289→    try {
+   290→      const res = await fetch('/api/auth/send-otp', {
+   291→        method: 'POST',
+   292→        headers: { 'Content-Type': 'application/json' },
+   293→        body: JSON.stringify({ phone }),
+   294→      });
+   295→      
+   296→      if (!res.ok) {
+   297→        setError('Erreur du serveur. Réessayez.');
+   298→        return;
+   299→      }
+   300→      const contentType = res.headers.get('content-type');
+   301→      if (!contentType || !contentType.includes('application/json')) {
+   302→        setError('Réponse invalide du serveur');
+   303→        return;
+   304→      }
+   305→      const data = await res.json();
+   306→      
+   307→      if (data.success) {
+   308→        setSentOtp(data.otp || '123456');
+   309→        setMode('verify-otp');
+   310→        setResendTimer(60);
+   311→      } else {
+   312→        setError(data.error || 'Erreur lors de l\'envoi du code');
+   313→      }
+   314→    } catch {
+   315→      setError('Erreur de connexion. Réessayez.');
+   316→    } finally {
+   317→      setIsLoading(false);
+   318→    }
+   319→  };
+   320→
+   321→  // Verify OTP and complete registration
+   322→  const handleVerifyOtp = async () => {
+   323→    setError(null);
+   324→    
+   325→    if (otp.length !== 6) {
+   326→      setError('Le code doit contenir 6 chiffres');
+   327→      return;
+   328→    }
+   329→
+   330→    setIsLoading(true);
+   331→    try {
+   332→      // Send OTP along with registration data for verification
+   333→      const res = await fetch('/api/auth/register', {
+   334→        method: 'POST',
+   335→        headers: { 'Content-Type': 'application/json' },
+   336→        body: JSON.stringify({ name, phone, plateNumber, carColor, pin, otp }),
+   337→      });
+   338→      
+   339→      if (!res.ok) {
+   340→        setError('Erreur du serveur. Réessayez.');
+   341→        return;
+   342→      }
+   343→      const contentType = res.headers.get('content-type');
+   344→      if (!contentType || !contentType.includes('application/json')) {
+   345→        setError('Réponse invalide du serveur');
+   346→        return;
+   347→      }
+   348→      const data = await res.json();
+   349→      
+   350→      if (data.success) {
+   351→        login(data.user, data.token);
+   352→        onComplete();
+   353→      } else {
+   354→        setError(data.error || 'Erreur lors de l\'inscription');
+   355→      }
+   356→    } catch {
+   357→      setError('Erreur de connexion. Réessayez.');
+   358→    } finally {
+   359→      setIsLoading(false);
+   360→    }
+   361→  };
+   362→
+   363→  const handleLogin = async () => {
+   364→    setError(null);
+   365→    
+   366→    if (!phone.trim() || phone.length < 8) {
+   367→      setError('Numéro de téléphone inval');
+   368→      return;
+   369→    }
+   370→    if (pin.length !== 4) {
+   371→      setError('PIN invalide');
+   372→      return;
+   373→    }
+   374→
+   375→    setIsLoading(true);
+   376→    try {
+   377→      const res = await fetch('/api/auth/login', {
+   378→        method: 'POST',
+   379→        headers: { 'Content-Type': 'application/json' },
+   380→        body: JSON.stringify({ phone, pin }),
+   381→      });
+   382→      
+   383→      if (!res.ok) {
+   384→        setError('Erreur du serveur. Réessayez.');
+   385→        return;
+   386→      }
+   387→      const contentType = res.headers.get('content-type');
+   388→      if (!contentType || !contentType.includes('application/json')) {
+   389→        setError('Réponse invalide du serveur');
+   390→        return;
+   391→      }
+   392→      const data = await res.json();
+   393→      
+   394→      if (data.success) {
+   395→        login(data.user, data.token);
+   396→        onComplete();
+   397→      } else {
+   398→        setError(data.error || 'Erreur de connexion');
+   399→      }
+   400→    } catch {
+   401→      setError('Erreur de connexion. Réessayez.');
+   402→    } finally {
+   403→      setIsLoading(false);
+   404→    }
+   405→  };
+   406→
+   407→  // Washer Info Screen
+   408→  if (mode === 'washer-info') {
+   409→    return <WasherRegistrationInfo onBack={() => setMode('welcome')} />;
+   410→  }
+   411→
+   412→  // Welcome Screen
+   413→  if (mode === 'welcome') {
+   414→    return (
+   415→      <div className="flex-1 flex flex-col bg-gradient-to-b from-[#FF9800] to-[#F57C00]">
+   416→        {/* Logo Section */}
+   417→        <div className="flex-1 flex flex-col items-center justify-center p-8">
+   418→          <img 
+   419→            src="/android-chrome-192x192.png" 
+   420→            alt="Socline" 
+   421→            className="w-24 h-24 mb-6 object-contain"
+   422→          />
+   423→          <h1 className="text-3xl font-bold text-white mb-2">Socline</h1>
+   424→          <p className="text-white/80 text-center">Votre lavage auto à domicile</p>
+   425→        </div>
+   426→        
+   427→        {/* Buttons */}
+   428→        <div className="p-6 space-y-3">
+   429→          <Button
+   430→            onClick={() => setMode('login')}
+   431→            className="w-full h-14 bg-white text-[#FF9800] hover:bg-white/90 rounded-2xl font-semibold text-lg"
+   432→          >
+   433→            Se connecter
+   434→          </Button>
+   435→          <button
+   436→            onClick={() => setMode('register')}
+   437→            className="w-full h-14 border-2 border-white text-white bg-transparent hover:bg-white/10 rounded-2xl font-semibold text-lg transition-colors"
+   438→          >
+   439→            Créer un compte
+   440→          </button>
+   441→          
+   442→          {/* Discrete Washer Link */}
+   443→          <button
+   444→            onClick={() => setMode('washer-info')}
+   445→            className="w-full text-center text-white/60 text-sm hover:text-white/80 transition-colors mt-4 py-2"
+   446→          >
+   447→            <span className="flex items-center justify-center gap-1">
+   448→              Devenir partenaire laveur
+   449→              <ChevronRight className="w-4 h-4" />
+   450→            </span>
+   451→          </button>
+   452→        </div>
+   453→      </div>
+   454→    );
+   455→  }
+   456→
+   457→  // Login Screen
+   458→  if (mode === 'login') {
+   459→    return (
+   460→      <div className="flex-1 flex flex-col bg-[#FFF8F0]">
+   461→        {/* Header */}
+   462→        <div className="bg-[#FF9800] p-4 pt-8 pb-12 rounded-b-3xl">
+   463→          <button onClick={() => setMode('welcome')} className="text-white mb-4">
+   464→            <ArrowLeft className="w-6 h-6" />
+   465→          </button>
+   466→          <h1 className="text-2xl font-bold text-white">Connexion</h1>
+   467→          <p className="text-white/80 mt-1">Entrez vos identifiants</p>
+   468→        </div>
+   469→
+   470→        {/* Form */}
+   471→        <div className="flex-1 p-6 -mt-6">
+   472→          <div className="bg-white rounded-2xl p-6 shadow-sm space-y-4">
+   473→            {error && (
+   474→              <div className="flex items-center gap-2 text-red-500 bg-red-50 p-3 rounded-xl">
+   475→                <AlertCircle className="w-5 h-5" />
+   476→                <span className="text-sm">{error}</span>
+   477→              </div>
+   478→            )}
+   479→            
+   480→            {/* Phone */}
+   481→            <div className="space-y-2">
+   482→              <label className="text-sm font-medium text-[#757575]">Numéro de téléphone</label>
+   483→              <div className="relative">
+   484→                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9E9E9E]" />
+   485→                <Input
+   486→                  type="tel"
+   487→                  placeholder="90 12 34 56"
+   488→                  value={phone}
+   489→                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 8))}
+   490→                  className="pl-10 h-12 bg-[#F5F5F5] border-0 rounded-xl"
+   491→                />
+   492→              </div>
+   493→            </div>
+   494→
+   495→            {/* PIN */}
+   496→            <div className="space-y-2">
+   497→              <label className="text-sm font-medium text-[#757575]">Code PIN (4 chiffres)</label>
+   498→              <div className="relative">
+   499→                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9E9E9E]" />
+   500→                <Input
+   501→                  type={showPin ? 'text' : 'password'}
+   502→                  placeholder="••••"
+   503→                  value={pin}
+   504→                  onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+   505→                  className="pl-10 pr-10 h-12 bg-[#F5F5F5] border-0 rounded-xl"
+   506→                />
+   507→                <button
+   508→                  type="button"
+   509→                  onClick={() => setShowPin(!showPin)}
+   510→                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9E9E9E]"
+   511→                >
+   512→                  {showPin ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+   513→                </button>
+   514→              </div>
+   515→            </div>
+   516→
+   517→            <Button
+   518→              onClick={handleLogin}
+   519→              disabled={isLoading}
+   520→              className="w-full h-12 bg-[#FF9800] hover:bg-[#F57C00] text-white rounded-xl font-semibold"
+   521→            >
+   522→              {isLoading ? (
+   523→                <Loader2 className="w-5 h-5 animate-spin" />
+   524→              ) : (
+   525→                'Se connecter'
+   526→              )}
+   527→            </Button>
+   528→          </div>
+   529→
+   530→          <p className="text-center mt-4 text-[#757575]">
+   531→            Pas encore de compte?{' '}
+   532→            <button onClick={() => setMode('register')} className="text-[#FF9800] font-semibold">
+   533→              S&apos;inscrire
+   534→            </button>
+   535→          </p>
+   536→          
+   537→          {/* Discrete Washer Link */}
+   538→          <button
+   539→            onClick={() => setMode('washer-info')}
+   540→            className="w-full text-center text-[#9E9E9E] text-sm hover:text-[#757575] transition-colors mt-4"
+   541→          >
+   542→            Devenir partenaire laveur ?
+   543→          </button>
+   544→        </div>
+   545→      </div>
+   546→    );
+   547→  }
+   548→
+   549→  // OTP Verification Screen
+   550→  if (mode === 'verify-otp') {
+   551→    return (
+   552→      <div className="flex-1 flex flex-col bg-[#FFF8F0]">
+   553→        {/* Header */}
+   554→        <div className="bg-[#FF9800] p-4 pt-8 pb-12 rounded-b-3xl">
+   555→          <button onClick={() => setMode('register')} className="text-white mb-4">
+   556→            <ArrowLeft className="w-6 h-6" />
+   557→          </button>
+   558→          <h1 className="text-2xl font-bold text-white">Vérification</h1>
+   559→          <p className="text-white/80 mt-1">Entrez le code envoyé au +228 {phone}</p>
+   560→        </div>
+   561→
+   562→        {/* Form */}
+   563→        <div className="flex-1 p-6 -mt-6">
+   564→          <div className="bg-white rounded-2xl p-6 shadow-sm space-y-4">
+   565→            {error && (
+   566→              <div className="flex items-center gap-2 text-red-500 bg-red-50 p-3 rounded-xl">
+   567→                <AlertCircle className="w-5 h-5" />
+   568→                <span className="text-sm">{error}</span>
+   569→              </div>
+   570→            )}
+   571→            
+   572→            {/* OTP Input */}
+   573→            <div className="space-y-2">
+   574→              <label className="text-sm font-medium text-[#757575]">Code de vérification (6 chiffres)</label>
+   575→              <div className="relative">
+   576→                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9E9E9E]" />
+   577→                <Input
+   578→                  type="text"
+   579→                  placeholder="123456"
+   580→                  value={otp}
+   581→                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+   582→                  className="pl-10 h-14 bg-[#F5F5F5] border-0 rounded-xl text-center text-2xl tracking-widest"
+   583→                  maxLength={6}
+   584→                />
+   585→              </div>
+   586→              <p className="text-xs text-[#9E9E9E] text-center">
+   587→                Code de test: <span className="font-mono font-bold">123456</span>
+   588→              </p>
+   589→            </div>
+   590→
+   591→            <Button
+   592→              onClick={handleVerifyOtp}
+   593→              disabled={isLoading || otp.length !== 6}
+   594→              className="w-full h-12 bg-[#FF9800] hover:bg-[#F57C00] text-white rounded-xl font-semibold"
+   595→            >
+   596→              {isLoading ? (
+   597→                <Loader2 className="w-5 h-5 animate-spin" />
+   598→              ) : (
+   599→                <>
+   600→                  <CheckCircle className="w-5 h-5 mr-2" />
+   601→                  Vérifier et créer mon compte
+   602→                </>
+   603→              )}
+   604→            </Button>
+   605→
+   606→            {/* Resend OTP */}
+   607→            <div className="text-center pt-2">
+   608→              {resendTimer > 0 ? (
+   609→                <p className="text-sm text-[#9E9E9E]">
+   610→                  Renvoyer le code dans {resendTimer}s
+   611→                </p>
+   612→              ) : (
+   613→                <button
+   614→                  onClick={handleSendOtp}
+   615→                  className="text-sm text-[#FF9800] font-semibold"
+   616→                >
+   617→                  Renvoyer le code
+   618→                </button>
+   619→              )}
+   620→            </div>
+   621→          </div>
+   622→
+   623→          <p className="text-center mt-4 text-[#757575]">
+   624→            <button onClick={() => setMode('register')} className="text-[#FF9800] font-semibold">
+   625→              Modifier le numéro
+   626→            </button>
+   627→          </p>
+   628→        </div>
+   629→      </div>
+   630→    );
+   631→  }
+   632→
+   633→  // Register Screen
+   634→  return (
+   635→    <div className="flex-1 flex flex-col bg-[#FFF8F0]">
+   636→      {/* Header */}
+   637→      <div className="bg-[#FF9800] p-4 pt-8 pb-12 rounded-b-3xl">
+   638→        <button onClick={() => setMode('welcome')} className="text-white mb-4">
+   639→          <ArrowLeft className="w-6 h-6" />
+   640→        </button>
+   641→        <h1 className="text-2xl font-bold text-white">Inscription</h1>
+   642→        <p className="text-white/80 mt-1">Créez votre compte en quelques étapes</p>
+   643→      </div>
+   644→
+   645→      {/* Form */}
+   646→      <div className="flex-1 p-4 -mt-6 overflow-y-auto pb-8">
+   647→        <div className="bg-white rounded-2xl p-4 shadow-sm space-y-4">
+   648→          {error && (
+   649→            <div className="flex items-center gap-2 text-red-500 bg-red-50 p-3 rounded-xl">
+   650→              <AlertCircle className="w-5 h-5" />
+   651→              <span className="text-sm">{error}</span>
+   652→            </div>
+   653→          )}
+   654→          
+   655→          {/* Name */}
+   656→          <div className="space-y-2">
+   657→            <label className="text-sm font-medium text-[#757575]">Nom complet</label>
+   658→            <div className="relative">
+   659→              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9E9E9E]" />
+   660→              <Input
+   661→                type="text"
+   662→                placeholder="Kofi Mensah"
+   663→                value={name}
+   664→                onChange={(e) => setName(e.target.value)}
+   665→                className="pl-10 h-12 bg-[#F5F5F5] border-0 rounded-xl"
+   666→              />
+   667→            </div>
+   668→          </div>
+   669→
+   670→          {/* Phone */}
+   671→          <div className="space-y-2">
+   672→            <label className="text-sm font-medium text-[#757575]">Numéro de téléphone</label>
+   673→            <div className="relative">
+   674→              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9E9E9E]" />
+   675→              <span className="absolute left-10 top-1/2 -translate-y-1/2 text-[#757575]">+228</span>
+   676→              <Input
+   677→                type="tel"
+   678→                placeholder="90 12 34 56"
+   679→                value={phone}
+   680→                onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 8))}
+   681→                className="pl-20 h-12 bg-[#F5F5F5] border-0 rounded-xl"
+   682→              />
+   683→            </div>
+   684→          </div>
+   685→
+   686→          {/* Plate Number */}
+   687→          <div className="space-y-2">
+   688→            <label className="text-sm font-medium text-[#757575]">Numéro de plaque</label>
+   689→            <div className="relative">
+   690→              <Car className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9E9E9E]" />
+   691→              <Input
+   692→                type="text"
+   693→                placeholder="TG 1234 A"
+   694→                value={plateNumber}
+   695→                onChange={(e) => setPlateNumber(e.target.value.toUpperCase())}
+   696→                className="pl-10 h-12 bg-[#F5F5F5] border-0 rounded-xl uppercase"
+   697→              />
+   698→            </div>
+   699→          </div>
+   700→
+   701→          {/* Car Color */}
+   702→          <div className="space-y-2">
+   703→            <label className="text-sm font-medium text-[#757575] flex items-center gap-2">
+   704→              <Palette className="w-4 h-4" />
+   705→              Couleur de la voiture
+   706→            </label>
+   707→            <div className="grid grid-cols-5 gap-2">
+   708→              {CAR_COLORS.map((color) => (
+   709→                <button
+   710→                  key={color.id}
+   711→                  type="button"
+   712→                  onClick={() => setCarColor(color.id)}
+   713→                  className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${
+   714→                    carColor === color.id 
+   715→                      ? 'bg-[#FFF3E0] ring-2 ring-[#FF9800]' 
+   716→                      : 'bg-[#F5F5F5] hover:bg-[#EEEEEE]'
+   717→                  }`}
+   718→                >
+   719→                  <div 
+   720→                    className={`w-8 h-8 rounded-full border-2 ${
+   721→                      color.id === 'Blanc' ? 'border-gray-300' : 'border-transparent'
+   722→                    }`}
+   723→                    style={{ backgroundColor: color.color }}
+   724→                  />
+   725→                  <span className="text-[10px] text-[#757575]">{color.label}</span>
+   726→                </button>
+   727→              ))}
+   728→            </div>
+   729→          </div>
+   730→
+   731→          {/* PIN */}
+   732→          <div className="space-y-2">
+   733→            <label className="text-sm font-medium text-[#757575]">Code PIN (4 chiffres)</label>
+   734→            <div className="relative">
+   735→              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9E9E9E]" />
+   736→              <Input
+   737→                type={showPin ? 'text' : 'password'}
+   738→                placeholder="••••"
+   739→                value={pin}
+   740→                onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+   741→                className="pl-10 pr-10 h-12 bg-[#F5F5F5] border-0 rounded-xl"
+   742→              />
+   743→              <button
+   744→                type="button"
+   745→                onClick={() => setShowPin(!showPin)}
+   746→                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9E9E9E]"
+   747→              >
+   748→                {showPin ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+   749→              </button>
+   750→            </div>
+   751→            <p className="text-xs text-[#9E9E9E]">Ce PIN sera utilisé pour vous connecter</p>
+   752→          </div>
+   753→
+   754→          {/* Confirm PIN */}
+   755→          <div className="space-y-2">
+   756→            <label className="text-sm font-medium text-[#757575]">Confirmer le code PIN</label>
+   757→            <div className="relative">
+   758→              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9E9E9E]" />
+   759→              <Input
+   760→                type={showConfirmPin ? 'text' : 'password'}
+   761→                placeholder="••••"
+   762→                value={confirmPin}
+   763→                onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+   764→                className="pl-10 pr-10 h-12 bg-[#F5F5F5] border-0 rounded-xl"
+   765→              />
+   766→              <button
+   767→                type="button"
+   768→                onClick={() => setShowConfirmPin(!showConfirmPin)}
+   769→                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9E9E9E]"
+   770→              >
+   771→                {showConfirmPin ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+   772→              </button>
+   773→            </div>
+   774→            {confirmPin.length > 0 && pin === confirmPin && (
+   775→              <p className="text-xs text-green-600 flex items-center gap-1">
+   776→                <CheckCircle className="w-3 h-3" />
+   777→                Les codes correspondent
+   778→              </p>
+   779→            )}
+   780→          </div>
+   781→
+   782→          <Button
+   783→            onClick={handleSendOtp}
+   784→            disabled={isLoading}
+   785→            className="w-full h-12 bg-[#FF9800] hover:bg-[#F57C00] text-white rounded-xl font-semibold"
+   786→          >
+   787→            {isLoading ? (
+   788→              <Loader2 className="w-5 h-5 animate-spin" />
+   789→            ) : (
+   790→              <>
+   791→                <CheckCircle className="w-5 h-5 mr-2" />
+   792→                Continuer
+   793→              </>
+   794→            )}
+   795→          </Button>
+   796→        </div>
+   797→
+   798→        <p className="text-center mt-4 text-[#757575]">
+   799→          Déjà un compte?{' '}
+   800→          <button onClick={() => setMode('login')} className="text-[#FF9800] font-semibold">
+   801→            Se connecter
+   802→          </button>
+   803→        </p>
+   804→        
+   805→        {/* Discrete Washer Link */}
+   806→        <button
+   807→          onClick={() => setMode('washer-info')}
+   808→          className="w-full text-center text-[#9E9E9E] text-sm hover:text-[#757575] transition-colors mt-4"
+   809→        >
+   810→          Devenir partenaire laveur ?
+   811→        </button>
+   812→      </div>
+   813→    </div>
+   814→  );
+   815→}
+   816→

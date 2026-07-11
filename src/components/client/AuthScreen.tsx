@@ -3,12 +3,17 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { 
   Car, Phone, User, Lock, Palette, ArrowLeft, 
   Eye, EyeOff, CheckCircle, Loader2, AlertCircle,
-  FileText, Download, IdCard, CreditCard, ChevronRight
+  FileText, Download, IdCard, CreditCard, ChevronRight,
+  MapPin, Building, Info
 } from 'lucide-react';
 import { useAuthStore } from '@/store';
+
+type WasherType = 'INDEPENDENT' | 'STATION_OWNER';
 
 interface AuthScreenProps {
   onComplete: () => void;
@@ -223,7 +228,7 @@ _____________________                  _____________________
 }
 
 export function AuthScreen({ onComplete }: AuthScreenProps) {
-  const [mode, setMode] = useState<'welcome' | 'login' | 'register' | 'verify-otp' | 'washer-info'>('welcome');
+  const [mode, setMode] = useState<'welcome' | 'login' | 'register' | 'verify-otp' | 'washer-info' | 'washer-type' | 'register-independent' | 'register-station'>('welcome');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPin, setShowPin] = useState(false);
@@ -236,6 +241,22 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
   const [carColor, setCarColor] = useState('');
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
+  
+  // Washer registration fields
+  const [washerType, setWasherType] = useState<WasherType | null>(null);
+  const [stationName, setStationName] = useState('');
+  const [stationAddress, setStationAddress] = useState('');
+  const [stationPhone, setStationPhone] = useState('');
+  const [stationDescription, setStationDescription] = useState('');
+  
+  // Helper: returns true when the current registration flow is for a washer
+  const isWasherRegistration = washerType !== null;
+  // Helper: returns the register mode to return to from verify-otp based on washerType
+  const getRegisterMode = (): 'register' | 'register-independent' | 'register-station' => {
+    if (washerType === 'INDEPENDENT') return 'register-independent';
+    if (washerType === 'STATION_OWNER') return 'register-station';
+    return 'register';
+  };
   
   // OTP fields
   const [otp, setOtp] = useState('');
@@ -264,13 +285,27 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
       setError('Numéro de téléphone inval');
       return;
     }
-    if (!plateNumber.trim()) {
-      setError('Veuillez entrer le numéro de plaque');
-      return;
+    // Plate number and car color only required for client registration
+    if (!isWasherRegistration) {
+      if (!plateNumber.trim()) {
+        setError('Veuillez entrer le numéro de plaque');
+        return;
+      }
+      if (!carColor) {
+        setError('Veuillez sélectionner la couleur de votre voiture');
+        return;
+      }
     }
-    if (!carColor) {
-      setError('Veuillez sélectionner la couleur de votre voiture');
-      return;
+    // Station owners must provide station name and address
+    if (washerType === 'STATION_OWNER') {
+      if (!stationName.trim()) {
+        setError('Veuillez entrer le nom de la station');
+        return;
+      }
+      if (!stationAddress.trim()) {
+        setError('Veuillez entrer l\'adresse de la station');
+        return;
+      }
     }
     if (pin.length !== 4) {
       setError('Le PIN doit contenir 4 chiffres');
@@ -329,11 +364,26 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
 
     setIsLoading(true);
     try {
-      // Send OTP along with registration data for verification
+      // Send OTP along with registration data for verification.
+      // Include washerType and station fields when registering as a washer.
+      const requestBody: Record<string, string> = { name, phone, pin, otp };
+      if (isWasherRegistration && washerType) {
+        requestBody.washerType = washerType;
+        if (washerType === 'STATION_OWNER') {
+          requestBody.stationName = stationName;
+          requestBody.stationAddress = stationAddress;
+          // stationPhone defaults to user phone if not provided
+          requestBody.stationPhone = stationPhone.trim() || phone;
+          requestBody.stationDescription = stationDescription;
+        }
+      } else {
+        requestBody.plateNumber = plateNumber;
+        requestBody.carColor = carColor;
+      }
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, phone, plateNumber, carColor, pin, otp }),
+        body: JSON.stringify(requestBody),
       });
       
       if (!res.ok) {
@@ -404,9 +454,330 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
     }
   };
 
+  // Reset washer-specific state when leaving the washer registration flow.
+  // This ensures washerType is cleared when the user starts a client
+  // registration or navigates back to welcome/login.
+  useEffect(() => {
+    if (mode === 'welcome' || mode === 'register' || mode === 'login') {
+      setWasherType(null);
+    }
+  }, [mode]);
+
   // Washer Info Screen
   if (mode === 'washer-info') {
-    return <WasherRegistrationInfo onBack={() => setMode('welcome')} />;
+    return <WasherRegistrationInfo onBack={() => setMode('washer-type')} />;
+  }
+
+  // Washer Type Selection Screen
+  if (mode === 'washer-type') {
+    return (
+      <div className="flex-1 flex flex-col bg-[#FFF8F0]">
+        {/* Header */}
+        <div className="bg-[#FF9800] p-4 pt-8 pb-12 rounded-b-3xl">
+          <button onClick={() => setMode('welcome')} className="text-white mb-4">
+            <ArrowLeft className="w-6 h-6" />
+          </button>
+          <h1 className="text-2xl font-bold text-white">Devenir Laveur</h1>
+          <p className="text-white/80 mt-1">Choisissez votre type d&apos;activité</p>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 p-4 -mt-6 overflow-y-auto pb-8">
+          <div className="bg-white rounded-2xl p-4 shadow-sm space-y-4">
+            <h2 className="text-lg font-bold text-[#212121] text-center">
+              Quel type de laveur êtes-vous?
+            </h2>
+
+            {/* Independent Washer Card */}
+            <button
+              type="button"
+              onClick={() => {
+                setWasherType('INDEPENDENT');
+                setError(null);
+                setMode('register-independent');
+              }}
+              className="w-full text-left bg-[#FFF8F0] hover:bg-[#FFF3E0] border-2 border-transparent hover:border-[#FF9800] rounded-2xl p-4 transition-all"
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-12 h-12 bg-[#FF9800] rounded-xl flex items-center justify-center flex-shrink-0">
+                  <Car className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-[#212121] text-base">Laveur Indépendant</h3>
+                  <p className="text-sm text-[#757575] mt-1">
+                    Je me déplace chez les clients. Tarifs définis par l&apos;application.
+                  </p>
+                </div>
+                <ChevronRight className="w-5 h-5 text-[#9E9E9E] mt-1" />
+              </div>
+            </button>
+
+            {/* Station Owner Card */}
+            <button
+              type="button"
+              onClick={() => {
+                setWasherType('STATION_OWNER');
+                setError(null);
+                setMode('register-station');
+              }}
+              className="w-full text-left bg-[#FFF8F0] hover:bg-[#FFF3E0] border-2 border-transparent hover:border-[#FF9800] rounded-2xl p-4 transition-all"
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-12 h-12 bg-[#FF9800] rounded-xl flex items-center justify-center flex-shrink-0">
+                  <Building className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-[#212121] text-base">Station de Lavage</h3>
+                  <p className="text-sm text-[#757575] mt-1">
+                    J&apos;ai une station physique. Je crée mes propres offres et tarifs.
+                  </p>
+                </div>
+                <ChevronRight className="w-5 h-5 text-[#9E9E9E] mt-1" />
+              </div>
+            </button>
+
+            {/* Info Link */}
+            <button
+              onClick={() => setMode('washer-info')}
+              className="w-full text-center text-[#FF9800] text-sm hover:text-[#F57C00] transition-colors mt-2 py-2 flex items-center justify-center gap-1"
+            >
+              <Info className="w-4 h-4" />
+              En savoir plus sur le partenariat
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Washer Registration Screen (INDEPENDENT or STATION_OWNER)
+  if (mode === 'register-independent' || mode === 'register-station') {
+    const isStation = mode === 'register-station';
+    return (
+      <div className="flex-1 flex flex-col bg-[#FFF8F0]">
+        {/* Header */}
+        <div className="bg-[#FF9800] p-4 pt-8 pb-12 rounded-b-3xl">
+          <button onClick={() => setMode('washer-type')} className="text-white mb-4">
+            <ArrowLeft className="w-6 h-6" />
+          </button>
+          <h1 className="text-2xl font-bold text-white">
+            {isStation ? 'Inscription Station' : 'Inscription Laveur'}
+          </h1>
+          <p className="text-white/80 mt-1">
+            {isStation
+              ? 'Créez votre compte de station de lavage'
+              : 'Créez votre compte de laveur indépendant'}
+          </p>
+        </div>
+
+        {/* Form */}
+        <div className="flex-1 p-4 -mt-6 overflow-y-auto pb-8">
+          <div className="bg-white rounded-2xl p-4 shadow-sm space-y-4">
+            {error && (
+              <div className="flex items-center gap-2 text-red-500 bg-red-50 p-3 rounded-xl">
+                <AlertCircle className="w-5 h-5" />
+                <span className="text-sm">{error}</span>
+              </div>
+            )}
+
+            {/* Washer Type Badge */}
+            <div className="flex items-center gap-2 bg-[#FFF3E0] rounded-xl p-3">
+              {isStation ? (
+                <Building className="w-5 h-5 text-[#FF9800]" />
+              ) : (
+                <Car className="w-5 h-5 text-[#FF9800]" />
+              )}
+              <span className="text-sm font-medium text-[#757575]">
+                {isStation ? 'Station de Lavage' : 'Laveur Indépendant'}
+              </span>
+            </div>
+
+            {/* Name */}
+            <div className="space-y-2">
+              <Label htmlFor="washer-name">Nom complet</Label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9E9E9E]" />
+                <Input
+                  id="washer-name"
+                  type="text"
+                  placeholder="Kofi Mensah"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="pl-10 h-12 bg-[#F5F5F5] border-0 rounded-xl"
+                />
+              </div>
+            </div>
+
+            {/* Phone */}
+            <div className="space-y-2">
+              <Label htmlFor="washer-phone">Numéro de téléphone</Label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9E9E9E]" />
+                <span className="absolute left-10 top-1/2 -translate-y-1/2 text-[#757575]">+228</span>
+                <Input
+                  id="washer-phone"
+                  type="tel"
+                  placeholder="90 12 34 56"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                  className="pl-20 h-12 bg-[#F5F5F5] border-0 rounded-xl"
+                />
+              </div>
+            </div>
+
+            {/* Station fields - only for STATION_OWNER */}
+            {isStation && (
+              <>
+                <div className="border-t border-[#F5F5F5] pt-4">
+                  <h3 className="font-semibold text-[#212121] text-sm mb-3 flex items-center gap-2">
+                    <Building className="w-4 h-4 text-[#FF9800]" />
+                    Informations de la station
+                  </h3>
+                </div>
+
+                {/* Station Name */}
+                <div className="space-y-2">
+                  <Label htmlFor="station-name">Nom de la station *</Label>
+                  <div className="relative">
+                    <Building className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9E9E9E]" />
+                    <Input
+                      id="station-name"
+                      type="text"
+                      placeholder="Station Lavage Express"
+                      value={stationName}
+                      onChange={(e) => setStationName(e.target.value)}
+                      className="pl-10 h-12 bg-[#F5F5F5] border-0 rounded-xl"
+                    />
+                  </div>
+                </div>
+
+                {/* Station Address */}
+                <div className="space-y-2">
+                  <Label htmlFor="station-address">Adresse de la station *</Label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9E9E9E]" />
+                    <Input
+                      id="station-address"
+                      type="text"
+                      placeholder="Rue, quartier, ville"
+                      value={stationAddress}
+                      onChange={(e) => setStationAddress(e.target.value)}
+                      className="pl-10 h-12 bg-[#F5F5F5] border-0 rounded-xl"
+                    />
+                  </div>
+                </div>
+
+                {/* Station Phone */}
+                <div className="space-y-2">
+                  <Label htmlFor="station-phone">Téléphone de la station (optionnel)</Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9E9E9E]" />
+                    <Input
+                      id="station-phone"
+                      type="tel"
+                      placeholder="Par défaut: votre numéro"
+                      value={stationPhone}
+                      onChange={(e) => setStationPhone(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                      className="pl-10 h-12 bg-[#F5F5F5] border-0 rounded-xl"
+                    />
+                  </div>
+                  <p className="text-xs text-[#9E9E9E]">
+                    Laissez vide pour utiliser votre numéro personnel
+                  </p>
+                </div>
+
+                {/* Station Description */}
+                <div className="space-y-2">
+                  <Label htmlFor="station-desc">Description (optionnel)</Label>
+                  <Textarea
+                    id="station-desc"
+                    placeholder="Services proposés, horaires d'ouverture, équipements..."
+                    value={stationDescription}
+                    onChange={(e) => setStationDescription(e.target.value)}
+                    className="bg-[#F5F5F5] border-0 rounded-xl min-h-20"
+                    rows={3}
+                  />
+                </div>
+              </>
+            )}
+
+            {/* PIN */}
+            <div className="space-y-2">
+              <Label htmlFor="washer-pin">Code PIN (4 chiffres)</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9E9E9E]" />
+                <Input
+                  id="washer-pin"
+                  type={showPin ? 'text' : 'password'}
+                  placeholder="••••"
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  className="pl-10 pr-10 h-12 bg-[#F5F5F5] border-0 rounded-xl"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPin(!showPin)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9E9E9E]"
+                >
+                  {showPin ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+              <p className="text-xs text-[#9E9E9E]">Ce PIN sera utilisé pour vous connecter</p>
+            </div>
+
+            {/* Confirm PIN */}
+            <div className="space-y-2">
+              <Label htmlFor="washer-confirm-pin">Confirmer le code PIN</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9E9E9E]" />
+                <Input
+                  id="washer-confirm-pin"
+                  type={showConfirmPin ? 'text' : 'password'}
+                  placeholder="••••"
+                  value={confirmPin}
+                  onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  className="pl-10 pr-10 h-12 bg-[#F5F5F5] border-0 rounded-xl"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPin(!showConfirmPin)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9E9E9E]"
+                >
+                  {showConfirmPin ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+              {confirmPin.length > 0 && pin === confirmPin && (
+                <p className="text-xs text-green-600 flex items-center gap-1">
+                  <CheckCircle className="w-3 h-3" />
+                  Les codes correspondent
+                </p>
+              )}
+            </div>
+
+            <Button
+              onClick={handleSendOtp}
+              disabled={isLoading}
+              className="w-full h-12 bg-[#FF9800] hover:bg-[#F57C00] text-white rounded-xl font-semibold"
+            >
+              {isLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <>
+                  <CheckCircle className="w-5 h-5 mr-2" />
+                  Continuer
+                </>
+              )}
+            </Button>
+          </div>
+
+          <p className="text-center mt-4 text-[#757575]">
+            <button onClick={() => setMode('washer-type')} className="text-[#FF9800] font-semibold">
+              Changer de type de laveur
+            </button>
+          </p>
+        </div>
+      </div>
+    );
   }
 
   // Welcome Screen
@@ -441,7 +812,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
           
           {/* Discrete Washer Link */}
           <button
-            onClick={() => setMode('washer-info')}
+            onClick={() => setMode('washer-type')}
             className="w-full text-center text-white/60 text-sm hover:text-white/80 transition-colors mt-4 py-2"
           >
             <span className="flex items-center justify-center gap-1">
@@ -536,7 +907,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
           
           {/* Discrete Washer Link */}
           <button
-            onClick={() => setMode('washer-info')}
+            onClick={() => setMode('washer-type')}
             className="w-full text-center text-[#9E9E9E] text-sm hover:text-[#757575] transition-colors mt-4"
           >
             Devenir partenaire laveur ?
@@ -552,7 +923,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
       <div className="flex-1 flex flex-col bg-[#FFF8F0]">
         {/* Header */}
         <div className="bg-[#FF9800] p-4 pt-8 pb-12 rounded-b-3xl">
-          <button onClick={() => setMode('register')} className="text-white mb-4">
+          <button onClick={() => setMode(getRegisterMode())} className="text-white mb-4">
             <ArrowLeft className="w-6 h-6" />
           </button>
           <h1 className="text-2xl font-bold text-white">Vérification</h1>
@@ -621,7 +992,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
           </div>
 
           <p className="text-center mt-4 text-[#757575]">
-            <button onClick={() => setMode('register')} className="text-[#FF9800] font-semibold">
+            <button onClick={() => setMode(getRegisterMode())} className="text-[#FF9800] font-semibold">
               Modifier le numéro
             </button>
           </p>
@@ -804,7 +1175,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
         
         {/* Discrete Washer Link */}
         <button
-          onClick={() => setMode('washer-info')}
+          onClick={() => setMode('washer-type')}
           className="w-full text-center text-[#9E9E9E] text-sm hover:text-[#757575] transition-colors mt-4"
         >
           Devenir partenaire laveur ?
