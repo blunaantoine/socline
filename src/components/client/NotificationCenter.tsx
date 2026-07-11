@@ -15,6 +15,7 @@ import {
   Bell, CheckCircle, Clock, Car, AlertCircle, X, MessageCircle,
   Star, CreditCard, MapPin
 } from 'lucide-react';
+import { parseJsonResponse } from '@/lib/json-helper';
 
 interface Notification {
   id: string;
@@ -41,7 +42,8 @@ export function NotificationCenter() {
 
       try {
         const res = await fetch(`/api/notifications?userId=${user.id}`);
-        const data = await res.json();
+        const data = await parseJsonResponse<any>(res);
+        if (!data) return;
         if (data.success) {
           setNotifications(data.notifications);
         }

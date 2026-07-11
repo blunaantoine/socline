@@ -40,6 +40,7 @@ import {
 } from 'lucide-react';
 import { HideableBalanceLight } from '@/components/ui/hideable-balance';
 import { toast } from 'sonner';
+import { parseJsonResponse } from '@/lib/json-helper';
 
 // Component to drag and position image
 function ImagePositionEditor({ 
@@ -339,13 +340,15 @@ export function AdminPanel() {
     setIsLoading(true);
     try {
       const res = await fetch('/api/admin/stats');
-      const data = await res.json();
-      
+
       if (res.status === 401) {
         toast.error('Session expirée, veuillez vous reconnecter');
         logout();
         return;
       }
+
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
       
       if (data.success) {
         setStats(data.stats);
@@ -372,7 +375,8 @@ export function AdminPanel() {
         search: searchQuery,
       });
       const res = await fetch(`/api/admin/orders?${params}`);
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
       
       if (data.success) {
         setOrders(data.orders);
@@ -390,13 +394,15 @@ export function AdminPanel() {
     try {
       const params = new URLSearchParams({ search: searchQuery });
       const res = await fetch(`/api/admin/users?${params}`);
-      const data = await res.json();
-      
+
       if (res.status === 401) {
         toast.error('Session expirée, veuillez vous reconnecter');
         logout();
         return;
       }
+
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
       
       if (data.success) {
         setUsers(data.users);
@@ -416,7 +422,8 @@ export function AdminPanel() {
     setIsLoading(true);
     try {
       const res = await fetch('/api/admin/washers');
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
       
       if (data.success) {
         setWashers(data.washers);
@@ -433,7 +440,8 @@ export function AdminPanel() {
     setIsLoading(true);
     try {
       const res = await fetch('/api/promotions');
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
       
       if (data.success) {
         setPromotions(data.promotions);
@@ -450,7 +458,8 @@ export function AdminPanel() {
     setIsLoading(true);
     try {
       const res = await fetch('/api/admin/deposits?status=PENDING');
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
 
       if (data.success) {
         setDeposits(data.deposits);
@@ -467,7 +476,8 @@ export function AdminPanel() {
     setIsLoading(true);
     try {
       const res = await fetch('/api/admin/withdrawals?status=PENDING');
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
 
       if (data.success) {
         setWithdrawals(data.withdrawals);
@@ -522,7 +532,8 @@ export function AdminPanel() {
         body: JSON.stringify({ washerId, action }),
       });
       
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
       if (data.success) {
         toast.success(action === 'verify' ? 'Laveur vérifié' : 'Laveur rejeté');
         fetchWashers();
@@ -541,7 +552,8 @@ export function AdminPanel() {
         body: JSON.stringify({ transactionId, action }),
       });
       
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
       if (data.success) {
         toast.success(action === 'validate' ? 'Rechargement validé' : 'Rechargement rejeté');
         fetchDeposits();
@@ -562,7 +574,8 @@ export function AdminPanel() {
         body: JSON.stringify({ withdrawalId, action }),
       });
       
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
       if (data.success) {
         toast.success(action === 'approve' ? 'Retrait approuvé' : 'Retrait rejeté');
         fetchWithdrawals();
@@ -1112,7 +1125,8 @@ function AdminUsers({ users, searchQuery, setSearchQuery, isLoading, onRefresh }
         limit: '100'
       });
       const res = await fetch(`/api/admin/users?${params}`);
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
       
       if (data.success) {
         setAllUsers(data.users);
@@ -1150,7 +1164,8 @@ function AdminUsers({ users, searchQuery, setSearchQuery, isLoading, onRefresh }
         }),
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
       if (data.success) {
         toast.success('Utilisateur créé avec succès');
         setShowAddModal(false);
@@ -1200,7 +1215,8 @@ function AdminUsers({ users, searchQuery, setSearchQuery, isLoading, onRefresh }
         }),
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
       if (data.success) {
         toast.success('Utilisateur mis à jour');
         setShowEditModal(false);
@@ -1228,7 +1244,8 @@ function AdminUsers({ users, searchQuery, setSearchQuery, isLoading, onRefresh }
         }),
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
       if (data.success) {
         toast.success(user.isActive ? 'Utilisateur désactivé' : 'Utilisateur activé');
         fetchUsersWithFilter();
@@ -1248,7 +1265,8 @@ function AdminUsers({ users, searchQuery, setSearchQuery, isLoading, onRefresh }
         method: 'DELETE',
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
       if (data.success) {
         toast.success('Utilisateur supprimé');
         setDeleteConfirm(null);
@@ -1850,7 +1868,8 @@ function AdminServices() {
     setIsLoading(true);
     try {
       const res = await fetch('/api/services');
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
       if (data.success) {
         setServices(data.services);
       }
@@ -1889,7 +1908,8 @@ function AdminServices() {
         }),
       });
       
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
       
       if (data.success) {
         toast.success('Service mis à jour avec succès');
@@ -1914,7 +1934,8 @@ function AdminServices() {
         body: JSON.stringify({ isActive: !service.isActive }),
       });
       
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
       
       if (data.success) {
         toast.success(service.isActive ? 'Service désactivé' : 'Service activé');
@@ -2255,7 +2276,8 @@ function AdminOperatorsSection() {
     setIsLoading(true);
     try {
       const res = await fetch('/api/operators');
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
       if (data.success) {
         setOperators(data.operators);
       }
@@ -2281,7 +2303,8 @@ function AdminOperatorsSection() {
         body: JSON.stringify(editingOperator ? { ...form, id: editingOperator.id } : form),
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
       if (data.success) {
         toast.success(editingOperator ? 'Opérateur modifié' : 'Opérateur créé');
         setShowForm(false);
@@ -2496,7 +2519,8 @@ function AdminSettingsContent() {
     setIsResetting(true);
     try {
       const res = await fetch('/api/seed', { method: 'POST' });
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
       if (data.success) {
         toast.success('Données de test réinitialisées');
         // Recharger la page pour refléter les changements
@@ -2666,7 +2690,8 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
         body: JSON.stringify(body),
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
 
       if (data.success) {
         toast.success(editingPromo ? 'Promotion mise à jour' : 'Promotion créée');
@@ -2715,7 +2740,8 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
         }),
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
       
       if (data.success) {
         toast.success(promo.isActive ? 'Promotion désactivée' : 'Promotion activée');
@@ -3280,8 +3306,9 @@ function AdminSubscriptionPlans() {
         fetch('/api/services')
       ]);
       
-      const plansData = await plansRes.json();
-      const servicesData = await servicesRes.json();
+      const plansData = await parseJsonResponse<any>(plansRes);
+      const servicesData = await parseJsonResponse<any>(servicesRes);
+      if (!plansData || !servicesData) return;
       
       if (plansData.success) {
         setPlans(plansData.plans);
@@ -3366,7 +3393,8 @@ function AdminSubscriptionPlans() {
         body: JSON.stringify(body),
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
       if (data.success) {
         toast.success(editingPlan ? 'Forfait mis à jour' : 'Forfait créé');
         resetForm();
@@ -3389,7 +3417,8 @@ function AdminSubscriptionPlans() {
         body: JSON.stringify({ id: plan.id, isActive: !plan.isActive }),
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
       if (data.success) {
         toast.success(plan.isActive ? 'Forfait désactivé' : 'Forfait activé');
         fetchData();
@@ -3408,7 +3437,8 @@ function AdminSubscriptionPlans() {
         method: 'DELETE',
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
       if (data.success) {
         toast.success('Forfait supprimé');
         setDeleteConfirm(null);
@@ -3825,7 +3855,8 @@ function AdminSubscriptions() {
     try {
       // Fetch subscriptions
       const subRes = await fetch(`/api/admin/subscriptions?status=${statusFilter}`);
-      const subData = await subRes.json();
+      const subData = await parseJsonResponse<any>(subRes);
+      if (!subData) return;
       if (subData.success) {
         setSubscriptions(subData.subscriptions);
         setStats(subData.stats);
@@ -3833,7 +3864,8 @@ function AdminSubscriptions() {
 
       // Fetch pending usages
       const usageRes = await fetch('/api/admin/subscriptions/usages?status=PENDING');
-      const usageData = await usageRes.json();
+      const usageData = await parseJsonResponse<any>(usageRes);
+      if (!usageData) return;
       if (usageData.success) {
         setUsages(usageData.usages);
         setUsageStats(usageData.stats);
@@ -3858,7 +3890,8 @@ function AdminSubscriptions() {
         body: JSON.stringify({ usageId, action }),
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
       if (data.success) {
         toast.success(action === 'VALIDATE' ? 'Séance validée' : 'Séance annulée');
         fetchData();

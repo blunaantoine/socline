@@ -23,6 +23,7 @@ import {
   Edit, ChevronRight
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { parseJsonResponse } from '@/lib/json-helper';
 
 interface CarData {
   id: string;
@@ -116,8 +117,9 @@ export function CarsManager({ userId }: CarsManagerProps) {
       setIsLoading(true);
       try {
         const res = await fetch(`/api/cars?userId=${userId}`);
-        const data = await res.json();
-        
+        const data = await parseJsonResponse<any>(res);
+        if (!data) return;
+
         if (data.success) {
           setCars(data.cars);
           setCanAddMore(data.canAddMore);
@@ -172,7 +174,8 @@ export function CarsManager({ userId }: CarsManagerProps) {
         }),
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
 
       if (data.success) {
         setCars(prev => [data.car, ...prev]);
@@ -213,7 +216,8 @@ export function CarsManager({ userId }: CarsManagerProps) {
         }),
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
 
       if (data.success) {
         setCars(prev => prev.map(c => c.id === data.car.id ? data.car : c));
@@ -239,7 +243,8 @@ export function CarsManager({ userId }: CarsManagerProps) {
         method: 'DELETE',
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
 
       if (data.success) {
         setCars(prev => {
@@ -272,7 +277,8 @@ export function CarsManager({ userId }: CarsManagerProps) {
         }),
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
 
       if (data.success) {
         setCars(prev => prev.map(c => ({

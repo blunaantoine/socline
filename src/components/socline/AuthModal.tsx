@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { X, User, Phone, Car, Lock, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';
+import { parseJsonResponse } from '@/lib/json-helper';
 
 interface AuthModalProps {
   onClose: () => void;
@@ -72,9 +73,13 @@ export function AuthModal({ onClose }: AuthModalProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, phone, plateNumber, carColor, pin }),
       });
-      
-      const data = await res.json();
-      
+
+      const data = await parseJsonResponse<any>(res);
+      if (!data) {
+        setError('Erreur de connexion. Réessayez.');
+        return;
+      }
+
       if (data.success) {
         login(data.user, data.token);
         toast.success('Inscription réussie!');
@@ -109,9 +114,13 @@ export function AuthModal({ onClose }: AuthModalProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone, pin }),
       });
-      
-      const data = await res.json();
-      
+
+      const data = await parseJsonResponse<any>(res);
+      if (!data) {
+        setError('Erreur de connexion. Réessayez.');
+        return;
+      }
+
       if (data.success) {
         login(data.user, data.token);
         toast.success('Connexion réussie!');

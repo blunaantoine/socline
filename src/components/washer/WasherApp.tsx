@@ -18,6 +18,7 @@ import { HideableBalanceDark, HideableBalanceLight } from '@/components/ui/hidea
 import type { Order, OrderStatus, Conversation, User } from '@/types';
 import { ChatView } from '@/components/chat/ChatView';
 import { toast } from 'sonner';
+import { parseJsonResponse } from '@/lib/json-helper';
 
 // Washer stats type
 interface WasherStats {
@@ -55,7 +56,8 @@ export function WasherApp() {
   const fetchConversation = useCallback(async (orderId: string) => {
     try {
       const res = await fetch(`/api/conversations?orderId=${orderId}`);
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
       
       if (data.success && data.conversation) {
         setConversation(data.conversation);
@@ -80,7 +82,8 @@ export function WasherApp() {
     setIsRefreshingBalance(true);
     try {
       const res = await fetch(`/api/washers/${user.id}`);
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
       
       if (data.success && data.washer) {
         setWasherData(data.washer);
@@ -111,7 +114,8 @@ export function WasherApp() {
     setIsLoading(true);
     try {
       const res = await fetch(`/api/orders?userId=${user.id}&role=WASHER&status=PENDING`);
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
       
       if (data.success) {
         setPendingOrders(data.orders);
@@ -129,7 +133,8 @@ export function WasherApp() {
     
     try {
       const res = await fetch(`/api/orders?userId=${user.id}&role=WASHER`);
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
       
       if (data.success) {
         setOrders(data.orders);
@@ -176,7 +181,8 @@ export function WasherApp() {
         }),
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
 
       if (data.success) {
         setCurrentOrder(data.order);
@@ -205,7 +211,8 @@ export function WasherApp() {
           }),
         });
 
-        const data = await res.json();
+        const data = await parseJsonResponse<any>(res);
+        if (!data) return;
 
         if (data.success) {
           setCurrentOrder(null);
@@ -224,7 +231,8 @@ export function WasherApp() {
         }),
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
 
       if (data.success) {
         setCurrentOrder(data.order);
@@ -938,7 +946,8 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, isRefreshingBalance, 
     const fetchWithdrawals = async () => {
       try {
         const res = await fetch(`/api/withdrawals?washerId=${washerId}`);
-        const data = await res.json();
+        const data = await parseJsonResponse<any>(res);
+        if (!data) return;
         if (data.success) {
           setWithdrawals(data.withdrawals);
         }
@@ -983,7 +992,8 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, isRefreshingBalance, 
         }),
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
 
       if (data.success) {
         toast.success('Demande de retrait envoyée!');
@@ -993,7 +1003,8 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, isRefreshingBalance, 
         onRefreshBalance();
         // Refresh withdrawals
         const res2 = await fetch(`/api/withdrawals?washerId=${washerId}`);
-        const data2 = await res2.json();
+        const data2 = await parseJsonResponse<any>(res2);
+        if (!data2) return;
         if (data2.success) {
           setWithdrawals(data2.withdrawals);
         }
@@ -1370,7 +1381,8 @@ function WasherProfileSection({ section, onBack, user }: {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user?.id, name }),
       });
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
       if (data.success) {
         toast.success('Profil mis à jour');
         onBack();

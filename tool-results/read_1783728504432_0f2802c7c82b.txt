@@ -1,0 +1,915 @@
+     1→'use client';
+     2→
+     3→import { useState, useEffect } from 'react';
+     4→import { useAuthStore } from '@/store';
+     5→import { Card, CardContent } from '@/components/ui/card';
+     6→import { Button } from '@/components/ui/button';
+     7→import { Input } from '@/components/ui/input';
+     8→import { Badge } from '@/components/ui/badge';
+     9→import {
+    10→  Dialog,
+    11→  DialogContent,
+    12→  DialogHeader,
+    13→  DialogTitle,
+    14→} from '@/components/ui/dialog';
+    15→import {
+    16→  Wallet, ArrowDownLeft, ArrowUpRight, Clock, Plus, 
+    17→  Loader2, CheckCircle, XCircle, ArrowLeft, Phone,
+    18→  CreditCard, ChevronRight, Sparkles, RefreshCw, History,
+    19→  Copy, ExternalLink, AlertCircle, Check
+    20→} from 'lucide-react';
+    21→import { HideableBalanceDark } from '@/components/ui/hideable-balance';
+    22→import { toast } from 'sonner';
+    23→
+    24→interface WalletData {
+    25→  id: string;
+    26→  balance: number;
+    27→  totalDeposited: number;
+    28→  totalSpent: number;
+    29→  isActive: boolean;
+    30→  transactions: Transaction[];
+    31→}
+    32→
+    33→interface Transaction {
+    34→  id: string;
+    35→  type: 'DEPOSIT' | 'WITHDRAWAL' | 'PAYMENT' | 'REFUND' | 'BONUS';
+    36→  amount: number;
+    37→  status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+    38→  description: string | null;
+    39→  paymentMethod?: string | null;
+    40→  ussdCode?: string | null;
+    41→  ussdConfirmedAt?: string | null;
+    42→  orderId: string | null;
+    43→  balanceAfter: number;
+    44→  createdAt: string;
+    45→}
+    46→
+    47→interface Operator {
+    48→  id: string;
+    49→  name: string;
+    50→  displayName: string;
+    51→  ussdPattern: string;
+    52→  recipientNumber: string;
+    53→  color: string;
+    54→  minAmount: number;
+    55→  maxAmount: number;
+    56→  isActive: boolean;
+    57→}
+    58→
+    59→const TRANSACTION_LABELS: Record<string, string> = {
+    60→  DEPOSIT: 'Rechargement',
+    61→  WITHDRAWAL: 'Retrait',
+    62→  PAYMENT: 'Paiement',
+    63→  REFUND: 'Remboursement',
+    64→  BONUS: 'Bonus',
+    65→};
+    66→
+    67→const TRANSACTION_COLORS: Record<string, string> = {
+    68→  DEPOSIT: 'text-green-600',
+    69→  WITHDRAWAL: 'text-red-600',
+    70→  PAYMENT: 'text-orange-600',
+    71→  REFUND: 'text-blue-600',
+    72→  BONUS: 'text-purple-600',
+    73→};
+    74→
+    75→const TRANSACTION_ICONS: Record<string, any> = {
+    76→  DEPOSIT: ArrowDownLeft,
+    77→  WITHDRAWAL: ArrowUpRight,
+    78→  PAYMENT: CreditCard,
+    79→  REFUND: ArrowDownLeft,
+    80→  BONUS: Sparkles,
+    81→};
+    82→
+    83→const STATUS_LABELS: Record<string, string> = {
+    84→  PENDING: 'En attente',
+    85→  COMPLETED: 'Complété',
+    86→  FAILED: 'Échoué',
+    87→  CANCELLED: 'Annulé',
+    88→};
+    89→
+    90→const STATUS_COLORS: Record<string, string> = {
+    91→  PENDING: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    92→  COMPLETED: 'bg-green-100 text-green-800 border-green-200',
+    93→  FAILED: 'bg-red-100 text-red-800 border-red-200',
+    94→  CANCELLED: 'bg-gray-100 text-gray-800 border-gray-200',
+    95→};
+    96→
+    97→const AMOUNT_OPTIONS = [
+    98→  { value: 1000, label: '1 000 XOF' },
+    99→  { value: 2000, label: '2 000 XOF' },
+   100→  { value: 5000, label: '5 000 XOF' },
+   101→  { value: 10000, label: '10 000 XOF' },
+   102→  { value: 20000, label: '20 000 XOF' },
+   103→  { value: 50000, label: '50 000 XOF' },
+   104→];
+   105→
+   106→type DepositStep = 'amount' | 'operator' | 'phone' | 'ussd' | 'confirm';
+   107→
+   108→interface DepositState {
+   109→  step: DepositStep;
+   110→  amount: number;
+   111→  operatorId: string;
+   112→  phoneNumber: string;
+   113→  transactionId: string;
+   114→  ussdCode: string;
+   115→  ussdLink: string;
+   116→  recipientNumber: string;
+   117→}
+   118→
+   119→export function WalletScreen({ onBack }: { onBack?: () => void }) {
+   120→  const { user } = useAuthStore();
+   121→  const [wallet, setWallet] = useState<WalletData | null>(null);
+   122→  const [operators, setOperators] = useState<Operator[]>([]);
+   123→  const [isLoading, setIsLoading] = useState(true);
+   124→  const [isRefreshing, setIsRefreshing] = useState(false);
+   125→  const [showDeposit, setShowDeposit] = useState(false);
+   126→  const [showHistory, setShowHistory] = useState(false);
+   127→  const [isProcessing, setIsProcessing] = useState(false);
+   128→  const [copied, setCopied] = useState(false);
+   129→  
+   130→  const [deposit, setDeposit] = useState<DepositState>({
+   131→    step: 'amount',
+   132→    amount: 0,
+   133→    operatorId: '',
+   134→    phoneNumber: '',
+   135→    transactionId: '',
+   136→    ussdCode: '',
+   137→    ussdLink: '',
+   138→    recipientNumber: '',
+   139→  });
+   140→
+   141→  // Fetch wallet data
+   142→  const fetchWallet = async (showRefreshLoader = false) => {
+   143→    if (!user?.id) return;
+   144→
+   145→    if (showRefreshLoader) {
+   146→      setIsRefreshing(true);
+   147→    } else {
+   148→      setIsLoading(true);
+   149→    }
+   150→    
+   151→    try {
+   152→      const res = await fetch(`/api/wallet?userId=${user.id}`);
+   153→      const data = await res.json();
+   154→
+   155→      if (data.success) {
+   156→        setWallet(data.wallet);
+   157→      }
+   158→    } catch (error) {
+   159→      console.error('Error fetching wallet:', error);
+   160→      toast.error('Erreur lors du chargement du portefeuille');
+   161→    } finally {
+   162→      setIsLoading(false);
+   163→      setIsRefreshing(false);
+   164→    }
+   165→  };
+   166→
+   167→  // Fetch operators
+   168→  const fetchOperators = async () => {
+   169→    try {
+   170→      const res = await fetch('/api/operators?activeOnly=true');
+   171→      const data = await res.json();
+   172→
+   173→      if (data.success) {
+   174→        setOperators(data.operators);
+   175→      }
+   176→    } catch (error) {
+   177→      console.error('Error fetching operators:', error);
+   178→    }
+   179→  };
+   180→
+   181→  useEffect(() => {
+   182→    fetchWallet();
+   183→    fetchOperators();
+   184→  }, [user?.id]);
+   185→
+   186→  // Get selected operator
+   187→  const selectedOperator = operators.find(o => o.id === deposit.operatorId);
+   188→
+   189→  // Handle deposit flow
+   190→  const handleNextStep = () => {
+   191→    const steps: DepositStep[] = ['amount', 'operator', 'phone', 'ussd', 'confirm'];
+   192→    const currentIndex = steps.indexOf(deposit.step);
+   193→    
+   194→    if (currentIndex < steps.length - 1) {
+   195→      setDeposit(prev => ({ ...prev, step: steps[currentIndex + 1] }));
+   196→    }
+   197→  };
+   198→
+   199→  const handlePrevStep = () => {
+   200→    const steps: DepositStep[] = ['amount', 'operator', 'phone', 'ussd', 'confirm'];
+   201→    const currentIndex = steps.indexOf(deposit.step);
+   202→    
+   203→    if (currentIndex > 0) {
+   204→      setDeposit(prev => ({ ...prev, step: steps[currentIndex - 1] }));
+   205→    }
+   206→  };
+   207→
+   208→  const handleCreateTransaction = async () => {
+   209→    if (!user?.id || deposit.amount <= 0 || !deposit.operatorId || !deposit.phoneNumber) {
+   210→      toast.error('Veuillez remplir tous les champs');
+   211→      return;
+   212→    }
+   213→
+   214→    setIsProcessing(true);
+   215→    try {
+   216→      const res = await fetch('/api/wallet', {
+   217→        method: 'POST',
+   218→        headers: { 'Content-Type': 'application/json' },
+   219→        body: JSON.stringify({
+   220→          userId: user.id,
+   221→          amount: deposit.amount,
+   222→          phoneNumber: deposit.phoneNumber,
+   223→          operatorId: deposit.operatorId,
+   224→        }),
+   225→      });
+   226→
+   227→      const data = await res.json();
+   228→
+   229→      if (data.success) {
+   230→        setDeposit(prev => ({
+   231→          ...prev,
+   232→          transactionId: data.transaction.id,
+   233→          ussdCode: data.transaction.ussdCode,
+   234→          ussdLink: data.transaction.ussdLink,
+   235→          recipientNumber: data.transaction.recipientNumber,
+   236→        }));
+   237→        handleNextStep();
+   238→      } else {
+   239→        toast.error(data.error || 'Erreur lors de la création de la transaction');
+   240→      }
+   241→    } catch (error) {
+   242→      toast.error('Erreur lors de la création de la transaction');
+   243→    } finally {
+   244→      setIsProcessing(false);
+   245→    }
+   246→  };
+   247→
+   248→  const handleLaunchUssd = () => {
+   249→    if (deposit.ussdLink) {
+   250→      window.location.href = deposit.ussdLink;
+   251→    }
+   252→  };
+   253→
+   254→  const handleCopyUssd = async () => {
+   255→    if (deposit.ussdCode) {
+   256→      await navigator.clipboard.writeText(deposit.ussdCode);
+   257→      setCopied(true);
+   258→      toast.success('Code USSD copié !');
+   259→      setTimeout(() => setCopied(false), 2000);
+   260→    }
+   261→  };
+   262→
+   263→  const handleConfirmPayment = async () => {
+   264→    if (!deposit.transactionId || !user?.id) return;
+   265→
+   266→    setIsProcessing(true);
+   267→    try {
+   268→      const res = await fetch('/api/wallet', {
+   269→        method: 'PUT',
+   270→        headers: { 'Content-Type': 'application/json' },
+   271→        body: JSON.stringify({
+   272→          transactionId: deposit.transactionId,
+   273→          userId: user.id,
+   274→        }),
+   275→      });
+   276→
+   277→      const data = await res.json();
+   278→
+   279→      if (data.success) {
+   280→        toast.success('Confirmation enregistrée ! Un administrateur validera votre paiement.');
+   281→        setShowDeposit(false);
+   282→        resetDeposit();
+   283→        fetchWallet(true);
+   284→      } else {
+   285→        toast.error(data.error || 'Erreur lors de la confirmation');
+   286→      }
+   287→    } catch (error) {
+   288→      toast.error('Erreur lors de la confirmation');
+   289→    } finally {
+   290→      setIsProcessing(false);
+   291→    }
+   292→  };
+   293→
+   294→  const resetDeposit = () => {
+   295→    setDeposit({
+   296→      step: 'amount',
+   297→      amount: 0,
+   298→      operatorId: '',
+   299→      phoneNumber: '',
+   300→      transactionId: '',
+   301→      ussdCode: '',
+   302→      ussdLink: '',
+   303→      recipientNumber: '',
+   304→    });
+   305→  };
+   306→
+   307→  const formatDate = (dateStr: string) => {
+   308→    return new Date(dateStr).toLocaleDateString('fr-FR', {
+   309→      day: 'numeric',
+   310→      month: 'short',
+   311→      hour: '2-digit',
+   312→      minute: '2-digit',
+   313→    });
+   314→  };
+   315→
+   316→  const formatFullDate = (dateStr: string) => {
+   317→    return new Date(dateStr).toLocaleDateString('fr-FR', {
+   318→      weekday: 'long',
+   319→      day: 'numeric',
+   320→      month: 'long',
+   321→      year: 'numeric',
+   322→      hour: '2-digit',
+   323→      minute: '2-digit',
+   324→    });
+   325→  };
+   326→
+   327→  if (isLoading) {
+   328→    return (
+   329→      <div className="flex-1 flex items-center justify-center bg-[#FAFAFA]">
+   330→        <Loader2 className="w-8 h-8 animate-spin text-[#FF9800]" />
+   331→      </div>
+   332→    );
+   333→  }
+   334→
+   335→  return (
+   336→    <div className="flex flex-col h-full bg-[#FAFAFA]">
+   337→      {/* Header */}
+   338→      <div className="bg-gradient-to-r from-[#FF9800] to-[#F57C00] p-4 text-white flex-shrink-0">
+   339→        <div className="flex items-center justify-between mb-4">
+   340→          <div className="flex items-center gap-3">
+   341→            {onBack && (
+   342→              <button onClick={onBack} className="p-2 hover:bg-white/20 rounded-lg">
+   343→                <ArrowLeft className="w-5 h-5" />
+   344→              </button>
+   345→            )}
+   346→            <h1 className="text-xl font-bold">Mon Portefeuille</h1>
+   347→          </div>
+   348→          <button 
+   349→            onClick={() => fetchWallet(true)} 
+   350→            disabled={isRefreshing}
+   351→            className="p-2 hover:bg-white/20 rounded-lg transition-all"
+   352→          >
+   353→            <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+   354→          </button>
+   355→        </div>
+   356→
+   357→        {/* Balance Card */}
+   358→        <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4">
+   359→          <p className="text-white/80 text-sm mb-1">Solde disponible</p>
+   360→          <HideableBalanceDark
+   361→            balance={wallet?.balance || 0}
+   362→            currency="XOF"
+   363→            size="xl"
+   364→            storageKey="hide-client-wallet-balance"
+   365→          />
+   366→
+   367→          <div className="flex gap-4 mt-4 pt-4 border-t border-white/20">
+   368→            <div className="flex-1">
+   369→              <p className="text-xs text-white/60">Total rechargé</p>
+   370→              <p className="font-semibold">{wallet?.totalDeposited?.toLocaleString() || 0} F</p>
+   371→            </div>
+   372→            <div className="flex-1">
+   373→              <button 
+   374→                onClick={() => setShowHistory(true)}
+   375→                className="w-full text-left hover:bg-white/10 rounded-lg p-1 -m-1 transition-all"
+   376→              >
+   377→                <div className="flex items-center justify-between">
+   378→                  <div>
+   379→                    <p className="text-xs text-white/60">Historique</p>
+   380→                    <p className="font-semibold flex items-center gap-1">
+   381→                      <History className="w-3 h-3" />
+   382→                      Voir tout
+   383→                    </p>
+   384→                  </div>
+   385→                  <ChevronRight className="w-4 h-4" />
+   386→                </div>
+   387→              </button>
+   388→            </div>
+   389→          </div>
+   390→        </div>
+   391→
+   392→        {/* Quick Actions */}
+   393→        <div className="flex gap-3 mt-4">
+   394→          <Button
+   395→            onClick={() => {
+   396→              resetDeposit();
+   397→              setShowDeposit(true);
+   398→            }}
+   399→            className="flex-1 bg-white text-[#FF9800] hover:bg-white/90"
+   400→          >
+   401→            <Plus className="w-4 h-4 mr-2" />
+   402→            Recharger
+   403→          </Button>
+   404→        </div>
+   405→      </div>
+   406→
+   407→      {/* Transactions */}
+   408→      <div className="flex-1 overflow-y-auto p-4 pb-28">
+   409→        <div className="flex items-center justify-between mb-3">
+   410→          <h2 className="font-semibold text-[#212121]">Transactions récentes</h2>
+   411→          <Button 
+   412→            variant="ghost" 
+   413→            size="sm" 
+   414→            onClick={() => setShowHistory(true)}
+   415→            className="text-[#FF9800]"
+   416→          >
+   417→            Voir tout
+   418→            <ChevronRight className="w-4 h-4 ml-1" />
+   419→          </Button>
+   420→        </div>
+   421→
+   422→        {!wallet?.transactions || wallet.transactions.length === 0 ? (
+   423→          <div className="text-center py-12">
+   424→            <Clock className="w-12 h-12 text-[#BDBDBD] mx-auto mb-3" />
+   425→            <p className="text-[#757575]">Aucune transaction</p>
+   426→            <p className="text-sm text-[#9E9E9E] mt-1">Rechargez votre portefeuille pour commencer</p>
+   427→          </div>
+   428→        ) : (
+   429→          <div className="space-y-2">
+   430→            {wallet.transactions.slice(0, 5).map((tx) => {
+   431→              const Icon = TRANSACTION_ICONS[tx.type] || CreditCard;
+   432→              return (
+   433→                <Card key={tx.id} className="shadow-sm border-0">
+   434→                  <CardContent className="p-4">
+   435→                    <div className="flex items-center gap-3">
+   436→                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+   437→                        tx.type === 'DEPOSIT' || tx.type === 'REFUND' || tx.type === 'BONUS'
+   438→                          ? 'bg-green-100'
+   439→                          : 'bg-red-100'
+   440→                      }`}>
+   441→                        <Icon className={`w-5 h-5 ${TRANSACTION_COLORS[tx.type]}`} />
+   442→                      </div>
+   443→                      <div className="flex-1 min-w-0">
+   444→                        <div className="flex items-center gap-2">
+   445→                          <p className="font-medium text-[#212121]">
+   446→                            {TRANSACTION_LABELS[tx.type]}
+   447→                          </p>
+   448→                          <Badge variant="outline" className={`text-xs ${STATUS_COLORS[tx.status]}`}>
+   449→                            {STATUS_LABELS[tx.status]}
+   450→                          </Badge>
+   451→                        </div>
+   452→                        <p className="text-xs text-[#757575] truncate">
+   453→                          {tx.description || formatDate(tx.createdAt)}
+   454→                        </p>
+   455→                        {tx.paymentMethod && (
+   456→                          <p className="text-xs text-[#9E9E9E]">
+   457→                            Via {tx.paymentMethod}
+   458→                          </p>
+   459→                        )}
+   460→                      </div>
+   461→                      <div className="text-right flex-shrink-0">
+   462→                        <p className={`font-bold ${
+   463→                          tx.type === 'DEPOSIT' || tx.type === 'REFUND' || tx.type === 'BONUS'
+   464→                            ? 'text-green-600'
+   465→                            : 'text-red-600'
+   466→                        }`}>
+   467→                          {tx.type === 'DEPOSIT' || tx.type === 'REFUND' || tx.type === 'BONUS' ? '+' : '-'}
+   468→                          {tx.amount.toLocaleString()} XOF
+   469→                        </p>
+   470→                        {tx.status === 'COMPLETED' && (
+   471→                          <p className="text-xs text-[#9E9E9E]">
+   472→                            Solde: {tx.balanceAfter.toLocaleString()} XOF
+   473→                          </p>
+   474→                        )}
+   475→                      </div>
+   476→                    </div>
+   477→                  </CardContent>
+   478→                </Card>
+   479→              );
+   480→            })}
+   481→          </div>
+   482→        )}
+   483→      </div>
+   484→
+   485→      {/* Deposit Modal with USSD Flow */}
+   486→      <Dialog open={showDeposit} onOpenChange={(open) => {
+   487→        setShowDeposit(open);
+   488→        if (!open) resetDeposit();
+   489→      }}>
+   490→        <DialogContent className="max-w-md p-0">
+   491→          <div className="p-4 border-b border-[#E0E0E0]">
+   492→            <DialogHeader>
+   493→              <DialogTitle className="text-xl font-bold text-[#212121] flex items-center gap-2">
+   494→                {deposit.step === 'ussd' || deposit.step === 'confirm' ? (
+   495→                  <>
+   496→                    <Phone className="w-5 h-5 text-[#FF9800]" />
+   497→                    Paiement USSD
+   498→                  </>
+   499→                ) : (
+   500→                  <>
+   501→                    <Plus className="w-5 h-5 text-[#FF9800]" />
+   502→                    Recharger le portefeuille
+   503→                  </>
+   504→                )}
+   505→              </DialogTitle>
+   506→            </DialogHeader>
+   507→          </div>
+   508→
+   509→          <div className="p-4">
+   510→            {/* Step indicator */}
+   511→            <div className="flex items-center justify-center gap-2 mb-4">
+   512→              {['amount', 'operator', 'phone', 'ussd'].map((step, index) => (
+   513→                <div key={step} className="flex items-center">
+   514→                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
+   515→                    ['amount', 'operator', 'phone', 'ussd', 'confirm'].indexOf(deposit.step) >= index
+   516→                      ? 'bg-[#FF9800] text-white'
+   517→                      : 'bg-[#E0E0E0] text-[#757575]'
+   518→                  }`}>
+   519→                    {index + 1}
+   520→                  </div>
+   521→                  {index < 3 && (
+   522→                    <div className={`w-6 h-0.5 ${
+   523→                      ['amount', 'operator', 'phone', 'ussd', 'confirm'].indexOf(deposit.step) > index
+   524→                        ? 'bg-[#FF9800]'
+   525→                        : 'bg-[#E0E0E0]'
+   526→                    }`} />
+   527→                  )}
+   528→                </div>
+   529→              ))}
+   530→            </div>
+   531→
+   532→            {/* Step: Amount */}
+   533→            {deposit.step === 'amount' && (
+   534→              <div className="space-y-4">
+   535→                <p className="text-sm text-[#757575]">Choisissez un montant à recharger</p>
+   536→                <div className="grid grid-cols-3 gap-2">
+   537→                  {AMOUNT_OPTIONS.map((opt) => (
+   538→                    <button
+   539→                      key={opt.value}
+   540→                      onClick={() => setDeposit(prev => ({ ...prev, amount: opt.value }))}
+   541→                      className={`p-3 rounded-lg text-sm font-medium transition-all ${
+   542→                        deposit.amount === opt.value
+   543→                          ? 'bg-[#FF9800] text-white'
+   544→                          : 'bg-[#F5F5F5] text-[#757575] hover:bg-[#E0E0E0]'
+   545→                      }`}
+   546→                    >
+   547→                      {opt.label}
+   548→                    </button>
+   549→                  ))}
+   550→                </div>
+   551→                <Input
+   552→                  type="number"
+   553→                  placeholder="Ou entrez un montant personnalisé"
+   554→                  value={deposit.amount || ''}
+   555→                  onChange={(e) => setDeposit(prev => ({ ...prev, amount: parseInt(e.target.value) || 0 }))}
+   556→                />
+   557→              </div>
+   558→            )}
+   559→
+   560→            {/* Step: Operator */}
+   561→            {deposit.step === 'operator' && (
+   562→              <div className="space-y-3">
+   563→                <p className="text-sm text-[#757575]">Sélectionnez votre opérateur Mobile Money</p>
+   564→                {operators.length === 0 ? (
+   565→                  <div className="text-center py-8">
+   566→                    <AlertCircle className="w-10 h-10 text-[#BDBDBD] mx-auto mb-2" />
+   567→                    <p className="text-[#757575]">Aucun opérateur disponible</p>
+   568→                  </div>
+   569→                ) : (
+   570→                  operators.map((op) => (
+   571→                    <button
+   572→                      key={op.id}
+   573→                      onClick={() => setDeposit(prev => ({ ...prev, operatorId: op.id }))}
+   574→                      className={`w-full p-4 rounded-xl flex items-center gap-3 transition-all ${
+   575→                        deposit.operatorId === op.id
+   576→                          ? 'ring-2 ring-[#FF9800] bg-[#FFF8F0]'
+   577→                          : 'bg-[#F5F5F5] hover:bg-[#E0E0E0]'
+   578→                      }`}
+   579→                    >
+   580→                      <div 
+   581→                        className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold"
+   582→                        style={{ backgroundColor: op.color }}
+   583→                      >
+   584→                        {op.name.charAt(0)}
+   585→                      </div>
+   586→                      <div className="text-left flex-1">
+   587→                        <p className="font-semibold text-[#212121]">{op.displayName}</p>
+   588→                        <p className="text-xs text-[#757575]">
+   589→                          Min: {op.minAmount.toLocaleString()} XOF | Max: {op.maxAmount.toLocaleString()} XOF
+   590→                        </p>
+   591→                      </div>
+   592→                      {deposit.operatorId === op.id && (
+   593→                        <Check className="w-5 h-5 text-[#FF9800]" />
+   594→                      )}
+   595→                    </button>
+   596→                  ))
+   597→                )}
+   598→              </div>
+   599→            )}
+   600→
+   601→            {/* Step: Phone */}
+   602→            {deposit.step === 'phone' && (
+   603→              <div className="space-y-4">
+   604→                <p className="text-sm text-[#757575]">
+   605→                  Entrez votre numéro {selectedOperator?.displayName}
+   606→                </p>
+   607→                <div className="bg-[#FFF8F0] rounded-lg p-4 mb-4">
+   608→                  <div className="flex justify-between items-center">
+   609→                    <span className="text-[#757575]">Montant à recharger</span>
+   610→                    <span className="font-bold text-[#FF9800] text-xl">
+   611→                      {deposit.amount.toLocaleString()} XOF
+   612→                    </span>
+   613→                  </div>
+   614→                </div>
+   615→                <div>
+   616→                  <label className="text-sm text-[#757575] mb-2 block">Numéro de téléphone</label>
+   617→                  <div className="relative">
+   618→                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#757575] font-medium">+228</span>
+   619→                    <Input
+   620→                      type="tel"
+   621→                      placeholder="90 12 34 56"
+   622→                      value={deposit.phoneNumber}
+   623→                      onChange={(e) => setDeposit(prev => ({ 
+   624→                        ...prev, 
+   625→                        phoneNumber: e.target.value.replace(/\D/g, '').slice(0, 8) 
+   626→                      }))}
+   627→                      className="pl-14 h-12 text-lg"
+   628→                    />
+   629→                  </div>
+   630→                  <p className="text-xs text-[#9E9E9E] mt-2">
+   631→                    Ce numéro sera utilisé pour vérifier votre paiement
+   632→                  </p>
+   633→                </div>
+   634→              </div>
+   635→            )}
+   636→
+   637→            {/* Step: USSD */}
+   638→            {deposit.step === 'ussd' && (
+   639→              <div className="space-y-3">
+   640→                {/* Instructions */}
+   641→                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+   642→                  <div className="flex gap-2">
+   643→                    <AlertCircle className="w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5" />
+   644→                    <div>
+   645→                      <p className="font-medium text-yellow-800 text-sm">Instructions</p>
+   646→                      <p className="text-xs text-yellow-700 mt-1">
+   647→                        1. Lancez le code USSD<br/>
+   648→                        2. Entrez votre code PIN<br/>
+   649→                        3. Revenez et cliquez "J'ai payé"
+   650→                      </p>
+   651→                    </div>
+   652→                  </div>
+   653→                </div>
+   654→
+   655→                {/* Code USSD */}
+   656→                <div className="bg-[#212121] rounded-xl p-4 text-center">
+   657→                  <p className="text-white/60 text-xs mb-1">Code USSD</p>
+   658→                  <p className="text-white text-xl font-mono font-bold tracking-wide break-all">
+   659→                    {deposit.ussdCode}
+   660→                  </p>
+   661→                </div>
+   662→
+   663→                {/* Boutons */}
+   664→                <div className="grid grid-cols-2 gap-2">
+   665→                  <Button
+   666→                    variant="outline"
+   667→                    onClick={handleCopyUssd}
+   668→                    className="h-11"
+   669→                  >
+   670→                    {copied ? <Check className="w-4 h-4 mr-1.5 text-green-500" /> : <Copy className="w-4 h-4 mr-1.5" />}
+   671→                    {copied ? 'Copié !' : 'Copier'}
+   672→                  </Button>
+   673→                  <Button
+   674→                    onClick={handleLaunchUssd}
+   675→                    className="h-11 bg-[#FF9800] hover:bg-[#F57C00]"
+   676→                  >
+   677→                    <ExternalLink className="w-4 h-4 mr-1.5" />
+   678→                    Lancer
+   679→                  </Button>
+   680→                </div>
+   681→
+   682→                {/* Info destinataire */}
+   683→                <div className="bg-[#F5F5F5] rounded-lg p-2.5 text-center">
+   684→                  <p className="text-xs text-[#757575]">
+   685→                    Destinataire: <span className="font-mono font-bold text-[#212121]">{deposit.recipientNumber}</span>
+   686→                  </p>
+   687→                </div>
+   688→              </div>
+   689→            )}
+   690→
+   691→            {/* Step: Confirm */}
+   692→            {deposit.step === 'confirm' && (
+   693→              <div className="space-y-3">
+   694→                <div className="text-center py-2">
+   695→                  <div className="w-14 h-14 bg-[#FFF8F0] rounded-full flex items-center justify-center mx-auto mb-3">
+   696→                    <CheckCircle className="w-7 h-7 text-[#FF9800]" />
+   697→                  </div>
+   698→                  <p className="font-semibold text-[#212121]">Avez-vous validé le paiement ?</p>
+   699→                  <p className="text-xs text-[#757575] mt-1.5">
+   700→                    Confirmez si vous avez entré votre code PIN
+   701→                  </p>
+   702→                </div>
+   703→
+   704→                <div className="bg-[#F5F5F5] rounded-lg p-3 space-y-2">
+   705→                  <div className="flex justify-between text-sm">
+   706→                    <span className="text-[#757575]">Montant</span>
+   707→                    <span className="font-semibold">{deposit.amount.toLocaleString()} XOF</span>
+   708→                  </div>
+   709→                  <div className="flex justify-between text-sm">
+   710→                    <span className="text-[#757575]">Opérateur</span>
+   711→                    <span className="font-semibold">{selectedOperator?.name}</span>
+   712→                  </div>
+   713→                  <div className="flex justify-between text-sm">
+   714→                    <span className="text-[#757575]">Numéro</span>
+   715→                    <span className="font-semibold">+228 {deposit.phoneNumber}</span>
+   716→                  </div>
+   717→                </div>
+   718→              </div>
+   719→            )}
+   720→          </div>
+   721→
+   722→          {/* Actions */}
+   723→          <div className="p-4 border-t border-[#E0E0E0] space-y-2">
+   724→            {/* Step-specific actions */}
+   725→            {deposit.step === 'amount' && (
+   726→              <Button
+   727→                onClick={handleNextStep}
+   728→                disabled={deposit.amount <= 0}
+   729→                className="w-full bg-[#FF9800] hover:bg-[#F57C00] h-12"
+   730→              >
+   731→                Continuer
+   732→                <ChevronRight className="w-4 h-4 ml-2" />
+   733→              </Button>
+   734→            )}
+   735→
+   736→            {deposit.step === 'operator' && (
+   737→              <>
+   738→                <Button
+   739→                  onClick={handleNextStep}
+   740→                  disabled={!deposit.operatorId}
+   741→                  className="w-full bg-[#FF9800] hover:bg-[#F57C00] h-12"
+   742→                >
+   743→                  Continuer
+   744→                  <ChevronRight className="w-4 h-4 ml-2" />
+   745→                </Button>
+   746→                <Button variant="outline" onClick={handlePrevStep} className="w-full">
+   747→                  Retour
+   748→                </Button>
+   749→              </>
+   750→            )}
+   751→
+   752→            {deposit.step === 'phone' && (
+   753→              <>
+   754→                <Button
+   755→                  onClick={handleCreateTransaction}
+   756→                  disabled={isProcessing || deposit.phoneNumber.length < 8}
+   757→                  className="w-full bg-[#FF9800] hover:bg-[#F57C00] h-12"
+   758→                >
+   759→                  {isProcessing ? (
+   760→                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
+   761→                  ) : (
+   762→                    <>
+   763→                      Générer le code USSD
+   764→                      <ChevronRight className="w-4 h-4 ml-2" />
+   765→                    </>
+   766→                  )}
+   767→                </Button>
+   768→                <Button variant="outline" onClick={handlePrevStep} className="w-full">
+   769→                  Retour
+   770→                </Button>
+   771→              </>
+   772→            )}
+   773→
+   774→            {deposit.step === 'ussd' && (
+   775→              <>
+   776→                <Button
+   777→                  onClick={handleNextStep}
+   778→                  className="w-full bg-[#FF9800] hover:bg-[#F57C00] h-12"
+   779→                >
+   780→                  J'ai payé
+   781→                  <CheckCircle className="w-4 h-4 ml-2" />
+   782→                </Button>
+   783→                <Button variant="outline" onClick={() => setDeposit(prev => ({ ...prev, step: 'phone' }))} className="w-full">
+   784→                  Modifier le numéro
+   785→                </Button>
+   786→              </>
+   787→            )}
+   788→
+   789→            {deposit.step === 'confirm' && (
+   790→              <>
+   791→                <Button
+   792→                  onClick={handleConfirmPayment}
+   793→                  disabled={isProcessing}
+   794→                  className="w-full bg-green-600 hover:bg-green-700 h-12"
+   795→                >
+   796→                  {isProcessing ? (
+   797→                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
+   798→                  ) : (
+   799→                    <CheckCircle className="w-4 h-4 mr-2" />
+   800→                  )}
+   801→                  Confirmer le paiement
+   802→                </Button>
+   803→                <Button 
+   804→                  variant="outline" 
+   805→                  onClick={() => setDeposit(prev => ({ ...prev, step: 'ussd' }))} 
+   806→                  className="w-full"
+   807→                >
+   808→                  Non, revenir au code USSD
+   809→                </Button>
+   810→              </>
+   811→            )}
+   812→          </div>
+   813→        </DialogContent>
+   814→      </Dialog>
+   815→
+   816→      {/* History Modal */}
+   817→      <Dialog open={showHistory} onOpenChange={setShowHistory}>
+   818→        <DialogContent className="max-w-md max-h-[80vh] p-0 flex flex-col">
+   819→          <div className="p-4 border-b border-[#E0E0E0] flex-shrink-0">
+   820→            <DialogHeader>
+   821→              <DialogTitle className="text-xl font-bold text-[#212121] flex items-center gap-2">
+   822→                <History className="w-5 h-5 text-[#FF9800]" />
+   823→                Historique des transactions
+   824→              </DialogTitle>
+   825→            </DialogHeader>
+   826→          </div>
+   827→
+   828→          <div className="flex-1 overflow-y-auto p-4">
+   829→            {!wallet?.transactions || wallet.transactions.length === 0 ? (
+   830→              <div className="text-center py-12">
+   831→                <Clock className="w-12 h-12 text-[#BDBDBD] mx-auto mb-3" />
+   832→                <p className="text-[#757575]">Aucune transaction</p>
+   833→              </div>
+   834→            ) : (
+   835→              <div className="space-y-3">
+   836→                {wallet.transactions.map((tx) => {
+   837→                  const Icon = TRANSACTION_ICONS[tx.type] || CreditCard;
+   838→                  return (
+   839→                    <Card key={tx.id} className="shadow-sm border-0">
+   840→                      <CardContent className="p-4">
+   841→                        <div className="flex items-start gap-3">
+   842→                          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+   843→                            tx.type === 'DEPOSIT' || tx.type === 'REFUND' || tx.type === 'BONUS'
+   844→                              ? 'bg-green-100'
+   845→                              : 'bg-red-100'
+   846→                          }`}>
+   847→                            <Icon className={`w-5 h-5 ${TRANSACTION_COLORS[tx.type]}`} />
+   848→                          </div>
+   849→                          <div className="flex-1 min-w-0">
+   850→                            <div className="flex items-center gap-2 flex-wrap">
+   851→                              <p className="font-medium text-[#212121]">
+   852→                                {TRANSACTION_LABELS[tx.type]}
+   853→                              </p>
+   854→                              <Badge variant="outline" className={`text-xs ${STATUS_COLORS[tx.status]}`}>
+   855→                                {STATUS_LABELS[tx.status]}
+   856→                              </Badge>
+   857→                            </div>
+   858→                            <p className="text-xs text-[#757575] mt-1">
+   859→                              {formatFullDate(tx.createdAt)}
+   860→                            </p>
+   861→                            {tx.paymentMethod && (
+   862→                              <p className="text-xs text-[#9E9E9E] mt-1">
+   863→                                Via {tx.paymentMethod}
+   864→                              </p>
+   865→                            )}
+   866→                            {tx.description && (
+   867→                              <p className="text-xs text-[#757575] mt-1">
+   868→                                {tx.description}
+   869→                              </p>
+   870→                            )}
+   871→                            {tx.ussdConfirmedAt && (
+   872→                              <p className="text-xs text-green-600 mt-1">
+   873→                                ✓ Payé le {formatDate(tx.ussdConfirmedAt)}
+   874→                              </p>
+   875→                            )}
+   876→                          </div>
+   877→                          <div className="text-right flex-shrink-0">
+   878→                            <p className={`font-bold text-lg ${
+   879→                              tx.type === 'DEPOSIT' || tx.type === 'REFUND' || tx.type === 'BONUS'
+   880→                                ? 'text-green-600'
+   881→                                : 'text-red-600'
+   882→                            }`}>
+   883→                              {tx.type === 'DEPOSIT' || tx.type === 'REFUND' || tx.type === 'BONUS' ? '+' : '-'}
+   884→                              {tx.amount.toLocaleString()} XOF
+   885→                            </p>
+   886→                            {tx.status === 'COMPLETED' && (
+   887→                              <p className="text-xs text-[#9E9E9E]">
+   888→                                Solde: {tx.balanceAfter.toLocaleString()} XOF
+   889→                              </p>
+   890→                            )}
+   891→                          </div>
+   892→                        </div>
+   893→                      </CardContent>
+   894→                    </Card>
+   895→                  );
+   896→                })}
+   897→              </div>
+   898→            )}
+   899→          </div>
+   900→
+   901→          <div className="p-4 border-t border-[#E0E0E0] flex-shrink-0">
+   902→            <Button
+   903→              variant="outline"
+   904→              onClick={() => setShowHistory(false)}
+   905→              className="w-full"
+   906→            >
+   907→              Fermer
+   908→            </Button>
+   909→          </div>
+   910→        </DialogContent>
+   911→      </Dialog>
+   912→    </div>
+   913→  );
+   914→}
+   915→

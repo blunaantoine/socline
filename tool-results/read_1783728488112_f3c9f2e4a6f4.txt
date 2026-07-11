@@ -1,0 +1,1007 @@
+     1→'use client';
+     2→
+     3→import { useState, useEffect, useCallback, useRef } from 'react';
+     4→import {
+     5→  Dialog,
+     6→  DialogContent,
+     7→  DialogHeader,
+     8→  DialogTitle,
+     9→} from '@/components/ui/dialog';
+    10→import { Button } from '@/components/ui/button';
+    11→import { Input } from '@/components/ui/input';
+    12→import { Badge } from '@/components/ui/badge';
+    13→import {
+    14→  ArrowLeft,
+    15→  Clock,
+    16→  MapPin,
+    17→  Settings,
+    18→  Plus,
+    19→  Trash2,
+    20→  Edit,
+    21→  CheckCircle,
+    22→  XCircle,
+    23→  Loader2,
+    24→  Home,
+    25→  Briefcase,
+    26→  MapPinned,
+    27→  Star,
+    28→  Wallet,
+    29→  Crown,
+    30→  Car,
+    31→  Eye,
+    32→  EyeOff,
+    33→  Save,
+    34→  Phone,
+    35→  Lock,
+    36→  ShoppingBag,
+    37→  ArrowUpRight,
+    38→  ArrowDownLeft,
+    39→  Locate,
+    40→  Search,
+    41→  X
+    42→} from 'lucide-react';
+    43→import { toast } from 'sonner';
+    44→import { DynamicLeafletMap } from '@/components/map/DynamicLeafletMap';
+    45→
+    46→// Types
+    47→interface Address {
+    48→  id: string;
+    49→  label: string;
+    50→  type: 'HOME' | 'WORK' | 'OTHER';
+    51→  address: string;
+    52→  latitude?: number;
+    53→  longitude?: number;
+    54→  instructions?: string;
+    55→  isDefault: boolean;
+    56→}
+    57→
+    58→interface Activity {
+    59→  id: string;
+    60→  type: 'ORDER' | 'TRANSACTION' | 'SUBSCRIPTION' | 'SUBSCRIPTION_USE';
+    61→  title: string;
+    62→  description: string;
+    63→  status: string;
+    64→  amount?: number;
+    65→  transactionType?: string;
+    66→  date: string;
+    67→  data?: any;
+    68→}
+    69→
+    70→// Activity History Component
+    71→export function ActivityHistory({ userId, onBack }: { userId: string; onBack: () => void }) {
+    72→  const [activities, setActivities] = useState<Activity[]>([]);
+    73→  const [isLoading, setIsLoading] = useState(true);
+    74→  const [filter, setFilter] = useState<'all' | 'orders' | 'transactions' | 'subscriptions'>('all');
+    75→
+    76→  const fetchActivities = useCallback(async () => {
+    77→    setIsLoading(true);
+    78→    try {
+    79→      const res = await fetch(`/api/user/activity?userId=${userId}&type=${filter}`);
+    80→      const data = await res.json();
+    81→      if (data.success) {
+    82→        setActivities(data.activities);
+    83→      }
+    84→    } catch (error) {
+    85→      toast.error('Erreur lors du chargement');
+    86→    } finally {
+    87→      setIsLoading(false);
+    88→    }
+    89→  }, [userId, filter]);
+    90→
+    91→  useEffect(() => {
+    92→    fetchActivities();
+    93→  }, [fetchActivities]);
+    94→
+    95→  const getStatusBadge = (status: string) => {
+    96→    const styles: Record<string, string> = {
+    97→      'PENDING': 'bg-yellow-100 text-yellow-800',
+    98→      'ACCEPTED': 'bg-blue-100 text-blue-800',
+    99→      'EN_ROUTE': 'bg-blue-100 text-blue-800',
+   100→      'ARRIVED': 'bg-purple-100 text-purple-800',
+   101→      'IN_PROGRESS': 'bg-orange-100 text-orange-800',
+   102→      'COMPLETED': 'bg-green-100 text-green-800',
+   103→      'CANCELLED': 'bg-red-100 text-red-800',
+   104→      'ACTIVE': 'bg-green-100 text-green-800',
+   105→      'EXPIRED': 'bg-gray-100 text-gray-800',
+   106→    };
+   107→    const labels: Record<string, string> = {
+   108→      'PENDING': 'En attente',
+   109→      'ACCEPTED': 'Acceptée',
+   110→      'EN_ROUTE': 'En route',
+   111→      'ARRIVED': 'Arrivé',
+   112→      'IN_PROGRESS': 'En cours',
+   113→      'COMPLETED': 'Terminée',
+   114→      'CANCELLED': 'Annulée',
+   115→      'ACTIVE': 'Actif',
+   116→      'EXPIRED': 'Expiré',
+   117→    };
+   118→    return (
+   119→      <Badge className={styles[status] || 'bg-gray-100 text-gray-800'}>
+   120→        {labels[status] || status}
+   121→      </Badge>
+   122→    );
+   123→  };
+   124→
+   125→  const getActivityIcon = (activity: Activity) => {
+   126→    switch (activity.type) {
+   127→      case 'ORDER':
+   128→        return <Car className="w-5 h-5 text-[#FF9800]" />;
+   129→      case 'TRANSACTION':
+   130→        if (activity.transactionType === 'DEPOSIT' || activity.transactionType === 'REFUND' || activity.transactionType === 'BONUS') {
+   131→          return <ArrowDownLeft className="w-5 h-5 text-green-500" />;
+   132→        }
+   133→        return <ArrowUpRight className="w-5 h-5 text-red-500" />;
+   134→      case 'SUBSCRIPTION':
+   135→        return <Crown className="w-5 h-5 text-purple-500" />;
+   136→      case 'SUBSCRIPTION_USE':
+   137→        return <CheckCircle className="w-5 h-5 text-blue-500" />;
+   138→      default:
+   139→        return <Clock className="w-5 h-5 text-gray-500" />;
+   140→    }
+   141→  };
+   142→
+   143→  const formatDate = (date: string) => {
+   144→    const d = new Date(date);
+   145→    return d.toLocaleDateString('fr-FR', {
+   146→      day: 'numeric',
+   147→      month: 'short',
+   148→      year: 'numeric',
+   149→      hour: '2-digit',
+   150→      minute: '2-digit'
+   151→    });
+   152→  };
+   153→
+   154→  return (
+   155→    <div className="p-4 space-y-4 pb-28">
+   156→      {/* Header */}
+   157→      <div className="flex items-center gap-3">
+   158→        <button onClick={onBack} className="p-2 hover:bg-[#F5F5F5] rounded-full">
+   159→          <ArrowLeft className="w-5 h-5 text-[#212121]" />
+   160→        </button>
+   161→        <h1 className="text-lg font-semibold text-[#212121]">Historique</h1>
+   162→      </div>
+   163→
+   164→      {/* Filters */}
+   165→      <div className="flex gap-2 overflow-x-auto pb-2">
+   166→        {[
+   167→          { id: 'all', label: 'Tout' },
+   168→          { id: 'orders', label: 'Commandes' },
+   169→          { id: 'transactions', label: 'Transactions' },
+   170→          { id: 'subscriptions', label: 'Abonnements' },
+   171→        ].map((f) => (
+   172→          <button
+   173→            key={f.id}
+   174→            onClick={() => setFilter(f.id as any)}
+   175→            className={`px-4 py-2 rounded-full text-sm whitespace-nowrap ${
+   176→              filter === f.id
+   177→                ? 'bg-[#FF9800] text-white'
+   178→                : 'bg-[#F5F5F5] text-[#757575]'
+   179→            }`}
+   180→          >
+   181→            {f.label}
+   182→          </button>
+   183→        ))}
+   184→      </div>
+   185→
+   186→      {/* Activities List */}
+   187→      {isLoading ? (
+   188→        <div className="flex justify-center py-12">
+   189→          <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+   190→        </div>
+   191→      ) : activities.length === 0 ? (
+   192→        <div className="text-center py-12">
+   193→          <Clock className="w-12 h-12 text-[#9E9E9E] mx-auto mb-3" />
+   194→          <p className="text-[#757575]">Aucune activité</p>
+   195→        </div>
+   196→      ) : (
+   197→        <div className="space-y-3">
+   198→          {activities.map((activity) => (
+   199→            <div key={`${activity.type}-${activity.id}`} className="bg-white rounded-lg p-4 shadow-sm">
+   200→              <div className="flex items-start gap-3">
+   201→                <div className="w-10 h-10 bg-[#FFF3E0] rounded-full flex items-center justify-center flex-shrink-0">
+   202→                  {getActivityIcon(activity)}
+   203→                </div>
+   204→                <div className="flex-1 min-w-0">
+   205→                  <div className="flex items-center justify-between gap-2">
+   206→                    <h3 className="font-medium text-[#212121] truncate">{activity.title}</h3>
+   207→                    {activity.amount !== undefined && (
+   208→                      <span className={`font-semibold text-sm ${
+   209→                        activity.type === 'TRANSACTION' &&
+   210→                        (activity.transactionType === 'DEPOSIT' || activity.transactionType === 'REFUND' || activity.transactionType === 'BONUS')
+   211→                          ? 'text-green-600'
+   212→                          : activity.type === 'TRANSACTION'
+   213→                            ? 'text-red-600'
+   214→                            : 'text-[#212121]'
+   215→                      }`}>
+   216→                        {activity.type === 'TRANSACTION' &&
+   217→                        (activity.transactionType === 'DEPOSIT' || activity.transactionType === 'REFUND' || activity.transactionType === 'BONUS')
+   218→                          ? '+'
+   219→                          : activity.type === 'TRANSACTION'
+   220→                            ? '-'
+   221→                            : ''}
+   222→                        {activity.amount?.toLocaleString()} XOF
+   223→                      </span>
+   224→                    )}
+   225→                  </div>
+   226→                  <p className="text-sm text-[#757575] mt-1">{activity.description}</p>
+   227→                  <div className="flex items-center justify-between mt-2">
+   228→                    <span className="text-xs text-[#9E9E9E]">{formatDate(activity.date)}</span>
+   229→                    {getStatusBadge(activity.status)}
+   230→                  </div>
+   231→                </div>
+   232→              </div>
+   233→            </div>
+   234→          ))}
+   235→        </div>
+   236→      )}
+   237→    </div>
+   238→  );
+   239→}
+   240→
+   241→// Addresses Manager Component
+   242→export function AddressesManager({ userId, onBack }: { userId: string; onBack: () => void }) {
+   243→  const [addresses, setAddresses] = useState<Address[]>([]);
+   244→  const [isLoading, setIsLoading] = useState(true);
+   245→  const [showForm, setShowForm] = useState(false);
+   246→  const [editingAddress, setEditingAddress] = useState<Address | null>(null);
+   247→  const [isSaving, setIsSaving] = useState(false);
+   248→  const [showMapSelector, setShowMapSelector] = useState(false);
+   249→  const [isLocating, setIsLocating] = useState(false);
+   250→
+   251→  const [formData, setFormData] = useState({
+   252→    label: '',
+   253→    type: 'HOME' as 'HOME' | 'WORK' | 'OTHER',
+   254→    address: '',
+   255→    latitude: undefined as number | undefined,
+   256→    longitude: undefined as number | undefined,
+   257→    instructions: '',
+   258→    isDefault: false
+   259→  });
+   260→
+   261→  // Selected position for map
+   262→  const [selectedPosition, setSelectedPosition] = useState<{ lat: number; lng: number } | null>(null);
+   263→
+   264→  const fetchAddresses = useCallback(async () => {
+   265→    setIsLoading(true);
+   266→    try {
+   267→      const res = await fetch(`/api/addresses?userId=${userId}`);
+   268→      const data = await res.json();
+   269→      if (data.success) {
+   270→        setAddresses(data.addresses);
+   271→      }
+   272→    } catch (error) {
+   273→      toast.error('Erreur lors du chargement');
+   274→    } finally {
+   275→      setIsLoading(false);
+   276→    }
+   277→  }, [userId]);
+   278→
+   279→  useEffect(() => {
+   280→    fetchAddresses();
+   281→  }, [fetchAddresses]);
+   282→
+   283→  const resetForm = () => {
+   284→    setFormData({
+   285→      label: '',
+   286→      type: 'HOME',
+   287→      address: '',
+   288→      latitude: undefined,
+   289→      longitude: undefined,
+   290→      instructions: '',
+   291→      isDefault: false
+   292→    });
+   293→    setSelectedPosition(null);
+   294→    setEditingAddress(null);
+   295→    setShowForm(false);
+   296→    setShowMapSelector(false);
+   297→  };
+   298→
+   299→  const handleEdit = (address: Address) => {
+   300→    setEditingAddress(address);
+   301→    setFormData({
+   302→      label: address.label,
+   303→      type: address.type,
+   304→      address: address.address,
+   305→      latitude: address.latitude,
+   306→      longitude: address.longitude,
+   307→      instructions: address.instructions || '',
+   308→      isDefault: address.isDefault
+   309→    });
+   310→    if (address.latitude && address.longitude) {
+   311→      setSelectedPosition({ lat: address.latitude, lng: address.longitude });
+   312→    }
+   313→    setShowForm(true);
+   314→  };
+   315→
+   316→  // Get current location
+   317→  const handleGetCurrentLocation = () => {
+   318→    setIsLocating(true);
+   319→    if (!navigator.geolocation) {
+   320→      toast.error('La géolocalisation n\'est pas supportée');
+   321→      setIsLocating(false);
+   322→      return;
+   323→    }
+   324→
+   325→    navigator.geolocation.getCurrentPosition(
+   326→      async (position) => {
+   327→        const { latitude, longitude } = position.coords;
+   328→        setSelectedPosition({ lat: latitude, lng: longitude });
+   329→        setFormData(prev => ({ ...prev, latitude, longitude }));
+   330→
+   331→        // Reverse geocode using Nominatim (free, no API key needed)
+   332→        try {
+   333→          const response = await fetch(
+   334→            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=fr`
+   335→          );
+   336→          const data = await response.json();
+   337→          if (data && data.display_name) {
+   338→            setFormData(prev => ({
+   339→              ...prev,
+   340→              address: data.display_name
+   341→            }));
+   342→          }
+   343→        } catch (error) {
+   344→          console.error('Reverse geocoding error:', error);
+   345→        }
+   346→        setIsLocating(false);
+   347→        setShowMapSelector(true);
+   348→      },
+   349→      (error) => {
+   350→        toast.error('Impossible d\'obtenir votre position');
+   351→        setIsLocating(false);
+   352→      },
+   353→      { enableHighAccuracy: true }
+   354→    );
+   355→  };
+   356→
+   357→  // Handle map click to select position
+   358→  const handleMapClick = async (lat: number, lng: number) => {
+   359→    setSelectedPosition({ lat, lng });
+   360→    setFormData(prev => ({ ...prev, latitude: lat, longitude: lng }));
+   361→
+   362→    // Reverse geocode using Nominatim (free, no API key needed)
+   363→    try {
+   364→      const response = await fetch(
+   365→        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=fr`
+   366→      );
+   367→      const data = await response.json();
+   368→      if (data && data.display_name) {
+   369→        setFormData(prev => ({
+   370→          ...prev,
+   371→          address: data.display_name
+   372→        }));
+   373→      }
+   374→    } catch (error) {
+   375→      console.error('Reverse geocoding error:', error);
+   376→    }
+   377→  };
+   378→
+   379→  // Search address
+   380→  const [searchQuery, setSearchQuery] = useState('');
+   381→  const [searchResults, setSearchResults] = useState<any[]>([]);
+   382→  const [isSearching, setIsSearching] = useState(false);
+   383→
+   384→  const handleSearchAddress = async (query: string) => {
+   385→    setSearchQuery(query);
+   386→    if (query.length < 3) {
+   387→      setSearchResults([]);
+   388→      return;
+   389→    }
+   390→
+   391→    setIsSearching(true);
+   392→    try {
+   393→      const response = await fetch(
+   394→        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&language=fr&components=country:TG`
+   395→      );
+   396→      // Note: For client-side, we should use the Places Autocomplete widget
+   397→      // This is a simplified version
+   398→    } catch (error) {
+   399→      console.error('Search error:', error);
+   400→    }
+   401→    setIsSearching(false);
+   402→  };
+   403→
+   404→  const handleSave = async () => {
+   405→    if (!formData.label || !formData.address) {
+   406→      toast.error('Veuillez remplir les champs requis');
+   407→      return;
+   408→    }
+   409→
+   410→    setIsSaving(true);
+   411→    try {
+   412→      if (editingAddress) {
+   413→        // Update
+   414→        const res = await fetch(`/api/addresses/${editingAddress.id}`, {
+   415→          method: 'PUT',
+   416→          headers: { 'Content-Type': 'application/json' },
+   417→          body: JSON.stringify({ ...formData, userId })
+   418→        });
+   419→        const data = await res.json();
+   420→        if (data.success) {
+   421→          toast.success('Adresse mise à jour');
+   422→          resetForm();
+   423→          fetchAddresses();
+   424→        } else {
+   425→          toast.error(data.error || 'Erreur');
+   426→        }
+   427→      } else {
+   428→        // Create
+   429→        const res = await fetch('/api/addresses', {
+   430→          method: 'POST',
+   431→          headers: { 'Content-Type': 'application/json' },
+   432→          body: JSON.stringify({ ...formData, userId })
+   433→        });
+   434→        const data = await res.json();
+   435→        if (data.success) {
+   436→          toast.success('Adresse ajoutée');
+   437→          resetForm();
+   438→          fetchAddresses();
+   439→        } else {
+   440→          toast.error(data.error || 'Erreur');
+   441→        }
+   442→      }
+   443→    } catch (error) {
+   444→      toast.error('Erreur lors de la sauvegarde');
+   445→    } finally {
+   446→      setIsSaving(false);
+   447→    }
+   448→  };
+   449→
+   450→  const handleDelete = async (id: string) => {
+   451→    if (!confirm('Supprimer cette adresse ?')) return;
+   452→
+   453→    try {
+   454→      const res = await fetch(`/api/addresses/${id}?userId=${userId}`, { method: 'DELETE' });
+   455→      const data = await res.json();
+   456→      if (data.success) {
+   457→        toast.success('Adresse supprimée');
+   458→        fetchAddresses();
+   459→      }
+   460→    } catch (error) {
+   461→      toast.error('Erreur lors de la suppression');
+   462→    }
+   463→  };
+   464→
+   465→  const getTypeIcon = (type: string) => {
+   466→    switch (type) {
+   467→      case 'HOME': return <Home className="w-5 h-5" />;
+   468→      case 'WORK': return <Briefcase className="w-5 h-5" />;
+   469→      default: return <MapPinned className="w-5 h-5" />;
+   470→    }
+   471→  };
+   472→
+   473→  const getTypeLabel = (type: string) => {
+   474→    switch (type) {
+   475→      case 'HOME': return 'Maison';
+   476→      case 'WORK': return 'Boulot';
+   477→      default: return 'Autre';
+   478→    }
+   479→  };
+   480→
+   481→  // Map Selector View
+   482→  if (showMapSelector) {
+   483→    return (
+   484→      <div className="fixed inset-0 bg-white z-50 flex flex-col">
+   485→        {/* Header */}
+   486→        <div className="flex items-center gap-3 p-4 border-b border-[#E0E0E0]">
+   487→          <button onClick={() => setShowMapSelector(false)} className="p-2 hover:bg-[#F5F5F5] rounded-full">
+   488→            <ArrowLeft className="w-5 h-5 text-[#212121]" />
+   489→          </button>
+   490→          <h1 className="text-lg font-semibold text-[#212121]">Sélectionner sur la carte</h1>
+   491→        </div>
+   492→
+   493→        {/* Map */}
+   494→        <div className="flex-1 relative">
+   495→          <DynamicLeafletMap
+   496→            center={selectedPosition ? [selectedPosition.lat, selectedPosition.lng] : [6.1725, 1.2314]}
+   497→            zoom={14}
+   498→            selectedPosition={selectedPosition ? [selectedPosition.lat, selectedPosition.lng] : null}
+   499→            onMapClick={handleMapClick}
+   500→            className="w-full h-full"
+   501→            height="100%"
+   502→          />
+   503→        </div>
+   504→
+   505→        {/* Selected Address Preview */}
+   506→        <div className="p-4 bg-white border-t border-[#E0E0E0] space-y-3">
+   507→          {selectedPosition && formData.address && (
+   508→            <div className="flex items-start gap-2">
+   509→              <MapPin className="w-5 h-5 text-[#FF9800] flex-shrink-0 mt-0.5" />
+   510→              <p className="text-sm text-[#212121]">{formData.address}</p>
+   511→            </div>
+   512→          )}
+   513→          <div className="flex gap-2">
+   514→            <Button
+   515→              className="flex-1 bg-[#FF9800] hover:bg-[#F57C00]"
+   516→              onClick={() => setShowMapSelector(false)}
+   517→              disabled={!selectedPosition}
+   518→            >
+   519→              Confirmer l&apos;emplacement
+   520→            </Button>
+   521→            <Button variant="outline" onClick={() => setShowMapSelector(false)}>
+   522→              Annuler
+   523→            </Button>
+   524→          </div>
+   525→        </div>
+   526→      </div>
+   527→    );
+   528→  }
+   529→
+   530→  return (
+   531→    <div className="p-4 space-y-4 pb-28">
+   532→      {/* Header */}
+   533→      <div className="flex items-center justify-between">
+   534→        <div className="flex items-center gap-3">
+   535→          <button onClick={onBack} className="p-2 hover:bg-[#F5F5F5] rounded-full">
+   536→            <ArrowLeft className="w-5 h-5 text-[#212121]" />
+   537→          </button>
+   538→          <h1 className="text-lg font-semibold text-[#212121]">Mes Adresses</h1>
+   539→        </div>
+   540→        <button
+   541→          onClick={() => setShowForm(true)}
+   542→          className="w-10 h-10 bg-[#FF9800] rounded-full flex items-center justify-center text-white"
+   543→        >
+   544→          <Plus className="w-5 h-5" />
+   545→        </button>
+   546→      </div>
+   547→
+   548→      {/* Form */}
+   549→      {showForm && (
+   550→        <div className="bg-white rounded-lg p-4 shadow-sm space-y-4">
+   551→          <h3 className="font-medium text-[#212121]">
+   552→            {editingAddress ? 'Modifier l\'adresse' : 'Nouvelle adresse'}
+   553→          </h3>
+   554→
+   555→          {/* Address Type */}
+   556→          <div>
+   557→            <label className="text-xs text-[#757575]">Type</label>
+   558→            <div className="flex gap-2 mt-1">
+   559→              {(['HOME', 'WORK', 'OTHER'] as const).map((t) => (
+   560→                <button
+   561→                  key={t}
+   562→                  onClick={() => setFormData({ ...formData, type: t })}
+   563→                  className={`flex-1 py-2 px-3 rounded-lg border-2 text-sm font-medium flex items-center justify-center gap-2 ${
+   564→                    formData.type === t
+   565→                      ? 'border-[#FF9800] bg-[#FFF3E0] text-[#FF9800]'
+   566→                      : 'border-[#E0E0E0] text-[#757575]'
+   567→                  }`}
+   568→                >
+   569→                  {getTypeIcon(t)}
+   570→                  {getTypeLabel(t)}
+   571→                </button>
+   572→              ))}
+   573→            </div>
+   574→          </div>
+   575→
+   576→          {/* Label */}
+   577→          <div>
+   578→            <label className="text-xs text-[#757575]">Nom de l&apos;adresse *</label>
+   579→            <Input
+   580→              value={formData.label}
+   581→              onChange={(e) => setFormData({ ...formData, label: e.target.value })}
+   582→              placeholder="Ex: Maison, Bureau, Chez maman..."
+   583→              className="mt-1"
+   584→            />
+   585→          </div>
+   586→
+   587→          {/* Address with Map Selection */}
+   588→          <div>
+   589→            <label className="text-xs text-[#757575]">Adresse complète *</label>
+   590→            <div className="flex gap-2 mt-1">
+   591→              <Input
+   592→                value={formData.address}
+   593→                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+   594→                placeholder="Ex: Rue du Commerce, Adidogomé"
+   595→                className="flex-1"
+   596→              />
+   597→              <Button
+   598→                type="button"
+   599→                variant="outline"
+   600→                className="flex-shrink-0"
+   601→                onClick={handleGetCurrentLocation}
+   602→                disabled={isLocating}
+   603→              >
+   604→                {isLocating ? (
+   605→                  <Loader2 className="w-4 h-4 animate-spin" />
+   606→                ) : (
+   607→                  <Locate className="w-4 h-4" />
+   608→                )}
+   609→              </Button>
+   610→            </div>
+   611→          </div>
+   612→
+   613→          {/* Map Selection Button */}
+   614→          <button
+   615→            onClick={handleGetCurrentLocation}
+   616→            disabled={isLocating}
+   617→            className="w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed border-[#FF9800] rounded-lg text-[#FF9800] hover:bg-[#FFF3E0] transition-colors"
+   618→          >
+   619→            {isLocating ? (
+   620→              <>
+   621→                <Loader2 className="w-5 h-5 animate-spin" />
+   622→                <span>Localisation en cours...</span>
+   623→              </>
+   624→            ) : (
+   625→              <>
+   626→                <MapPin className="w-5 h-5" />
+   627→                <span>Sélectionner sur la carte</span>
+   628→              </>
+   629→            )}
+   630→          </button>
+   631→
+   632→          {/* Show coordinates if selected */}
+   633→          {selectedPosition && (
+   634→            <div className="flex items-center gap-2 text-xs text-green-600 bg-green-50 p-2 rounded-lg">
+   635→              <CheckCircle className="w-4 h-4" />
+   636→              <span>Position sélectionnée: {selectedPosition.lat.toFixed(5)}, {selectedPosition.lng.toFixed(5)}</span>
+   637→            </div>
+   638→          )}
+   639→
+   640→          {/* Instructions */}
+   641→          <div>
+   642→            <label className="text-xs text-[#757575]">Instructions (optionnel)</label>
+   643→            <Input
+   644→              value={formData.instructions}
+   645→              onChange={(e) => setFormData({ ...formData, instructions: e.target.value })}
+   646→              placeholder="Ex: Porte verte, 2ème étage..."
+   647→              className="mt-1"
+   648→            />
+   649→          </div>
+   650→
+   651→          {/* Default */}
+   652→          <div className="flex items-center gap-2">
+   653→            <input
+   654→              type="checkbox"
+   655→              id="isDefault"
+   656→              checked={formData.isDefault}
+   657→              onChange={(e) => setFormData({ ...formData, isDefault: e.target.checked })}
+   658→              className="w-4 h-4 text-[#FF9800]"
+   659→            />
+   660→            <label htmlFor="isDefault" className="text-sm text-[#212121]">
+   661→              Définir comme adresse par défaut
+   662→            </label>
+   663→          </div>
+   664→
+   665→          {/* Actions */}
+   666→          <div className="flex gap-2">
+   667→            <Button
+   668→              className="flex-1 bg-[#FF9800] hover:bg-[#F57C00]"
+   669→              onClick={handleSave}
+   670→              disabled={isSaving}
+   671→            >
+   672→              {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+   673→              Enregistrer
+   674→            </Button>
+   675→            <Button variant="outline" onClick={resetForm}>
+   676→              Annuler
+   677→            </Button>
+   678→          </div>
+   679→        </div>
+   680→      )}
+   681→
+   682→      {/* Addresses List */}
+   683→      {isLoading ? (
+   684→        <div className="flex justify-center py-12">
+   685→          <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+   686→        </div>
+   687→      ) : addresses.length === 0 ? (
+   688→        <div className="text-center py-12">
+   689→          <MapPin className="w-12 h-12 text-[#9E9E9E] mx-auto mb-3" />
+   690→          <p className="text-[#757575]">Aucune adresse enregistrée</p>
+   691→          <Button
+   692→            className="mt-4 bg-[#FF9800] hover:bg-[#F57C00]"
+   693→            onClick={() => setShowForm(true)}
+   694→          >
+   695→            <Plus className="w-4 h-4 mr-2" />
+   696→            Ajouter une adresse
+   697→          </Button>
+   698→        </div>
+   699→      ) : (
+   700→        <div className="space-y-3">
+   701→          {addresses.map((address) => (
+   702→            <div key={address.id} className="bg-white rounded-lg p-4 shadow-sm">
+   703→              <div className="flex items-start gap-3">
+   704→                <div className="w-10 h-10 bg-[#FFF3E0] rounded-full flex items-center justify-center text-[#FF9800]">
+   705→                  {getTypeIcon(address.type)}
+   706→                </div>
+   707→                <div className="flex-1">
+   708→                  <div className="flex items-center gap-2 flex-wrap">
+   709→                    <h3 className="font-medium text-[#212121]">{address.label}</h3>
+   710→                    {address.isDefault && (
+   711→                      <Badge className="bg-[#FF9800] text-white text-xs">Par défaut</Badge>
+   712→                    )}
+   713→                    {address.latitude && address.longitude && (
+   714→                      <Badge className="bg-green-100 text-green-700 text-xs">
+   715→                        <MapPin className="w-3 h-3 mr-1" />
+   716→                        GPS
+   717→                      </Badge>
+   718→                    )}
+   719→                  </div>
+   720→                  <p className="text-sm text-[#757575] mt-1">{address.address}</p>
+   721→                  {address.instructions && (
+   722→                    <p className="text-xs text-[#9E9E9E] mt-1">{address.instructions}</p>
+   723→                  )}
+   724→                </div>
+   725→                <div className="flex gap-1">
+   726→                  <button
+   727→                    onClick={() => handleEdit(address)}
+   728→                    className="p-2 hover:bg-[#F5F5F5] rounded-full"
+   729→                  >
+   730→                    <Edit className="w-4 h-4 text-[#757575]" />
+   731→                  </button>
+   732→                  <button
+   733→                    onClick={() => handleDelete(address.id)}
+   734→                    className="p-2 hover:bg-red-50 rounded-full"
+   735→                  >
+   736→                    <Trash2 className="w-4 h-4 text-red-500" />
+   737→                  </button>
+   738→                </div>
+   739→              </div>
+   740→            </div>
+   741→          ))}
+   742→        </div>
+   743→      )}
+   744→    </div>
+   745→  );
+   746→}
+   747→
+   748→// Account Settings Component
+   749→export function AccountSettings({ userId, userPhone, onBack }: { userId: string; userPhone: string; onBack: () => void }) {
+   750→  const [showPinForm, setShowPinForm] = useState(false);
+   751→  const [showPhoneForm, setShowPhoneForm] = useState(false);
+   752→  const [isSaving, setIsSaving] = useState(false);
+   753→  const [showCurrentPin, setShowCurrentPin] = useState(false);
+   754→  const [showNewPin, setShowNewPin] = useState(false);
+   755→
+   756→  // PIN form
+   757→  const [pinForm, setPinForm] = useState({
+   758→    currentPin: '',
+   759→    newPin: '',
+   760→    confirmPin: ''
+   761→  });
+   762→
+   763→  // Phone form
+   764→  const [phoneForm, setPhoneForm] = useState({
+   765→    newPhone: ''
+   766→  });
+   767→
+   768→  const handleChangePin = async () => {
+   769→    if (!pinForm.currentPin || !pinForm.newPin || !pinForm.confirmPin) {
+   770→      toast.error('Veuillez remplir tous les champs');
+   771→      return;
+   772→    }
+   773→    if (pinForm.newPin !== pinForm.confirmPin) {
+   774→      toast.error('Les PINs ne correspondent pas');
+   775→      return;
+   776→    }
+   777→    if (!/^\d{4}$/.test(pinForm.newPin)) {
+   778→      toast.error('Le PIN doit contenir exactement 4 chiffres');
+   779→      return;
+   780→    }
+   781→
+   782→    setIsSaving(true);
+   783→    try {
+   784→      const res = await fetch('/api/user/profile', {
+   785→        method: 'PUT',
+   786→        headers: { 'Content-Type': 'application/json' },
+   787→        body: JSON.stringify({
+   788→          userId,
+   789→          pin: pinForm.newPin,
+   790→          currentPin: pinForm.currentPin
+   791→        })
+   792→      });
+   793→      const data = await res.json();
+   794→      if (data.success) {
+   795→        toast.success('PIN modifié avec succès');
+   796→        setPinForm({ currentPin: '', newPin: '', confirmPin: '' });
+   797→        setShowPinForm(false);
+   798→      } else {
+   799→        toast.error(data.error || 'Erreur');
+   800→      }
+   801→    } catch (error) {
+   802→      toast.error('Erreur lors de la modification');
+   803→    } finally {
+   804→      setIsSaving(false);
+   805→    }
+   806→  };
+   807→
+   808→  const handleChangePhone = async () => {
+   809→    if (!phoneForm.newPhone) {
+   810→      toast.error('Veuillez entrer un numéro');
+   811→      return;
+   812→    }
+   813→    if (!/^[79]\d{7}$/.test(phoneForm.newPhone)) {
+   814→      toast.error('Numéro invalide (doit commencer par 7 ou 9, 8 chiffres)');
+   815→      return;
+   816→    }
+   817→
+   818→    setIsSaving(true);
+   819→    try {
+   820→      const res = await fetch('/api/user/profile', {
+   821→        method: 'PUT',
+   822→        headers: { 'Content-Type': 'application/json' },
+   823→        body: JSON.stringify({
+   824→          userId,
+   825→          phone: phoneForm.newPhone
+   826→        })
+   827→      });
+   828→      const data = await res.json();
+   829→      if (data.success) {
+   830→        toast.success('Numéro modifié avec succès');
+   831→        setPhoneForm({ newPhone: '' });
+   832→        setShowPhoneForm(false);
+   833→      } else {
+   834→        toast.error(data.error || 'Erreur');
+   835→      }
+   836→    } catch (error) {
+   837→      toast.error('Erreur lors de la modification');
+   838→    } finally {
+   839→      setIsSaving(false);
+   840→    }
+   841→  };
+   842→
+   843→  return (
+   844→    <div className="p-4 space-y-4 pb-28">
+   845→      {/* Header */}
+   846→      <div className="flex items-center gap-3">
+   847→        <button onClick={onBack} className="p-2 hover:bg-[#F5F5F5] rounded-full">
+   848→          <ArrowLeft className="w-5 h-5 text-[#212121]" />
+   849→        </button>
+   850→        <h1 className="text-lg font-semibold text-[#212121]">Paramètres</h1>
+   851→      </div>
+   852→
+   853→      {/* Phone Number Section */}
+   854→      <div className="bg-white rounded-lg p-4 shadow-sm">
+   855→        <div className="flex items-center justify-between">
+   856→          <div className="flex items-center gap-3">
+   857→            <div className="w-10 h-10 bg-[#FFF3E0] rounded-full flex items-center justify-center">
+   858→              <Phone className="w-5 h-5 text-[#FF9800]" />
+   859→            </div>
+   860→            <div>
+   861→              <h3 className="font-medium text-[#212121]">Numéro de téléphone</h3>
+   862→              <p className="text-sm text-[#757575]">+228 {userPhone}</p>
+   863→            </div>
+   864→          </div>
+   865→          <button
+   866→            onClick={() => setShowPhoneForm(!showPhoneForm)}
+   867→            className="p-2 hover:bg-[#F5F5F5] rounded-full"
+   868→          >
+   869→            <Edit className="w-5 h-5 text-[#757575]" />
+   870→          </button>
+   871→        </div>
+   872→
+   873→        {showPhoneForm && (
+   874→          <div className="mt-4 pt-4 border-t border-[#F5F5F5] space-y-3">
+   875→            <div>
+   876→              <label className="text-xs text-[#757575]">Nouveau numéro</label>
+   877→              <div className="flex items-center gap-2 mt-1">
+   878→                <span className="text-sm text-[#757575]">+228</span>
+   879→                <Input
+   880→                  value={phoneForm.newPhone}
+   881→                  onChange={(e) => setPhoneForm({ newPhone: e.target.value.replace(/\D/g, '').slice(0, 8) })}
+   882→                  placeholder="90 12 34 56"
+   883→                  className="flex-1"
+   884→                  maxLength={8}
+   885→                />
+   886→              </div>
+   887→            </div>
+   888→            <div className="flex gap-2">
+   889→              <Button
+   890→                className="flex-1 bg-[#FF9800] hover:bg-[#F57C00]"
+   891→                onClick={handleChangePhone}
+   892→                disabled={isSaving}
+   893→              >
+   894→                {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+   895→                Enregistrer
+   896→              </Button>
+   897→              <Button variant="outline" onClick={() => setShowPhoneForm(false)}>
+   898→                Annuler
+   899→              </Button>
+   900→            </div>
+   901→          </div>
+   902→        )}
+   903→      </div>
+   904→
+   905→      {/* PIN Section */}
+   906→      <div className="bg-white rounded-lg p-4 shadow-sm">
+   907→        <div className="flex items-center justify-between">
+   908→          <div className="flex items-center gap-3">
+   909→            <div className="w-10 h-10 bg-[#FFF3E0] rounded-full flex items-center justify-center">
+   910→              <Lock className="w-5 h-5 text-[#FF9800]" />
+   911→            </div>
+   912→            <div>
+   913→              <h3 className="font-medium text-[#212121]">Code PIN</h3>
+   914→              <p className="text-sm text-[#757575]">••••</p>
+   915→            </div>
+   916→          </div>
+   917→          <button
+   918→            onClick={() => setShowPinForm(!showPinForm)}
+   919→            className="p-2 hover:bg-[#F5F5F5] rounded-full"
+   920→          >
+   921→            <Edit className="w-5 h-5 text-[#757575]" />
+   922→          </button>
+   923→        </div>
+   924→
+   925→        {showPinForm && (
+   926→          <div className="mt-4 pt-4 border-t border-[#F5F5F5] space-y-3">
+   927→            <div className="relative">
+   928→              <label className="text-xs text-[#757575]">PIN actuel</label>
+   929→              <div className="relative">
+   930→                <Input
+   931→                  type={showCurrentPin ? 'text' : 'password'}
+   932→                  value={pinForm.currentPin}
+   933→                  onChange={(e) => setPinForm({ ...pinForm, currentPin: e.target.value.replace(/\D/g, '').slice(0, 4) })}
+   934→                  placeholder="••••"
+   935→                  className="mt-1 pr-10"
+   936→                  maxLength={4}
+   937→                />
+   938→                <button
+   939→                  type="button"
+   940→                  onClick={() => setShowCurrentPin(!showCurrentPin)}
+   941→                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#757575]"
+   942→                >
+   943→                  {showCurrentPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+   944→                </button>
+   945→              </div>
+   946→            </div>
+   947→            <div className="relative">
+   948→              <label className="text-xs text-[#757575]">Nouveau PIN</label>
+   949→              <div className="relative">
+   950→                <Input
+   951→                  type={showNewPin ? 'text' : 'password'}
+   952→                  value={pinForm.newPin}
+   953→                  onChange={(e) => setPinForm({ ...pinForm, newPin: e.target.value.replace(/\D/g, '').slice(0, 4) })}
+   954→                  placeholder="••••"
+   955→                  className="mt-1 pr-10"
+   956→                  maxLength={4}
+   957→                />
+   958→                <button
+   959→                  type="button"
+   960→                  onClick={() => setShowNewPin(!showNewPin)}
+   961→                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#757575]"
+   962→                >
+   963→                  {showNewPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+   964→                </button>
+   965→              </div>
+   966→            </div>
+   967→            <div>
+   968→              <label className="text-xs text-[#757575]">Confirmer le PIN</label>
+   969→              <Input
+   970→                type="password"
+   971→                value={pinForm.confirmPin}
+   972→                onChange={(e) => setPinForm({ ...pinForm, confirmPin: e.target.value.replace(/\D/g, '').slice(0, 4) })}
+   973→                placeholder="••••"
+   974→                className="mt-1"
+   975→                maxLength={4}
+   976→              />
+   977→            </div>
+   978→            <div className="flex gap-2">
+   979→              <Button
+   980→                className="flex-1 bg-[#FF9800] hover:bg-[#F57C00]"
+   981→                onClick={handleChangePin}
+   982→                disabled={isSaving}
+   983→              >
+   984→                {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+   985→                Modifier
+   986→              </Button>
+   987→              <Button variant="outline" onClick={() => setShowPinForm(false)}>
+   988→                Annuler
+   989→              </Button>
+   990→            </div>
+   991→          </div>
+   992→        )}
+   993→      </div>
+   994→
+   995→      {/* Security Info */}
+   996→      <div className="bg-[#FFF8E1] rounded-lg p-4">
+   997→        <h3 className="font-medium text-[#F57C00] mb-2">Conseils de sécurité</h3>
+   998→        <ul className="text-sm text-[#757575] space-y-1">
+   999→          <li>• Ne partagez jamais votre code PIN</li>
+  1000→          <li>• Utilisez un code unique que vous seul connaissez</li>
+  1001→          <li>• Changez votre PIN régulièrement</li>
+  1002→        </ul>
+  1003→      </div>
+  1004→    </div>
+  1005→  );
+  1006→}
+  1007→

@@ -1,0 +1,1500 @@
+     1→'use client';
+     2→
+     3→import { useState, useEffect, useCallback } from 'react';
+     4→import { useAuthStore, useOrdersStore } from '@/store';
+     5→import { Card, CardContent } from '@/components/ui/card';
+     6→import { Button } from '@/components/ui/button';
+     7→import { Switch } from '@/components/ui/switch';
+     8→import { Input } from '@/components/ui/input';
+     9→import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+    10→import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+    11→import { 
+    12→  Power, MapPin, Clock, Star, DollarSign, CheckCircle, 
+    13→  Navigation, Phone, MessageCircle, Car, AlertCircle,
+    14→  Wallet, TrendingUp, Calendar, LogOut, Settings, Home,
+    15→  RefreshCw, Loader2, ArrowLeft, Crown, Edit, Bell, Banknote
+    16→} from 'lucide-react';
+    17→import { HideableBalanceDark, HideableBalanceLight } from '@/components/ui/hideable-balance';
+    18→import type { Order, OrderStatus, Conversation, User } from '@/types';
+    19→import { ChatView } from '@/components/chat/ChatView';
+    20→import { toast } from 'sonner';
+    21→
+    22→// Washer stats type
+    23→interface WasherStats {
+    24→  name: string;
+    25→  rating: number;
+    26→  totalRatings: number;
+    27→  completedJobs: number;
+    28→  totalEarnings: number;
+    29→  todayEarnings: number;
+    30→  todayJobs: number;
+    31→  balance: number;
+    32→}
+    33→
+    34→export function WasherApp() {
+    35→  const { user, logout } = useAuthStore();
+    36→  const { currentOrder, setCurrentOrder, orders, setOrders } = useOrdersStore();
+    37→  const [activeTab, setActiveTab] = useState('dashboard');
+    38→  const [isAvailable, setIsAvailable] = useState(true);
+    39→  const [isLoading, setIsLoading] = useState(false);
+    40→  const [pendingOrders, setPendingOrders] = useState<Order[]>([]);
+    41→  const [showChat, setShowChat] = useState(false);
+    42→  const [conversation, setConversation] = useState<Conversation | null>(null);
+    43→  const [washerData, setWasherData] = useState<{
+    44→    rating?: number;
+    45→    totalRatings?: number;
+    46→    completedJobs?: number;
+    47→    totalEarnings?: number;
+    48→    todayEarnings?: number;
+    49→    todayJobs?: number;
+    50→  } | null>(null);
+    51→  const [isRefreshingBalance, setIsRefreshingBalance] = useState(false);
+    52→  const [profileSection, setProfileSection] = useState<string | null>(null);
+    53→
+    54→  // Fetch conversation for current order
+    55→  const fetchConversation = useCallback(async (orderId: string) => {
+    56→    try {
+    57→      const res = await fetch(`/api/conversations?orderId=${orderId}`);
+    58→      const data = await res.json();
+    59→      
+    60→      if (data.success && data.conversation) {
+    61→        setConversation(data.conversation);
+    62→      }
+    63→    } catch (error) {
+    64→      console.error('Fetch conversation error:', error);
+    65→    }
+    66→  }, []);
+    67→
+    68→  // Open chat for order
+    69→  const handleOpenChat = useCallback(async (order: Order) => {
+    70→    if (order.id) {
+    71→      await fetchConversation(order.id);
+    72→      setShowChat(true);
+    73→    }
+    74→  }, [fetchConversation]);
+    75→
+    76→  // Fetch washer data (stats, balance)
+    77→  const fetchWasherData = useCallback(async () => {
+    78→    if (!user) return;
+    79→    
+    80→    setIsRefreshingBalance(true);
+    81→    try {
+    82→      const res = await fetch(`/api/washers/${user.id}`);
+    83→      const data = await res.json();
+    84→      
+    85→      if (data.success && data.washer) {
+    86→        setWasherData(data.washer);
+    87→      }
+    88→    } catch (error) {
+    89→      console.error('Fetch washer data error:', error);
+    90→    } finally {
+    91→      setIsRefreshingBalance(false);
+    92→    }
+    93→  }, [user]);
+    94→
+    95→  // Get washer stats from washerData or defaults
+    96→  const washerStats = {
+    97→    name: user?.name || 'Laveur',
+    98→    rating: washerData?.rating || 0,
+    99→    totalRatings: washerData?.totalRatings || 0,
+   100→    completedJobs: washerData?.completedJobs || 0,
+   101→    totalEarnings: washerData?.totalEarnings || 0,
+   102→    todayEarnings: washerData?.todayEarnings || 0,
+   103→    todayJobs: washerData?.todayJobs || 0,
+   104→    balance: washerData?.totalEarnings || 0,
+   105→  };
+   106→
+   107→  // Fetch pending orders
+   108→  const fetchPendingOrders = useCallback(async () => {
+   109→    if (!user) return;
+   110→    
+   111→    setIsLoading(true);
+   112→    try {
+   113→      const res = await fetch(`/api/orders?userId=${user.id}&role=WASHER&status=PENDING`);
+   114→      const data = await res.json();
+   115→      
+   116→      if (data.success) {
+   117→        setPendingOrders(data.orders);
+   118→      }
+   119→    } catch (error) {
+   120→      console.error('Fetch orders error:', error);
+   121→    } finally {
+   122→      setIsLoading(false);
+   123→    }
+   124→  }, [user]);
+   125→
+   126→  // Fetch my orders (active and history)
+   127→  const fetchMyOrders = useCallback(async () => {
+   128→    if (!user) return;
+   129→    
+   130→    try {
+   131→      const res = await fetch(`/api/orders?userId=${user.id}&role=WASHER`);
+   132→      const data = await res.json();
+   133→      
+   134→      if (data.success) {
+   135→        setOrders(data.orders);
+   136→        
+   137→        // Set current active order
+   138→        const active = data.orders.find((o: Order) => 
+   139→          ['ACCEPTED', 'EN_ROUTE', 'ARRIVED', 'IN_PROGRESS'].includes(o.status)
+   140→        );
+   141→        if (active) {
+   142→          setCurrentOrder(active);
+   143→        }
+   144→      }
+   145→    } catch (error) {
+   146→      console.error('Fetch my orders error:', error);
+   147→    }
+   148→  }, [user, setOrders, setCurrentOrder]);
+   149→
+   150→  // Initial load and polling
+   151→  useEffect(() => {
+   152→    fetchPendingOrders();
+   153→    fetchMyOrders();
+   154→    fetchWasherData();
+   155→    
+   156→    // Poll for new orders every 10 seconds when available
+   157→    const interval = setInterval(() => {
+   158→      if (isAvailable) {
+   159→        fetchPendingOrders();
+   160→      }
+   161→    }, 10000);
+   162→    
+   163→    return () => clearInterval(interval);
+   164→  }, [isAvailable, fetchPendingOrders, fetchMyOrders, fetchWasherData]);
+   165→
+   166→  // Accept order
+   167→  const handleAcceptOrder = async (order: Order) => {
+   168→    try {
+   169→      const res = await fetch('/api/orders', {
+   170→        method: 'PATCH',
+   171→        headers: { 'Content-Type': 'application/json' },
+   172→        body: JSON.stringify({
+   173→          orderId: order.id,
+   174→          status: 'ACCEPTED',
+   175→          washerId: user?.id,
+   176→        }),
+   177→      });
+   178→
+   179→      const data = await res.json();
+   180→
+   181→      if (data.success) {
+   182→        setCurrentOrder(data.order);
+   183→        setPendingOrders(prev => prev.filter(o => o.id !== order.id));
+   184→        setActiveTab('active');
+   185→      }
+   186→    } catch (error) {
+   187→      console.error('Accept order error:', error);
+   188→    }
+   189→  };
+   190→
+   191→  // Update order status
+   192→  const handleUpdateStatus = async (newStatus: OrderStatus) => {
+   193→    if (!currentOrder) return;
+   194→    
+   195→    try {
+   196→      // If this is a subscription order and completing, validate subscription first
+   197→      if (currentOrder.isSubscriptionOrder && newStatus === 'COMPLETED') {
+   198→        const res = await fetch('/api/subscriptions/validate', {
+   199→          method: 'POST',
+   200→          headers: { 'Content-Type': 'application/json' },
+   201→          body: JSON.stringify({
+   202→            orderId: currentOrder.id,
+   203→            washerId: user?.id,
+   204→            action: 'VALIDATE',
+   205→          }),
+   206→        });
+   207→
+   208→        const data = await res.json();
+   209→
+   210→        if (data.success) {
+   211→          setCurrentOrder(null);
+   212→          fetchMyOrders();
+   213→          return;
+   214→        }
+   215→      }
+   216→
+   217→      // Regular status update
+   218→      const res = await fetch('/api/orders', {
+   219→        method: 'PATCH',
+   220→        headers: { 'Content-Type': 'application/json' },
+   221→        body: JSON.stringify({
+   222→          orderId: currentOrder.id,
+   223→          status: newStatus,
+   224→        }),
+   225→      });
+   226→
+   227→      const data = await res.json();
+   228→
+   229→      if (data.success) {
+   230→        setCurrentOrder(data.order);
+   231→        if (newStatus === 'COMPLETED') {
+   232→          setCurrentOrder(null);
+   233→          fetchMyOrders();
+   234→        }
+   235→      }
+   236→    } catch (error) {
+   237→      console.error('Update order error:', error);
+   238→    }
+   239→  };
+   240→
+   241→  return (
+   242→    <div className="flex-1 flex flex-col bg-[#FAFAFA] overflow-hidden">
+   243→      {/* Android Status Bar */}
+   244→      <div className="h-6 bg-[#4CAF50] flex items-center justify-between px-4 flex-shrink-0 sticky top-0 z-50">
+   245→        <span className="text-white text-xs font-medium">{new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
+   246→        <div className="flex items-center gap-1">
+   247→          {/* Signal Network Bars */}
+   248→          <div className="flex items-end gap-0.5">
+   249→            <div className="w-1 h-1 bg-white rounded-sm"></div>
+   250→            <div className="w-1 h-2 bg-white rounded-sm"></div>
+   251→            <div className="w-1 h-3 bg-white rounded-sm"></div>
+   252→            <div className="w-1 h-4 bg-white rounded-sm"></div>
+   253→          </div>
+   254→          {/* Battery */}
+   255→          <div className="w-5 h-2.5 border border-white rounded-sm ml-1 relative">
+   256→            <div className="absolute inset-0.5 bg-white rounded-sm" style={{ width: '70%' }}></div>
+   257→          </div>
+   258→        </div>
+   259→      </div>
+   260→
+   261→      {/* Header with Availability */}
+   262→      <div className="bg-white border-b px-4 py-3 flex-shrink-0 sticky top-6 z-40">
+   263→        <div className="flex items-center justify-between">
+   264→          <div className="flex items-center gap-3">
+   265→            <div className="w-12 h-12 bg-gradient-to-br from-[#4CAF50] to-[#2E7D32] rounded-full flex items-center justify-center text-white text-xl font-bold">
+   266→              {washerStats.name.charAt(0)}
+   267→            </div>
+   268→            <div>
+   269→              <div className="font-semibold text-[#212121]">{washerStats.name}</div>
+   270→              <div className="flex items-center gap-1">
+   271→                {washerStats.rating > 0 ? (
+   272→                  <>
+   273→                    <Star className="w-4 h-4 text-[#FFC107] fill-[#FFC107]" />
+   274→                    <span className="text-sm text-[#757575]">{washerStats.rating.toFixed(1)}</span>
+   275→                  </>
+   276→                ) : (
+   277→                  <span className="text-sm text-[#9E9E9E]">Nouveau laveur</span>
+   278→                )}
+   279→              </div>
+   280→            </div>
+   281→          </div>
+   282→          <div className="flex items-center gap-3">
+   283→            <div className="text-right">
+   284→              <div className="text-xs text-[#757575]">Disponibilité</div>
+   285→              <div className={`text-sm font-medium ${isAvailable ? 'text-[#4CAF50]' : 'text-[#9E9E9E]'}`}>
+   286→                {isAvailable ? 'En ligne' : 'Hors ligne'}
+   287→              </div>
+   288→            </div>
+   289→            <Switch
+   290→              checked={isAvailable}
+   291→              onCheckedChange={setIsAvailable}
+   292→              className={isAvailable ? 'bg-[#4CAF50]' : ''}
+   293→            />
+   294→          </div>
+   295→        </div>
+   296→      </div>
+   297→
+   298→      {/* Main Content */}
+   299→      <div className="flex-1 overflow-y-auto pb-16">
+   300→        {activeTab === 'dashboard' && (
+   301→          <WasherDashboard 
+   302→            stats={washerStats} 
+   303→            isAvailable={isAvailable} 
+   304→            isLoading={isLoading}
+   305→            pendingOrders={pendingOrders}
+   306→            onAccept={handleAcceptOrder}
+   307→            onRefresh={fetchPendingOrders}
+   308→            onRefreshBalance={fetchWasherData}
+   309→            isRefreshingBalance={isRefreshingBalance}
+   310→            acceptedOrders={orders.filter(o => ['ACCEPTED', 'EN_ROUTE', 'ARRIVED', 'IN_PROGRESS'].includes(o.status))}
+   311→          />
+   312→        )}
+   313→        {activeTab === 'active' && (
+   314→          <ActiveOrderView 
+   315→            order={currentOrder} 
+   316→            onUpdateStatus={handleUpdateStatus} 
+   317→            onBack={() => setActiveTab('dashboard')}
+   318→            onOpenChat={handleOpenChat}
+   319→            acceptedOrders={orders.filter(o => ['ACCEPTED', 'EN_ROUTE', 'ARRIVED', 'IN_PROGRESS'].includes(o.status))}
+   320→            onSelectOrder={setCurrentOrder}
+   321→          />
+   322→        )}
+   323→        {activeTab === 'history' && (
+   324→          <WasherOrderHistory 
+   325→            orders={orders} 
+   326→            onBack={() => setActiveTab('dashboard')} 
+   327→          />
+   328→        )}
+   329→        {activeTab === 'earnings' && (
+   330→          <WasherEarnings 
+   331→            stats={washerStats} 
+   332→            onBack={() => setActiveTab('dashboard')}
+   333→            onRefreshBalance={fetchWasherData}
+   334→            isRefreshingBalance={isRefreshingBalance}
+   335→            washerId={user?.id || ''}
+   336→          />
+   337→        )}
+   338→        {activeTab === 'profile' && (
+   339→          profileSection ? (
+   340→            <WasherProfileSection 
+   341→              section={profileSection} 
+   342→              onBack={() => setProfileSection(null)}
+   343→              user={user}
+   344→            />
+   345→          ) : (
+   346→            <WasherProfile 
+   347→              user={user} 
+   348→              stats={washerStats} 
+   349→              onLogout={logout} 
+   350→              onBack={() => setActiveTab('dashboard')}
+   351→              onNavigate={setProfileSection}
+   352→            />
+   353→          )
+   354→        )}
+   355→      </div>
+   356→
+   357→      {/* Android Bottom Navigation - FIXED at bottom */}
+   358→      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E0E0E0] flex justify-around items-center h-14 z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
+   359→        {[
+   360→          { id: 'dashboard', icon: Home, label: 'Accueil' },
+   361→          { id: 'active', icon: Car, label: 'Active' },
+   362→          { id: 'history', icon: Clock, label: 'Historique' },
+   363→          { id: 'earnings', icon: Wallet, label: 'Revenus' },
+   364→          { id: 'profile', icon: Settings, label: 'Profil' },
+   365→        ].map((tab) => {
+   366→          const isActive = activeTab === tab.id;
+   367→          return (
+   368→            <button
+   369→              key={tab.id}
+   370→              onClick={() => setActiveTab(tab.id)}
+   371→              className={`flex flex-col items-center justify-center py-1.5 px-4 transition-all ${
+   372→                isActive ? 'text-[#4CAF50]' : 'text-[#757575]'
+   373→              }`}
+   374→            >
+   375→              <tab.icon className={`w-6 h-6 ${isActive ? 'fill-current' : ''}`} />
+   376→              <span className="text-[10px] font-medium mt-0.5">{tab.label}</span>
+   377→            </button>
+   378→          );
+   379→        })}
+   380→      </nav>
+   381→
+   382→      {/* Chat Overlay */}
+   383→      {showChat && conversation && (
+   384→        <div className="absolute inset-0 z-[60] bg-[#FAFAFA]">
+   385→          <ChatView 
+   386→            conversation={conversation} 
+   387→            onBack={() => setShowChat(false)} 
+   388→          />
+   389→        </div>
+   390→      )}
+   391→    </div>
+   392→  );
+   393→}
+   394→
+   395→// Washer Dashboard
+   396→function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccept, onRefresh, onRefreshBalance, isRefreshingBalance, acceptedOrders }: { 
+   397→  stats: WasherStats; 
+   398→  isAvailable: boolean;
+   399→  isLoading: boolean;
+   400→  pendingOrders: Order[];
+   401→  onAccept: (order: Order) => void;
+   402→  onRefresh: () => void;
+   403→  onRefreshBalance: () => void;
+   404→  isRefreshingBalance: boolean;
+   405→  acceptedOrders: Order[];
+   406→}) {
+   407→  return (
+   408→    <div className="p-4 space-y-4">
+   409→      {/* Status Banner */}
+   410→      {!isAvailable && (
+   411→        <div className="bg-[#FFF3E0] border border-[#FFCC80] rounded-xl p-4 flex items-center gap-3">
+   412→          <AlertCircle className="w-5 h-5 text-[#FF9800]" />
+   413→          <div>
+   414→            <p className="font-medium text-[#E65100]">Vous êtes hors ligne</p>
+   415→            <p className="text-sm text-[#EF6C00]">
+   416→              Activez votre disponibilité pour recevoir des commandes.
+   417→            </p>
+   418→          </div>
+   419→        </div>
+   420→      )}
+   421→
+   422→      {/* Balance Card with Refresh */}
+   423→      <Card className="bg-gradient-to-r from-[#4CAF50] to-[#2E7D32] text-white border-0">
+   424→        <CardContent className="p-4">
+   425→          <div className="flex items-center justify-between">
+   426→            <div>
+   427→              <p className="text-sm opacity-80">Solde disponible</p>
+   428→              <HideableBalanceDark
+   429→                balance={stats.balance}
+   430→                currency="XOF"
+   431→                size="lg"
+   432→                storageKey="hide-washer-balance"
+   433→              />
+   434→            </div>
+   435→            <button 
+   436→              onClick={onRefreshBalance}
+   437→              disabled={isRefreshingBalance}
+   438→              className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition-colors"
+   439→            >
+   440→              {isRefreshingBalance ? (
+   441→                <Loader2 className="w-5 h-5 animate-spin" />
+   442→              ) : (
+   443→                <RefreshCw className="w-5 h-5" />
+   444→              )}
+   445→            </button>
+   446→          </div>
+   447→        </CardContent>
+   448→      </Card>
+   449→
+   450→      {/* Today Stats */}
+   451→      <div className="grid grid-cols-2 gap-3">
+   452→        <Card className="border-0 shadow-sm">
+   453→          <CardContent className="p-4">
+   454→            <div className="flex items-center gap-3">
+   455→              <div className="w-10 h-10 bg-[#E8F5E9] rounded-full flex items-center justify-center">
+   456→                <DollarSign className="w-5 h-5 text-[#4CAF50]" />
+   457→              </div>
+   458→              <div>
+   459→                <p className="text-xs text-[#757575]">Aujourd&apos;hui</p>
+   460→                <HideableBalanceLight
+   461→                  balance={stats.todayEarnings}
+   462→                  currency="XOF"
+   463→                  size="md"
+   464→                  storageKey="hide-washer-today-earnings"
+   465→                  balanceClassName="text-[#4CAF50]"
+   466→                />
+   467→              </div>
+   468→            </div>
+   469→          </CardContent>
+   470→        </Card>
+   471→
+   472→        <Card className="border-0 shadow-sm">
+   473→          <CardContent className="p-4">
+   474→            <div className="flex items-center gap-3">
+   475→              <div className="w-10 h-10 bg-[#E3F2FD] rounded-full flex items-center justify-center">
+   476→                <Car className="w-5 h-5 text-[#2196F3]" />
+   477→              </div>
+   478→              <div>
+   479→                <p className="text-xs text-[#757575]">Lavages</p>
+   480→                <p className="text-lg font-bold text-[#2196F3]">{stats.todayJobs}</p>
+   481→              </div>
+   482→            </div>
+   483→          </CardContent>
+   484→        </Card>
+   485→      </div>
+   486→
+   487→      {/* Accepted Orders - Active tracking */}
+   488→      {acceptedOrders.length > 0 && (
+   489→        <div>
+   490→          <h2 className="font-semibold text-[#212121] mb-3">Commandes en cours ({acceptedOrders.length})</h2>
+   491→          <div className="space-y-3">
+   492→            {acceptedOrders.map((order) => (
+   493→              <Card key={order.id} className="border-0 shadow-sm border-l-4 border-l-[#4CAF50]">
+   494→                <CardContent className="p-4">
+   495→                  <div className="flex justify-between items-center">
+   496→                    <div>
+   497→                      <p className="font-medium text-[#212121]">{order.client?.name || 'Client'}</p>
+   498→                      <p className="text-sm text-[#757575]">{order.service?.name || 'Service'}</p>
+   499→                      <div className="flex items-center gap-2 mt-1">
+   500→                        <span className={`text-xs px-2 py-0.5 rounded-full ${
+   501→                          order.status === 'ACCEPTED' ? 'bg-blue-100 text-blue-800' :
+   502→                          order.status === 'EN_ROUTE' ? 'bg-yellow-100 text-yellow-800' :
+   503→                          order.status === 'ARRIVED' ? 'bg-purple-100 text-purple-800' :
+   504→                          order.status === 'IN_PROGRESS' ? 'bg-green-100 text-green-800' :
+   505→                          'bg-gray-100 text-gray-800'
+   506→                        }`}>
+   507→                          {order.status === 'ACCEPTED' && 'Acceptée'}
+   508→                          {order.status === 'EN_ROUTE' && 'En route'}
+   509→                          {order.status === 'ARRIVED' && 'Arrivé'}
+   510→                          {order.status === 'IN_PROGRESS' && 'En cours'}
+   511→                        </span>
+   512→                      </div>
+   513→                    </div>
+   514→                    <div className="text-right">
+   515→                      <p className="font-bold text-[#4CAF50]">{order.totalPrice?.toLocaleString()} XOF</p>
+   516→                      <p className="text-xs text-[#757575]">{order.address?.substring(0, 20)}...</p>
+   517→                    </div>
+   518→                  </div>
+   519→                </CardContent>
+   520→              </Card>
+   521→            ))}
+   522→          </div>
+   523→        </div>
+   524→      )}
+   525→
+   526→      {/* Pending Orders */}
+   527→      <div>
+   528→        <div className="flex items-center justify-between mb-3">
+   529→          <h2 className="font-semibold text-[#212121]">Commandes en attente</h2>
+   530→          <button 
+   531→            onClick={onRefresh}
+   532→            disabled={isLoading}
+   533→            className="text-[#FF9800] text-sm flex items-center gap-1"
+   534→          >
+   535→            {isLoading ? (
+   536→              <Loader2 className="w-4 h-4 animate-spin" />
+   537→            ) : (
+   538→              <RefreshCw className="w-4 h-4" />
+   539→            )}
+   540→          </button>
+   541→        </div>
+   542→
+   543→        {isAvailable ? (
+   544→          pendingOrders.length > 0 ? (
+   545→            <div className="space-y-3">
+   546→              {pendingOrders.map((order) => (
+   547→                <Card key={order.id} className="border-0 shadow-sm overflow-hidden">
+   548→                  <CardContent className="p-0">
+   549→                    <div className="p-4 bg-gradient-to-r from-[#FF9800] to-[#F57C00] text-white">
+   550→                      <div className="flex justify-between items-start">
+   551→                        <div>
+   552→                          <p className="text-sm opacity-80">Nouvelle commande</p>
+   553→                          <p className="font-bold text-lg">{order.service?.name || 'Service'}</p>
+   554→                        </div>
+   555→                        <div className="text-right">
+   556→                          <p className="font-bold text-xl">{order.totalPrice?.toLocaleString()} XOF</p>
+   557→                          <p className="text-sm opacity-80">{order.service?.duration || 30} min</p>
+   558→                        </div>
+   559→                      </div>
+   560→                    </div>
+   561→                    <div className="p-4 space-y-3">
+   562→                      <div className="flex items-center gap-2">
+   563→                        <MapPin className="w-4 h-4 text-[#FF9800]" />
+   564→                        <span className="text-sm text-[#212121]">{order.address || 'Adresse non spécifiée'}</span>
+   565→                      </div>
+   566→                      <div className="flex items-center gap-2">
+   567→                        <span className="text-sm text-[#757575]">Client: {order.client?.name || 'N/A'}</span>
+   568→                      </div>
+   569→                      <div className="flex gap-2">
+   570→                        <Button 
+   571→                          className="flex-1 bg-[#4CAF50] hover:bg-[#43A047] rounded-xl"
+   572→                          onClick={() => onAccept(order)}
+   573→                        >
+   574→                          <CheckCircle className="w-4 h-4 mr-2" />
+   575→                          Accepter
+   576→                        </Button>
+   577→                      </div>
+   578→                    </div>
+   579→                  </CardContent>
+   580→                </Card>
+   581→              ))}
+   582→            </div>
+   583→          ) : (
+   584→            <div className="bg-white rounded-2xl p-6 text-center shadow-sm">
+   585→              {isLoading ? (
+   586→                <>
+   587→                  <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin mx-auto mb-3" />
+   588→                  <p className="text-[#757575]">Recherche de commandes...</p>
+   589→                </>
+   590→              ) : (
+   591→                <>
+   592→                  <div className="w-16 h-16 bg-[#E8F5E9] rounded-full flex items-center justify-center mx-auto mb-4">
+   593→                    <Clock className="w-8 h-8 text-[#4CAF50]" />
+   594→                  </div>
+   595→                  <p className="font-semibold text-[#212121]">En attente de commandes</p>
+   596→                  <p className="text-sm text-[#757575] mt-1">
+   597→                    Vous serez notifié dès qu&apos;une commande arrive.
+   598→                  </p>
+   599→                </>
+   600→              )}
+   601→            </div>
+   602→          )
+   603→        ) : (
+   604→          <div className="bg-white rounded-2xl p-6 text-center shadow-sm">
+   605→            <div className="w-16 h-16 bg-[#F5F5F5] rounded-full flex items-center justify-center mx-auto mb-4">
+   606→              <Power className="w-8 h-8 text-[#9E9E9E]" />
+   607→            </div>
+   608→            <p className="font-medium text-[#757575]">Vous êtes hors ligne</p>
+   609→            <p className="text-sm text-[#9E9E9E] mt-1">
+   610→              Activez votre disponibilité pour recevoir des commandes.
+   611→            </p>
+   612→          </div>
+   613→        )}
+   614→      </div>
+   615→    </div>
+   616→  );
+   617→}
+   618→
+   619→// Active Order View
+   620→function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat, acceptedOrders, onSelectOrder }: { 
+   621→  order: Order | null; 
+   622→  onUpdateStatus: (status: OrderStatus) => void;
+   623→  onBack: () => void;
+   624→  onOpenChat: (order: Order) => void;
+   625→  acceptedOrders: Order[];
+   626→  onSelectOrder: (order: Order | null) => void;
+   627→}) {
+   628→
+   629→  const steps = [
+   630→    { status: 'ACCEPTED', label: 'Acceptée', icon: CheckCircle },
+   631→    { status: 'EN_ROUTE', label: 'En route', icon: Navigation },
+   632→    { status: 'ARRIVED', label: 'Arrivé', icon: MapPin },
+   633→    { status: 'IN_PROGRESS', label: 'En cours', icon: Car },
+   634→    { status: 'COMPLETED', label: 'Terminée', icon: CheckCircle },
+   635→  ];
+   636→
+   637→  // If no specific order selected, show list of accepted orders
+   638→  if (!order) {
+   639→    return (
+   640→      <div className="p-4 space-y-4">
+   641→        {/* Back Button */}
+   642→        <button 
+   643→          onClick={onBack}
+   644→          className="flex items-center gap-2 text-[#4CAF50]"
+   645→        >
+   646→          <ArrowLeft className="w-5 h-5" />
+   647→          <span>Retour</span>
+   648→        </button>
+   649→        
+   650→        <h2 className="font-semibold text-lg text-[#212121]">Commandes actives</h2>
+   651→        
+   652→        {acceptedOrders.length > 0 ? (
+   653→          <div className="space-y-3">
+   654→            {acceptedOrders.map((o) => (
+   655→              <Card 
+   656→                key={o.id} 
+   657→                className="border-0 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+   658→                onClick={() => onSelectOrder(o)}
+   659→              >
+   660→                <CardContent className="p-4">
+   661→                  <div className="flex justify-between items-center">
+   662→                    <div>
+   663→                      <p className="font-medium text-[#212121]">{o.client?.name || 'Client'}</p>
+   664→                      <p className="text-sm text-[#757575]">{o.service?.name || 'Service'}</p>
+   665→                      <span className={`inline-block text-xs px-2 py-0.5 rounded-full mt-1 ${
+   666→                        o.status === 'ACCEPTED' ? 'bg-blue-100 text-blue-800' :
+   667→                        o.status === 'EN_ROUTE' ? 'bg-yellow-100 text-yellow-800' :
+   668→                        o.status === 'ARRIVED' ? 'bg-purple-100 text-purple-800' :
+   669→                        o.status === 'IN_PROGRESS' ? 'bg-green-100 text-green-800' :
+   670→                        'bg-gray-100 text-gray-800'
+   671→                      }`}>
+   672→                        {o.status === 'ACCEPTED' && 'Acceptée'}
+   673→                        {o.status === 'EN_ROUTE' && 'En route'}
+   674→                        {o.status === 'ARRIVED' && 'Arrivé'}
+   675→                        {o.status === 'IN_PROGRESS' && 'En cours'}
+   676→                      </span>
+   677→                    </div>
+   678→                    <div className="text-right">
+   679→                      <p className="font-bold text-[#4CAF50]">{o.totalPrice?.toLocaleString()} XOF</p>
+   680→                    </div>
+   681→                  </div>
+   682→                </CardContent>
+   683→              </Card>
+   684→            ))}
+   685→          </div>
+   686→        ) : (
+   687→          <div className="bg-white rounded-2xl p-8 text-center shadow-sm">
+   688→            <div className="w-16 h-16 bg-[#F5F5F5] rounded-full flex items-center justify-center mx-auto mb-4">
+   689→              <Car className="w-8 h-8 text-[#9E9E9E]" />
+   690→            </div>
+   691→            <p className="font-medium text-[#757575]">Aucune commande active</p>
+   692→            <p className="text-sm text-[#9E9E9E] mt-1">
+   693→              Les nouvelles commandes apparaîtront ici.
+   694→            </p>
+   695→          </div>
+   696→        )}
+   697→      </div>
+   698→    );
+   699→  }
+   700→
+   701→  const currentStepIndex = steps.findIndex(s => s.status === order.status);
+   702→
+   703→  return (
+   704→    <div className="p-4 space-y-4">
+   705→      {/* Back Button */}
+   706→      <button 
+   707→        onClick={onBack}
+   708→        className="flex items-center gap-2 text-[#4CAF50]"
+   709→      >
+   710→        <ArrowLeft className="w-5 h-5" />
+   711→        <span>Retour</span>
+   712→      </button>
+   713→
+   714→      {/* Progress Steps - Android Stepper Style */}
+   715→      <div className="bg-white px-4 py-4 border-b border-[#E0E0E0]">
+   716→        <div className="flex items-center justify-between">
+   717→          {steps.map((step, index) => {
+   718→            const isActive = index === currentStepIndex;
+   719→            const isPast = index < currentStepIndex;
+   720→            const Icon = step.icon;
+   721→            
+   722→            return (
+   723→              <div key={step.status} className="flex items-center flex-1">
+   724→                <div className="flex flex-col items-center">
+   725→                  <div
+   726→                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+   727→                      isActive
+   728→                        ? 'bg-[#4CAF50] text-white shadow-lg shadow-[#4CAF50]/30'
+   729→                        : isPast
+   730→                        ? 'bg-[#4CAF50] text-white'
+   731→                        : 'bg-[#E0E0E0] text-[#9E9E9E]'
+   732→                    }`}
+   733→                  >
+   734→                    <Icon className="w-4 h-4" />
+   735→                  </div>
+   736→                  <span className={`text-[9px] mt-0.5 font-medium whitespace-nowrap ${
+   737→                    isActive ? 'text-[#4CAF50] font-bold' : isPast ? 'text-[#4CAF50]' : 'text-[#9E9E9E]'
+   738→                  }`}>
+   739→                    {step.label}
+   740→                  </span>
+   741→                </div>
+   742→                {index < steps.length - 1 && (
+   743→                  <div className={`flex-1 h-0.5 mx-1 transition-all ${
+   744→                    isPast ? 'bg-[#4CAF50]' : 'bg-[#E0E0E0]'
+   745→                  }`} />
+   746→                )}
+   747→              </div>
+   748→            );
+   749→          })}
+   750→        </div>
+   751→      </div>
+   752→
+   753→      {/* Client Info */}
+   754→      <Card className="border-0 shadow-sm">
+   755→        <CardContent className="p-4">
+   756→          <div className="flex items-center gap-4">
+   757→            <Avatar className="w-12 h-12">
+   758→              <AvatarFallback className="bg-[#E3F2FD] text-[#2196F3]">
+   759→                {order.client?.name?.charAt(0) || 'C'}
+   760→              </AvatarFallback>
+   761→            </Avatar>
+   762→            <div className="flex-1">
+   763→              <h3 className="font-semibold text-[#212121]">{order.client?.name || 'Client'}</h3>
+   764→              <p className="text-sm text-[#757575]">{order.client?.phone || ''}</p>
+   765→            </div>
+   766→            <div className="flex gap-2">
+   767→              <Button size="icon" variant="outline" className="rounded-full">
+   768→                <Phone className="w-4 h-4" />
+   769→              </Button>
+   770→              <Button 
+   771→                size="icon" 
+   772→                variant="outline" 
+   773→                className="rounded-full bg-[#4CAF50] text-white hover:bg-[#43A047]"
+   774→                onClick={() => order && onOpenChat(order)}
+   775→              >
+   776→                <MessageCircle className="w-4 h-4" />
+   777→              </Button>
+   778→            </div>
+   779→          </div>
+   780→        </CardContent>
+   781→      </Card>
+   782→
+   783→      {/* Service & Location */}
+   784→      <Card className="border-0 shadow-sm">
+   785→        <CardContent className="p-4 space-y-3">
+   786→          <div>
+   787→            <p className="text-xs text-[#757575]">Service</p>
+   788→            <p className="font-medium text-[#212121]">{order.service?.name || 'N/A'}</p>
+   789→          </div>
+   790→          <div>
+   791→            <p className="text-xs text-[#757575]">Adresse</p>
+   792→            <div className="flex items-center gap-2">
+   793→              <MapPin className="w-4 h-4 text-[#FF9800]" />
+   794→              <p className="font-medium text-[#212121]">{order.address || 'N/A'}</p>
+   795→            </div>
+   796→          </div>
+   797→          <div className="flex justify-between pt-2 border-t border-[#F5F5F5]">
+   798→            <span className="text-[#757575]">Vos gains</span>
+   799→            <span className="font-bold text-[#4CAF50]">
+   800→              {((order.totalPrice || 0) - (order.commission || 0)).toLocaleString()} XOF
+   801→            </span>
+   802→          </div>
+   803→        </CardContent>
+   804→      </Card>
+   805→
+   806→      {/* Action Buttons */}
+   807→      <div className="space-y-3">
+   808→        {order.status === 'ACCEPTED' && (
+   809→          <Button
+   810→            className="w-full h-12 bg-[#2196F3] hover:bg-[#1976D2] rounded-xl"
+   811→            onClick={() => onUpdateStatus('EN_ROUTE')}
+   812→          >
+   813→            <Navigation className="w-5 h-5 mr-2" />
+   814→            Démarrer le trajet
+   815→          </Button>
+   816→        )}
+   817→
+   818→        {order.status === 'EN_ROUTE' && (
+   819→          <Button
+   820→            className="w-full h-12 bg-[#4CAF50] hover:bg-[#43A047] rounded-xl"
+   821→            onClick={() => onUpdateStatus('ARRIVED')}
+   822→          >
+   823→            <MapPin className="w-5 h-5 mr-2" />
+   824→            Je suis arrivé
+   825→          </Button>
+   826→        )}
+   827→
+   828→        {order.status === 'ARRIVED' && (
+   829→          <Button
+   830→            className="w-full h-12 bg-[#9C27B0] hover:bg-[#8E24AA] rounded-xl"
+   831→            onClick={() => onUpdateStatus('IN_PROGRESS')}
+   832→          >
+   833→            <Car className="w-5 h-5 mr-2" />
+   834→            Commencer le lavage
+   835→          </Button>
+   836→        )}
+   837→
+   838→        {order.status === 'IN_PROGRESS' && order.isSubscriptionOrder && !order.subscriptionValidated && (
+   839→          <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-2">
+   840→            <p className="text-sm text-purple-800 font-medium">
+   841→              ⚠️ Cette commande utilise un abonnement
+   842→            </p>
+   843→            <p className="text-xs text-purple-600">
+   844→              Le client a une séance. Veuillez valider cette séance pour terminer le lavage.
+   845→            </p>
+   846→          </div>
+   847→        )}
+   848→
+   849→        {order.status === 'IN_PROGRESS' && (
+   850→          <Button
+   851→            className="w-full h-12 bg-[#4CAF50] hover:bg-[#43A047] rounded-xl"
+   852→            onClick={() => onUpdateStatus('COMPLETED')}
+   853→          >
+   854→            <CheckCircle className="w-5 h-5 mr-2" />
+   855→            Terminer le lavage
+   856→          </Button>
+   857→        )}
+   858→      </div>
+   859→    </div>
+   860→  );
+   861→}
+   862→
+   863→// Washer Order History
+   864→function WasherOrderHistory({ orders, onBack }: { 
+   865→  orders: Order[];
+   866→  onBack: () => void;
+   867→}) {
+   868→  const completedOrders = orders.filter(o => o.status === 'COMPLETED');
+   869→  
+   870→  return (
+   871→    <div className="p-4 space-y-4">
+   872→      {/* Back Button */}
+   873→      <button 
+   874→        onClick={onBack}
+   875→        className="flex items-center gap-2 text-[#4CAF50]"
+   876→      >
+   877→        <ArrowLeft className="w-5 h-5" />
+   878→        <span>Retour</span>
+   879→      </button>
+   880→      
+   881→      <h2 className="font-semibold text-lg text-[#212121]">Historique</h2>
+   882→      
+   883→      {completedOrders.length > 0 ? (
+   884→        <div className="space-y-3">
+   885→          {completedOrders.map((order) => (
+   886→            <Card key={order.id} className="border-0 shadow-sm">
+   887→              <CardContent className="p-4">
+   888→                <div className="flex justify-between items-start">
+   889→                  <div>
+   890→                    <h3 className="font-medium text-[#212121]">{order.client?.name || 'Client'}</h3>
+   891→                    <p className="text-sm text-[#757575]">{order.service?.name || 'Service'}</p>
+   892→                    <p className="text-xs text-[#9E9E9E] mt-1">
+   893→                      {new Date(order.createdAt).toLocaleDateString('fr-FR')}
+   894→                    </p>
+   895→                  </div>
+   896→                  <div className="text-right">
+   897→                    <p className="font-bold text-[#4CAF50]">
+   898→                      {((order.totalPrice || 0) - (order.commission || 0)).toLocaleString()} XOF
+   899→                    </p>
+   900→                  </div>
+   901→                </div>
+   902→              </CardContent>
+   903→            </Card>
+   904→          ))}
+   905→        </div>
+   906→      ) : (
+   907→        <div className="bg-white rounded-2xl p-8 text-center shadow-sm">
+   908→          <div className="w-16 h-16 bg-[#F5F5F5] rounded-full flex items-center justify-center mx-auto mb-4">
+   909→            <Clock className="w-8 h-8 text-[#9E9E9E]" />
+   910→          </div>
+   911→          <p className="font-medium text-[#757575]">Aucun historique</p>
+   912→          <p className="text-sm text-[#9E9E9E] mt-1">
+   913→            Vos lavages terminés apparaîtront ici.
+   914→          </p>
+   915→        </div>
+   916→      )}
+   917→    </div>
+   918→  );
+   919→}
+   920→
+   921→// Washer Earnings
+   922→function WasherEarnings({ stats, onBack, onRefreshBalance, isRefreshingBalance, washerId }: { 
+   923→  stats: WasherStats;
+   924→  onBack: () => void;
+   925→  onRefreshBalance: () => void;
+   926→  isRefreshingBalance: boolean;
+   927→  washerId: string;
+   928→}) {
+   929→  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+   930→  const [withdrawAmount, setWithdrawAmount] = useState('');
+   931→  const [phoneNumber, setPhoneNumber] = useState('');
+   932→  const [operator, setOperator] = useState('Mixx by Yas');
+   933→  const [isLoading, setIsLoading] = useState(false);
+   934→  const [withdrawals, setWithdrawals] = useState<any[]>([]);
+   935→
+   936→  // Fetch withdrawals
+   937→  useEffect(() => {
+   938→    const fetchWithdrawals = async () => {
+   939→      try {
+   940→        const res = await fetch(`/api/withdrawals?washerId=${washerId}`);
+   941→        const data = await res.json();
+   942→        if (data.success) {
+   943→          setWithdrawals(data.withdrawals);
+   944→        }
+   945→      } catch (error) {
+   946→        console.error('Fetch withdrawals error:', error);
+   947→      }
+   948→    };
+   949→    
+   950→    if (washerId) {
+   951→      fetchWithdrawals();
+   952→    }
+   953→  }, [washerId]);
+   954→
+   955→  const handleWithdraw = async () => {
+   956→    const amount = parseFloat(withdrawAmount);
+   957→    
+   958→    if (!amount || amount < 500) {
+   959→      toast.error('Le montant minimum est de 500 XOF');
+   960→      return;
+   961→    }
+   962→    
+   963→    if (amount > stats.totalEarnings) {
+   964→      toast.error('Solde insuffisant');
+   965→      return;
+   966→    }
+   967→    
+   968→    if (!phoneNumber || phoneNumber.length < 8) {
+   969→      toast.error('Numéro de téléphone inval');
+   970→      return;
+   971→    }
+   972→
+   973→    setIsLoading(true);
+   974→    try {
+   975→      const res = await fetch('/api/withdrawals', {
+   976→        method: 'POST',
+   977→        headers: { 'Content-Type': 'application/json' },
+   978→        body: JSON.stringify({
+   979→          washerId,
+   980→          amount,
+   981→          phoneNumber,
+   982→          operator,
+   983→        }),
+   984→      });
+   985→
+   986→      const data = await res.json();
+   987→
+   988→      if (data.success) {
+   989→        toast.success('Demande de retrait envoyée!');
+   990→        setShowWithdrawModal(false);
+   991→        setWithdrawAmount('');
+   992→        setPhoneNumber('');
+   993→        onRefreshBalance();
+   994→        // Refresh withdrawals
+   995→        const res2 = await fetch(`/api/withdrawals?washerId=${washerId}`);
+   996→        const data2 = await res2.json();
+   997→        if (data2.success) {
+   998→          setWithdrawals(data2.withdrawals);
+   999→        }
+  1000→      } else {
+  1001→        toast.error(data.error || 'Erreur lors de la demande');
+  1002→      }
+  1003→    } catch (error) {
+  1004→      toast.error('Erreur de connexion');
+  1005→    } finally {
+  1006→      setIsLoading(false);
+  1007→    }
+  1008→  };
+  1009→
+  1010→  const getStatusBadge = (status: string) => {
+  1011→    const styles: Record<string, string> = {
+  1012→      PENDING: 'bg-yellow-100 text-yellow-800',
+  1013→      APPROVED: 'bg-blue-100 text-blue-800',
+  1014→      PROCESSING: 'bg-purple-100 text-purple-800',
+  1015→      COMPLETED: 'bg-green-100 text-green-800',
+  1016→      REJECTED: 'bg-red-100 text-red-800',
+  1017→    };
+  1018→    const labels: Record<string, string> = {
+  1019→      PENDING: 'En attente',
+  1020→      APPROVED: 'Approuvé',
+  1021→      PROCESSING: 'En cours',
+  1022→      COMPLETED: 'Terminé',
+  1023→      REJECTED: 'Refusé',
+  1024→    };
+  1025→    return (
+  1026→      <span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[status] || 'bg-gray-100 text-gray-800'}`}>
+  1027→        {labels[status] || status}
+  1028→      </span>
+  1029→    );
+  1030→  };
+  1031→
+  1032→  return (
+  1033→    <div className="p-4 space-y-4">
+  1034→      {/* Back Button */}
+  1035→      <button 
+  1036→        onClick={onBack}
+  1037→        className="flex items-center gap-2 text-[#4CAF50]"
+  1038→      >
+  1039→        <ArrowLeft className="w-5 h-5" />
+  1040→        <span>Retour</span>
+  1041→      </button>
+  1042→      
+  1043→      <h2 className="font-semibold text-lg text-[#212121]">Revenus</h2>
+  1044→
+  1045→      {/* Total Earnings with Refresh */}
+  1046→      <Card className="bg-gradient-to-r from-[#4CAF50] to-[#2E7D32] text-white border-0">
+  1047→        <CardContent className="p-6">
+  1048→          <div className="flex items-center justify-between">
+  1049→            <div className="flex-1">
+  1050→              <p className="text-sm opacity-80">Total des gains</p>
+  1051→              <HideableBalanceDark
+  1052→                balance={stats.totalEarnings}
+  1053→                currency="XOF"
+  1054→                size="xl"
+  1055→                storageKey="hide-washer-total-earnings"
+  1056→                className="mt-1"
+  1057→              />
+  1058→              <div className="flex items-center gap-2 mt-2">
+  1059→                <TrendingUp className="w-4 h-4" />
+  1060→                <span className="text-sm">Commencez à gagner!</span>
+  1061→              </div>
+  1062→            </div>
+  1063→            <div className="flex items-center gap-2">
+  1064→              <button 
+  1065→                onClick={onRefreshBalance}
+  1066→                disabled={isRefreshingBalance}
+  1067→                className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition-colors"
+  1068→              >
+  1069→                {isRefreshingBalance ? (
+  1070→                  <Loader2 className="w-5 h-5 animate-spin" />
+  1071→                ) : (
+  1072→                  <RefreshCw className="w-5 h-5" />
+  1073→                )}
+  1074→              </button>
+  1075→            </div>
+  1076→          </div>
+  1077→          {/* Withdraw Button */}
+  1078→          <Button 
+  1079→            onClick={() => setShowWithdrawModal(true)}
+  1080→            className="w-full mt-4 bg-white text-[#4CAF50] hover:bg-white/90 font-semibold"
+  1081→            disabled={stats.totalEarnings < 500}
+  1082→          >
+  1083→            <Banknote className="w-4 h-4 mr-2" />
+  1084→            Retirer
+  1085→          </Button>
+  1086→          {stats.totalEarnings < 500 && (
+  1087→            <p className="text-xs text-center mt-2 opacity-80">
+  1088→              Minimum 500 XOF pour retirer
+  1089→            </p>
+  1090→          )}
+  1091→        </CardContent>
+  1092→      </Card>
+  1093→
+  1094→      {/* Stats Grid */}
+  1095→      <div className="grid grid-cols-2 gap-3">
+  1096→        <Card className="border-0 shadow-sm">
+  1097→          <CardContent className="p-4 text-center">
+  1098→            <Calendar className="w-6 h-6 text-[#2196F3] mx-auto mb-2" />
+  1099→            <p className="text-xs text-[#757575]">Cette semaine</p>
+  1100→            <p className="text-lg font-bold text-[#212121]">0 XOF</p>
+  1101→          </CardContent>
+  1102→        </Card>
+  1103→        <Card className="border-0 shadow-sm">
+  1104→          <CardContent className="p-4 text-center">
+  1105→            <Calendar className="w-6 h-6 text-[#4CAF50] mx-auto mb-2" />
+  1106→            <p className="text-xs text-[#757575]">Ce mois</p>
+  1107→            <p className="text-lg font-bold text-[#212121]">0 XOF</p>
+  1108→          </CardContent>
+  1109→        </Card>
+  1110→      </div>
+  1111→
+  1112→      {/* Withdrawal History */}
+  1113→      {withdrawals.length > 0 && (
+  1114→        <div className="space-y-3">
+  1115→          <h3 className="font-semibold text-[#212121]">Historique des retraits</h3>
+  1116→          <div className="space-y-2">
+  1117→            {withdrawals.map((w) => (
+  1118→              <Card key={w.id} className="border-0 shadow-sm">
+  1119→                <CardContent className="p-3 flex items-center justify-between">
+  1120→                  <div>
+  1121→                    <p className="font-semibold text-[#212121]">{w.amount.toLocaleString()} XOF</p>
+  1122→                    <p className="text-xs text-[#757575]">{w.phoneNumber} • {w.operator}</p>
+  1123→                    <p className="text-xs text-[#9E9E9E]">
+  1124→                      {new Date(w.createdAt).toLocaleDateString('fr-FR')}
+  1125→                    </p>
+  1126→                  </div>
+  1127→                  {getStatusBadge(w.status)}
+  1128→                </CardContent>
+  1129→              </Card>
+  1130→            ))}
+  1131→          </div>
+  1132→        </div>
+  1133→      )}
+  1134→
+  1135→      {/* Withdraw Modal */}
+  1136→      <Dialog open={showWithdrawModal} onOpenChange={setShowWithdrawModal}>
+  1137→        <DialogContent className="max-w-sm">
+  1138→          <DialogHeader>
+  1139→            <DialogTitle className="flex items-center gap-2">
+  1140→              <Banknote className="w-5 h-5 text-[#4CAF50]" />
+  1141→              Demande de retrait
+  1142→            </DialogTitle>
+  1143→          </DialogHeader>
+  1144→          
+  1145→          <div className="space-y-4 pt-4">
+  1146→            {/* Available Balance */}
+  1147→            <div className="bg-[#E8F5E9] rounded-xl p-3 text-center">
+  1148→              <p className="text-sm text-[#757575]">Solde disponible</p>
+  1149→              <p className="text-xl font-bold text-[#4CAF50]">{stats.totalEarnings.toLocaleString()} XOF</p>
+  1150→            </div>
+  1151→
+  1152→            {/* Amount */}
+  1153→            <div className="space-y-2">
+  1154→              <label className="text-sm font-medium text-[#757575]">Montant à retirer</label>
+  1155→              <div className="relative">
+  1156→                <Input
+  1157→                  type="number"
+  1158→                  placeholder="500"
+  1159→                  value={withdrawAmount}
+  1160→                  onChange={(e) => setWithdrawAmount(e.target.value)}
+  1161→                  className="h-12 text-lg"
+  1162→                  min="500"
+  1163→                  max={stats.totalEarnings}
+  1164→                />
+  1165→                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#757575]">XOF</span>
+  1166→              </div>
+  1167→              <p className="text-xs text-[#9E9E9E]">Minimum: 500 XOF</p>
+  1168→            </div>
+  1169→
+  1170→            {/* Operator */}
+  1171→            <div className="space-y-2">
+  1172→              <label className="text-sm font-medium text-[#757575]">Opérateur Mobile Money</label>
+  1173→              <div className="grid grid-cols-2 gap-2">
+  1174→                <button
+  1175→                  onClick={() => setOperator('Mixx by Yas')}
+  1176→                  className={`p-3 rounded-xl border-2 transition-all ${
+  1177→                    operator === 'Mixx by Yas' 
+  1178→                      ? 'border-[#4CAF50] bg-[#E8F5E9]' 
+  1179→                      : 'border-gray-200'
+  1180→                  }`}
+  1181→                >
+  1182→                  <span className="font-medium text-sm">Mixx by Yas</span>
+  1183→                </button>
+  1184→                <button
+  1185→                  onClick={() => setOperator('Flooz')}
+  1186→                  className={`p-3 rounded-xl border-2 transition-all ${
+  1187→                    operator === 'Flooz' 
+  1188→                      ? 'border-[#4CAF50] bg-[#E8F5E9]' 
+  1189→                      : 'border-gray-200'
+  1190→                  }`}
+  1191→                >
+  1192→                  <span className="font-medium text-sm">Flooz</span>
+  1193→                </button>
+  1194→              </div>
+  1195→            </div>
+  1196→
+  1197→            {/* Phone Number */}
+  1198→            <div className="space-y-2">
+  1199→              <label className="text-sm font-medium text-[#757575]">Numéro de réception</label>
+  1200→              <div className="relative">
+  1201→                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#757575]">+228</span>
+  1202→                <Input
+  1203→                  type="tel"
+  1204→                  placeholder="90 12 34 56"
+  1205→                  value={phoneNumber}
+  1206→                  onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 8))}
+  1207→                  className="pl-14 h-12"
+  1208→                />
+  1209→              </div>
+  1210→            </div>
+  1211→
+  1212→            {/* Summary */}
+  1213→            {withdrawAmount && parseFloat(withdrawAmount) >= 500 && (
+  1214→              <div className="bg-[#F5F5F5] rounded-xl p-3">
+  1215→                <div className="flex justify-between font-semibold">
+  1216→                  <span>Montant à recevoir</span>
+  1217→                  <span className="text-[#4CAF50]">
+  1218→                    {parseFloat(withdrawAmount).toLocaleString()} XOF
+  1219→                  </span>
+  1220→                </div>
+  1221→              </div>
+  1222→            )}
+  1223→
+  1224→            {/* Submit Button */}
+  1225→            <Button
+  1226→              onClick={handleWithdraw}
+  1227→              disabled={isLoading || !withdrawAmount || parseFloat(withdrawAmount) < 500 || phoneNumber.length < 8}
+  1228→              className="w-full h-12 bg-[#4CAF50] hover:bg-[#43A047] text-white font-semibold"
+  1229→            >
+  1230→              {isLoading ? (
+  1231→                <Loader2 className="w-5 h-5 animate-spin" />
+  1232→              ) : (
+  1233→                'Confirmer la demande'
+  1234→              )}
+  1235→            </Button>
+  1236→          </div>
+  1237→        </DialogContent>
+  1238→      </Dialog>
+  1239→    </div>
+  1240→  );
+  1241→}
+  1242→
+  1243→// Washer Profile
+  1244→function WasherProfile({ user, stats, onLogout, onBack, onNavigate }: { 
+  1245→  user: User | null; 
+  1246→  stats: WasherStats; 
+  1247→  onLogout: () => void;
+  1248→  onBack: () => void;
+  1249→  onNavigate: (section: string) => void;
+  1250→}) {
+  1251→  return (
+  1252→    <div className="p-4 space-y-4">
+  1253→      {/* Back Button */}
+  1254→      <button 
+  1255→        onClick={onBack}
+  1256→        className="flex items-center gap-2 text-[#4CAF50]"
+  1257→      >
+  1258→        <ArrowLeft className="w-5 h-5" />
+  1259→        <span>Retour</span>
+  1260→      </button>
+  1261→      
+  1262→      {/* Profile Card */}
+  1263→      <Card className="border-0 shadow-sm">
+  1264→        <CardContent className="p-4">
+  1265→          <div className="flex items-center gap-3">
+  1266→            <div className="w-14 h-14 bg-gradient-to-br from-[#4CAF50] to-[#2E7D32] rounded-full flex items-center justify-center text-white text-xl font-bold">
+  1267→              {user?.name?.charAt(0) || 'L'}
+  1268→            </div>
+  1269→            <div className="flex-1">
+  1270→              <h2 className="font-bold text-[#212121]">{user?.name || 'Laveur'}</h2>
+  1271→              <p className="text-sm text-[#757575]">+228 {user?.phone || ''}</p>
+  1272→            </div>
+  1273→            <Button variant="outline" size="sm" onClick={() => onNavigate('edit-profile')}>
+  1274→              <Edit className="w-4 h-4" />
+  1275→            </Button>
+  1276→          </div>
+  1277→        </CardContent>
+  1278→      </Card>
+  1279→
+  1280→      {/* Stats */}
+  1281→      <Card className="border-0 shadow-sm">
+  1282→        <CardContent className="p-4">
+  1283→          <h3 className="font-semibold text-[#212121] mb-3">Statistiques</h3>
+  1284→          <div className="grid grid-cols-3 gap-4">
+  1285→            <div className="text-center">
+  1286→              <div className="text-xl font-bold text-[#4CAF50]">{stats.completedJobs}</div>
+  1287→              <div className="text-xs text-[#757575]">Lavages</div>
+  1288→            </div>
+  1289→            <div className="text-center">
+  1290→              <div className="text-xl font-bold text-[#FFC107]">{stats.rating > 0 ? stats.rating.toFixed(1) : '-'}</div>
+  1291→              <div className="text-xs text-[#757575]">Note</div>
+  1292→            </div>
+  1293→            <div className="text-center">
+  1294→              <HideableBalanceLight
+  1295→                balance={stats.totalEarnings}
+  1296→                currency="XOF"
+  1297→                size="md"
+  1298→                storageKey="hide-washer-profile-earnings"
+  1299→                balanceClassName="text-[#2196F3]"
+  1300→                showToggle={false}
+  1301→              />
+  1302→              <div className="text-xs text-[#757575]">Gains</div>
+  1303→            </div>
+  1304→          </div>
+  1305→        </CardContent>
+  1306→      </Card>
+  1307→
+  1308→      {/* Menu */}
+  1309→      <Card className="border-0 shadow-sm overflow-hidden">
+  1310→        {[
+  1311→          { icon: Car, label: 'Mes services', section: 'services' },
+  1312→          { icon: Clock, label: 'Horaires', section: 'schedule' },
+  1313→          { icon: Wallet, label: 'Paiements', section: 'payments' },
+  1314→          { icon: Bell, label: 'Notifications', section: 'notifications' },
+  1315→          { icon: Settings, label: 'Paramètres', section: 'settings' },
+  1316→        ].map((item, index) => (
+  1317→          <button
+  1318→            key={index}
+  1319→            onClick={() => onNavigate(item.section)}
+  1320→            className="w-full flex items-center gap-3 p-4 hover:bg-[#F5F5F5] transition-colors border-b border-[#F5F5F5] last:border-0"
+  1321→          >
+  1322→            <div className="w-8 h-8 bg-[#E8F5E9] rounded-lg flex items-center justify-center">
+  1323→              <item.icon className="w-4 h-4 text-[#4CAF50]" />
+  1324→            </div>
+  1325→            <span className="flex-1 text-left text-[#212121] text-sm">{item.label}</span>
+  1326→            <div className="w-5 h-5 text-[#9E9E9E]">›</div>
+  1327→          </button>
+  1328→        ))}
+  1329→      </Card>
+  1330→
+  1331→      {/* Logout Button */}
+  1332→      <Button
+  1333→        onClick={onLogout}
+  1334→        variant="outline"
+  1335→        className="w-full h-12 border-red-200 text-red-500 hover:bg-red-50 rounded-xl font-semibold"
+  1336→      >
+  1337→        <LogOut className="w-5 h-5 mr-2" />
+  1338→        Déconnexion
+  1339→      </Button>
+  1340→    </div>
+  1341→  );
+  1342→}
+  1343→
+  1344→// Washer Profile Section
+  1345→function WasherProfileSection({ section, onBack, user }: { 
+  1346→  section: string; 
+  1347→  onBack: () => void;
+  1348→  user: User | null;
+  1349→}) {
+  1350→  const [name, setName] = useState(user?.name || '');
+  1351→  const [isSaving, setIsSaving] = useState(false);
+  1352→
+  1353→  const getSectionTitle = () => {
+  1354→    switch (section) {
+  1355→      case 'services': return 'Mes services';
+  1356→      case 'schedule': return 'Horaires';
+  1357→      case 'payments': return 'Paiements';
+  1358→      case 'notifications': return 'Notifications';
+  1359→      case 'settings': return 'Paramètres';
+  1360→      case 'edit-profile': return 'Modifier le profil';
+  1361→      default: return 'Paramètres';
+  1362→    }
+  1363→  };
+  1364→
+  1365→  const handleSaveProfile = async () => {
+  1366→    setIsSaving(true);
+  1367→    try {
+  1368→      const res = await fetch('/api/user/profile', {
+  1369→        method: 'PATCH',
+  1370→        headers: { 'Content-Type': 'application/json' },
+  1371→        body: JSON.stringify({ userId: user?.id, name }),
+  1372→      });
+  1373→      const data = await res.json();
+  1374→      if (data.success) {
+  1375→        toast.success('Profil mis à jour');
+  1376→        onBack();
+  1377→      } else {
+  1378→        toast.error(data.error || 'Erreur');
+  1379→      }
+  1380→    } catch (error) {
+  1381→      toast.error('Erreur lors de la sauvegarde');
+  1382→    } finally {
+  1383→      setIsSaving(false);
+  1384→    }
+  1385→  };
+  1386→
+  1387→  return (
+  1388→    <div className="p-4 space-y-4">
+  1389→      {/* Back Button */}
+  1390→      <button 
+  1391→        onClick={onBack}
+  1392→        className="flex items-center gap-2 text-[#4CAF50]"
+  1393→      >
+  1394→        <ArrowLeft className="w-5 h-5" />
+  1395→        <span>Retour</span>
+  1396→      </button>
+  1397→      
+  1398→      <h2 className="font-semibold text-lg text-[#212121]">{getSectionTitle()}</h2>
+  1399→
+  1400→      {section === 'edit-profile' && (
+  1401→        <Card className="border-0 shadow-sm">
+  1402→          <CardContent className="p-4 space-y-4">
+  1403→            <div>
+  1404→              <label className="text-sm text-[#757575]">Nom complet</label>
+  1405→              <Input
+  1406→                value={name}
+  1407→                onChange={(e) => setName(e.target.value)}
+  1408→                placeholder="Votre nom"
+  1409→                className="mt-1"
+  1410→              />
+  1411→            </div>
+  1412→            <div>
+  1413→              <label className="text-sm text-[#757575]">Téléphone</label>
+  1414→              <Input
+  1415→                value={user?.phone || ''}
+  1416→                disabled
+  1417→                className="mt-1 bg-gray-50"
+  1418→              />
+  1419→            </div>
+  1420→            <Button 
+  1421→              onClick={handleSaveProfile} 
+  1422→              className="w-full bg-[#4CAF50] hover:bg-[#43A047]"
+  1423→              disabled={isSaving}
+  1424→            >
+  1425→              {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+  1426→              Enregistrer
+  1427→            </Button>
+  1428→          </CardContent>
+  1429→        </Card>
+  1430→      )}
+  1431→
+  1432→      {section === 'services' && (
+  1433→        <Card className="border-0 shadow-sm">
+  1434→          <CardContent className="p-4">
+  1435→            <p className="text-[#757575] text-sm">
+  1436→              Gérez les services que vous proposez. Cette fonctionnalité sera bientôt disponible.
+  1437→            </p>
+  1438→          </CardContent>
+  1439→        </Card>
+  1440→      )}
+  1441→
+  1442→      {section === 'schedule' && (
+  1443→        <Card className="border-0 shadow-sm">
+  1444→          <CardContent className="p-4">
+  1445→            <p className="text-[#757575] text-sm">
+  1446→              Définissez vos horaires de disponibilité. Cette fonctionnalité sera bientôt disponible.
+  1447→            </p>
+  1448→          </CardContent>
+  1449→        </Card>
+  1450→      )}
+  1451→
+  1452→      {section === 'payments' && (
+  1453→        <Card className="border-0 shadow-sm">
+  1454→          <CardContent className="p-4">
+  1455→            <p className="text-[#757575] text-sm">
+  1456→              Gérez vos informations bancaires pour les retraits. Cette fonctionnalité sera bientôt disponible.
+  1457→            </p>
+  1458→          </CardContent>
+  1459→        </Card>
+  1460→      )}
+  1461→
+  1462→      {section === 'notifications' && (
+  1463→        <Card className="border-0 shadow-sm">
+  1464→          <CardContent className="p-4 space-y-4">
+  1465→            <div className="flex items-center justify-between">
+  1466→              <div>
+  1467→                <p className="font-medium text-[#212121]">Notifications push</p>
+  1468→                <p className="text-xs text-[#757575]">Recevoir les alertes de nouvelles commandes</p>
+  1469→              </div>
+  1470→              <Switch defaultChecked />
+  1471→            </div>
+  1472→            <div className="flex items-center justify-between">
+  1473→              <div>
+  1474→                <p className="font-medium text-[#212121]">Notifications SMS</p>
+  1475→                <p className="text-xs text-[#757575]">Recevoir les mises à jour par SMS</p>
+  1476→              </div>
+  1477→              <Switch />
+  1478→            </div>
+  1479→          </CardContent>
+  1480→        </Card>
+  1481→      )}
+  1482→
+  1483→      {section === 'settings' && (
+  1484→        <Card className="border-0 shadow-sm">
+  1485→          <CardContent className="p-4 space-y-4">
+  1486→            <div>
+  1487→              <p className="font-medium text-[#212121]">Langue</p>
+  1488→              <p className="text-sm text-[#757575]">Français</p>
+  1489→            </div>
+  1490→            <div>
+  1491→              <p className="font-medium text-[#212121]">Version de l&apos;application</p>
+  1492→              <p className="text-sm text-[#757575]">1.0.0</p>
+  1493→            </div>
+  1494→          </CardContent>
+  1495→        </Card>
+  1496→      )}
+  1497→    </div>
+  1498→  );
+  1499→}
+  1500→

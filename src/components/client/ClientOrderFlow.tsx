@@ -14,6 +14,7 @@ import {
   Zap, Droplets, Sparkles, Crown
 } from 'lucide-react';
 import type { Service, Order } from '@/types';
+import { parseJsonResponse } from '@/lib/json-helper';
 
 interface ClientOrderFlowProps {
   onBack: () => void;
@@ -48,14 +49,15 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
     const loadServices = async () => {
       try {
         const seedCheck = await fetch('/api/seed');
-        const seedData = await seedCheck.json();
+        const seedData = await parseJsonResponse<any>(seedCheck);
         
-        if (!seedData.seeded || seedData.servicesCount === 0) {
+        if (!seedData || !seedData.seeded || seedData.servicesCount === 0) {
           await fetch('/api/seed', { method: 'POST' });
         }
 
         const res = await fetch('/api/services');
-        const data = await res.json();
+        const data = await parseJsonResponse<any>(res);
+        if (!data) return;
         
         if (data.success && data.services) {
           setServices(data.services);
@@ -76,7 +78,8 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
       if (!user?.id) return;
       try {
         const res = await fetch(`/api/wallet?userId=${user.id}`);
-        const data = await res.json();
+        const data = await parseJsonResponse<any>(res);
+        if (!data) return;
         if (data.success && data.wallet) {
           setWalletBalance(data.wallet.balance);
         }
@@ -93,7 +96,8 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
       if (!user?.id || !selectedService) return;
       try {
         const res = await fetch(`/api/subscriptions/user?userId=${user.id}`);
-        const data = await res.json();
+        const data = await parseJsonResponse<any>(res);
+        if (!data) return;
         if (data.success && data.subscriptions) {
           // Find active subscription for this service
           const active = data.subscriptions.find((sub: any) => 
@@ -147,7 +151,8 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
         }),
       });
       
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
       
       if (data.success) {
         setAppliedPromo(data.promotion);
@@ -220,7 +225,8 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
         }),
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
 
       if (data.success && data.order) {
         if (paymentMethod === 'wallet') {
@@ -234,8 +240,8 @@ export function ClientOrderFlow({ onBack, onOrderComplete }: ClientOrderFlowProp
             }),
           });
           
-          const walletData = await walletRes.json();
-          if (!walletData.success) {
+          const walletData = await parseJsonResponse<any>(walletRes);
+          if (!walletData || !walletData.success) {
             alert('Erreur lors du paiement par portefeuille.');
           }
         }

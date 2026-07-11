@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { HideableBalanceDark } from '@/components/ui/hideable-balance';
 import { toast } from 'sonner';
+import { parseJsonResponse } from '@/lib/json-helper';
 
 interface WalletData {
   id: string;
@@ -150,7 +151,8 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
     
     try {
       const res = await fetch(`/api/wallet?userId=${user.id}`);
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
 
       if (data.success) {
         setWallet(data.wallet);
@@ -168,7 +170,8 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
   const fetchOperators = async () => {
     try {
       const res = await fetch('/api/operators?activeOnly=true');
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
 
       if (data.success) {
         setOperators(data.operators);
@@ -224,7 +227,8 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
         }),
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
 
       if (data.success) {
         setDeposit(prev => ({
@@ -274,7 +278,8 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
         }),
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
 
       if (data.success) {
         toast.success('Confirmation enregistrée ! Un administrateur validera votre paiement.');

@@ -18,11 +18,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { 
+import {
   Crown, Check, Sparkles, Star, Zap, Gift, Clock,
   Calendar, CreditCard, ChevronRight, Loader2, RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { parseJsonResponse } from '@/lib/json-helper';
 
 interface SubscriptionPlan {
   id: string;
@@ -90,8 +91,9 @@ export function SubscriptionPanel({ userId, walletBalance }: SubscriptionPanelPr
         fetch(`/api/subscriptions/user?userId=${userId}&includeHistory=true`),
       ]);
 
-      const plansData = await plansRes.json();
-      const subsData = await subsRes.json();
+      const plansData = await parseJsonResponse<any>(plansRes);
+      const subsData = await parseJsonResponse<any>(subsRes);
+      if (!plansData || !subsData) return;
 
       if (plansData.success) {
         setPlans(plansData.plans);
@@ -180,7 +182,8 @@ export function SubscriptionPanel({ userId, walletBalance }: SubscriptionPanelPr
         }),
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
       if (data.success) {
         toast.success('Abonnement activé avec succès !');
         setShowSubscribeModal(false);
