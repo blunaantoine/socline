@@ -14,7 +14,7 @@ import {
 import {
   MapPin, Search, Star, Clock, Car, Building,
   CheckCircle, Phone, Loader2,
-  Zap, Droplets, Sparkles, Crown, RefreshCw, ExternalLink,
+  Zap, Droplets, Sparkles, Crown, RefreshCw,
   Home, Calendar, MessageCircle, User, Bell, Settings, LogOut, Wallet, Copy, Plus, ChevronRight, Headphones, MessageSquare
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -22,7 +22,7 @@ import { ClientOrderFlow } from './ClientOrderFlow';
 import { OrderTracking } from './OrderTracking';
 import { OrderHistory } from './OrderHistory';
 import { GoogleMap } from '@/components/map/GoogleMap';
-import { useGooglePlaces, GooglePlaceStation } from '@/hooks/useGooglePlaces';
+// Google Places supprimé - utiliser uniquement les stations de l'app
 import { AuthScreen } from './AuthScreen';
 import { ChatList } from '@/components/chat/ChatList';
 import { NotificationCenter } from './NotificationCenter';
@@ -87,7 +87,10 @@ export function ClientApp() {
   const [presetStationId, setPresetStationId] = useState<string | null>(null);
   const [presetAddress, setPresetAddress] = useState('');
   
-  const { stations: googleStations, isLoading: isLoadingStations, searchCarWashes } = useGooglePlaces();
+  const { stations: appStations, setStations } = useAppStore();
+  
+  // Local state for stations from API (STATION_OWNER stations)
+  const [localAppStations, setLocalAppStations] = useState<any[]>([]);
 
   // Fetch wallet balance
   useEffect(() => {
@@ -168,26 +171,8 @@ export function ClientApp() {
     fetchStations();
   }, []);
 
-  // Search Google car washes
-  useEffect(() => {
-    if (userLocation) {
-      searchCarWashes(userLocation.latitude, userLocation.longitude);
-    }
-  }, [userLocation, searchCarWashes]);
-
-  useEffect(() => {
-    if (googleStations.length > 0) {
-      const formattedStations = googleStations.map(s => ({
-        id: s.id, name: s.name, address: s.address,
-        latitude: s.latitude, longitude: s.longitude,
-        rating: s.rating, totalRatings: s.totalRatings,
-        isActive: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-      }));
-      setStations(formattedStations);
-    }
-  }, [googleStations, setStations]);
-
   // Fetch active promotions
+  // Note: Google Places nearby stations feature has been removed
   useEffect(() => {
     const fetchPromotions = async () => {
       try {
@@ -318,10 +303,7 @@ export function ClientApp() {
             <HomeContent
               services={services}
               nearbyWashers={nearbyWashers}
-              googleStations={googleStations}
-              isLoadingStations={isLoadingStations}
               userLocation={userLocation}
-              onRefresh={() => userLocation && searchCarWashes(userLocation.latitude, userLocation.longitude)}
               onStartOrder={() => {
                 // No preset - user picks service in booking flow
                 selectService(null);
@@ -407,13 +389,13 @@ export function ClientApp() {
 
 // Home Content - Android Material Design Style
 function HomeContent({
-  services, nearbyWashers, googleStations, isLoadingStations, userLocation,
-  onRefresh, onStartOrder, onStartOrderForService, searchQuery, setSearchQuery, 
+  services, nearbyWashers, userLocation,
+  onStartOrder, onStartOrderForService, searchQuery, setSearchQuery, 
   promotions, currentPromoIndex, setCurrentPromoIndex,
   serviceTab, setServiceTab, appStations,
 }: {
-  services: any[]; nearbyWashers: any[]; googleStations: GooglePlaceStation[];
-  isLoadingStations: boolean; userLocation: any; onRefresh: () => void;
+  services: any[]; nearbyWashers: any[];
+  userLocation: any;
   onStartOrder: () => void; 
   onStartOrderForService: (service: any, isHomeService: boolean, stationId?: string | null, address?: string) => void;
   searchQuery: string; setSearchQuery: (q: string) => void;
@@ -898,66 +880,6 @@ function HomeContent({
             </div>
           ))}
         </div>
-      </section>
-
-      {/* Stations */}
-      <section>
-        <div className="flex justify-between items-center mb-3">
-          <h3 className="text-base font-bold text-[#212121]">Stations proches</h3>
-          <button onClick={onRefresh} disabled={isLoadingStations} className="text-xs text-[#FF9800] font-medium flex items-center gap-1">
-            {isLoadingStations ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-          </button>
-        </div>
-        
-        {isLoadingStations && googleStations.length === 0 ? (
-          <div className="flex items-center justify-center py-6">
-            <Loader2 className="w-5 h-5 animate-spin text-[#FF9800]" />
-          </div>
-        ) : googleStations.length === 0 ? (
-          <div className="bg-white rounded-lg p-6 text-center shadow-sm">
-            <MapPin className="w-8 h-8 text-[#9E9E9E] mx-auto mb-2" />
-            <p className="text-sm text-[#757575]">Aucune station trouvée</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {googleStations.slice(0, 4).map((station) => (
-              <div key={station.id} className="bg-white rounded-lg p-3 flex gap-3 shadow-sm">
-                {station.photo ? (
-                  <img src={station.photo} alt={station.name} className="w-14 h-14 rounded-lg object-cover" />
-                ) : (
-                  <div className="w-14 h-14 bg-[#FFF3E0] rounded-lg flex items-center justify-center">
-                    <MapPin className="w-6 h-6 text-[#FF9800]" />
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-[#212121] text-sm truncate">{station.name}</p>
-                  <p className="text-xs text-[#757575] truncate">{station.address}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    {station.rating > 0 && (
-                      <div className="flex items-center gap-0.5">
-                        <Star className="w-3 h-3 text-[#FFC107] fill-[#FFC107]" />
-                        <span className="text-xs text-[#757575]">{station.rating.toFixed(1)}</span>
-                      </div>
-                    )}
-                    {station.isOpen !== null && (
-                      <span className={`text-xs px-1.5 py-0.5 rounded ${station.isOpen ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
-                        {station.isOpen ? 'Ouvert' : 'Fermé'}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${station.latitude},${station.longitude}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-8 h-8 bg-[#FFF3E0] rounded flex items-center justify-center self-center"
-                >
-                  <ExternalLink className="w-4 h-4 text-[#FF9800]" />
-                </a>
-              </div>
-            ))}
-          </div>
-        )}
       </section>
     </div>
   );
