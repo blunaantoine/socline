@@ -180,12 +180,12 @@ export async function POST() {
     }
 
     // Create default promotion if doesn't exist
-    const existingPromotions = await db.promotion.count();
-    if (existingPromotions === 0) {
-      const now = new Date();
-      const endDate = new Date();
-      endDate.setMonth(endDate.getMonth() + 3); // 3 months from now
+    const existingPromotions = await db.promotion.findMany();
+    const now = new Date();
+    const endDate = new Date();
+    endDate.setFullYear(endDate.getFullYear() + 1); // 1 year from now
 
+    if (existingPromotions.length === 0) {
       await Promise.all([
         db.promotion.create({
           data: {
@@ -236,6 +236,22 @@ export async function POST() {
           },
         }),
       ]);
+    } else {
+      // Auto-extend expired or inactive promotions so the banner keeps showing
+      for (const p of existingPromotions) {
+        const startOk = p.startDate && new Date(p.startDate) <= now;
+        const endOk = p.endDate && new Date(p.endDate) >= now;
+        if (!p.isActive || !startOk || !endOk) {
+          await db.promotion.update({
+            where: { id: p.id },
+            data: {
+              isActive: true,
+              startDate: startOk ? p.startDate : now,
+              endDate: endOk ? p.endDate : endDate,
+            },
+          });
+        }
+      }
     }
 
     // Create Mobile Money operators if they don't exist

@@ -8,10 +8,10 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { 
-  ArrowLeft, MapPin, Clock, CreditCard, Wallet, 
+import {
+  ArrowLeft, MapPin, Clock, CreditCard, Wallet,
   CheckCircle, Star, AlertCircle, Loader2,
-  Zap, Droplets, Sparkles, Crown
+  Zap, Droplets, Sparkles, Crown, Calendar
 } from 'lucide-react';
 import type { Service, Order } from '@/types';
 import { parseJsonResponse } from '@/lib/json-helper';
@@ -577,27 +577,78 @@ export function ClientOrderFlow({
               </div>
 
               {scheduledTime === 'later' && (
-                <div className="mt-4 grid gap-3">
-                  <Input
-                    type="date"
-                    value={scheduledDate.split('T')[0]}
-                    onChange={(e) => setScheduledDate(e.target.value + 'T10:00:00')}
-                    className="border-2 focus:border-[#FF9800] h-12"
-                  />
-                  <Input
-                    type="time"
-                    onChange={(e) => {
-                      const [date] = scheduledDate.split('T');
-                      setScheduledDate(`${date}T${e.target.value}:00`);
-                    }}
-                    className="border-2 focus:border-[#FF9800] h-12"
-                  />
+                <div className="mt-4 space-y-4">
+                  {/* Date picker */}
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-medium text-[#212121] flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-[#FF9800]" />
+                      Date
+                    </Label>
+                    <Input
+                      type="date"
+                      value={scheduledDate.split('T')[0] || ''}
+                      min={new Date().toISOString().split('T')[0]}
+                      onChange={(e) => {
+                        const datePart = e.target.value;
+                        const [, timePart] = scheduledDate.split('T');
+                        const time = timePart ? timePart : '10:00:00';
+                        setScheduledDate(`${datePart}T${time}`);
+                      }}
+                      className="border-2 focus:border-[#FF9800] h-12"
+                    />
+                  </div>
+
+                  {/* Time picker */}
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-medium text-[#212121] flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-[#FF9800]" />
+                      Heure
+                    </Label>
+                    <Input
+                      type="time"
+                      value={scheduledDate.split('T')[1]?.slice(0, 5) || ''}
+                      min="07:00"
+                      max="20:00"
+                      onChange={(e) => {
+                        const [datePart] = scheduledDate.split('T');
+                        const safeDate = datePart || new Date().toISOString().split('T')[0];
+                        setScheduledDate(`${safeDate}T${e.target.value}:00`);
+                      }}
+                      className="border-2 focus:border-[#FF9800] h-12"
+                    />
+                    <p className="text-xs text-gray-400">Heures d'ouverture : 07h00 - 20h00</p>
+                  </div>
+
+                  {/* Selected date/time preview */}
+                  {scheduledDate && scheduledDate.split('T')[0] && scheduledDate.split('T')[1] && (
+                    <div className="bg-[#FFF8F0] border border-[#FF9800]/30 rounded-lg p-3 flex items-center gap-3">
+                      <div className="w-10 h-10 bg-[#FF9800]/10 rounded-full flex items-center justify-center">
+                        <Calendar className="w-5 h-5 text-[#FF9800]" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Rendez-vous prévu</p>
+                        <p className="text-sm font-semibold text-[#212121]">
+                          {new Date(scheduledDate).toLocaleDateString('fr-FR', {
+                            weekday: 'long',
+                            day: 'numeric',
+                            month: 'long',
+                          })}{' '}
+                          à{' '}
+                          {new Date(scheduledDate).toLocaleTimeString('fr-FR', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
-            <Button 
+            <Button
               className="w-full h-12 bg-[#FF9800] hover:bg-[#F57C00]"
+              disabled={scheduledTime === 'later' && (!scheduledDate || !scheduledDate.split('T')[0] || !scheduledDate.split('T')[1])}
               onClick={handleScheduleSubmit}
             >
               Continuer

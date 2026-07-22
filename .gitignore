@@ -52,3 +52,8 @@ prompt
 server.log
 # Skills directory
 /skills/
+
+# Tool results / agent artifacts
+tool-results/
+.zscripts/
+worklog.md
