@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireAuth } from '@/lib/auth';
 
-// GET /api/cars - Get all cars for a user
+// GET /api/cars - Get all cars for the session user
+// Identity is derived from the session cookie (query userId is ignored).
 export async function GET(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (!auth.authorized) return auth.response!;
+  const userId = auth.user!.id;
+
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-
-    if (!userId) {
-      return NextResponse.json({ error: 'userId requis' }, { status: 400 });
-    }
-
     const cars = await db.car.findMany({
       where: { userId },
       orderBy: [
@@ -33,14 +32,19 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/cars - Add a new car
+// Identity is derived from the session cookie (body userId is ignored).
 export async function POST(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (!auth.authorized) return auth.response!;
+  const userId = auth.user!.id;
+
   try {
     const body = await request.json();
-    const { userId, nickname, plateNumber, brand, model, color, year, isDefault } = body;
+    const { nickname, plateNumber, brand, model, color, year, isDefault } = body;
 
-    if (!userId || !plateNumber || !color) {
-      return NextResponse.json({ 
-        error: 'Veuillez remplir les champs obligatoires (plaque, couleur)' 
+    if (!plateNumber || !color) {
+      return NextResponse.json({
+        error: 'Veuillez remplir les champs obligatoires (plaque, couleur)'
       }, { status: 400 });
     }
 
@@ -50,8 +54,8 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingCars >= 10) {
-      return NextResponse.json({ 
-        error: 'Vous avez atteint la limite de 10 voitures' 
+      return NextResponse.json({
+        error: 'Vous avez atteint la limite de 10 voitures'
       }, { status: 400 });
     }
 
@@ -95,16 +99,22 @@ export async function POST(request: NextRequest) {
 }
 
 // PUT /api/cars - Update a car
+// Identity is derived from the session cookie: the car must belong to
+// the session user (body userId is ignored).
 export async function PUT(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (!auth.authorized) return auth.response!;
+  const userId = auth.user!.id;
+
   try {
     const body = await request.json();
-    const { carId, userId, nickname, plateNumber, brand, model, color, year, isDefault } = body;
+    const { carId, nickname, plateNumber, brand, model, color, year, isDefault } = body;
 
-    if (!carId || !userId) {
+    if (!carId) {
       return NextResponse.json({ error: 'Paramètres manquants' }, { status: 400 });
     }
 
-    // Verify car belongs to user
+    // Verify car belongs to the session user
     const existingCar = await db.car.findFirst({
       where: { id: carId, userId },
     });
@@ -147,17 +157,22 @@ export async function PUT(request: NextRequest) {
 }
 
 // DELETE /api/cars - Delete a car
+// Identity is derived from the session cookie: the car must belong to
+// the session user (query userId is ignored).
 export async function DELETE(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (!auth.authorized) return auth.response!;
+  const userId = auth.user!.id;
+
   try {
     const { searchParams } = new URL(request.url);
     const carId = searchParams.get('carId');
-    const userId = searchParams.get('userId');
 
-    if (!carId || !userId) {
+    if (!carId) {
       return NextResponse.json({ error: 'Paramètres manquants' }, { status: 400 });
     }
 
-    // Verify car belongs to user
+    // Verify car belongs to the session user
     const car = await db.car.findFirst({
       where: { id: carId, userId },
     });

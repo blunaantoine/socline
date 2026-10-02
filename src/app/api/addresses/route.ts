@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireAuth } from '@/lib/auth';
 
-// GET /api/addresses - Get user addresses
+// GET /api/addresses - Get addresses of the session user
+// Identity is derived from the session cookie (query userId is ignored).
 export async function GET(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (!auth.authorized) return auth.response!;
+  const userId = auth.user!.id;
+
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-
-    if (!userId) {
-      return NextResponse.json({ error: 'userId requis' }, { status: 400 });
-    }
-
     const addresses = await db.address.findMany({
       where: { userId },
       orderBy: [
@@ -27,19 +26,18 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/addresses - Create new address
+// Identity is derived from the session cookie (body userId is ignored).
 export async function POST(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (!auth.authorized) return auth.response!;
+  const userId = auth.user!.id;
+
   try {
     const body = await request.json();
-    const { userId, label, type, address, latitude, longitude, instructions, isDefault } = body;
+    const { label, type, address, latitude, longitude, instructions, isDefault } = body;
 
-    if (!userId || !label || !address) {
+    if (!label || !address) {
       return NextResponse.json({ error: 'Champs requis manquants' }, { status: 400 });
-    }
-
-    // Verify user exists
-    const user = await db.user.findUnique({ where: { id: userId } });
-    if (!user) {
-      return NextResponse.json({ error: 'Utilisateur non trouvé. Veuillez vous reconnecter.' }, { status: 404 });
     }
 
     // If this is default, remove default from other addresses

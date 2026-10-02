@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireAuth } from '@/lib/auth';
 
 // GET /api/subscriptions/user - Get user's subscriptions
+// Identity is derived from the session cookie (query userId is ignored).
 export async function GET(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (!auth.authorized) return auth.response!;
+  const userId = auth.user!.id;
+
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
     const includeHistory = searchParams.get('includeHistory') === 'true';
-
-    if (!userId) {
-      return NextResponse.json({ error: 'ID utilisateur requis' }, { status: 400 });
-    }
 
     const subscriptions = await db.userSubscription.findMany({
       where: { userId },
@@ -58,12 +59,18 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/subscriptions/user - Subscribe to a plan
+// (Structure unchanged by previous rework; only the userId is now derived
+// from the session cookie — a body userId is ignored.)
 export async function POST(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (!auth.authorized) return auth.response!;
+  const userId = auth.user!.id;
+
   try {
     const body = await request.json();
-    const { userId, planId, duration, paymentMethod } = body;
+    const { planId, duration, paymentMethod } = body;
 
-    if (!userId || !planId) {
+    if (!planId) {
       return NextResponse.json({ error: 'Paramètres manquants' }, { status: 400 });
     }
 

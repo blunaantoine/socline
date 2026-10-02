@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireAuth } from '@/lib/auth';
 
 // GET /api/user/activity - Get user activity history
+// Identity is derived from the session cookie (query userId is ignored).
 export async function GET(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (!auth.authorized) return auth.response!;
+  const userId = auth.user!.id;
+
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
     const type = searchParams.get('type') || 'all'; // all, orders, transactions, subscriptions
     const limit = parseInt(searchParams.get('limit') || '50');
-
-    if (!userId) {
-      return NextResponse.json({ error: 'userId requis' }, { status: 400 });
-    }
 
     const activities: any[] = [];
 

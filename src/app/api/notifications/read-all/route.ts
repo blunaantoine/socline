@@ -1,21 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireAuth } from '@/lib/auth';
 
-// POST /api/notifications/read-all - Mark all notifications as read for a user
+// POST /api/notifications/read-all - Mark all notifications as read
+// Identity is derived from the session cookie (query userId is ignored).
 export async function POST(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (!auth.authorized) return auth.response!;
+
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: 'User ID is required' },
-        { status: 400 }
-      );
-    }
-
     await db.notification.updateMany({
-      where: { userId, isRead: false },
+      where: { userId: auth.user!.id, isRead: false },
       data: { isRead: true },
     });
 

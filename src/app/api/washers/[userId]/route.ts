@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireAuth } from '@/lib/auth';
 import { computePartnerLevel, PARTNER_LEVELS } from '@/lib/washer-level';
 
 // GET /api/washers/[userId] - Get a single washer by user ID
 // Returns the washer record (including washerType) and the related station (if STATION_OWNER)
+// Access restricted to the washer itself or an ADMIN (403 otherwise).
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ userId: string }> }
 ) {
+  const auth = await requireAuth(request);
+  if (!auth.authorized) return auth.response!;
+
   try {
     const { userId } = await params;
 
@@ -15,6 +20,14 @@ export async function GET(
       return NextResponse.json(
         { success: false, error: 'User ID requis' },
         { status: 400 }
+      );
+    }
+
+    // Self or admin only — no access to other users' washer profiles
+    if (auth.user!.id !== userId && auth.user!.role !== 'ADMIN') {
+      return NextResponse.json(
+        { success: false, error: 'Accès non autorisé' },
+        { status: 403 }
       );
     }
 

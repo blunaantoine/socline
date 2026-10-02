@@ -1,22 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireAuth } from '@/lib/auth';
 
 // GET /api/withdrawals - Get washer withdrawals
+// Identity is derived from the session cookie (query washerId is ignored).
 export async function GET(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (!auth.authorized) return auth.response!;
+
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('washerId');
-
-    if (!userId) {
-      return NextResponse.json(
-        { success: false, error: 'ID laveur requis' },
-        { status: 400 }
-      );
-    }
-
-    // Get washer by userId
+    // Get washer for the session user
     const washer = await db.washer.findUnique({
-      where: { userId },
+      where: { userId: auth.user!.id },
     });
 
     if (!washer) {
@@ -46,13 +41,17 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/withdrawals - Create withdrawal request
+// Identity is derived from the session cookie (body washerId is ignored).
 export async function POST(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (!auth.authorized) return auth.response!;
+
   try {
     const body = await request.json();
-    const { washerId, amount, phoneNumber, operator } = body;
+    const { amount, phoneNumber, operator } = body;
 
     // Validate required fields
-    if (!washerId || !amount || !phoneNumber || !operator) {
+    if (!amount || !phoneNumber || !operator) {
       return NextResponse.json(
         { success: false, error: 'Tous les champs sont requis' },
         { status: 400 }
@@ -67,9 +66,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get washer data
+    // Get washer data for the session user
     const washer = await db.washer.findUnique({
-      where: { userId: washerId },
+      where: { userId: auth.user!.id },
     });
 
     if (!washer) {

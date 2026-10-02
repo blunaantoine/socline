@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireAuth } from '@/lib/auth';
 
 // PUT /api/user/profile - Update user profile (phone and PIN only)
+// Identity is derived from the session cookie (body userId is ignored).
 export async function PUT(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (!auth.authorized) return auth.response!;
+  const userId = auth.user!.id;
+
   try {
     const body = await request.json();
-    const { userId, phone, pin, currentPin } = body;
-
-    if (!userId) {
-      return NextResponse.json({ error: 'userId requis' }, { status: 400 });
-    }
+    const { phone, pin, currentPin } = body;
 
     // Get current user
     const user = await db.user.findUnique({ where: { id: userId } });

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireAuth } from '@/lib/auth';
 
 // Helper function to build USSD code
 function buildUssdCode(pattern: string, montant: number, numero: string): string {
@@ -16,15 +17,13 @@ function buildUssdLink(ussdCode: string): string {
 }
 
 // GET /api/wallet - Get wallet balance and info
+// Identity is derived from the session cookie (query userId is ignored).
 export async function GET(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (!auth.authorized) return auth.response!;
+  const userId = auth.user!.id;
+
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-
-    if (!userId) {
-      return NextResponse.json({ error: 'userId requis' }, { status: 400 });
-    }
-
     // Get or create wallet
     let wallet = await db.wallet.findUnique({
       where: { userId },
@@ -71,11 +70,15 @@ export async function GET(request: NextRequest) {
 
 // POST /api/wallet - Request deposit (creates PENDING transaction with USSD code)
 export async function POST(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (!auth.authorized) return auth.response!;
+  const userId = auth.user!.id;
+
   try {
     const body = await request.json();
-    const { userId, amount, phoneNumber, operatorId } = body;
+    const { amount, phoneNumber, operatorId } = body;
 
-    if (!userId || !amount || amount <= 0) {
+    if (!amount || amount <= 0) {
       return NextResponse.json({ error: 'Paramètres invalides' }, { status: 400 });
     }
 
@@ -98,14 +101,14 @@ export async function POST(request: NextRequest) {
 
     // Validate amount limits
     if (amount < operator.minAmount) {
-      return NextResponse.json({ 
-        error: `Montant minimum: ${operator.minAmount.toLocaleString()} XOF` 
+      return NextResponse.json({
+        error: `Montant minimum: ${operator.minAmount.toLocaleString()} XOF`
       }, { status: 400 });
     }
 
     if (amount > operator.maxAmount) {
-      return NextResponse.json({ 
-        error: `Montant maximum: ${operator.maxAmount.toLocaleString()} XOF` 
+      return NextResponse.json({
+        error: `Montant maximum: ${operator.maxAmount.toLocaleString()} XOF`
       }, { status: 400 });
     }
 
@@ -122,7 +125,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingTransaction) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'Une transaction similaire est déjà en attente. Veuillez patienter.',
         existingTransaction: {
           id: existingTransaction.id,
@@ -195,19 +198,22 @@ export async function POST(request: NextRequest) {
 
 // PUT /api/wallet - Confirm USSD payment (user clicked "J'ai payé")
 export async function PUT(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (!auth.authorized) return auth.response!;
+
   try {
     const body = await request.json();
-    const { transactionId, userId } = body;
+    const { transactionId } = body;
 
-    if (!transactionId || !userId) {
+    if (!transactionId) {
       return NextResponse.json({ error: 'Paramètres manquants' }, { status: 400 });
     }
 
-    // Get transaction
+    // Get transaction — scoped to the session user's wallet only
     const transaction = await db.walletTransaction.findFirst({
-      where: { 
+      where: {
         id: transactionId,
-        wallet: { userId }
+        wallet: { userId: auth.user!.id }
       },
       include: { wallet: true }
     });
@@ -217,9 +223,9 @@ export async function PUT(request: NextRequest) {
     }
 
     if (transaction.status !== 'PENDING') {
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'Cette transaction a déjà été traitée',
-        status: transaction.status 
+        status: transaction.status
       }, { status: 400 });
     }
 
@@ -244,13 +250,57 @@ export async function PUT(request: NextRequest) {
 }
 
 // PATCH /api/wallet - Pay order with wallet
+// Identity and amount are derived server-side: userId from the session,
+// amount from the order. Client-supplied userId/amount are ignored.
 export async function PATCH(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (!auth.authorized) return auth.response!;
+  const userId = auth.user!.id;
+
   try {
     const body = await request.json();
-    const { userId, orderId, amount } = body;
+    const { orderId } = body;
 
-    if (!userId || !orderId || !amount) {
+    if (!orderId) {
       return NextResponse.json({ error: 'Paramètres manquants' }, { status: 400 });
+    }
+
+    // Load the order — the amount always comes from the order
+    const order = await db.order.findUnique({
+      where: { id: orderId },
+    });
+
+    if (!order) {
+      return NextResponse.json({ error: 'Commande non trouvée' }, { status: 404 });
+    }
+
+    // Ownership check: only the order's client can pay it with their wallet
+    if (order.clientId !== userId) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
+    }
+
+    if (order.status === 'CANCELLED') {
+      return NextResponse.json({ error: 'Cette commande est annulée' }, { status: 400 });
+    }
+
+    const amount = order.totalPrice;
+
+    // Double-payment guard: a completed wallet transaction for this order
+    // or a completed WALLET Payment record blocks any retry.
+    const existingWalletPayment = await db.walletTransaction.findFirst({
+      where: { orderId, type: 'PAYMENT', status: 'COMPLETED' },
+    });
+
+    if (existingWalletPayment) {
+      return NextResponse.json({ error: 'Cette commande a déjà été payée' }, { status: 400 });
+    }
+
+    const existingCompletedPayment = await db.payment.findFirst({
+      where: { orderId, method: 'WALLET', status: 'COMPLETED' },
+    });
+
+    if (existingCompletedPayment) {
+      return NextResponse.json({ error: 'Cette commande a déjà été payée' }, { status: 400 });
     }
 
     // Get wallet
@@ -270,36 +320,64 @@ export async function PATCH(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Create transaction
-    const transaction = await db.walletTransaction.create({
-      data: {
-        walletId: wallet.id,
-        type: 'PAYMENT',
-        amount,
-        status: 'COMPLETED',
-        orderId,
-        description: `Paiement commande ${orderId}`,
-        balanceAfter: wallet.balance - amount,
-      },
-    });
+    // Atomic debit: re-read the wallet inside the transaction with a balance
+    // guard (throw → rollback), create the PAYMENT transaction, decrement the
+    // balance and flip any PENDING WALLET Payment record to COMPLETED.
+    const result = await db.$transaction(async (tx) => {
+      const freshWallet = await tx.wallet.findUnique({
+        where: { id: wallet.id },
+      });
 
-    // Update wallet balance
-    const updatedWallet = await db.wallet.update({
-      where: { id: wallet.id },
-      data: {
-        balance: { decrement: amount },
-        totalSpent: { increment: amount },
-      },
+      if (!freshWallet || freshWallet.balance < amount) {
+        throw new Error('INSUFFICIENT_BALANCE');
+      }
+
+      const transaction = await tx.walletTransaction.create({
+        data: {
+          walletId: freshWallet.id,
+          type: 'PAYMENT',
+          amount,
+          status: 'COMPLETED',
+          orderId,
+          description: `Paiement commande ${orderId}`,
+          balanceAfter: freshWallet.balance - amount,
+        },
+      });
+
+      const updatedWallet = await tx.wallet.update({
+        where: { id: freshWallet.id },
+        data: {
+          balance: { decrement: amount },
+          totalSpent: { increment: amount },
+        },
+      });
+
+      // If a PENDING WALLET Payment record exists for this order, complete it
+      const pendingPayment = await tx.payment.findFirst({
+        where: { orderId, method: 'WALLET', status: 'PENDING' },
+      });
+
+      if (pendingPayment) {
+        await tx.payment.update({
+          where: { id: pendingPayment.id },
+          data: { status: 'COMPLETED' },
+        });
+      }
+
+      return { transaction, updatedWallet };
     });
 
     return NextResponse.json({
       success: true,
-      transaction,
+      transaction: result.transaction,
       wallet: {
-        balance: updatedWallet.balance,
+        balance: result.updatedWallet.balance,
       },
     });
   } catch (error) {
+    if (error instanceof Error && error.message === 'INSUFFICIENT_BALANCE') {
+      return NextResponse.json({ error: 'Solde insuffisant' }, { status: 400 });
+    }
     console.error('Payment error:', error);
     return NextResponse.json({ error: 'Erreur lors du paiement' }, { status: 500 });
   }

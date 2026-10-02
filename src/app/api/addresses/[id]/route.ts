@@ -1,19 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireAuth } from '@/lib/auth';
 
 // PUT /api/addresses/[id] - Update address
+// Identity is derived from the session cookie: the address must belong
+// to the session user (body userId is ignored), otherwise 404.
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAuth(request);
+  if (!auth.authorized) return auth.response!;
+  const userId = auth.user!.id;
+
   try {
     const { id } = await params;
     const body = await request.json();
-    const { userId, label, type, address, latitude, longitude, instructions, isDefault } = body;
+    const { label, type, address, latitude, longitude, instructions, isDefault } = body;
 
-    // Verify ownership
-    const existing = await db.address.findUnique({ where: { id } });
-    if (!existing || existing.userId !== userId) {
+    // Verify ownership (address must belong to the session user)
+    const existing = await db.address.findFirst({
+      where: { id, userId },
+    });
+    if (!existing) {
       return NextResponse.json({ error: 'Adresse non trouvée' }, { status: 404 });
     }
 
@@ -46,18 +55,24 @@ export async function PUT(
 }
 
 // DELETE /api/addresses/[id] - Delete address
+// Identity is derived from the session cookie: the address must belong
+// to the session user (query userId is ignored), otherwise 404.
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAuth(request);
+  if (!auth.authorized) return auth.response!;
+  const userId = auth.user!.id;
+
   try {
     const { id } = await params;
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
 
-    // Verify ownership
-    const existing = await db.address.findUnique({ where: { id } });
-    if (!existing || existing.userId !== userId) {
+    // Verify ownership (address must belong to the session user)
+    const existing = await db.address.findFirst({
+      where: { id, userId },
+    });
+    if (!existing) {
       return NextResponse.json({ error: 'Adresse non trouvée' }, { status: 404 });
     }
 
