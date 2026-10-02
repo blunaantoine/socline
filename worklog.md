@@ -298,3 +298,23 @@ Stage Summary:
 - Coût réel constaté: USD 0.05/SMS (≈ 29-30 F CFA) — revoir l'estimation antérieure (8–13 F).
 - Restant pour la prod: enregistrer le sender ID "SOCLINE" (puis décommenter SMS_SENDER_ID) + passer SMS_DEMO_FALLBACK=false.
 - Profil de l'utilisateur appliqué sur le compte ADMIN de l'app.
+
+---
+Task ID: 6 (session 6 — OTP WhatsApp + correctif sécurité Git)
+Agent: main (Z.ai Code)
+Task: "et otp par whatsapp" — analyser les options WhatsApp OTP et implémenter le multi-canal; fuite .env détectée au passage
+
+Work Log:
+- DÉCOUVERTE SÉCURITÉ: commit auto "Z User" (81fd6bf) avait tracké .env (clé AT + JWT) et db/custom.db. Repo vérifié PRIVÉ (API GitHub). git rm --cached .env + db/custom.db, .gitignore +db/ +*.db, commit → push. Rotation clé AT recommandée (non urgente, repo privé).
+- Recherche WhatsApp: Meta Cloud API en direct = voie officielle la moins chère (auth templates ~$0.0014–0.03/msg selon pays, réponses "service" fenêtre 24h 100% gratuites, depuis juil. 2025 facturation par message délivré). Africa's Talking a aussi une API WhatsApp mais avec marge BSP. Passerelles non officielles = risque de ban.
+- src/lib/whatsapp.ts: adaptateur Meta Cloud API v21.0 (POST graph.facebook.com/{v}/{PHONE_NUMBER_ID}/messages): mode template (auth template, composants body + bouton copy-code, retry automatique sans bouton si template sans bouton) et mode text (gratuit, fenêtre 24h); normalizePhone réutilisé (sans "+"); timeout 10s; jamais d'exception; erreurs loggées tronquées côté serveur.
+- send-otp refactoré: OTP_CHANNEL=sms|whatsapp|both (défaut sms), repli SMS silencieux si WhatsApp demandé non configuré, envoi parallèle Promise.all, réponse enrichie channels[], détection "aucun canal" → SMS_DEMO_FALLBACK, mode démo pur réintroduit avant routage (aucun provider configuré). FIX structure cassée (double catch) lors de l'édition.
+- .env: OTP_CHANNEL=sms actif + placeholders WHATSAPP_* commentés.
+- Tests: régression SMS → InsufficientBalance AT (solde épuisé par les tests ~29 F×2; fallback démo OK); routage whatsapp seul avec token bidon → 401 Meta géré + fallback, AUCUN appel SMS; lint 0/0. Config restaurée (OTP_CHANNEL=sms).
+- Commits: 🔒 untrack .env/db → 📲 multi-canal (74e3399) → worklog.
+
+Stage Summary:
+- OTP SMS BLOQUÉ en attendant la recharge du compte AT (InsufficientBalance) — le fallback démo garde l'app utilisable.
+- WhatsApp OTP prêt à brancher: il suffit de renseigner WHATSAPP_TOKEN + WHATSAPP_PHONE_NUMBER_ID (+ template approuvé) et OTP_CHANNEL=whatsapp|both; hot-reload .env.
+- Option 100% gratuite: WHATSAPP_OTP_MODE=text si l'utilisateur a écrit au numéro dans les 24h.
+- .env et DB ne sont plus suivis par Git (plus de fuite possible par auto-checkpoint).
