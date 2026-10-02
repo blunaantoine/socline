@@ -260,3 +260,22 @@ Stage Summary:
 - Le client paie toujours le prix calculé serveur; le suivi est branché DB + sockets avec fallback polling
 - Pour activer le SMS réel: décommenter SMS_PROVIDER/SMS_API_KEY/SMS_USERNAME dans .env (demoMode disparaît automatiquement)
 - Restants (non demandés): IDOR-similaire sur /api/auth/mobile/* (JWT Bearer mobile), messages chat non persistés via socket (DB seulement via API), /api/seed réactive les promos expirées, PIN user.profile comparé en clair (route sans handler PATCH: profil laveur 405)
+
+---
+Task ID: 5 (session 6 — SMS Africa's Talking)
+Agent: main (Z.ai Code)
+Task: L'utilisateur a fourni sa clé API Africa's Talking (atsk_…) → configurer le SMS réel pour l'OTP
+
+Work Log:
+- Testé la clé contre l'API AT avec username=sandbox → HTTP 401 "The supplied authentication is invalid" → c'est une CLÉ DE PRODUCTION (pas sandbox); il manque le SMS_USERNAME (username choisi à l'inscription) pour l'activer.
+- .env (gitignored): SMS_PROVIDER=africastalking + SMS_API_KEY=atsk_… + SMS_SENDER_ID=SOCLINE + SMS_DEMO_FALLBACK=true; SMS_USERNAME laissé commenté en attendant la valeur.
+- send-otp: ajout du fallback SMS_DEMO_FALLBACK=true → si provider configuré mais envoi échoué (crédit 0, numéro non joignable), le code est exposé en mode démo (bannière + auto-fill) au lieu de renvoyer smsSent:false sans code (qui bloquerait l'inscription dans le preview). À passer à false en production.
+- lib/sms.ts: doc de SMS_DEMO_FALLBACK dans l'en-tête.
+- Vérifié: hot-reload .env par le dev server (pas de restart nécessaire); fallback démo (demoCode + smsSent:false via username factice); mode démo pur (username commenté); verify-otp accepte le bon code / rejette "000000" ("Code invalide"); flux inscription complet au navigateur (bannière "Masquer le code de démo", OTP auto-rempli 626493, compte créé → écran client).
+- Nettoyage: comptes de test +22891111111 / 93333333 et lignes otp_codes supprimés (bun -e + PrismaClient). Lint 0/0.
+- Commit 9a2811e → push origin main (seuls sms.ts + send-otp/route.ts committés; .env jamais committé).
+
+Stage Summary:
+- Le SMS réel ne s'activera qu'avec SMS_USERNAME (username du compte AT de l'utilisateur) — décommenter la ligne 19 de .env; hot-reload le prend en compte sans restart.
+- Compte AT production requis avec du crédit (recharge mobile money/carte); tarif Togo ≈ 8–13 F CFA/SMS.
+- SMS_DEMO_FALLBACK=true actuellement pour la démo — À DÉSACTIVER avant mise en production réelle.
