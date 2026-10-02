@@ -3,6 +3,7 @@ import { randomInt, randomUUID } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { db } from '@/lib/db';
 import { isSmsConfigured, sendSms } from '@/lib/sms';
+import { isWhatsappConfigured, sendWhatsappOtp } from '@/lib/whatsapp';
 
 // In-memory rate limiting per phone (module-level, resets on server restart).
 // Production: move to Redis or a DB table.
@@ -82,48 +83,74 @@ export async function POST(request: NextRequest) {
     // the code is NEVER returned in the API response.
     console.log('[OTP] code for', cleanPhone, ':', code);
 
-    const smsConfigured = isSmsConfigured();
-    if (smsConfigured) {
-      const result = await sendSms(cleanPhone, `Votre code Socline est ${code}. Valable 5 minutes.`);
-      if (!result.sent) {
-        // Do not leak provider errors to the client; the OTP stays verifiable.
-        console.error(`[OTP] SMS send failed for ${cleanPhone}:`, result.error);
-      }
-
-      // Optional demo fallback (SMS_DEMO_FALLBACK=true): when a provider IS
-      // configured but the send fails (no credit, unreachable number…), expose
-      // the code in the UI instead of blocking the whole registration flow.
-      // MUST be disabled ("false" / unset) in production.
-      const demoFallback =
-        (process.env.SMS_DEMO_FALLBACK || '').trim().toLowerCase() === 'true';
-      if (!result.sent && demoFallback) {
-        return NextResponse.json({
-          success: true,
-          message: 'SMS indisponible pour le moment — mode démo (code affiché pour le test).',
-          expiresIn: 300,
-          demoMode: true,
-          demoCode: code,
-          smsSent: false,
-        });
-      }
-
+    // Pure demo mode: neither SMS nor WhatsApp provider configured at all —
+    // expose the code so the app stays testable without any provider.
+    if (!isSmsConfigured() && !isWhatsappConfigured()) {
       return NextResponse.json({
         success: true,
         message: 'Un code de vérification a été envoyé par SMS.',
         expiresIn: 300,
-        demoMode: false,
-        smsSent: result.sent,
+        demoMode: true,
+        demoCode: code,
+        smsSent: false,
+        channels: [],
       });
     }
 
-    // Demo mode (no SMS provider configured): the code is exposed so the app
-    // stays testable. Only when SMS_PROVIDER is unset/invalid.
+    // --- Channel routing (SMS / WhatsApp / both) ------------------------------
+    // OTP_CHANNEL=sms (default) | whatsapp | both. If WhatsApp is requested
+    // but not configured, the flow silently falls back to SMS so a
+    // misconfiguration can never block the OTP.
+    const channelRaw = (process.env.OTP_CHANNEL || 'sms').trim().toLowerCase();
+    const useWhatsapp = (channelRaw === 'whatsapp' || channelRaw === 'both') && isWhatsappConfigured();
+    const useSms = !useWhatsapp || channelRaw === 'both';
+
+    const OTP_TEXT = `Votre code Socline est ${code}. Valable 5 minutes.`;
+    const [smsResult, waResult] = await Promise.all([
+      useSms ? sendSms(cleanPhone, OTP_TEXT) : Promise.resolve(null),
+      useWhatsapp ? sendWhatsappOtp(cleanPhone, code) : Promise.resolve(null),
+    ]);
+
+    if (useSms && smsResult && !smsResult.sent) {
+      // Do not leak provider errors to the client; the OTP stays verifiable.
+      console.error(`[OTP] SMS send failed for ${cleanPhone}:`, smsResult.error);
+    }
+    if (useWhatsapp && waResult && !waResult.sent) {
+      console.error(`[OTP] WhatsApp send failed for ${cleanPhone}:`, waResult.error);
+    }
+
+    const deliveredChannels: string[] = [];
+    if (smsResult?.sent) deliveredChannels.push('SMS');
+    if (waResult?.sent) deliveredChannels.push('WhatsApp');
+    const anySent = deliveredChannels.length > 0;
+
+    // Optional demo fallback (SMS_DEMO_FALLBACK=true): when a provider IS
+    // configured but every channel failed (no credit, unreachable number…),
+    // expose the code in the UI instead of blocking the whole registration
+    // flow. MUST be disabled ("false" / unset) in production.
+    const demoFallback =
+      (process.env.SMS_DEMO_FALLBACK || '').trim().toLowerCase() === 'true';
+    if (!anySent && demoFallback) {
+      return NextResponse.json({
+        success: true,
+        message: 'Envoi indisponible pour le moment — mode démo (code affiché pour le test).',
+        expiresIn: 300,
+        demoMode: true,
+        demoCode: code,
+        smsSent: false,
+        channels: [],
+      });
+    }
+
     return NextResponse.json({
       success: true,
-      message: 'Un code de vérification a été envoyé par SMS.',
+      message: anySent
+        ? `Un code de vérification a été envoyé par ${deliveredChannels.join(' et ')}.`
+        : 'Un code de vérification a été envoyé.',
       expiresIn: 300,
-      demoMode: true,
-      demoCode: code,
+      demoMode: false,
+      smsSent: anySent,
+      channels: deliveredChannels,
     });
   } catch (error) {
     console.error('Send OTP error:', error);
