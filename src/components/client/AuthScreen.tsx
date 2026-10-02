@@ -9,7 +9,7 @@ import {
   Car, Phone, User, Lock, Palette, ArrowLeft, 
   Eye, EyeOff, CheckCircle, Loader2, AlertCircle,
   FileText, Download, IdCard, CreditCard, ChevronRight,
-  MapPin, Building, Info
+  MapPin, Building, Info, TrendingUp
 } from 'lucide-react';
 import { useAuthStore } from '@/store';
 
@@ -34,70 +34,14 @@ const CAR_COLORS = [
 
 // Washer Registration Info Component
 function WasherRegistrationInfo({ onBack }: { onBack: () => void }) {
-  const handleDownloadContract = () => {
-    // Create a simple contract PDF content as a data URL
-    const contractContent = `
-CONTRAT DE PARTENARIAT - SOCLINE
-================================
-
-ENTRE LES SOUSSIGNÉS :
-
-La société SOCLINE, représentée par son Directeur, ci-après dénommée "LA SOCIÉTÉ"
-
-ET
-
-M./Mme _________________________, né(e) le ____/____/________ à _____________________,
-demeurant à ___________________________________________________________________,
-titulaire de la pièce d'identité n° ____________________________________________,
-
-ci-après dénommé(e) "LE PARTENAIRE"
-
-IL A ÉTÉ CONVENU CE QUI SUIT :
-
-ARTICLE 1 - OBJET
-Le présent contrat a pour objet de définir les conditions dans lesquelles LE PARTENAIRE 
-fournira des services de lavage automobile pour le compte de LA SOCIÉTÉ via l'application SOCLINE.
-
-ARTICLE 2 - ENGAGEMENTS DU PARTENAIRE
-- Effectuer les prestations de lavage avec professionnalisme
-- Respecter les délais convenus avec les clients
-- Maintenir son véhicule en bon état de fonctionnement
-- Fournir les produits nécessaires aux prestations
-- Respecter les règles de sécurité et d'hygiène
-
-ARTICLE 3 - RÉMUNÉRATION
-LE PARTENAIRE perçoit une commission de 80% sur chaque prestation réalisée.
-Les paiements sont effectués chaque semaine.
-
-ARTICLE 4 - PIÈCES À FOURNIR
-- Copie de la carte d'identité nationale OU carte d'électeur
-- Photo d'identité récente
-- Contrat signé
-
-ARTICLE 5 - DURÉE
-Le présent contrat est conclu pour une durée indéterminée.
-
-ARTICLE 6 - RÉSILIATION
-Chaque partie peut résilier le contrat avec un préavis de 15 jours.
-
-Fait à Lomé, le ____/____/________
-
-SIGNATURES :
-
-LE PARTENAIRE                          LA SOCIÉTÉ
-_____________________                  _____________________
-    `;
-
-    const blob = new Blob([contractContent], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'Contrat_Socline_Laveur.txt';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
+  // Contrat de Partenariat SOCLINE (Article 5) — barème de rémunération progressive
+  const partnerLevels = [
+    { level: 1, name: 'Départ', share: '60 %', conditions: 'Dès la signature du contrat' },
+    { level: 2, name: 'Confirmé', share: '65 %', conditions: '30 prestations, note ≥ 4,0/5' },
+    { level: 3, name: 'Expert', share: '70 %', conditions: '80 prestations, note ≥ 4,3/5, < 10 % annulations' },
+    { level: 4, name: 'Référent', share: '75 %', conditions: '150 prestations, note ≥ 4,5/5, < 7 % annulations' },
+    { level: 5, name: 'Excellence', share: '80 %', conditions: '300 prestations, note ≥ 4,7/5, < 5 % annulations' },
+  ];
 
   return (
     <div className="flex-1 flex flex-col bg-[#FFF8F0]">
@@ -120,18 +64,18 @@ _____________________                  _____________________
             </div>
             <h2 className="font-bold text-[#212121] text-lg">Avantages du partenaire</h2>
             <ul className="text-sm text-[#757575] mt-2 space-y-1">
-              <li>✓ Revenus attractifs (80% par prestation)</li>
-              <li>✓ Horaires flexibles</li>
-              <li>✓ Paiements hebdomadaires</li>
-              <li>✓ Formation et support</li>
+              <li>✓ Revenus progressifs : de 60 % jusqu&apos;à 80 % par prestation</li>
+              <li>✓ Horaires libres, vous choisissez vos missions</li>
+              <li>✓ Paiements chaque semaine</li>
+              <li>✓ Récapitulatif clair de vos gains dans l&apos;Application</li>
             </ul>
           </div>
 
-          {/* Documents Required */}
+          {/* Documents Required (Contrat Article 8) */}
           <div className="space-y-3">
             <h3 className="font-semibold text-[#212121] flex items-center gap-2">
               <FileText className="w-5 h-5 text-[#4CAF50]" />
-              Documents requis
+              Pièces à fournir (Article 8)
             </h3>
             
             <div className="bg-[#F5F5F5] rounded-xl p-4 space-y-3">
@@ -140,18 +84,38 @@ _____________________                  _____________________
                   <IdCard className="w-5 h-5 text-[#2196F3]" />
                 </div>
                 <div>
-                  <p className="font-medium text-[#212121]">Carte d&apos;identité nationale</p>
-                  <p className="text-sm text-[#757575]">OU</p>
+                  <p className="font-medium text-[#212121]">Carte d&apos;identité nationale OU carte d&apos;électeur</p>
+                  <p className="text-sm text-[#757575]">Copie en cours de validité</p>
                 </div>
               </div>
-              
+
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 bg-[#FFF3E0] rounded-full flex items-center justify-center flex-shrink-0">
                   <CreditCard className="w-5 h-5 text-[#FF9800]" />
                 </div>
                 <div>
-                  <p className="font-medium text-[#212121]">Carte d&apos;électeur</p>
-                  <p className="text-sm text-[#757575]">Valide et lisible</p>
+                  <p className="font-medium text-[#212121]">Photo d&apos;identité récente</p>
+                  <p className="text-sm text-[#757575]">À coller en page 1 du contrat</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-[#E8F5E9] rounded-full flex items-center justify-center flex-shrink-0">
+                  <FileText className="w-5 h-5 text-[#4CAF50]" />
+                </div>
+                <div>
+                  <p className="font-medium text-[#212121]">Extrait de casier judiciaire</p>
+                  <p className="text-sm text-[#757575]">Bulletin n° 3, de moins de 3 mois</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-[#F3E5F5] rounded-full flex items-center justify-center flex-shrink-0">
+                  <CheckCircle className="w-5 h-5 text-[#9C27B0]" />
+                </div>
+                <div>
+                  <p className="font-medium text-[#212121]">Contrat signé et paraphé</p>
+                  <p className="text-sm text-[#757575]">Signature sur chaque page</p>
                 </div>
               </div>
             </div>
@@ -166,15 +130,61 @@ _____________________                  _____________________
             
             <div className="bg-[#E8F5E9] rounded-xl p-4">
               <p className="text-sm text-[#757575] mb-3">
-                Téléchargez le contrat, remplissez-le, signez-le et envoyez-le avec vos documents.
+                Téléchargez le contrat officiel (PDF, 3 pages), remplissez-le en lettres majuscules,
+                collez votre photo d&apos;identité, signez-le et envoyez-le avec vos documents.
               </p>
-              <Button
-                onClick={handleDownloadContract}
-                className="w-full bg-[#4CAF50] hover:bg-[#43A047] text-white"
+              <a
+                href="/documents/Contrat_Partenaire_SOCLINE_a_imprimer.pdf"
+                download="Contrat_Partenaire_SOCLINE_a_imprimer.pdf"
+                className="w-full bg-[#4CAF50] hover:bg-[#43A047] text-white rounded-md py-2.5 flex items-center justify-center text-sm font-medium transition-colors"
               >
                 <Download className="w-4 h-4 mr-2" />
-                Télécharger le contrat
-              </Button>
+                Télécharger le contrat (PDF)
+              </a>
+            </div>
+          </div>
+
+          {/* Progressive remuneration (Contrat Article 5) */}
+          <div className="space-y-3">
+            <h3 className="font-semibold text-[#212121] flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-[#FF9800]" />
+              Rémunération progressive
+            </h3>
+            <p className="text-xs text-[#757575] -mt-1">
+              Votre part augmente avec votre régularité et la qualité de votre travail,
+              selon le barème du contrat (Article 5). Le niveau est réévalué
+              automatiquement par l&apos;Application.
+            </p>
+            <div className="rounded-xl overflow-hidden border border-[#E0E0E0]">
+              {partnerLevels.map((lvl, idx) => (
+                <div
+                  key={lvl.level}
+                  className={`flex items-center gap-3 p-3 ${idx % 2 === 0 ? 'bg-[#FFF8F0]' : 'bg-white'} ${idx !== partnerLevels.length - 1 ? 'border-b border-[#F0F0F0]' : ''}`}
+                >
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#FF9800] to-[#F57C00] text-white flex flex-col items-center justify-center flex-shrink-0">
+                    <span className="text-[9px] leading-none opacity-90">Niv.</span>
+                    <span className="text-sm font-bold leading-none">{lvl.level}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-[#212121] text-sm">{lvl.name}</p>
+                    <p className="text-[11px] text-[#757575] leading-tight">{lvl.conditions}</p>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="font-bold text-[#4CAF50] text-base leading-none">{lvl.share}</p>
+                    <p className="text-[9px] text-[#9E9E9E] mt-0.5">partenaire</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="bg-[#FFF3E0] border border-[#FFCC80] rounded-xl p-3">
+              <p className="text-xs text-[#E65100] flex items-start gap-2">
+                <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <span>
+                  Paiements chaque semaine pour les prestations de la semaine précédente.
+                  Relevé détaillé disponible dans l&apos;Application ; toute contestation
+                  doit être signalée dans les 7 jours.
+                </span>
+              </p>
             </div>
           </div>
 
@@ -184,9 +194,9 @@ _____________________                  _____________________
             
             <div className="space-y-2">
               {[
-                { step: 1, title: 'Télécharger le contrat', desc: 'Cliquez sur le bouton ci-dessus' },
-                { step: 2, title: 'Remplir et signer', desc: 'Complétez toutes les informations' },
-                { step: 3, title: 'Préparer vos documents', desc: 'Carte d\'identité ou électeur' },
+                { step: 1, title: 'Télécharger le contrat (PDF)', desc: 'Bouton ci-dessus — 3 pages à imprimer' },
+                { step: 2, title: 'Remplir en MAJUSCULES et signer', desc: 'Coller la photo en page 1, paraphe chaque page' },
+                { step: 3, title: 'Préparer vos pièces (Article 8)', desc: 'CNI ou carte d\'électeur, photo, casier judiciaire (n° 3)' },
                 { step: 4, title: 'Contacter le support', desc: '+228 71 99 81 55 (WhatsApp)' },
               ].map((item) => (
                 <div key={item.step} className="flex items-start gap-3">

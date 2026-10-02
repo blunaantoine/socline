@@ -43,6 +43,7 @@ export function WasherApp() {
   const [showChat, setShowChat] = useState(false);
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [washerData, setWasherData] = useState<WasherType | null>(null);
+  const [partnerLevel, setPartnerLevel] = useState<any>(null);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isRefreshingBalance, setIsRefreshingBalance] = useState(false);
   const [profileSection, setProfileSection] = useState<string | null>(null);
@@ -82,6 +83,8 @@ export function WasherApp() {
 
       if (data.success && data.washer) {
         setWasherData(data.washer as WasherType);
+        // Contrat de Partenariat, Article 5: progressive partner level
+        setPartnerLevel(data.partnerLevel || null);
       }
     } catch (error) {
       console.error('Fetch washer data error:', error);
@@ -335,6 +338,7 @@ export function WasherApp() {
             onRefresh={fetchPendingOrders}
             onRefreshBalance={fetchWasherData}
             isRefreshingBalance={isRefreshingBalance}
+            partnerLevel={partnerLevel}
             acceptedOrders={orders.filter(o => ['ACCEPTED', 'EN_ROUTE', 'ARRIVED', 'IN_PROGRESS'].includes(o.status))}
           />
         )}
@@ -421,7 +425,7 @@ export function WasherApp() {
 }
 
 // Washer Dashboard
-function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccept, onRefresh, onRefreshBalance, isRefreshingBalance, acceptedOrders }: { 
+function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccept, onRefresh, onRefreshBalance, isRefreshingBalance, partnerLevel, acceptedOrders }: { 
   stats: WasherStats; 
   isAvailable: boolean;
   isLoading: boolean;
@@ -430,6 +434,7 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
   onRefresh: () => void;
   onRefreshBalance: () => void;
   isRefreshingBalance: boolean;
+  partnerLevel: any;
   acceptedOrders: Order[];
 }) {
   return (
@@ -445,6 +450,60 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
             </p>
           </div>
         </div>
+      )}
+
+      {/* Partner Level Banner (Contrat Article 5 — rémunération progressive) */}
+      {partnerLevel && (
+        <Card className="bg-white border-0 shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-[#E8F5E9] rounded-full flex items-center justify-center flex-shrink-0">
+                  <Crown className="w-5 h-5 text-[#2E7D32]" />
+                </div>
+                <div>
+                  <p className="font-semibold text-[#212121] text-sm">
+                    Niveau {partnerLevel.level} – {partnerLevel.name}
+                  </p>
+                  <p className="text-xs text-[#757575]">
+                    Votre part : <span className="font-bold text-[#4CAF50]">{partnerLevel.share} %</span> par prestation
+                  </p>
+                </div>
+              </div>
+              {partnerLevel.nextLevel && (
+                <div className="text-right">
+                  <p className="text-[10px] text-[#9E9E9E] uppercase tracking-wide">Suivant</p>
+                  <p className="text-xs font-semibold text-[#E65100]">
+                    Niv. {partnerLevel.nextLevel.level} · {partnerLevel.nextLevel.share} %
+                  </p>
+                </div>
+              )}
+            </div>
+            {partnerLevel.nextLevel ? (
+              <div className="mt-3">
+                <div className="flex items-center justify-between text-[11px] text-[#757575] mb-1">
+                  <span>{partnerLevel.stats?.completedJobs ?? 0} / {partnerLevel.nextLevel.minJobs} prestations</span>
+                  <span>Note ≥ {partnerLevel.nextLevel.minRating.toLocaleString('fr-FR')} / 5</span>
+                </div>
+                <div className="h-2 bg-[#F5F5F5] rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-[#4CAF50] to-[#66BB6A] rounded-full transition-all"
+                    style={{
+                      width: `${Math.min(100, Math.round(((partnerLevel.stats?.completedJobs ?? 0) / Math.max(1, partnerLevel.nextLevel.minJobs)) * 100))}%`,
+                    }}
+                  />
+                </div>
+                <p className="text-[10px] text-[#9E9E9E] mt-1.5">
+                  {partnerLevel.nextLevel.description}
+                </p>
+              </div>
+            ) : (
+              <p className="text-[11px] text-[#4CAF50] mt-2 font-medium">
+                🏆 Niveau maximum atteint — Bravo pour votre excellence !
+              </p>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* Balance Card with Refresh */}

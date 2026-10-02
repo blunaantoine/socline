@@ -100,3 +100,31 @@ Stage Summary:
 | `10d532b` | ✨ UX: 6 alert()→toasts sonner, redirection tracking après commande (PENDING inclus), section laveurs dispo réelle + skeletons, stats profil réelles, géoloc fonctionnelle, "Voir tout" toggle | Agent Browser: login→booking→promo WELCOME20 (−500F)→commande→tracking; toast géoloc OK |
 
 Secrets JWT ajoutés au `.env` (JWT_SECRET, JWT_REFRESH_SECRET — ne jamais commit de vrais secrets en prod).
+
+---
+Task ID: 7
+Agent: main (Z.ai Code)
+Task: Remplacer le contrat téléchargeable par le PDF officiel + adapter le site au contrat
+
+Work Log:
+- Déployé upload/Contrat_Partenaire_SOCLINE_a_imprimer.pdf (3 pages, 1.5 MB) dans public/documents/
+- AuthScreen.tsx: supprimé le faux contrat .txt généré en blob; le bouton télécharge maintenant le PDF officiel
+  via <a href="/documents/..." download>; écran "Devenir Laveur" réécrit selon le contrat:
+  * Avantages: "Revenus progressifs de 60% à 80%", horaires libres, paiements hebdomadaires, relevé dans l'app (Articles 2/4/5)
+  * Pièces à fournir (Article 8): CNI OU carte d'électeur, photo identité (page 1), casier judiciaire bulletin n°3 <3 mois, contrat signé+paraphé
+  * Nouvelle section "Rémunération progressive" avec le barème 5 niveaux du contrat (60→80%)
+  * Encart: paiements hebdomadaires + contestation sous 7 jours
+  * Processus d'inscription mis à jour (PDF 3 pages, majuscules, paraphe, Article 8)
+- src/lib/washer-level.ts (nouveau): PARTNER_LEVELS (Départ 60/Confirmé 65/Expert 70/Référent 75/Excellence 80%),
+  computePartnerLevel(stats) — évaluation continue conforme à l'Article 5 (taux figé sur la commande à l'acceptation)
+- POST /api/orders: commission par défaut 40% (niveau 1) au lieu de 15%
+- PATCH /api/orders: à ACCEPTED, commission recalculée selon le niveau du laveur (completedJobs, rating, taux annulation)
+- GET /api/washers/[userId]: renvoie partnerLevel + stats + nextLevel
+- admin/washers: gains = sum(totalPrice) - sum(commission réelle) au lieu de *0.15
+- WasherApp.tsx: bandeau "Niveau X – Nom · votre part %" avec progression vers le niveau suivant
+
+Stage Summary:
+- E2E vérifié navigateur + curl: commande 2500 F → commission création 1000 F (40%, ex-375 F/15%),
+  acceptation laveur Niv.1 → part laveur 1500 F (60%), COMPLETED → totalEarnings 21275→22775, jobs 1→2
+- Dashboard laveur affiche "Niveau 1 – Départ, votre part 60%", progression 2/30 → Niv.2 (65%)
+- Lint 0 erreur; PDF servi statiquement (200, 1550175 octets)

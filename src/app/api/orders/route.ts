@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { computePartnerLevel, commissionForLevel, DEFAULT_PARTNER_LEVEL } from '@/lib/washer-level';
 
 // GET /api/orders - Get orders (for washer or client)
 // Query params:
@@ -183,7 +184,12 @@ export async function POST(request: NextRequest) {
         discount: useSubscription ? service.price : (discount ?? 0), // Full discount for subscription
         promoCode: useSubscription ? null : (promoCode ?? null),
         totalPrice: useSubscription ? 0 : (totalPrice ?? service.price), // Free for subscription
-        commission: useSubscription ? 0 : ((totalPrice ?? service.price) * 0.15),
+        commission: useSubscription
+          ? 0
+          // Default commission at level 1 (Contrat de Partenariat, Article 5 :
+          // part du Partenaire 60 %). Recalculated at ACCEPTED based on the
+          // washer's actual level (see PATCH below).
+          : commissionForLevel(DEFAULT_PARTNER_LEVEL, totalPrice ?? service.price),
         status: 'PENDING',
         scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
         isSubscriptionOrder: useSubscription || false,
@@ -275,10 +281,33 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Commande non trouvée' }, { status: 404 });
     }
 
+    // Contrat de Partenariat SOCLINE, Article 5 : when the order is accepted,
+    // freeze the commission according to the accepting washer's progressive
+    // level (60 % -> 80 % partner share). The rate applied at ACCEPTED is the
+    // one kept for the whole order ("Le taux n'est jamais modifié pour les
+    // prestations déjà réalisées").
+    if (updateData.washerId && existingOrder.status === 'PENDING' && status === 'ACCEPTED') {
+      const washerRecordId = updateData.washerId as string;
+      const [completedJobs, cancelledJobs, assignedJobs, washerRecord] = await Promise.all([
+        db.order.count({ where: { washerId: washerRecordId, status: 'COMPLETED' } }),
+        db.order.count({ where: { washerId: washerRecordId, status: 'CANCELLED' } }),
+        db.order.count({ where: { washerId: washerRecordId } }),
+        db.washer.findUnique({ where: { id: washerRecordId }, select: { rating: true } }),
+      ]);
+      const cancellationRate = assignedJobs > 0 ? (cancelledJobs / assignedJobs) * 100 : 0;
+      const partnerLevel = computePartnerLevel({
+        completedJobs,
+        rating: washerRecord?.rating ?? 0,
+        cancellationRate,
+      });
+      updateData.commission = commissionForLevel(partnerLevel, existingOrder.totalPrice ?? 0);
+    }
+
     // Credit the washer when the order transitions to COMPLETED
     // (only if its previous status was not already COMPLETED — anti double-credit)
     const isCompletion = status === 'COMPLETED' && existingOrder.status !== 'COMPLETED';
-    // washerAmount = totalPrice - commission (15% commission set at creation),
+    // washerAmount = totalPrice - commission (per Contrat Article 5, the
+    // commission is frozen at ACCEPTED according to the washer's level),
     // clamped to >= 0 (e.g. subscription orders at 0)
     const washerAmount = isCompletion
       ? Math.max(0, (existingOrder.totalPrice ?? 0) - (existingOrder.commission ?? 0))

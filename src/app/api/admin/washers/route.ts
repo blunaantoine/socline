@@ -142,7 +142,7 @@ export async function GET(request: NextRequest) {
 
         const earnings = await db.order.aggregate({
           where: { washerId: washer.id, status: 'COMPLETED' },
-          _sum: { totalPrice: true },
+          _sum: { totalPrice: true, commission: true },
         });
 
         return {
@@ -154,7 +154,9 @@ export async function GET(request: NextRequest) {
           rating: washer.rating,
           totalRatings: washer.totalRatings,
           completedJobs: completedOrders,
-          earnings: (earnings._sum.totalPrice || 0) - (earnings._sum.totalPrice || 0) * 0.15, // After commission
+          // Partner share = total collected - commissions actually applied
+          // per order (Contrat Article 5: commission depends on washer level)
+          earnings: (earnings._sum.totalPrice || 0) - (earnings._sum.commission || 0),
           isAvailable: washer.isAvailable,
           isVerified: washer.isVerified,
           createdAt: washer.user.createdAt,
