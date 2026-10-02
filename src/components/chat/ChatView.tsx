@@ -12,6 +12,7 @@ import {
   Car, User, Clock
 } from 'lucide-react';
 import { parseJsonResponse } from '@/lib/json-helper';
+import { toast } from 'sonner';
 
 interface ChatViewProps {
   conversation: Conversation;
@@ -51,13 +52,27 @@ export function ChatView({ conversation, onBack }: ChatViewProps) {
 
   // Connect to WebSocket
   useEffect(() => {
+    // Guard against toast spam during reconnection attempts
+    let unauthorizedToastShown = false;
+
     const initSocket = async () => {
+      // Token from the auth store (NOT in the effect deps on purpose:
+      // a re-render with a new token is handled by the reconnect logic).
+      const token = useAuthStore.getState().token;
+      if (!token) {
+        console.error('[Chat] No auth token available, socket connection refused');
+        setConnected(false);
+        toast.error('Session expirée, veuillez vous reconnecter');
+        return;
+      }
+
       // Dynamic import to avoid SSR issues
       const { io } = await import('socket.io-client');
       
       const socket = io('/?XTransformPort=3003', {
         transports: ['websocket'],
         reconnection: true,
+        auth: { token },
       });
 
       socketRef.current = socket;
@@ -65,15 +80,25 @@ export function ChatView({ conversation, onBack }: ChatViewProps) {
       socket.on('connect', () => {
         console.log('[Chat] Connected to server');
         setConnected(true);
-        if (user?.id) {
-          socket.emit('join', user.id);
-          socket.emit('join-conversation', conversation.id);
-        }
+        unauthorizedToastShown = false;
+        // Identity is enforced server-side from the JWT handshake;
+        // 'join' just registers this socket in its personal room.
+        socket.emit('join');
+        socket.emit('join-conversation', conversation.id);
       });
 
       socket.on('disconnect', () => {
         console.log('[Chat] Disconnected from server');
         setConnected(false);
+      });
+
+      socket.on('connect_error', (error: Error) => {
+        console.error('[Chat] Socket connection error:', error.message);
+        setConnected(false);
+        if (error.message === 'unauthorized' && !unauthorizedToastShown) {
+          unauthorizedToastShown = true;
+          toast.error('Session expirée, veuillez vous reconnecter');
+        }
       });
 
       socket.on('new-message', (message: Message) => {

@@ -1,9 +1,134 @@
-import { createServer } from 'http';
+import { createServer, type IncomingMessage, type ServerResponse } from 'http';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 import { Server } from 'socket.io';
+import jwt from 'jsonwebtoken';
+
+// ---------------------------------------------------------------------------
+// Env loading
+// Bun only auto-loads .env from the CWD. To be robust no matter where the
+// service is started from, load the project root .env explicitly — without
+// overriding variables that are already set.
+// ---------------------------------------------------------------------------
+function loadRootEnv(): void {
+  try {
+    const envPath = resolve(import.meta.dir, '../../.env');
+    const content = readFileSync(envPath, 'utf8');
+    for (const rawLine of content.split(/\r?\n/)) {
+      const line = rawLine.trim();
+      if (!line || line.startsWith('#')) continue;
+      const eq = line.indexOf('=');
+      if (eq <= 0) continue;
+      const key = line.slice(0, eq).trim();
+      let value = line.slice(eq + 1).trim();
+      if (
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))
+      ) {
+        value = value.slice(1, -1);
+      }
+      if (process.env[key] === undefined) {
+        process.env[key] = value;
+      }
+    }
+  } catch {
+    console.log('[Chat] Warning: root .env not found, relying on already-set env vars');
+  }
+}
+loadRootEnv();
 
 const PORT = 3003;
+const JWT_SECRET = process.env.JWT_SECRET ?? '';
+const INTERNAL_SOCKET_SECRET = process.env.INTERNAL_SOCKET_SECRET ?? '';
+
+if (!JWT_SECRET) {
+  console.log('[Chat] Warning: JWT_SECRET not set — every handshake will be rejected');
+}
+if (!INTERNAL_SOCKET_SECRET) {
+  console.log('[Chat] Warning: INTERNAL_SOCKET_SECRET not set — /internal/emit will reject every request');
+}
+
+// ---------------------------------------------------------------------------
+// HTTP server + secured internal emit endpoint (server-to-server)
+// The request listener is registered BEFORE attaching socket.io below:
+// engine.io keeps the listeners that exist at attach time and forwards to
+// them every request that is NOT for /socket.io/. That is how /internal/emit
+// coexists with the websocket server on the same port.
+// ---------------------------------------------------------------------------
+async function readBody(req: IncomingMessage, maxBytes = 64 * 1024): Promise<string> {
+  return new Promise((resolvePromise, rejectPromise) => {
+    const chunks: Buffer[] = [];
+    let size = 0;
+    req.on('data', (chunk: Buffer) => {
+      size += chunk.length;
+      if (size > maxBytes) {
+        rejectPromise(new Error('body too large'));
+        req.destroy();
+        return;
+      }
+      chunks.push(Buffer.from(chunk));
+    });
+    req.on('end', () => resolvePromise(Buffer.concat(chunks).toString('utf8')));
+    req.on('error', rejectPromise);
+  });
+}
 
 const httpServer = createServer();
+
+httpServer.on('request', async (req: IncomingMessage, res: ServerResponse) => {
+  const sendJson = (status: number, body: unknown) => {
+    try {
+      if (!res.writableEnded) {
+        if (!res.headersSent) res.writeHead(status, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(body));
+      }
+    } catch {
+      // socket already gone — nothing to do
+    }
+  };
+
+  try {
+    const url = (req.url || '').split('?')[0];
+
+    // Engine.io serves /socket.io/* itself; never touch those requests.
+    if (url.startsWith('/socket.io')) return;
+
+    // Only POST /internal/emit exists.
+    if (url !== '/internal/emit' || req.method !== 'POST') {
+      return sendJson(404, { error: 'not found' });
+    }
+
+    // Server-to-server shared secret.
+    const secret = req.headers['x-internal-secret'];
+    if (!INTERNAL_SOCKET_SECRET || secret !== INTERNAL_SOCKET_SECRET) {
+      return sendJson(403, { error: 'forbidden' });
+    }
+
+    // Body: { rooms: string[], event: string, data: unknown }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(await readBody(req));
+    } catch {
+      return sendJson(400, { error: 'invalid body' });
+    }
+    const body = (parsed ?? {}) as { rooms?: unknown; event?: unknown; data?: unknown };
+    const rooms = Array.isArray(body.rooms) ? body.rooms : null;
+    if (!rooms || rooms.some((r) => typeof r !== 'string') || typeof body.event !== 'string' || body.event.length === 0) {
+      return sendJson(400, { error: 'invalid body' });
+    }
+
+    // Never log the payload contents (private messages / locations).
+    for (const room of rooms as string[]) {
+      io.to(room).emit(body.event, body.data);
+    }
+    console.log(`[Chat] Internal emit: event=${body.event} rooms=${rooms.length}`);
+    return sendJson(200, { ok: true });
+  } catch {
+    console.log('[Chat] Internal endpoint error');
+    return sendJson(500, { error: 'internal error' });
+  }
+});
+
 const io = new Server(httpServer, {
   cors: {
     origin: '*',
@@ -14,15 +139,43 @@ const io = new Server(httpServer, {
 // Store connected users
 const connectedUsers = new Map<string, string>(); // userId -> socketId
 
+// ---------------------------------------------------------------------------
+// Handshake authentication
+// The client must present the same HS256 JWT used for the web session
+// (socline_token cookie / zustand auth store: payload = { userId }).
+// Identity is established ONCE here and never trusted from event payloads.
+// ---------------------------------------------------------------------------
+io.use((socket, next) => {
+  const token = socket.handshake.auth?.token;
+  if (!token) {
+    console.log('[Chat] Handshake rejected: missing token');
+    return next(new Error('unauthorized'));
+  }
+  try {
+    const payload = jwt.verify(token, JWT_SECRET) as { userId?: string };
+    if (!payload?.userId) {
+      console.log('[Chat] Handshake rejected: invalid token payload');
+      return next(new Error('unauthorized'));
+    }
+    socket.data.userId = payload.userId;
+    next();
+  } catch {
+    console.log('[Chat] Handshake rejected: invalid token');
+    next(new Error('unauthorized'));
+  }
+});
+
 io.on('connection', (socket) => {
+  // Authenticated identity from the JWT (set in the handshake middleware).
+  const userId = socket.data.userId as string;
   console.log(`[Chat] Client connected: ${socket.id}`);
 
-  // User joins with their ID
-  socket.on('join', (userId: string) => {
+  // User joins — identity forced from the JWT, any payload userId is ignored.
+  socket.on('join', () => {
     connectedUsers.set(userId, socket.id);
     socket.join(`user:${userId}`);
     console.log(`[Chat] User ${userId} joined with socket ${socket.id}`);
-    
+
     // Notify user is online
     socket.emit('connected', { userId, status: 'online' });
   });
@@ -39,10 +192,9 @@ io.on('connection', (socket) => {
     console.log(`[Chat] Socket ${socket.id} left conversation ${conversationId}`);
   });
 
-  // Send message
+  // Send message — senderId forced from the JWT, data.senderId is ignored.
   socket.on('send-message', (data: {
     conversationId: string;
-    senderId: string;
     receiverId: string;
     type: 'TEXT' | 'IMAGE' | 'LOCATION' | 'QUICK_MESSAGE' | 'SYSTEM';
     content: string;
@@ -54,7 +206,7 @@ io.on('connection', (socket) => {
     const message = {
       id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       conversationId: data.conversationId,
-      senderId: data.senderId,
+      senderId: userId,
       receiverId: data.receiverId,
       type: data.type,
       content: data.content,
@@ -78,43 +230,32 @@ io.on('connection', (socket) => {
     console.log(`[Chat] Message sent in conversation ${data.conversationId}`);
   });
 
-  // Typing indicator
-  socket.on('typing', (data: { conversationId: string; userId: string }) => {
+  // Typing indicator — identity forced from the JWT.
+  socket.on('typing', (data: { conversationId: string }) => {
     socket.to(`conversation:${data.conversationId}`).emit('user-typing', {
-      userId: data.userId,
+      userId,
     });
   });
 
-  // Stop typing
-  socket.on('stop-typing', (data: { conversationId: string; userId: string }) => {
+  // Stop typing — identity forced from the JWT.
+  socket.on('stop-typing', (data: { conversationId: string }) => {
     socket.to(`conversation:${data.conversationId}`).emit('user-stop-typing', {
-      userId: data.userId,
+      userId,
     });
   });
 
-  // Mark messages as read
-  socket.on('mark-read', (data: { conversationId: string; userId: string }) => {
+  // Mark messages as read — identity forced from the JWT.
+  socket.on('mark-read', (data: { conversationId: string }) => {
     io.to(`conversation:${data.conversationId}`).emit('messages-read', {
       conversationId: data.conversationId,
-      readBy: data.userId,
+      readBy: userId,
     });
   });
 
-  // Washer location update (for live tracking)
-  socket.on('location-update', (data: {
-    orderId: string;
-    washerId: string;
-    latitude: number;
-    longitude: number;
-  }) => {
-    // Emit to order tracking room
-    io.to(`order:${data.orderId}`).emit('washer-location', {
-      washerId: data.washerId,
-      latitude: data.latitude,
-      longitude: data.longitude,
-      timestamp: new Date().toISOString(),
-    });
-  });
+  // NOTE: the 'location-update' handler was intentionally REMOVED.
+  // It let any connected client broadcast fake washer positions.
+  // Washer location push will be done server-to-server (Next.js API →
+  // /internal/emit) in a later task.
 
   // Join order tracking
   socket.on('join-order-tracking', (orderId: string) => {
@@ -125,10 +266,10 @@ io.on('connection', (socket) => {
   // Disconnect
   socket.on('disconnect', () => {
     // Remove user from connected users
-    for (const [userId, socketId] of connectedUsers.entries()) {
+    for (const [connectedUserId, socketId] of connectedUsers.entries()) {
       if (socketId === socket.id) {
-        connectedUsers.delete(userId);
-        console.log(`[Chat] User ${userId} disconnected`);
+        connectedUsers.delete(connectedUserId);
+        console.log(`[Chat] User ${connectedUserId} disconnected`);
         break;
       }
     }
