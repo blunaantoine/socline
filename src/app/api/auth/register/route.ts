@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { hashPin, generateToken, setAuthCookie } from '@/lib/auth';
+import { verifyOtp } from '@/lib/otp';
 
 // POST /api/auth/register - Register new client or washer
 export async function POST(request: NextRequest) {
@@ -36,20 +37,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate OTP (must be 6 digits, test code is 123456)
-    if (!otp || otp.length !== 6) {
+    // Real OTP verification against the hashed code stored in DB
+    // (sent by SMS via /api/auth/send-otp — see src/lib/otp.ts).
+    // MUST run before any account creation (never register on an
+    // unverified OTP).
+    const otpResult = await verifyOtp(phone, otp);
+    if (!otpResult.ok) {
       return NextResponse.json(
-        { success: false, error: 'Code OTP invalide' },
-        { status: 400 }
-      );
-    }
-
-    // For testing: accept 123456 as valid OTP
-    // In production, verify against stored OTP
-    if (otp !== '123456') {
-      return NextResponse.json(
-        { success: false, error: 'Code OTP incorrect' },
-        { status: 400 }
+        { success: false, error: otpResult.error },
+        { status: otpResult.status ?? 400 }
       );
     }
 

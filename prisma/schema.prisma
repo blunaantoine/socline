@@ -758,6 +758,23 @@ model SubscriptionUsage {
   @@map("subscription_usages")
 }
 
+// One-time password (OTP) codes for phone verification / login
+// Codes are stored hashed, expire after 5 minutes and are never
+// returned in API responses (sent by SMS only, or shown in the UI
+// when no SMS provider is configured — demo mode).
+model OtpCode {
+  id         String    @id @default(cuid())
+  phone      String
+  codeHash   String    // bcrypt hash of the 6-digit code
+  expiresAt  DateTime  // creation + 5 minutes
+  attempts   Int       @default(0) // failed verification attempts (max 5)
+  consumedAt DateTime? // set when the code is successfully verified
+  createdAt  DateTime  @default(now())
+
+  @@index([phone, createdAt])
+  @@map("otp_codes")
+}
+
 // Washer Withdrawal Status
 enum WithdrawalStatus {
   PENDING

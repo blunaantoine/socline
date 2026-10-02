@@ -270,7 +270,10 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
   
   // OTP fields
   const [otp, setOtp] = useState('');
-  const [sentOtp, setSentOtp] = useState('');
+  // Demo mode (no SMS provider configured): the send-otp response contains
+  // demoCode — shown in a dismissible banner and auto-filled. With a real
+  // provider the code never appears in the API response.
+  const [demoCode, setDemoCode] = useState<string | null>(null);
   const [resendTimer, setResendTimer] = useState(0);
   
   const { login } = useAuthStore();
@@ -350,7 +353,13 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
       const data = await res.json();
       
       if (data.success) {
-        setSentOtp(data.otp || '123456');
+        if (data.demoMode && data.demoCode) {
+          setDemoCode(data.demoCode);
+          setOtp(data.demoCode); // auto-fill in demo mode for a smooth flow
+        } else {
+          setDemoCode(null);
+          setOtp('');
+        }
         setMode('verify-otp');
         setResendTimer(60);
       } else {
@@ -950,6 +959,25 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
               </div>
             )}
             
+            {/* Demo mode banner (SMS provider not configured) */}
+            {demoCode && (
+              <div className="flex items-start gap-2 text-amber-700 bg-amber-50 border border-amber-200 p-3 rounded-xl">
+                <Info className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                <span className="text-sm flex-1">
+                  Mode démo : SMS non configuré — votre code est{' '}
+                  <span className="font-mono font-bold">{demoCode}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setDemoCode(null)}
+                  className="text-amber-700 font-bold leading-none"
+                  aria-label="Masquer le code de démo"
+                >
+                  ×
+                </button>
+              </div>
+            )}
+
             {/* OTP Input */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-[#757575]">Code de vérification (6 chiffres)</label>
@@ -957,16 +985,13 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9E9E9E]" />
                 <Input
                   type="text"
-                  placeholder="123456"
+                  placeholder="······"
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   className="pl-10 h-14 bg-[#F5F5F5] border-0 rounded-xl text-center text-2xl tracking-widest"
                   maxLength={6}
                 />
               </div>
-              <p className="text-xs text-[#9E9E9E] text-center">
-                Code de test: <span className="font-mono font-bold">123456</span>
-              </p>
             </div>
 
             <Button

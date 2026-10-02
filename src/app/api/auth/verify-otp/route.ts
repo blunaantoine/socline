@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { generateToken, setAuthCookie } from '@/lib/auth';
+import { verifyOtp, normalizeOtpPhone } from '@/lib/otp';
 
 // POST /api/auth/verify-otp - Verify OTP and login/register
 export async function POST(request: NextRequest) {
@@ -15,26 +16,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // In production, verify OTP from Redis/SMS service
-    // For demo, accept any 6-digit OTP
-    if (otp.length !== 6) {
+    // Real verification against the hashed OTP stored in DB
+    // (expiry, max 5 attempts, one-time use — see src/lib/otp.ts).
+    const otpResult = await verifyOtp(phone, otp);
+    if (!otpResult.ok) {
       return NextResponse.json(
-        { success: false, error: 'Invalid OTP' },
-        { status: 400 }
+        { success: false, error: otpResult.error },
+        { status: otpResult.status ?? 400 }
       );
     }
 
+    // Same normalization as send-otp so the user lookup key matches.
+    const cleanPhone = normalizeOtpPhone(phone);
+
     // Check if user exists
     let user = await db.user.findUnique({
-      where: { phone },
+      where: { phone: cleanPhone },
     });
 
     if (!user) {
       // Register new user
       user = await db.user.create({
         data: {
-          phone,
-          name: name || `User_${phone.slice(-4)}`,
+          phone: cleanPhone,
+          name: name || `User_${cleanPhone.slice(-4)}`,
           role: role || 'CLIENT',
         },
       });
