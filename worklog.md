@@ -90,3 +90,13 @@ Stage Summary:
 - Les stats du profil client sont réelles (lavages terminés + total dépensé en F, calculés depuis GET /api/orders?userId=) au lieu de "0" en dur.
 - "Utiliser ma position actuelle" est fonctionnel : géoloc navigateur → coordonnées envoyées à POST /api/orders + label "Position actuelle" + toast d'erreur en cas de refus.
 - Aucun changement backend ; aucun commit ; lint OK ; serveur compile sans erreur.
+
+## Session complète — Récapitulatif final
+
+| Commit | Amélioration | Vérification |
+|---|---|---|
+| `d65f33b` | 🔐 Auth: JWT signé (HS256/7d) pour cookie session + requireAdmin sur 9 handlers (admin/orders, admin/washers, admin/subscriptions[/usages]) + /api/auth/me via session | Tokens forgés rejetés 401; admin OK avec cookie |
+| `6cca45f` | 🐛 Fixs: validate abonnement (mismatch Washer.id/User.id), $transaction abonnement (validations avant débit), crédit laveur à COMPLETED (totalEarnings += total-commission, anti double-crédit), seed ne reset plus les gains, orders/[id] migré Promise params Next 16 | Order 1500F → laveur +1275F (20000→21275, jobs 0→1) |
+| `10d532b` | ✨ UX: 6 alert()→toasts sonner, redirection tracking après commande (PENDING inclus), section laveurs dispo réelle + skeletons, stats profil réelles, géoloc fonctionnelle, "Voir tout" toggle | Agent Browser: login→booking→promo WELCOME20 (−500F)→commande→tracking; toast géoloc OK |
+
+Secrets JWT ajoutés au `.env` (JWT_SECRET, JWT_REFRESH_SECRET — ne jamais commit de vrais secrets en prod).
