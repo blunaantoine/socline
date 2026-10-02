@@ -1,17 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useOrdersStore } from '@/store';
+import { useState, useEffect, useRef } from 'react';
+import { useOrdersStore, useAuthStore } from '@/store';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Progress } from '@/components/ui/progress';
-import { 
-  MapPin, Phone, MessageCircle, Clock, Star, 
-  CheckCircle, Navigation, AlertCircle, X, ArrowLeft, Home
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import {
+  MapPin, Phone, MessageCircle, Clock, Star,
+  CheckCircle, Navigation, AlertCircle, X, ArrowLeft, Home, Loader2
 } from 'lucide-react';
 import type { Order, OrderStatus } from '@/types';
+import type { Socket } from 'socket.io-client';
+import { toast } from 'sonner';
 
 interface OrderTrackingProps {
   order: Order;
@@ -28,56 +29,163 @@ const STATUS_CONFIG: Record<OrderStatus, { label: string; color: string; icon: t
   CANCELLED: { label: 'Annulée', color: 'bg-red-100 text-red-800', icon: X, progress: 0 },
 };
 
+// Haversine distance in kilometers between two (lat, lng) points.
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371; // Earth radius in km
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+// Average city driving speed used for the ETA estimate (km/h).
+const WASHER_SPEED_KMH = 25;
+
+// Format a timestamp as HH:MM (fr-FR).
+function formatTime(value: string | undefined): string {
+  if (!value) return '';
+  const date = new Date(value);
+  if (isNaN(date.getTime())) return '';
+  return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+}
+
+// Initials from a full name (e.g. "Mamadou Diop" → "MD").
+function initials(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .map(part => part.charAt(0).toUpperCase())
+    .slice(0, 2)
+    .join('') || '?';
+}
+
 export function OrderTracking({ order, onBack }: OrderTrackingProps) {
   const { updateOrder, setCurrentOrder } = useOrdersStore();
-  const [estimatedTime, setEstimatedTime] = useState(12);
-  const [washerLocation, setWasherLocation] = useState({ lat: 14.692, lng: -17.445 });
+  const [washerLocation, setWasherLocation] = useState<{ lat: number; lng: number; at: string } | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const socketRef = useRef<Socket | null>(null);
 
-  // Simulate real-time updates
+  // ---------------------------------------------------------------------
+  // Realtime: socket connected to the authenticated mini-service.
+  // The API emits 'order:updated' (status transitions) and the location
+  // endpoint emits 'washer-location' (washer GPS) into the order room.
+  // ---------------------------------------------------------------------
   useEffect(() => {
-    const interval = setInterval(() => {
-      // Simulate washer movement
-      if (order.status === 'EN_ROUTE') {
-        setWasherLocation(prev => ({
-          lat: prev.lat + 0.0001,
-          lng: prev.lng + 0.0001,
-        }));
-        setEstimatedTime(prev => Math.max(1, prev - 1));
+    let cancelled = false;
+
+    const initSocket = async () => {
+      const token = useAuthStore.getState().token;
+      if (!token) {
+        console.warn('[Tracking] No auth token — realtime disabled, polling only');
+        return;
       }
-    }, 3000);
+
+      const { io } = await import('socket.io-client');
+      if (cancelled) return;
+
+      const socket = io('/?XTransformPort=3003', {
+        transports: ['websocket'],
+        reconnection: true,
+        auth: { token },
+      });
+      socketRef.current = socket;
+
+      socket.on('connect', () => {
+        if (cancelled) return;
+        socket.emit('join-order-tracking', order.id);
+      });
+
+      socket.on('order:updated', (payload: Order) => {
+        if (cancelled || !payload || payload.id !== order.id) return;
+        setCurrentOrder(payload);
+        updateOrder(payload);
+      });
+
+      socket.on('washer-location', (payload: { orderId: string; latitude: number; longitude: number; timestamp: string }) => {
+        if (cancelled || !payload || payload.orderId !== order.id) return;
+        setWasherLocation({ lat: payload.latitude, lng: payload.longitude, at: payload.timestamp });
+      });
+    };
+
+    initSocket();
+
+    return () => {
+      cancelled = true;
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+    };
+  }, [order.id, setCurrentOrder, updateOrder]);
+
+  // ---------------------------------------------------------------------
+  // Fallback polling (safety net if the socket drops): light 15s GET that
+  // reconciles the status with the DB.
+  // ---------------------------------------------------------------------
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/orders/${order.id}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data?.success && data.order && data.order.status !== order.status) {
+          setCurrentOrder(data.order);
+          updateOrder(data.order);
+        }
+      } catch {
+        // Network hiccup — next tick will retry.
+      }
+    }, 15000);
 
     return () => clearInterval(interval);
-  }, [order.status]);
-
-  // Simulate status progression
-  useEffect(() => {
-    const timers: NodeJS.Timeout[] = [];
-    
-    if (order.status === 'PENDING') {
-      timers.push(setTimeout(() => updateOrder({ id: order.id, status: 'ACCEPTED' }), 3000));
-    }
-    if (order.status === 'ACCEPTED') {
-      timers.push(setTimeout(() => updateOrder({ id: order.id, status: 'EN_ROUTE' }), 5000));
-    }
-    if (order.status === 'EN_ROUTE') {
-      timers.push(setTimeout(() => updateOrder({ id: order.id, status: 'ARRIVED' }), 15000));
-    }
-    if (order.status === 'ARRIVED') {
-      timers.push(setTimeout(() => updateOrder({ id: order.id, status: 'IN_PROGRESS' }), 5000));
-    }
-    if (order.status === 'IN_PROGRESS') {
-      timers.push(setTimeout(() => updateOrder({ id: order.id, status: 'COMPLETED' }), 30000));
-    }
-
-    return () => timers.forEach(t => clearTimeout(t));
-  }, [order.status, order.id, updateOrder]);
+  }, [order.id, order.status, setCurrentOrder, updateOrder]);
 
   const config = STATUS_CONFIG[order.status];
   const StatusIcon = config.icon;
 
+  // Cancel the order (client, while PENDING/ACCEPTED).
+  const handleCancel = async () => {
+    if (isCancelling) return;
+    setIsCancelling(true);
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: order.id, status: 'CANCELLED' }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.success) {
+        toast.error(data?.error || 'Impossible d\u2019annuler la commande');
+        return;
+      }
+      // The socket / polling reconciles the UI from the server response.
+      if (data.order) {
+        setCurrentOrder(data.order);
+        updateOrder(data.order);
+      }
+    } catch {
+      toast.error('Erreur réseau lors de l\u2019annulation');
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
   if (order.status === 'COMPLETED') {
     return <OrderCompleted order={order} onBack={onBack} onGoHome={() => setCurrentOrder(null)} />;
   }
+
+  // ETA: only with a real washer position AND order coordinates.
+  const etaMinutes =
+    washerLocation && order.latitude != null && order.longitude != null
+      ? Math.max(1, Math.round(
+          haversineKm(washerLocation.lat, washerLocation.lng, order.latitude, order.longitude) / WASHER_SPEED_KMH * 60
+        ))
+      : null;
+
+  const washer = order.washer;
 
   return (
     <div className="flex-1 flex flex-col bg-[#FAFAFA]">
@@ -107,7 +215,7 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
           <p className="text-xs text-[#757575]">{order.orderNumber}</p>
         </div>
       </div>
-      
+
       {/* Map Placeholder */}
       <div className="h-48 bg-gradient-to-br from-blue-100 to-green-100 relative flex-shrink-0">
         <div className="absolute inset-0 flex items-center justify-center">
@@ -116,24 +224,70 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
             <p className="text-gray-600">Carte en temps réel</p>
           </div>
         </div>
-        
+
         {/* Status Badge */}
         <div className="absolute top-4 left-4 right-4">
           <Badge className={`${config.color} text-base px-4 py-2`}>
             <StatusIcon className="w-4 h-4 mr-2" />
             {config.label}
           </Badge>
+          {/* Real order timestamps (subtle) */}
+          {(order.acceptedAt || order.startedAt || order.completedAt) && (
+            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+              {order.acceptedAt && (
+                <span className="text-[11px] bg-white/80 rounded-full px-2 py-0.5 text-[#616161]">
+                  Acceptée à {formatTime(order.acceptedAt)}
+                </span>
+              )}
+              {order.startedAt && (
+                <span className="text-[11px] bg-white/80 rounded-full px-2 py-0.5 text-[#616161]">
+                  Départ à {formatTime(order.startedAt)}
+                </span>
+              )}
+              {order.completedAt && (
+                <span className="text-[11px] bg-white/80 rounded-full px-2 py-0.5 text-[#616161]">
+                  Terminée à {formatTime(order.completedAt)}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Estimated Time */}
-        {order.status === 'EN_ROUTE' && (
+        {/* Real washer position info */}
+        {order.status === 'EN_ROUTE' && !washerLocation && (
           <div className="absolute bottom-4 left-4 right-4 bg-white rounded-lg p-3 shadow-lg">
+            <div className="flex items-center gap-2">
+              <Loader2 className="w-4 h-4 text-blue-600 animate-spin flex-shrink-0" />
+              <span className="text-sm text-[#616161]">En attente de la position du laveur…</span>
+            </div>
+          </div>
+        )}
+
+        {washerLocation && (
+          <div className="absolute bottom-4 left-4 right-4 bg-white rounded-lg p-3 shadow-lg">
+            <div className="flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-green-600 flex-shrink-0" />
+              <div className="text-sm">
+                <span className="font-medium text-[#212121]">
+                  Position du laveur mise à jour à {formatTime(washerLocation.at)}
+                </span>
+                <span className="block text-xs text-[#757575]">
+                  {washerLocation.lat.toFixed(5)}, {washerLocation.lng.toFixed(5)}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Estimated arrival from the real washer position */}
+        {order.status === 'EN_ROUTE' && etaMinutes !== null && (
+          <div className="absolute bottom-20 left-4 right-4 bg-white rounded-lg p-3 shadow-lg border border-blue-100">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Clock className="w-5 h-5 text-blue-600" />
                 <span className="font-medium">Arrivée estimée</span>
               </div>
-              <span className="text-xl font-bold text-blue-600">{estimatedTime} min</span>
+              <span className="text-xl font-bold text-blue-600">~{etaMinutes} min</span>
             </div>
           </div>
         )}
@@ -152,11 +306,11 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
             const statusOrder = ['PENDING', 'ACCEPTED', 'EN_ROUTE', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED'];
             const currentIndex = statusOrder.indexOf(order.status);
             const itemIndex = statusOrder.indexOf(item.status);
-            const isActive = order.status === item.status || 
+            const isActive = order.status === item.status ||
               (order.status === 'COMPLETED' && item.status === 'IN_PROGRESS');
             const isPast = itemIndex < currentIndex || order.status === 'COMPLETED';
             const Icon = item.icon;
-            
+
             return (
               <div key={item.status} className="flex items-center flex-1">
                 <div className="flex flex-col items-center">
@@ -205,30 +359,30 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
           </CardContent>
         </Card>
 
-        {/* Washer Info */}
-        {order.status !== 'PENDING' && (
+        {/* Washer Info — real assigned washer (hidden while none assigned) */}
+        {order.status !== 'PENDING' && washer && (
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-4">
                 <Avatar className="w-14 h-14">
                   <AvatarFallback className="bg-gradient-to-br from-blue-400 to-green-400 text-white text-lg">
-                    M
+                    {initials(washer.user?.name || 'Laveur')}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
-                  <h3 className="font-semibold">Mamadou Diop</h3>
+                  <h3 className="font-semibold">{washer.user?.name || 'Laveur Socline'}</h3>
                   <div className="flex items-center gap-1">
                     <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                    <span className="text-sm">4.9</span>
+                    <span className="text-sm">{washer.rating != null ? washer.rating.toFixed(1) : '—'}</span>
                     <span className="text-gray-300 mx-1">•</span>
-                    <span className="text-sm text-gray-500">156 lavages</span>
+                    <span className="text-sm text-gray-500">{washer.completedJobs ?? 0} lavages</span>
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button size="icon" variant="outline">
+                  <Button size="icon" variant="outline" aria-label="Appeler le laveur">
                     <Phone className="w-4 h-4" />
                   </Button>
-                  <Button size="icon" variant="outline">
+                  <Button size="icon" variant="outline" aria-label="Ouvrir la discussion">
                     <MessageCircle className="w-4 h-4" />
                   </Button>
                 </div>
@@ -275,11 +429,17 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
         )}
       </div>
 
-      {/* Cancel Button */}
+      {/* Cancel Button — works against PATCH /api/orders (client cancel) */}
       {['PENDING', 'ACCEPTED'].includes(order.status) && (
         <div className="px-4 pb-4">
-          <Button variant="outline" className="w-full h-12 border-red-200 text-red-600 hover:bg-red-50">
-            Annuler la commande
+          <Button
+            variant="outline"
+            className="w-full h-12 border-red-200 text-red-600 hover:bg-red-50"
+            onClick={handleCancel}
+            disabled={isCancelling}
+          >
+            {isCancelling && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            {isCancelling ? 'Annulation...' : 'Annuler la commande'}
           </Button>
         </div>
       )}
@@ -363,7 +523,7 @@ function OrderCompleted({ order, onBack, onGoHome }: { order: Order; onBack?: ()
               <span>Retour</span>
             </button>
           )}
-          
+
           {/* Success Card */}
           <Card className="border-0 shadow-lg">
             <CardContent className="p-6 text-center">
@@ -387,7 +547,7 @@ function OrderCompleted({ order, onBack, onGoHome }: { order: Order; onBack?: ()
           <Card className="border-0 shadow-lg">
             <CardContent className="p-4">
               <h3 className="font-semibold mb-3 text-center text-[#212121]">Notez votre expérience</h3>
-              
+
               <div className="flex justify-center gap-2 mb-4">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button

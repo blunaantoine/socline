@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuthStore, useOrdersStore } from '@/store';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { HideableBalanceDark, HideableBalanceLight } from '@/components/ui/hideable-balance';
 import type { Order, OrderStatus, Conversation, User, Washer as WasherType } from '@/types';
+import type { Socket } from 'socket.io-client';
 import { ChatView } from '@/components/chat/ChatView';
 import { toast } from 'sonner';
 import { parseJsonResponse } from '@/lib/json-helper';
@@ -47,6 +48,7 @@ export function WasherApp() {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isRefreshingBalance, setIsRefreshingBalance] = useState(false);
   const [profileSection, setProfileSection] = useState<string | null>(null);
+  const socketRef = useRef<Socket | null>(null);
 
   // Fetch conversation for current order
   const fetchConversation = useCallback(async (orderId: string) => {
@@ -166,6 +168,149 @@ export function WasherApp() {
     
     return () => clearInterval(interval);
   }, [isAvailable, fetchPendingOrders, fetchMyOrders, fetchWasherData]);
+
+  // ---------------------------------------------------------------------
+  // Realtime job list refresh: authenticated socket on the mini-service.
+  // The API emits 'order:updated' on every validated status transition —
+  // the washer app re-fetches its pending + assigned orders lists.
+  // ---------------------------------------------------------------------
+  const refreshListsRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    refreshListsRef.current = () => {
+      fetchPendingOrders();
+      fetchMyOrders();
+    };
+  }, [fetchPendingOrders, fetchMyOrders]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const initSocket = async () => {
+      const token = useAuthStore.getState().token;
+      if (!token) {
+        console.warn('[WasherApp] No auth token — realtime refresh disabled');
+        return;
+      }
+
+      const { io } = await import('socket.io-client');
+      if (cancelled) return;
+
+      const socket = io('/?XTransformPort=3003', {
+        transports: ['websocket'],
+        reconnection: true,
+        auth: { token },
+      });
+      socketRef.current = socket;
+
+      socket.on('connect', () => {
+        if (cancelled) return;
+        // Register in the personal user room (identity enforced from the JWT).
+        socket.emit('join');
+      });
+
+      socket.on('order:updated', () => {
+        if (cancelled) return;
+        refreshListsRef.current();
+      });
+    };
+
+    initSocket();
+
+    return () => {
+      cancelled = true;
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+    };
+  }, []);
+
+  // ---------------------------------------------------------------------
+  // Live GPS sharing: while the washer has an assigned order EN_ROUTE or
+  // ARRIVED, stream the device position to /api/orders/[id]/location
+  // (throttled to at most 1 push / 10 s, immediate first fix).
+  // ---------------------------------------------------------------------
+  const lastLocationSentRef = useRef(0);
+  const [locationSharing, setLocationSharing] = useState(false);
+
+  useEffect(() => {
+    const orderId = currentOrder?.id;
+    const status = currentOrder?.status;
+    const shouldShare = !!orderId && (status === 'EN_ROUTE' || status === 'ARRIVED');
+
+    if (!shouldShare || typeof navigator === 'undefined' || !navigator.geolocation) {
+      setLocationSharing(false);
+      if (shouldShare) {
+        console.warn('[WasherApp] Geolocation unavailable — position sharing disabled');
+      }
+      return;
+    }
+
+    let watchId: number | null = null;
+    let stopped = false;
+    let failures = 0;
+
+    const stopSharing = () => {
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+      }
+      setLocationSharing(false);
+    };
+
+    const postLocation = async (latitude: number, longitude: number) => {
+      try {
+        const res = await fetch(`/api/orders/${orderId}/location`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ latitude, longitude }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        failures = 0;
+      } catch (error) {
+        // Silent (no toast spam): only warn in the console.
+        failures += 1;
+        console.warn('[WasherApp] Location push failed:', error);
+        if (failures >= 3) stopSharing();
+      }
+    };
+
+    const sendIfDue = (latitude: number, longitude: number, force = false) => {
+      if (stopped) return;
+      const now = Date.now();
+      if (!force && now - lastLocationSentRef.current < 10000) return;
+      lastLocationSentRef.current = now;
+      postLocation(latitude, longitude);
+    };
+
+    const onGeoError = (error: GeolocationPositionError) => {
+      if (stopped) return;
+      failures += 1;
+      console.warn('[WasherApp] Geolocation error:', error.message);
+      if (failures >= 3) stopSharing();
+    };
+
+    setLocationSharing(true);
+    watchId = navigator.geolocation.watchPosition(
+      (position) => sendIfDue(position.coords.latitude, position.coords.longitude),
+      onGeoError,
+      { enableHighAccuracy: true }
+    );
+
+    // Send one fix immediately when sharing starts (bypasses the throttle).
+    navigator.geolocation.getCurrentPosition(
+      (position) => sendIfDue(position.coords.latitude, position.coords.longitude, true),
+      (error) => console.warn('[WasherApp] Initial geolocation error:', error.message),
+      { enableHighAccuracy: true }
+    );
+
+    return () => {
+      stopped = true;
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+    };
+  }, [currentOrder?.id, currentOrder?.status]);
 
   // Accept order
   const handleAcceptOrder = async (order: Order) => {
@@ -350,6 +495,7 @@ export function WasherApp() {
             onOpenChat={handleOpenChat}
             acceptedOrders={orders.filter(o => ['ACCEPTED', 'EN_ROUTE', 'ARRIVED', 'IN_PROGRESS'].includes(o.status))}
             onSelectOrder={setCurrentOrder}
+            locationSharing={locationSharing}
           />
         )}
         {activeTab === 'history' && (
@@ -704,13 +850,14 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
 }
 
 // Active Order View
-function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat, acceptedOrders, onSelectOrder }: { 
+function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat, acceptedOrders, onSelectOrder, locationSharing }: { 
   order: Order | null; 
   onUpdateStatus: (status: OrderStatus) => void;
   onBack: () => void;
   onOpenChat: (order: Order) => void;
   acceptedOrders: Order[];
   onSelectOrder: (order: Order | null) => void;
+  locationSharing?: boolean;
 }) {
 
   const steps = [
@@ -889,6 +1036,17 @@ function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat, acceptedOr
           </div>
         </CardContent>
       </Card>
+
+      {/* Live GPS sharing indicator */}
+      {locationSharing && (
+        <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-full px-3 py-1.5 w-fit">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#4CAF50] opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-[#4CAF50]"></span>
+          </span>
+          <span className="text-xs font-medium text-[#2E7D32]">Position partagée</span>
+        </div>
+      )}
 
       {/* Action Buttons */}
       <div className="space-y-3">

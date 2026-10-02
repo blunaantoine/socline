@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
 import { validatePromotionCode } from '@/lib/promo';
 import { computePartnerLevel, commissionForLevel, DEFAULT_PARTNER_LEVEL } from '@/lib/washer-level';
+import { emitRealtime } from '@/lib/realtime';
 
 // GET /api/orders - Get orders (for washer or client)
 // Query params:
@@ -518,6 +519,17 @@ export async function PATCH(request: NextRequest) {
         });
       }
     }
+
+    // Best-effort realtime push (client tracking screen + washer app).
+    emitRealtime(
+      [
+        'order:' + order.id,
+        'user:' + order.clientId,
+        ...(order.washer?.userId ? ['user:' + order.washer.userId] : []),
+      ],
+      'order:updated',
+      order
+    );
 
     return NextResponse.json({ success: true, order });
   } catch (error) {
