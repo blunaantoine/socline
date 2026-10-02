@@ -89,6 +89,24 @@ export async function POST(request: NextRequest) {
         // Do not leak provider errors to the client; the OTP stays verifiable.
         console.error(`[OTP] SMS send failed for ${cleanPhone}:`, result.error);
       }
+
+      // Optional demo fallback (SMS_DEMO_FALLBACK=true): when a provider IS
+      // configured but the send fails (no credit, unreachable number…), expose
+      // the code in the UI instead of blocking the whole registration flow.
+      // MUST be disabled ("false" / unset) in production.
+      const demoFallback =
+        (process.env.SMS_DEMO_FALLBACK || '').trim().toLowerCase() === 'true';
+      if (!result.sent && demoFallback) {
+        return NextResponse.json({
+          success: true,
+          message: 'SMS indisponible pour le moment — mode démo (code affiché pour le test).',
+          expiresIn: 300,
+          demoMode: true,
+          demoCode: code,
+          smsSent: false,
+        });
+      }
+
       return NextResponse.json({
         success: true,
         message: 'Un code de vérification a été envoyé par SMS.',

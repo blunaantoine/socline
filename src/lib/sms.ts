@@ -6,6 +6,9 @@
 //   SMS_USERNAME    — Africa's Talking username / Twilio Account SID
 //   SMS_SENDER_ID   — sender name (e.g. SOCLINE) / Twilio From
 //   SMS_WEBHOOK_URL — generic HTTP gateway endpoint (provider=http)
+//   SMS_DEMO_FALLBACK — "true": when a provider is configured but the send
+//     fails, the OTP is exposed in the UI (demo) instead of blocking the flow.
+//     Keep unset/false in production.
 //
 // When no provider is configured the app runs in "SMS demo mode": the caller
 // (send-otp) decides what to do with that (shows the code in the UI, test only).
