@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireAuth } from '@/lib/auth';
+import { validatePromotionCode } from '@/lib/promo';
 import { computePartnerLevel, commissionForLevel, DEFAULT_PARTNER_LEVEL } from '@/lib/washer-level';
 
 // GET /api/orders - Get orders (for washer or client)
@@ -11,11 +13,23 @@ import { computePartnerLevel, commissionForLevel, DEFAULT_PARTNER_LEVEL } from '
 //                         (orders where Order.stationId or Service.stationId matches)
 export async function GET(request: NextRequest) {
   try {
+    // Identity ALWAYS comes from the signed session cookie — the query
+    // params can no longer be used to read someone else's orders.
+    const auth = await requireAuth(request);
+    if (!auth.authorized || !auth.user) {
+      return auth.response!;
+    }
+    const session = auth.user;
+
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
+    const requestedUserId = searchParams.get('userId');
     const role = searchParams.get('role');
     const status = searchParams.get('status');
     const stationId = searchParams.get('stationId');
+
+    // Admins may query on behalf of any user (admin tooling);
+    // everyone else is scoped to their own id.
+    const userId = session.role === 'ADMIN' && requestedUserId ? requestedUserId : session.id;
 
     // Common include for all queries
     const baseInclude = {
@@ -33,8 +47,14 @@ export async function GET(request: NextRequest) {
     let orders;
 
     // Station-scoped query: list all orders linked to a station (via Order.stationId
-    // or via the service's stationId). This is used by STATION_OWNERs.
+    // or via the service's stationId). Restricted to the station owner or an admin.
     if (stationId) {
+      if (session.role !== 'ADMIN') {
+        const station = await db.station.findUnique({ where: { id: stationId } });
+        if (!station || station.ownerId !== session.id) {
+          return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
+        }
+      }
       orders = await db.order.findMany({
         where: {
           OR: [
@@ -46,10 +66,16 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: 'desc' },
       });
     } else if (role === 'WASHER') {
-      if (!userId) {
-        return NextResponse.json({ error: 'userId required' }, { status: 400 });
+      // Resolve the Washer RECORD from the session user. Order.washerId
+      // stores the Washer record id — querying with the User id used to
+      // silently return an empty list.
+      const washer = await db.washer.findFirst({
+        where: { OR: [{ id: userId }, { userId }] },
+      });
+      if (!washer) {
+        return NextResponse.json({ success: true, orders: [] });
       }
-      // Get orders assigned to washer or pending orders
+      // Pending orders are a shared job pool visible to any washer.
       if (status === 'PENDING') {
         orders = await db.order.findMany({
           where: { status: 'PENDING' },
@@ -58,16 +84,13 @@ export async function GET(request: NextRequest) {
         });
       } else {
         orders = await db.order.findMany({
-          where: { washerId: userId },
+          where: { washerId: washer.id },
           include: baseInclude,
           orderBy: { createdAt: 'desc' },
         });
       }
     } else {
-      if (!userId) {
-        return NextResponse.json({ error: 'userId required' }, { status: 400 });
-      }
-      // Get client's orders
+      // Client's own orders.
       orders = await db.order.findMany({
         where: { clientId: userId },
         include: {
@@ -98,19 +121,28 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/orders - Create new order
+// SECURITY + PRICING:
+//   - clientId always comes from the session cookie (body clientId ignored)
+//   - totalPrice / discount / commission are ALWAYS recomputed server-side
+//     from the service price and a server-validated promo code — values sent
+//     by the client are never trusted.
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (!auth.authorized || !auth.user) {
+      return auth.response!;
+    }
+    const clientId = auth.user.id;
+
     const body = await request.json();
-    const { 
-      clientId, serviceId, isHomeService, address, 
-      latitude, longitude, totalPrice, scheduledAt,
-      promoCode, discount, useSubscription, stationId
+    const {
+      serviceId, isHomeService, address,
+      latitude, longitude, scheduledAt,
+      promoCode, useSubscription, stationId
     } = body;
+    // NOTE: body clientId / totalPrice / discount are deliberately ignored.
 
     // Validate required fields
-    if (!clientId) {
-      return NextResponse.json({ error: 'Utilisateur non connecté' }, { status: 401 });
-    }
     if (!serviceId) {
       return NextResponse.json({ error: 'Service non sélectionné' }, { status: 400 });
     }
@@ -118,7 +150,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Adresse requise' }, { status: 400 });
     }
 
-    // Verify client exists
+    // Verify client exists (from the session)
     const client = await db.user.findUnique({
       where: { id: clientId },
     });
@@ -166,6 +198,29 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // -----------------------------------------------------------------
+    // SERVER-SIDE PRICING — the client never decides what it pays.
+    // -----------------------------------------------------------------
+    const basePrice = service.price;
+    let discount = 0;
+    let normalizedPromoCode: string | null = null;
+
+    if (!useSubscription) {
+      // Recompute the promo discount server-side (validity, usage limits,
+      // per-user limit, min amount) — the client-sent discount is ignored.
+      if (promoCode) {
+        const promoResult = await validatePromotionCode(promoCode, clientId, basePrice);
+        if (!promoResult.valid) {
+          return NextResponse.json({ error: promoResult.error }, { status: 400 });
+        }
+        discount = promoResult.discountAmount;
+        normalizedPromoCode = promoResult.promotion.code;
+      }
+    }
+
+    // Final amount the client has to pay (subscription washes are free).
+    const totalPrice = useSubscription ? 0 : Math.max(0, basePrice - discount);
+
     // Generate order number
     const orderNumber = `WG${Date.now().toString().slice(-8)}`;
 
@@ -180,16 +235,16 @@ export async function POST(request: NextRequest) {
         address,
         latitude,
         longitude,
-        basePrice: service.price,
-        discount: useSubscription ? service.price : (discount ?? 0), // Full discount for subscription
-        promoCode: useSubscription ? null : (promoCode ?? null),
-        totalPrice: useSubscription ? 0 : (totalPrice ?? service.price), // Free for subscription
+        basePrice,
+        discount: useSubscription ? service.price : discount, // Full discount for subscription
+        promoCode: useSubscription ? null : normalizedPromoCode,
+        totalPrice,
         commission: useSubscription
           ? 0
           // Default commission at level 1 (Contrat de Partenariat, Article 5 :
           // part du Partenaire 60 %). Recalculated at ACCEPTED based on the
           // washer's actual level (see PATCH below).
-          : commissionForLevel(DEFAULT_PARTNER_LEVEL, totalPrice ?? service.price),
+          : commissionForLevel(DEFAULT_PARTNER_LEVEL, totalPrice),
         status: 'PENDING',
         scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
         isSubscriptionOrder: useSubscription || false,
@@ -217,9 +272,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Increment promo code usage if applied (only for non-subscription orders)
-    if (!useSubscription && promoCode) {
+    if (!useSubscription && normalizedPromoCode) {
       await db.promotion.updateMany({
-        where: { code: promoCode },
+        where: { code: normalizedPromoCode },
         data: { currentUses: { increment: 1 } },
       });
     }
@@ -239,46 +294,153 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PATCH /api/orders - Update order (accept, update status)
+// ---------------------------------------------------------------------------
+// Order status state machine (shared rules with PATCH /api/orders/[id]).
+// ---------------------------------------------------------------------------
+const ORDER_TRANSITIONS: Record<string, string[]> = {
+  PENDING: ['ACCEPTED', 'CANCELLED'],
+  ACCEPTED: ['EN_ROUTE', 'CANCELLED'],
+  EN_ROUTE: ['ARRIVED', 'CANCELLED'],
+  ARRIVED: ['IN_PROGRESS'],
+  IN_PROGRESS: ['COMPLETED'],
+  COMPLETED: [], // terminal
+  CANCELLED: [], // terminal
+};
+
+const VALID_ORDER_STATUSES = Object.keys(ORDER_TRANSITIONS);
+
+// PATCH /api/orders - Update order status (accept, progress, cancel)
+// SECURITY + STATE MACHINE:
+//   - Identity always comes from the signed session cookie.
+//   - WASHER: may ACCEPT a PENDING order (self-assignment) and move orders
+//     already assigned to them forward; may cancel their own orders while
+//     ACCEPTED/EN_ROUTE.
+//   - CLIENT: may only CANCEL their own order, and only while PENDING/ACCEPTED.
+//   - ADMIN: any (valid) transition on any order.
+//   - Repeat PATCH with the SAME status is idempotent (no side effects).
 export async function PATCH(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (!auth.authorized || !auth.user) {
+      return auth.response!;
+    }
+    const session = auth.user;
+
     const body = await request.json();
-    const { orderId, status, washerId } = body;
+    const { orderId, status, washerId, cancelReason } = body;
 
     if (!orderId) {
       return NextResponse.json({ error: 'orderId requis' }, { status: 400 });
     }
-
-    const updateData: any = { status };
-    
-    // If washerId is provided, find the actual Washer record
-    if (washerId) {
-      // Check if it's a userId or a washerId
-      const washer = await db.washer.findFirst({
-        where: { 
-          OR: [
-            { id: washerId },
-            { userId: washerId }
-          ]
-        }
-      });
-      
-      if (!washer) {
-        return NextResponse.json({ error: 'Laveur non trouvé' }, { status: 400 });
-      }
-      
-      updateData.washerId = washer.id;
+    if (!status || !VALID_ORDER_STATUSES.includes(status)) {
+      return NextResponse.json({ error: 'Statut invalide' }, { status: 400 });
     }
 
-    // Fetch the current order state (previous status + pricing)
-    // needed for the COMPLETED washer credit logic
+    // Load the order with the relations needed for authorization, the
+    // business logic and the realtime payload.
     const existingOrder = await db.order.findUnique({
       where: { id: orderId },
-      select: { id: true, status: true, totalPrice: true, commission: true, washerId: true },
+      include: {
+        client: { select: { id: true, name: true, phone: true } },
+        washer: { include: { user: { select: { id: true, name: true, phone: true } } } },
+        service: true,
+      },
     });
 
     if (!existingOrder) {
       return NextResponse.json({ error: 'Commande non trouvée' }, { status: 404 });
+    }
+
+    // -----------------------------------------------------------------
+    // Authorization per role
+    // -----------------------------------------------------------------
+    let assignWasherId: string | null = null; // set when a washer accepts a PENDING order
+    let resolvedCancelReason: string | null = null;
+
+    if (session.role === 'WASHER') {
+      // Order.washerId stores the Washer RECORD id — resolve the session user
+      // to their washer record (id or userId are both accepted).
+      const washer = await db.washer.findFirst({
+        where: { OR: [{ id: session.id }, { userId: session.id }] },
+      });
+      if (!washer) {
+        return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
+      }
+
+      const isOwnOrder = existingOrder.washerId === washer.id;
+      const isSelfAssign =
+        status === 'ACCEPTED' && existingOrder.status === 'PENDING' && !existingOrder.washerId;
+      const isOwnCancel =
+        status === 'CANCELLED' && isOwnOrder && ['ACCEPTED', 'EN_ROUTE'].includes(existingOrder.status);
+
+      if (isSelfAssign) {
+        // The washer accepts a PENDING order → assign themselves.
+        // Any body washerId is IGNORED (only admins may reassign).
+        assignWasherId = washer.id;
+      } else if (!isOwnOrder && !isOwnCancel) {
+        return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
+      }
+
+      if (status === 'CANCELLED') {
+        if (!isOwnCancel) {
+          return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
+        }
+        resolvedCancelReason = 'Annulée par le laveur';
+      }
+    } else if (session.role === 'CLIENT') {
+      const isOwnCancel =
+        existingOrder.clientId === session.id &&
+        status === 'CANCELLED' &&
+        ['PENDING', 'ACCEPTED'].includes(existingOrder.status);
+
+      if (!isOwnCancel) {
+        return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
+      }
+      resolvedCancelReason = cancelReason || 'Annulée par le client';
+    }
+    // ADMIN: any valid transition on any order (admin tooling).
+
+    // -----------------------------------------------------------------
+    // Idempotent repeat: same status → success with the unchanged order,
+    // without re-running any side effect (credit, timestamps, emit).
+    // -----------------------------------------------------------------
+    if (existingOrder.status === status) {
+      return NextResponse.json({ success: true, order: existingOrder });
+    }
+
+    // -----------------------------------------------------------------
+    // State machine
+    // -----------------------------------------------------------------
+    if (!ORDER_TRANSITIONS[existingOrder.status]?.includes(status)) {
+      return NextResponse.json({ error: 'Transition de statut invalide' }, { status: 400 });
+    }
+
+    // -----------------------------------------------------------------
+    // Build the update payload (timestamps per new status)
+    // -----------------------------------------------------------------
+    const updateData: any = { status };
+
+    if (status === 'ACCEPTED') updateData.acceptedAt = new Date();
+    if (status === 'EN_ROUTE') updateData.startedAt = new Date();
+    if (status === 'ARRIVED') updateData.arrivedAt = new Date();
+    // IN_PROGRESS: no dedicated wash-start field — arrivedAt is kept as-is.
+    if (status === 'COMPLETED') updateData.completedAt = new Date();
+    if (status === 'CANCELLED') {
+      updateData.cancelledAt = new Date();
+      const reason = resolvedCancelReason || (typeof cancelReason === 'string' ? cancelReason : null);
+      if (reason) updateData.cancelReason = reason;
+    }
+    if (assignWasherId) {
+      updateData.washerId = assignWasherId;
+    } else if (session.role === 'ADMIN' && washerId) {
+      // Admin may (re)assign a washer — resolve User id vs Washer record id.
+      const washerRecord = await db.washer.findFirst({
+        where: { OR: [{ id: washerId }, { userId: washerId }] },
+      });
+      if (!washerRecord) {
+        return NextResponse.json({ error: 'Laveur non trouvé' }, { status: 400 });
+      }
+      updateData.washerId = washerRecord.id;
     }
 
     // Contrat de Partenariat SOCLINE, Article 5 : when the order is accepted,

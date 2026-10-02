@@ -1,85 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { requireAuth } from '@/lib/auth';
+import { validatePromotionCode } from '@/lib/promo';
 
-// POST /api/promotions/validate - Validate a promo code
+// POST /api/promotions/validate - Validate a promo code (client-side preview).
+//
+// The FINAL discount is always recomputed server-side in POST /api/orders;
+// this endpoint is only a preview so the UI can display the discount before
+// the order is created. Identity comes from the session (body userId ignored)
+// and the same business rules as the order creation are enforced.
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAuth(request);
+    if (!auth.authorized || !auth.user) {
+      return auth.response!;
+    }
+
     const body = await request.json();
-    const { code, userId, orderAmount } = body;
+    const { code, orderAmount } = body;
 
     if (!code) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Code promo requis' 
+      return NextResponse.json({
+        success: false,
+        error: 'Code promo requis'
       }, { status: 400 });
     }
 
-    const now = new Date();
+    const result = await validatePromotionCode(code, auth.user.id, Number(orderAmount) || 0);
 
-    // Find the promotion
-    const promotion = await db.promotion.findFirst({
-      where: {
-        code: code.toUpperCase(),
-        isActive: true,
-        startDate: { lte: now },
-        endDate: { gte: now },
-      },
-    });
-
-    if (!promotion) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Code promo invalide ou expiré' 
+    if (!result.valid) {
+      return NextResponse.json({
+        success: false,
+        error: result.error,
       }, { status: 400 });
-    }
-
-    // Check max uses
-    if (promotion.maxUses && promotion.currentUses >= promotion.maxUses) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Ce code promo a atteint sa limite d\'utilisation' 
-      }, { status: 400 });
-    }
-
-    // Check min order amount
-    if (promotion.minOrderAmount && orderAmount < promotion.minOrderAmount) {
-      return NextResponse.json({ 
-        success: false, 
-        error: `Montant minimum: ${promotion.minOrderAmount.toLocaleString()} XOF` 
-      }, { status: 400 });
-    }
-
-    // Check max uses per user (would need to track user usage in production)
-    // For now, we'll just check if the user has used this code before
-    if (userId) {
-      // In a real app, you'd check a PromotionUsage table
-      // For now, we'll skip this check
-    }
-
-    // Calculate discount
-    let discountAmount = 0;
-    if (promotion.discountType === 'PERCENTAGE') {
-      discountAmount = (orderAmount * promotion.discountValue) / 100;
-    } else {
-      discountAmount = promotion.discountValue;
     }
 
     return NextResponse.json({
       success: true,
-      promotion: {
-        id: promotion.id,
-        name: promotion.name,
-        code: promotion.code,
-        discountType: promotion.discountType,
-        discountValue: promotion.discountValue,
-        discountAmount,
-      },
+      promotion: result.promotion,
     });
   } catch (error) {
     console.error('Validate promotion error:', error);
-    return NextResponse.json({ 
-      success: false, 
-      error: 'Erreur lors de la validation du code promo' 
+    return NextResponse.json({
+      success: false,
+      error: 'Erreur lors de la validation du code promo'
     }, { status: 500 });
   }
 }
