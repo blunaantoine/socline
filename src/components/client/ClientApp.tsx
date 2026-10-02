@@ -86,6 +86,8 @@ export function ClientApp() {
   const [presetIsHomeService, setPresetIsHomeService] = useState(true);
   const [presetStationId, setPresetStationId] = useState<string | null>(null);
   const [presetAddress, setPresetAddress] = useState('');
+  // Loading state for the Home "Laveurs disponibles" section
+  const [isLoadingWashers, setIsLoadingWashers] = useState(true);
 
   // Fetch wallet balance
   useEffect(() => {
@@ -166,6 +168,27 @@ export function ClientApp() {
     fetchStations();
   }, []);
 
+  // Fetch available washers ("Laveurs disponibles" section on Home)
+  useEffect(() => {
+    const fetchNearbyWashers = async () => {
+      try {
+        const res = await fetch('/api/washers?available=true');
+        if (!res.ok) return;
+        const contentType = res.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) return;
+        const data = await res.json();
+        if (data.success && Array.isArray(data.washers)) {
+          setNearbyWashers(data.washers);
+        }
+      } catch (error) {
+        console.error('Error fetching nearby washers:', error);
+      } finally {
+        setIsLoadingWashers(false);
+      }
+    };
+    fetchNearbyWashers();
+  }, [setNearbyWashers]);
+
   // Fetch active promotions
   // Note: Google Places nearby stations feature has been removed
   useEffect(() => {
@@ -233,8 +256,8 @@ export function ClientApp() {
     );
   }
 
-  // Show order tracking if active order
-  if (currentOrder && showTracking && ['ACCEPTED', 'EN_ROUTE', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED'].includes(currentOrder.status)) {
+  // Show order tracking if active order (PENDING included so a freshly created order is tracked right away)
+  if (currentOrder && showTracking && ['PENDING', 'ACCEPTED', 'EN_ROUTE', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED'].includes(currentOrder.status)) {
     return (
       <OrderTracking 
         order={currentOrder} 
@@ -298,6 +321,7 @@ export function ClientApp() {
             <HomeContent
               services={services}
               nearbyWashers={nearbyWashers}
+              washersLoading={isLoadingWashers}
               userLocation={userLocation}
               onStartOrder={() => {
                 // No preset - user picks service in booking flow
@@ -339,7 +363,8 @@ export function ClientApp() {
                 setPresetIsHomeService(true);
                 setPresetStationId(null);
                 setPresetAddress('');
-                setActiveTab('subscriptions');
+                setActiveTab('home');
+                setShowTracking(true);
               }}
               presetIsHomeService={presetIsHomeService}
               presetStationId={presetStationId}
@@ -384,12 +409,12 @@ export function ClientApp() {
 
 // Home Content - Android Material Design Style
 function HomeContent({
-  services, nearbyWashers, userLocation,
+  services, nearbyWashers, washersLoading, userLocation,
   onStartOrder, onStartOrderForService, searchQuery, setSearchQuery, 
   promotions, currentPromoIndex, setCurrentPromoIndex,
   serviceTab, setServiceTab, appStations,
 }: {
-  services: any[]; nearbyWashers: any[];
+  services: any[]; nearbyWashers: any[]; washersLoading?: boolean;
   userLocation: any;
   onStartOrder: () => void; 
   onStartOrderForService: (service: any, isHomeService: boolean, stationId?: string | null, address?: string) => void;
@@ -403,6 +428,9 @@ function HomeContent({
   const [selectedService, setSelectedService] = useState<any | null>(null);
   // Station clicked by the user - opens a modal showing its services
   const [selectedStation, setSelectedStation] = useState<any | null>(null);
+  // "Voir tout" toggle for the available washers section (carousel ↔ full grid)
+  const [showAllWashers, setShowAllWashers] = useState(false);
+  const availableWashers = nearbyWashers.filter((w) => w.isAvailable);
 
   // Helper to safely parse a station's images JSON string into an array
   const getStationImage = (station: any): string | null => {
@@ -856,26 +884,67 @@ function HomeContent({
       <section>
         <div className="flex justify-between items-center mb-3">
           <h3 className="text-base font-bold text-[#212121]">Laveurs disponibles</h3>
-          <button className="text-xs text-[#FF9800] font-medium">Voir tout</button>
+          {!washersLoading && availableWashers.length > 4 && (
+            <button
+              onClick={() => setShowAllWashers(!showAllWashers)}
+              className="text-xs text-[#FF9800] font-medium"
+            >
+              {showAllWashers ? 'Réduire' : 'Voir tout'}
+            </button>
+          )}
         </div>
-        <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4">
-          {nearbyWashers.filter(w => w.isAvailable).map((washer) => (
-            <div key={washer.id} className="flex-shrink-0 w-28 bg-white rounded-lg p-3 text-center shadow-sm">
-              <div className="relative w-12 h-12 mx-auto mb-2">
-                <div className="w-12 h-12 bg-[#FF9800] rounded-full flex items-center justify-center text-white font-bold">
-                  {washer.user.name?.charAt(0)}
-                </div>
-                <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 rounded-full border-2 border-white" />
+        {washersLoading ? (
+          <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex-shrink-0 w-28 bg-white rounded-lg p-3 text-center shadow-sm animate-pulse">
+                <div className="w-12 h-12 mx-auto mb-2 bg-[#EEEEEE] rounded-full" />
+                <div className="h-3 bg-[#EEEEEE] rounded w-16 mx-auto" />
+                <div className="h-3 bg-[#EEEEEE] rounded w-10 mx-auto mt-1.5" />
               </div>
-              <p className="text-xs font-medium text-[#212121] truncate">{washer.user.name}</p>
-              <div className="flex items-center justify-center gap-0.5 mt-1">
-                <Star className="w-3 h-3 text-[#FFC107] fill-[#FFC107]" />
-                <span className="text-xs text-[#757575]">{washer.rating.toFixed(1)}</span>
+            ))}
+          </div>
+        ) : showAllWashers ? (
+          <div className="grid grid-cols-4 gap-2">
+            {availableWashers.map((washer) => (
+              <WasherCard key={washer.id} washer={washer} />
+            ))}
+          </div>
+        ) : (
+          <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4">
+            {availableWashers.map((washer) => (
+              <div key={washer.id} className="flex-shrink-0 w-28">
+                <WasherCard washer={washer} />
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </section>
+    </div>
+  );
+}
+
+// Washer card used in the "Laveurs disponibles" section (carousel + expanded grid)
+function WasherCard({ washer }: { washer: any }) {
+  const name = washer.user?.name || 'Laveur';
+  const jobs = washer.completedJobs ?? 0;
+  return (
+    <div className="w-full bg-white rounded-lg p-3 text-center shadow-sm">
+      <div className="relative w-12 h-12 mx-auto mb-2">
+        {washer.user?.avatar ? (
+          <img src={washer.user.avatar} alt={name} className="w-12 h-12 rounded-full object-cover" />
+        ) : (
+          <div className="w-12 h-12 bg-[#FF9800] rounded-full flex items-center justify-center text-white font-bold">
+            {name.charAt(0)}
+          </div>
+        )}
+        <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 rounded-full border-2 border-white" />
+      </div>
+      <p className="text-xs font-medium text-[#212121] truncate">{name}</p>
+      <div className="flex items-center justify-center gap-0.5 mt-1">
+        <Star className="w-3 h-3 text-[#FFC107] fill-[#FFC107]" />
+        <span className="text-xs text-[#757575]">{(washer.rating ?? 0).toFixed(1)}</span>
+      </div>
+      <p className="text-[10px] text-[#9E9E9E] mt-0.5">{jobs} lavage{jobs > 1 ? 's' : ''}</p>
     </div>
   );
 }
@@ -883,6 +952,31 @@ function HomeContent({
 // Profile Content - Android Material Design Style
 function ProfileContent({ user, onLogout }: { user: any; onLogout: () => void }) {
   const [activeSection, setActiveSection] = useState<string | null>(null);
+  // Real profile stats (completed washes + total spent), computed from the client's orders
+  const [profileStats, setProfileStats] = useState<{ washes: number; spent: number } | null>(null);
+
+  useEffect(() => {
+    const fetchProfileStats = async () => {
+      if (!user?.id) return;
+      try {
+        const res = await fetch(`/api/orders?userId=${user.id}`);
+        if (!res.ok) return;
+        const contentType = res.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) return;
+        const data = await res.json();
+        if (data.success && Array.isArray(data.orders)) {
+          const completed = data.orders.filter((o: any) => o.status === 'COMPLETED');
+          setProfileStats({
+            washes: completed.length,
+            spent: completed.reduce((sum: number, o: any) => sum + (o.totalPrice || 0), 0),
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching profile stats:', error);
+      }
+    };
+    fetchProfileStats();
+  }, [user?.id]);
 
   // Support client info
   const supportPhone = '+22871998155';
@@ -933,7 +1027,9 @@ function ProfileContent({ user, onLogout }: { user: any; onLogout: () => void })
         <h3 className="font-semibold text-[#212121] mb-3">Statistiques</h3>
         <div className="grid grid-cols-3 gap-4">
           <div className="text-center">
-            <div className="text-xl font-bold text-[#FF9800]">0</div>
+            <div className="text-xl font-bold text-[#FF9800]">
+              {profileStats ? profileStats.washes : <Loader2 className="w-5 h-5 animate-spin mx-auto text-[#FF9800]" />}
+            </div>
             <div className="text-xs text-[#757575]">Lavages</div>
           </div>
           <div className="text-center">
@@ -941,8 +1037,10 @@ function ProfileContent({ user, onLogout }: { user: any; onLogout: () => void })
             <div className="text-xs text-[#757575]">Note</div>
           </div>
           <div className="text-center">
-            <div className="text-xl font-bold text-[#2196F3]">0F</div>
-            <div className="text-xs text-[#757575]">Économisé</div>
+            <div className="text-xl font-bold text-[#2196F3]">
+              {profileStats ? `${profileStats.spent.toLocaleString('fr-FR')} F` : <Loader2 className="w-5 h-5 animate-spin mx-auto text-[#2196F3]" />}
+            </div>
+            <div className="text-xs text-[#757575]">Dépensé</div>
           </div>
         </div>
       </div>

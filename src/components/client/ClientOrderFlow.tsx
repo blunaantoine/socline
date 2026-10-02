@@ -13,6 +13,7 @@ import {
   CheckCircle, Star, AlertCircle, Loader2,
   Zap, Droplets, Sparkles, Crown, Calendar
 } from 'lucide-react';
+import { toast } from 'sonner';
 import type { Service, Order } from '@/types';
 import { parseJsonResponse } from '@/lib/json-helper';
 
@@ -56,6 +57,9 @@ export function ClientOrderFlow({
   const [isLoadingServices, setIsLoadingServices] = useState(true);
   const [activeSubscription, setActiveSubscription] = useState<any>(null);
   const [useSubscription, setUseSubscription] = useState(false);
+  // "Utiliser ma position actuelle" (étape adresse)
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
 
   // Fetch services on mount
   useEffect(() => {
@@ -147,6 +151,29 @@ export function ClientOrderFlow({
     goToStep('payment');
   };
 
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Impossible d\'obtenir votre position');
+      return;
+    }
+    setIsGettingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setCoords({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+        setAddress('Position actuelle');
+        setIsGettingLocation(false);
+      },
+      () => {
+        setIsGettingLocation(false);
+        toast.error('Impossible d\'obtenir votre position');
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
+  };
+
   const handleApplyPromo = async () => {
     if (!promoCode || !selectedService) return;
     
@@ -207,13 +234,13 @@ export function ClientOrderFlow({
     const clientId = user?.id;
     
     if (!clientId) {
-      alert('Session expirée. Veuillez vous reconnecter.');
+      toast.error('Session expirée. Veuillez vous reconnecter.');
       return;
     }
 
     const finalPrice = getFinalPrice();
     if (paymentMethod === 'wallet' && walletBalance < finalPrice) {
-      alert('Solde insuffisant dans votre portefeuille.');
+      toast.error('Solde insuffisant dans votre portefeuille.');
       return;
     }
 
@@ -229,8 +256,8 @@ export function ClientOrderFlow({
           isHomeService,
           stationId: stationId || null,
           address,
-          latitude: userLocation?.latitude,
-          longitude: userLocation?.longitude,
+          latitude: coords?.latitude ?? userLocation?.latitude,
+          longitude: coords?.longitude ?? userLocation?.longitude,
           totalPrice: finalPrice,
           promoCode: appliedPromo?.code || null,
           discount: appliedPromo?.discountAmount || 0,
@@ -256,7 +283,7 @@ export function ClientOrderFlow({
           
           const walletData = await parseJsonResponse<any>(walletRes);
           if (!walletData || !walletData.success) {
-            alert('Erreur lors du paiement par portefeuille.');
+            toast.error('Erreur lors du paiement par portefeuille.');
           }
         }
 
@@ -299,15 +326,15 @@ export function ClientOrderFlow({
         }
       } else {
         if (data.error?.includes('reconnecter')) {
-          alert('Session expirée. Veuillez vous reconnecter.');
+          toast.error('Session expirée. Veuillez vous reconnecter.');
           window.location.reload();
           return;
         }
-        alert(data.error || 'Erreur lors de la création de la commande');
+        toast.error(data.error || 'Erreur lors de la création de la commande');
       }
     } catch (error) {
       console.error('Order error:', error);
-      alert('Erreur de connexion. Réessayez.');
+      toast.error('Erreur de connexion. Réessayez.');
     } finally {
       setIsProcessing(false);
     }
@@ -484,10 +511,27 @@ export function ClientOrderFlow({
                     onChange={(e) => setAddress(e.target.value)}
                     className="border-2 focus:border-[#FF9800] h-12"
                   />
-                  <div className="flex items-center gap-2 text-sm text-[#FF9800]">
-                    <MapPin className="w-4 h-4" />
-                    <span>Utiliser ma position actuelle</span>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={handleUseCurrentLocation}
+                    disabled={isGettingLocation}
+                    className="flex items-center gap-2 text-sm text-[#FF9800] font-medium disabled:opacity-60"
+                  >
+                    {isGettingLocation ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : address === 'Position actuelle' ? (
+                      <CheckCircle className="w-4 h-4" />
+                    ) : (
+                      <MapPin className="w-4 h-4" />
+                    )}
+                    <span>
+                      {isGettingLocation
+                        ? 'Localisation…'
+                        : address === 'Position actuelle'
+                        ? 'Position actuelle'
+                        : 'Utiliser ma position actuelle'}
+                    </span>
+                  </button>
                 </div>
               ) : (
                 <div className="space-y-3">
