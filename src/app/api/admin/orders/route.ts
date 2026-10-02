@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireAdmin } from '@/lib/auth';
 
 // GET /api/admin/orders - Get all orders with filters
 export async function GET(request: NextRequest) {
+  const auth = await requireAdmin(request);
+  if (!auth.authorized) {
+    return auth.response!;
+  }
   try {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status') || 'all';
@@ -71,6 +76,10 @@ export async function GET(request: NextRequest) {
 
 // PATCH /api/admin/orders - Update order status or assign washer
 export async function PATCH(request: NextRequest) {
+  const auth = await requireAdmin(request);
+  if (!auth.authorized) {
+    return auth.response!;
+  }
   try {
     const body = await request.json();
     const { orderId, status, washerId } = body;

@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getCurrentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 
 // GET /api/auth/me - Check if current user session is valid
+// The user identity is derived from the signed session cookie, never from query params.
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-
-    if (!userId) {
-      return NextResponse.json({ valid: false, error: 'No user ID provided' });
+    const session = await getCurrentUser();
+    if (!session) {
+      return NextResponse.json({ valid: false, error: 'No valid session' });
     }
 
     const user = await db.user.findUnique({
-      where: { id: userId },
+      where: { id: session.id },
       select: {
         id: true,
         phone: true,

@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireAdmin } from '@/lib/auth';
 
 // POST /api/admin/washers - Create a new washer
 export async function POST(request: NextRequest) {
+  const auth = await requireAdmin(request);
+  if (!auth.authorized) {
+    return auth.response!;
+  }
   try {
     const body = await request.json();
     const { name, phone, email, pin, isVerified, userId } = body;
@@ -90,6 +95,10 @@ export async function POST(request: NextRequest) {
 
 // GET /api/admin/washers - Get all washers
 export async function GET(request: NextRequest) {
+  const auth = await requireAdmin(request);
+  if (!auth.authorized) {
+    return auth.response!;
+  }
   try {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || '';
@@ -165,6 +174,10 @@ export async function GET(request: NextRequest) {
 
 // PATCH /api/admin/washers - Update washer (verify, etc.)
 export async function PATCH(request: NextRequest) {
+  const auth = await requireAdmin(request);
+  if (!auth.authorized) {
+    return auth.response!;
+  }
   try {
     const body = await request.json();
     const { washerId, action } = body; // action: 'verify', 'reject', 'suspend'

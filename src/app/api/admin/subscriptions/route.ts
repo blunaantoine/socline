@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireAdmin } from '@/lib/auth';
 
 /**
  * GET /api/admin/subscriptions
  * Get all subscriptions with filtering and pagination
  */
 export async function GET(request: NextRequest) {
+  const auth = await requireAdmin(request);
+  if (!auth.authorized) {
+    return auth.response!;
+  }
   try {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status'); // 'active', 'expired', 'all'
@@ -130,6 +135,10 @@ export async function GET(request: NextRequest) {
  * Create a subscription for a user (admin override)
  */
 export async function POST(request: NextRequest) {
+  const auth = await requireAdmin(request);
+  if (!auth.authorized) {
+    return auth.response!;
+  }
   try {
     const body = await request.json();
     const { userId, planId, duration, paymentMethod, paidAmount, startDate } = body;
@@ -225,6 +234,10 @@ export async function POST(request: NextRequest) {
  * Update a subscription (extend, adjust washes, etc.)
  */
 export async function PATCH(request: NextRequest) {
+  const auth = await requireAdmin(request);
+  if (!auth.authorized) {
+    return auth.response!;
+  }
   try {
     const body = await request.json();
     const { subscriptionId, action, data } = body;

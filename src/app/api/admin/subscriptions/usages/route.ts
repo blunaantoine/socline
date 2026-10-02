@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireAdmin } from '@/lib/auth';
 
 /**
  * GET /api/admin/subscriptions/usages
  * Get all subscription usages with filtering
  */
 export async function GET(request: NextRequest) {
+  const auth = await requireAdmin(request);
+  if (!auth.authorized) {
+    return auth.response!;
+  }
   try {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status'); // 'PENDING', 'VALIDATED', 'CANCELLED', 'all'
@@ -120,6 +125,10 @@ export async function GET(request: NextRequest) {
  * Admin action on a usage (validate, cancel, add notes)
  */
 export async function PATCH(request: NextRequest) {
+  const auth = await requireAdmin(request);
+  if (!auth.authorized) {
+    return auth.response!;
+  }
   try {
     const body = await request.json();
     const { usageId, action, notes } = body;

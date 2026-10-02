@@ -1,10 +1,20 @@
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import { db } from '@/lib/db';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
 const SALT_ROUNDS = 10;
 const TOKEN_COOKIE_NAME = 'socline_token';
+
+// JWT secret shared with the mobile API (src/lib/jwt.ts).
+// Must be set in .env in production.
+const SESSION_JWT_SECRET = process.env.JWT_SECRET || 'socline-jwt-secret-change-in-production';
+const SESSION_EXPIRES_IN = '7d';
+
+interface SessionTokenPayload {
+  userId: string;
+}
 
 // Simple in-memory rate limiting for login attempts
 // In production, use Redis or a database
@@ -66,23 +76,21 @@ export async function verifyPin(pin: string, hashedPin: string): Promise<boolean
   return pin === hashedPin;
 }
 
-// Generate a secure token with userId embedded
+// Generate a signed JWT session token with userId embedded.
+// The token is cryptographically signed: it cannot be forged without JWT_SECRET.
 export function generateToken(userId: string): string {
-  const array = new Uint8Array(32);
-  crypto.getRandomValues(array);
-  const randomPart = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
-  // Format: userId.randomToken (base64 encoded for safety)
-  const payload = JSON.stringify({ userId, random: randomPart });
-  return Buffer.from(payload).toString('base64');
+  return jwt.sign({ userId } satisfies SessionTokenPayload, SESSION_JWT_SECRET, {
+    expiresIn: SESSION_EXPIRES_IN,
+  });
 }
 
-// Parse token to get userId
-function parseToken(token: string): { userId: string; random: string } | null {
+// Verify the signed token and extract the userId.
+// Rejects forged, tampered or expired tokens.
+function parseToken(token: string): SessionTokenPayload | null {
   try {
-    const payload = Buffer.from(token, 'base64').toString('utf-8');
-    const parsed = JSON.parse(payload);
-    if (parsed.userId && parsed.random) {
-      return parsed;
+    const payload = jwt.verify(token, SESSION_JWT_SECRET) as SessionTokenPayload;
+    if (payload && typeof payload.userId === 'string' && payload.userId) {
+      return payload;
     }
     return null;
   } catch {
