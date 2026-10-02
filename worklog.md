@@ -279,3 +279,22 @@ Stage Summary:
 - Le SMS réel ne s'activera qu'avec SMS_USERNAME (username du compte AT de l'utilisateur) — décommenter la ligne 19 de .env; hot-reload le prend en compte sans restart.
 - Compte AT production requis avec du crédit (recharge mobile money/carte); tarif Togo ≈ 8–13 F CFA/SMS.
 - SMS_DEMO_FALLBACK=true actuellement pour la démo — À DÉSACTIVER avant mise en production réelle.
+
+---
+Task ID: 5-b (session 6 — ACTIVATION SMS RÉEL)
+Agent: main (Z.ai Code)
+Task: Username AT déduit des infos profil utilisateur (blunaantoine) → activation et validation du SMS réel
+
+Work Log:
+- L'utilisateur a envoyé ses infos profil (Bluna Antoine / blunaantoine@gmail.com) au lieu du username AT; hypothèse username=email-prefix "blunaantoine" testée directement contre l'API AT → HTTP 201, SMS réellement livré sur +22871998155 (status Success, statusCode 100, coût USD 0.05 ≈ 29 F CFA).
+- .env: SMS_USERNAME=blunaantoine (activé). Premier test via l'app → InvalidSenderId: le sender "SOCLINE" n'est pas enregistré sur le compte AT → SMS_SENDER_ID commenté avec note explicative (l'enregistrement d'un sender ID se fait dans account.africastalking.com → Settings → Sender IDs, avec approbation).
+- Re-test send-otp via l'app SANS sender → {demoMode:false, smsSent:true} + code 321486 reçu par vrai SMS. Aucun code OTP dans les réponses API.
+- Le fallback SMS_DEMO_FALLBACK a été validé en conditions réelles (InvalidSenderId → code démo retourné au lieu de bloquer).
+- Profil admin 71998155 mis à jour en DB: name "Bluna Antoine", email blunaantoine@gmail.com (vérifié via /api/auth/login).
+- Aucun changement de code (config + données uniquement) → pas de commit code; worklog seul committé.
+
+Stage Summary:
+- SMS OTP RÉEL ACTIF: provider africastalking, username blunaantoine, expéditeur par défaut, ~29 F CFA/SMS vers le Togo, compte avec crédit.
+- Coût réel constaté: USD 0.05/SMS (≈ 29-30 F CFA) — revoir l'estimation antérieure (8–13 F).
+- Restant pour la prod: enregistrer le sender ID "SOCLINE" (puis décommenter SMS_SENDER_ID) + passer SMS_DEMO_FALLBACK=false.
+- Profil de l'utilisateur appliqué sur le compte ADMIN de l'app.
