@@ -239,6 +239,10 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json();
     const { orderId, status, washerId } = body;
 
+    if (!orderId) {
+      return NextResponse.json({ error: 'orderId requis' }, { status: 400 });
+    }
+
     const updateData: any = { status };
     
     // If washerId is provided, find the actual Washer record
@@ -260,14 +264,50 @@ export async function PATCH(request: NextRequest) {
       updateData.washerId = washer.id;
     }
 
-    const order = await db.order.update({
+    // Fetch the current order state (previous status + pricing)
+    // needed for the COMPLETED washer credit logic
+    const existingOrder = await db.order.findUnique({
       where: { id: orderId },
-      data: updateData,
-      include: {
-        client: { select: { id: true, name: true, phone: true } },
-        service: true,
-        washer: { include: { user: { select: { name: true, phone: true } } } },
-      },
+      select: { id: true, status: true, totalPrice: true, commission: true, washerId: true },
+    });
+
+    if (!existingOrder) {
+      return NextResponse.json({ error: 'Commande non trouvée' }, { status: 404 });
+    }
+
+    // Credit the washer when the order transitions to COMPLETED
+    // (only if its previous status was not already COMPLETED — anti double-credit)
+    const isCompletion = status === 'COMPLETED' && existingOrder.status !== 'COMPLETED';
+    // washerAmount = totalPrice - commission (15% commission set at creation),
+    // clamped to >= 0 (e.g. subscription orders at 0)
+    const washerAmount = isCompletion
+      ? Math.max(0, (existingOrder.totalPrice ?? 0) - (existingOrder.commission ?? 0))
+      : 0;
+
+    const order = await db.$transaction(async (tx) => {
+      const updatedOrder = await tx.order.update({
+        where: { id: orderId },
+        data: updateData,
+        include: {
+          client: { select: { id: true, name: true, phone: true } },
+          service: true,
+          washer: { include: { user: { select: { name: true, phone: true } } } },
+        },
+      });
+
+      // Credit the washer: totalEarnings + completedJobs (no WalletTransaction:
+      // washer earnings are tracked via totalEarnings only)
+      if (isCompletion && updatedOrder.washerId) {
+        await tx.washer.update({
+          where: { id: updatedOrder.washerId },
+          data: {
+            totalEarnings: { increment: washerAmount },
+            completedJobs: { increment: 1 },
+          },
+        });
+      }
+
+      return updatedOrder;
     });
 
     // Create conversation if order is accepted

@@ -157,10 +157,15 @@ export async function POST() {
           },
         });
       } else {
-        // Update existing washer balance to 20 000 XOF for demo
+        // Washer profile already exists: only refresh CONFIGURATION fields.
+        // NEVER touch totalEarnings / completedJobs here — they hold real
+        // earnings and must not be reset on every POST /api/seed call.
         await db.washer.update({
           where: { userId: washerUser.id },
-          data: { totalEarnings: 20000 },
+          data: {
+            isAvailable: true,
+            isVerified: true,
+          },
         });
       }
     }

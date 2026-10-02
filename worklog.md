@@ -43,3 +43,28 @@ Stage Summary:
 - Toute requête sans session admin valide est rejetée via `auth.response!` (401/403 géré par requireAdmin) avant tout accès DB.
 - Aucune autre modification de logique métier ; lint OK (aucune erreur préexistante détectée non plus).
 - Reste ouvert (hors périmètre 4-a) : token cookie toujours non signé (usurpation possible, cf. Task 0 point 1).
+
+---
+Task ID: 5-a
+Agent: general-purpose
+Task: Fixs logique métier (validate abonnement, transaction abonnement, crédit laveurs, seed)
+
+Work Log:
+- Lecture worklog.md + des 5 fichiers cibles + src/lib/auth.ts + prisma/schema.prisma + appelants (WasherApp.tsx). Vérifié en DB : Washer.id = cmo8v5kgq0008qdcj88k27mc3 ≠ User.id laveur = cmo8v5kgp0006qdcjr6ot1i36 (confirme le mismatch du bug 1).
+- BUG 1 (src/app/api/subscriptions/validate/route.ts, handler POST) : ajout `import { getCurrentUser }` (l.3) ; session résolue avant comparaison (l.103-114, `getCurrentUser()` → 401 si absente, puis `db.washer.findFirst({ OR: [{ id: session.id }, { userId: session.id }] })`) ; autorisation `!washerProfile || order.washerId !== washerProfile.id` → 403 sinon (l.116-120) ; `validatedBy` stocke désormais `washerProfile.id` (cohérent avec order.washerId, l.150). Transaction/décrément remainingWashes inchangés.
+- BUG 2 (src/app/api/subscriptions/user/route.ts, POST) : réordonné — plan actif (l.76-78), calcul prix/durée, check abonnement actif existant AVANT tout débit (l.103-117), check solde wallet SANS débit (l.120-132), puis UNE transaction (l.141-197) : re-lecture wallet tx, garde-fou solde (throw → rollback), débit balance/totalSpent, WalletTransaction PAYMENT/COMPLETED/balanceAfter, création UserSubscription. Réponse JSON inchangée.
+- BUG 3 (src/app/api/orders/route.ts PATCH l.236-336 et src/app/api/orders/[id]/route.ts PATCH l.50-156) : fetch de l'état avant update (status précédent, totalPrice, commission), `isCompletion = status==='COMPLETED' && ancien!=='COMPLETED'` (anti double-crédit), `washerAmount = max(0, totalPrice - commission)`, puis `$transaction` unique : update Order + update Washer (`totalEarnings: increment washerAmount`, `completedJobs: increment 1` si order.washerId). Pas de WalletTransaction créée. Logique ACCEPTED/conversation/tracking conservée. Guard `orderId requis` (400) ajouté sur /api/orders.
+- BUG 4 (src/app/api/seed/route.ts l.159-170) : la branche "washer existant" ne fait plus `totalEarnings: 20000` — update limité aux champs de config (isAvailable, isVerified). La création initiale garde ses valeurs de démo (20000).
+- Adjacent pré-existant découvert et corrigé (nécessaire pour que le fix BUG 3 soit fonctionnel) : src/app/api/orders/[id]/route.ts utilisait `params: { id: string }` synchrone (seule route dynamique non migrée — Next 16 attend Promise) → `params.id` était undefined à l'exécution (GET 500 confirmé par curl avant fix). Migré GET + PATCH vers `params: Promise<{ id: string }>` + `await params` (pattern identique aux autres routes [id] du repo).
+- Relecture complète des fichiers, lint `bun run lint` : 0 erreur / 0 warning. tsc --noEmit : 24 erreurs TOUTES pré-existantes (POST /api/orders l.141-227 `let subscription = null`, seed l.90, subscriptions/seed, subscriptions/user PATCH l.259 `plan.service`, etc.) — le count est passé de 25 à 24 (l'erreur .next/dev/types/validator.ts sur orders/[id] a disparu grâce à la migration params).
+- Tests curl (sans polluer les données) : login laveur 200 ; GET /api/subscriptions/user?userId=<laveur> 200 ; POST validate sans ordre réel → 404 ; PATCH /api/orders sans orderId → 400, orderId inexistant → 404 ; PATCH /api/orders/[id] inexistant → 404 (plus 500) ; GET /api/orders/[id] → 200 (totalPrice 1500, commission 225) ; login admin 71998155 + GET /api/admin/orders 200 (2 commandes : ACCEPTED laveur assigné, PENDING). Aucune transition COMPLETED réelle exécutée.
+- Test non-destructif du BUG 4 : sentinel totalEarnings=25500 sur le laveur test → POST /api/seed → 25500 conservé (avant : écrasé à 20000), isAvailable/isVerified toujours true → valeur restaurée à 20000 ensuite.
+
+Stage Summary:
+- Validation d'abonnement opérationnelle : le laveur est résolu depuis la session (cookie JWT), l'autorisation compare le record Washer, `remainingWashes` sera réellement décrémenté ; plus de séances illimitées.
+- Souscription abonnement : aucun débit wallet avant validations ; débit + WalletTransaction + UserSubscription atomiques ($transaction) — plus d'argent perdu sur 400.
+- Crédit laveurs : à la transition → COMPLETED, le washer reçoit totalEarnings += totalPrice - commission (clamp ≥ 0) et completedJobs += 1, dans la même transaction que l'update de l'Order, avec anti double-crédit sur le statut précédent.
+- Seed idempotent : totalEarnings/completedJobs du laveur ne sont plus réécrasés à chaque POST /api/seed (appelé au montage du Home).
+- GET/PATCH /api/orders/[id] refonctionnent (migration params Next 16, pré-requis découvert pendant la tâche).
+- Points signalés, NON traités (hors périmètre) : (1) POST /api/seed réactive/étend automatiquement les promotions expirées à chaque appel (l.239-255) — réécriture de données de config à chaque montage du Home ; (2) PATCH /api/orders/[id] écrit `washerId` du body brut dans order.washerId sans résolution User→Washer (contrairement à /api/orders PATCH) → risque d'ID mismatch si un jour cette route est appelée avec un User.id ; (3) IDOR général (userId du body) et erreurs tsc pré-existantes toujours ouverts (cf. Task 0).
+

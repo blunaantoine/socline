@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { getCurrentUser } from '@/lib/auth';
 
 /**
  * GET /api/subscriptions/validate?clientId=xxx
@@ -99,8 +100,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Cette commande n\'utilise pas d\'abonnement' }, { status: 400 });
     }
 
+    // Resolve the washer profile from the session BEFORE comparing:
+    // session.id is the User id, while order.washerId references the
+    // Washer record id (they are different identifiers).
+    const session = await getCurrentUser();
+    if (!session) {
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
+    }
+
+    const washerProfile = await db.washer.findFirst({
+      where: { OR: [{ id: session.id }, { userId: session.id }] },
+      select: { id: true, userId: true },
+    });
+
     // Verify the washer is assigned to this order
-    if (order.washerId !== washerId) {
+    // (equivalent to `order.washerId !== washerProfile?.id`)
+    if (!washerProfile || order.washerId !== washerProfile.id) {
       return NextResponse.json({ error: 'Vous n\'êtes pas assigné à cette commande' }, { status: 403 });
     }
 
@@ -133,7 +148,7 @@ export async function POST(request: NextRequest) {
             data: {
               status: 'VALIDATED',
               validatedAt: new Date(),
-              validatedBy: washerId,
+              validatedBy: washerProfile.id,
             },
           });
         }

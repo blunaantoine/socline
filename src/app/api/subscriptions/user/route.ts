@@ -98,41 +98,7 @@ export async function POST(request: NextRequest) {
         daysValid = 30;
     }
 
-    // Check wallet balance if payment method is WALLET
-    if (paymentMethod === 'WALLET') {
-      const wallet = await db.wallet.findUnique({
-        where: { userId },
-      });
-
-      if (!wallet || wallet.balance < price) {
-        return NextResponse.json({ 
-          error: 'Solde insuffisant',
-          required: price,
-          available: wallet?.balance || 0,
-        }, { status: 400 });
-      }
-
-      // Deduct from wallet
-      await db.wallet.update({
-        where: { userId },
-        data: {
-          balance: { decrement: price },
-          totalSpent: { increment: price },
-        },
-      });
-
-      // Create transaction
-      await db.walletTransaction.create({
-        data: {
-          walletId: wallet.id,
-          type: 'PAYMENT',
-          amount: -price,
-          status: 'COMPLETED',
-          description: `Abonnement ${plan.displayName} - ${duration || 'MONTHLY'}`,
-          balanceAfter: wallet.balance - price,
-        },
-      });
-    }
+    // --- ALL VALIDATIONS BEFORE ANY WALLET DEBIT ---
 
     // Check for existing active subscription
     const existingActive = await db.userSubscription.findFirst({
@@ -150,33 +116,84 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    // Check wallet balance if payment method is WALLET (no debit yet)
+    if (paymentMethod === 'WALLET') {
+      const wallet = await db.wallet.findUnique({
+        where: { userId },
+      });
+
+      if (!wallet || wallet.balance < price) {
+        return NextResponse.json({ 
+          error: 'Solde insuffisant',
+          required: price,
+          available: wallet?.balance || 0,
+        }, { status: 400 });
+      }
+    }
+
     // Create subscription
     const now = new Date();
     const endDate = new Date(now);
     endDate.setDate(endDate.getDate() + daysValid);
 
-    const subscription = await db.userSubscription.create({
-      data: {
-        userId,
-        planId,
-        duration: duration || 'MONTHLY',
-        paidAmount: price,
-        totalWashes,
-        usedWashes: 0,
-        remainingWashes: totalWashes,
-        freeOptionsTotal: plan.freeOptions * (duration === 'QUARTERLY' ? 3 : duration === 'YEARLY' ? 12 : 1),
-        freeOptionsUsed: 0,
-        startDate: now,
-        endDate,
-        paymentMethod: paymentMethod || 'WALLET',
-        isActive: true,
-        isExpired: false,
-      },
-      include: {
-        plan: {
-          include: { service: true },
+    // Single atomic transaction: debit wallet + create WalletTransaction
+    // + create UserSubscription. If anything fails, everything is rolled back.
+    const subscription = await db.$transaction(async (tx) => {
+      if (paymentMethod === 'WALLET') {
+        // Re-read the wallet inside the transaction for consistency
+        const wallet = await tx.wallet.findUnique({
+          where: { userId },
+        });
+
+        if (!wallet || wallet.balance < price) {
+          throw new Error('INSUFFICIENT_BALANCE');
+        }
+
+        // Deduct from wallet
+        await tx.wallet.update({
+          where: { userId },
+          data: {
+            balance: { decrement: price },
+            totalSpent: { increment: price },
+          },
+        });
+
+        // Create transaction
+        await tx.walletTransaction.create({
+          data: {
+            walletId: wallet.id,
+            type: 'PAYMENT',
+            amount: -price,
+            status: 'COMPLETED',
+            description: `Abonnement ${plan.displayName} - ${duration || 'MONTHLY'}`,
+            balanceAfter: wallet.balance - price,
+          },
+        });
+      }
+
+      return tx.userSubscription.create({
+        data: {
+          userId,
+          planId,
+          duration: duration || 'MONTHLY',
+          paidAmount: price,
+          totalWashes,
+          usedWashes: 0,
+          remainingWashes: totalWashes,
+          freeOptionsTotal: plan.freeOptions * (duration === 'QUARTERLY' ? 3 : duration === 'YEARLY' ? 12 : 1),
+          freeOptionsUsed: 0,
+          startDate: now,
+          endDate,
+          paymentMethod: paymentMethod || 'WALLET',
+          isActive: true,
+          isExpired: false,
         },
-      },
+        include: {
+          plan: {
+            include: { service: true },
+          },
+        },
+      });
     });
 
     return NextResponse.json({
