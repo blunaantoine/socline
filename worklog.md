@@ -318,3 +318,25 @@ Stage Summary:
 - WhatsApp OTP prêt à brancher: il suffit de renseigner WHATSAPP_TOKEN + WHATSAPP_PHONE_NUMBER_ID (+ template approuvé) et OTP_CHANNEL=whatsapp|both; hot-reload .env.
 - Option 100% gratuite: WHATSAPP_OTP_MODE=text si l'utilisateur a écrit au numéro dans les 24h.
 - .env et DB ne sont plus suivis par Git (plus de fuite possible par auto-checkpoint).
+
+---
+Task ID: 7 (session 7 — hachage systématique des PIN)
+Agent: main (Z.ai Code)
+Task: "corrige ca et verifit si la connection passe bien" — corriger les PIN stockés en clair détectés lors de l'audit DB, puis valider que les connexions passent
+
+Work Log:
+- Audit DB: 5/9 comptes avec PIN en clair (2222, 2820, 1234...) — comptes legacy créés avant l'ajout du hashing; le fallback plaintext de verifyPin les faisait fonctionner.
+- Sources identifiées: admin/washers POST (pin: pin || '1234' en clair, source active), seed route (pin: '1234' ×3, latent), comptes legacy DB.
+- lib/auth.ts: verifyPin(pin, storedPin, userId?) — si PIN legacy en clair correspondant → re-hash bcrypt immédiat + update DB ("lazy migration") + log [SECURITY]; appelants mis à jour (login/route.ts, lib/jwt.ts) pour passer user.id.
+- admin/washers: pin hashé via hashPin(pin || '1234') + validation format 4 chiffres si fourni.
+- seed: les 3 comptes démo créés avec pin: await hashPin('1234').
+- scripts/migrate-plaintext-pins.cjs: migration one-shot idempotente exécutée → 5 PIN legacy hashés.
+- eslint.config.mjs: ignore scripts/** et mini-services/**.
+- Tests (curl sur routes réelles): login admin 71998155+1234 → OK; login compte migré 99892198+1234 → OK; mobile login (chemin jwt) avec PIN legacy simulé 91926798+2222 → OK + upgrade DB vérifiée ($2b$10$...) + log [SECURITY] dans dev.log; mauvais PIN → « PIN incorrect ».
+- État final DB: 9/9 PIN hashés bcrypt, 0 en clair. Lint 0/0.
+
+Stage Summary:
+- Commit 768fc16 poussé (🔒).
+- Plus aucune source de PIN en clair: register (déjà hashé), admin/users (déjà hashé), admin/washers (corrigé), seed (corrigé).
+- Ceinture de sécurité: tout PIN en clair résiduel est automatiquement hashé au premier login réussi (lazy migration).
+- Script scripts/migrate-plaintext-pins.cjs conservé pour les futurs environnements (idempotent).
