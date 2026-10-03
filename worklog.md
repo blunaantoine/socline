@@ -451,3 +451,41 @@ Stage Summary:
 - La boucle de notification du retrait est complète: création → admin notifié (realtime + SMS) ET laveur confirmé ; approbation/refus → laveur notifié (session 11).
 - Sécurité des retraits: seul un numéro confirmé peut recevoir un retrait ; max 3 ; le laveur s'auto-confirme à l'inscription de ses numéros mais TOUTE modification ultérieure est admin-only, déclenchée par une demande notifiée.
 - L'admin dispose désormais d'une cloche de notifications temps réel (retraits, dépôts, demandes de modification) dans son panneau.
+
+---
+Task ID: 13 (session 13 — push Firebase FCM réel en mode démo + fix pipeline socket)
+Agent: main (Z.ai Code)
+Task: "je ve le connete a firebase pour la demo pas la production et le deployer sur vercel" — brancher les notifications au push Firebase (démo) et préparer Vercel
+
+Work Log:
+- DÉCOUVERTE MAJEURE: le pipeline temps réel était cassé — le mini-service démo washgo-socket (sans auth, vieux code) volait le port 3003 au démarrage → chat-service (le vrai, JWT + /internal/emit) échouait (« port 3003 in use », logs .zscripts). En plus, .env était réduit à DATABASE_URL seule (JWT_SECRET/INTERNAL_SOCKET_SECRET/SMS_* disparus) → handshakes socket rejetés + emit interne refusé. Les notifications ne passaient plus que par le polling 30s.
+- 🔧 Fix: washgo-socket déplacé 3005 (health 3006) avec note explicative ; JWT_SECRET/JWT_REFRESH_SECRET/INTERNAL_SOCKET_SECRET/SMS_* restaurés dans .env depuis l'historique git (commit 81fd6bf, .env était alors tracké) — RESTÉ LOCAL (jamais commité). Stack redémarrée (pattern double-fork subshell — seuls les process détachés survivent aux reapes du sandbox).
+- Vérifié: chat-service démarre sans warning sur 3003 ; /internal/emit → {ok:true} avec le bon secret, 403 sinon ; dépôt 300 XOF créé+validé admin → badge cloche client instantané (socket), « Rechargement validé ✅ » dans le panneau, 0 erreur emit dans dev.log.
+- 🔥 Push FCM (démo): src/lib/firebase-admin.ts (init lazy depuis FIREBASE_SERVICE_ACCOUNT JSON brut/base64 ou 3 vars découpées, sendPushToToken never-throw, warn unique si non configuré) ; notify() étape 3 FCM best-effort (lookup fcmToken + push notification+data id/type/createdAt) ; POST /api/notifications/register-token (requireAuth, enregistrer/effacer, pushServerEnabled retourné).
+- Client: src/lib/firebase.ts (config NEXT_PUBLIC_FIREBASE_*, enablePushNotifications = permission → SW → getToken(vapidKey) → POST register-token ; onForegroundPush) ; route /firebase-messaging-sw.js servie par Next avec config injectée depuis les env (stub si non configuré) — onBackgroundMessage + notificationclick ; src/lib/notif-dedup.ts (markSeen, TTL 60s) branché dans le handler socket ET le handler FCM → un même id ne toast qu'une fois quel que soit le canal.
+- src/components/PushNotificationSetup.tsx (nouveau): VRAI bouton d'activation avec 7 états (checking/unconfigured/unsupported/denied/off/enabling/enabled) + ré-enregistrement silencieux si permission déjà accordée + toasts FCM premier plan. Monté dans NotificationCenter (footer client), AdminNotificationCenter (footer admin) et la section Notifications laveur — REMPLACE le faux Switch démo (defaultChecked sans logique).
+- Tests: register/clear token vérifiés en DB (users.fcmToken), 401 sans auth, SW stub sans clés, flux dépôt→validation→badge socket OK, écran laveur affiche le composant réel, lint 0/0. Sans clés Firebase tout fonctionne (dégradation silencieuse) — push réel dès que les clés sont posées.
+
+Stage Summary:
+- Commits c84bc85 (🔧 sockets) + 283662a (🔥 FCM) poussés.
+- Le pipeline temps réel authentifié est restauré (chat-service maître de 3003).
+- Le push Firebase est branché de bout en bout: il ne manque que les clés d'un projet Firebase (guide VERCEL_DEPLOY.md §4) pour l'activer — 100% démo, silencieux sans clés.
+
+---
+Task ID: 14 (session 13 — préparation déploiement Vercel mode démo)
+Agent: main (Z.ai Code)
+Task: "et le deployer sur vercel" — rendre le projet déployable sur Vercel sans casser le local
+
+Work Log:
+- Contraintes Vercel serverless traitées: filesystem éphémère (SQLite fichier impossible) + pas de socket persistant + build.
+- DB: @prisma/adapter-libsql@6.19.3 + @libsql/client installés (alignés sur Prisma 6.x — la v7 auto-résolue a été rétrogradée) ; schema.prisma + previewFeatures=[driverAdapters] ; db.ts conditionnel: TURSO_DATABASE_URL présent → PrismaLibSQL(createClient(url, authToken)) ; absent → SQLite fichier inchangé (zéro impact local). Client régénéré + db:push OK.
+- Sockets: src/lib/realtime-flag.ts — NEXT_PUBLIC_ENABLE_SOCKET=false coupe les 4 connexions client (RealtimeNotifications, ChatView, OrderTracking, WasherApp) AVANT l'import socket.io ; les filets de polling existants (notifs 30s, commandes laveur 10s, wallet 8s USSD) prennent le relais.
+- Build: postinstall "prisma generate" (Vercel exécute next build directement, pas le script build — le postinstall est le point d'ancrage fiable) ; .gitignore: !.env.example.
+- .env.example: modèle complet commenté (DATABASE_URL, TURSO_*, JWT_*, INTERNAL_SOCKET_SECRET, NEXT_PUBLIC_ENABLE_SOCKET, SMS_*/OTP_CHANNEL, WHATSAPP_*, 7 vars Firebase + FIREBASE_SERVICE_ACCOUNT).
+- VERCEL_DEPLOY.md (guide FR): changements du mode démo (tableau comparatif local/Vercel), création Turso + push schéma (DATABASE_URL libsql override), variables Vercel obligatoires/optionnelles, seed via POST /api/seed (comptes démo 90123456/90234567/71998155 PIN 1234), branchement Firebase pas-à-pas (config web, VAPID, service account JSON/base64, activation API FCM), limitations connues + tableau de dépannage.
+- Régression: lint 0/0, db:push synchronisé, API/home 200, session client intacte, 0 erreur console. Déploiement effectif reste à faire PAR L'UTILISATEUR (compte Vercel + Turso + variables) — le repo est prêt, un simple import suffit.
+
+Stage Summary:
+- Commit 001d4ae (🚀) poussé — repo 100% prêt pour l'import Vercel.
+- Turso+adaptateur = seule voie fiable pour une DB persistante sur serverless ; sockets désactivables proprement ; push FCM = canal de remplacement pour les alertes temps réel.
+- Prochaines actions utilisateur: créer Turso (2 env vars), importer le repo sur Vercel (+5 env vars de sécurité), POST /api/seed, puis clés Firebase si push voulu.
