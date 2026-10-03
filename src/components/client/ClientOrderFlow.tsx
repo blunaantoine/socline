@@ -16,6 +16,7 @@ import {
 import { toast } from 'sonner';
 import type { Service, Order } from '@/types';
 import { parseJsonResponse } from '@/lib/json-helper';
+import { DynamicLeafletMap } from '@/components/map/DynamicLeafletMap';
 
 interface ClientOrderFlowProps {
   onBack: () => void;
@@ -532,6 +533,29 @@ export function ClientOrderFlow({
                         : 'Utiliser ma position actuelle'}
                     </span>
                   </button>
+
+                  {/* Map picker — tap to drop/adjust the service pin. Guarantees
+                      GPS coordinates even when the text address is typed manually. */}
+                  <DynamicLeafletMap
+                    center={coords ? [coords.latitude, coords.longitude] : [6.1725, 1.2314]}
+                    zoom={coords ? 15 : 13}
+                    height="220px"
+                    onMapClick={(lat, lng) => {
+                      setCoords({ latitude: lat, longitude: lng });
+                      setAddress((prev) =>
+                        prev && prev !== 'Position actuelle' && prev !== 'Position sur la carte'
+                          ? prev
+                          : 'Position sur la carte'
+                      );
+                    }}
+                    selectedPosition={coords ? [coords.latitude, coords.longitude] : null}
+                  />
+                  <p className="text-xs text-gray-500 flex items-center gap-1">
+                    <MapPin className="w-3 h-3 flex-shrink-0 text-[#FF9800]" />
+                    {coords
+                      ? 'Position enregistrée — touchez la carte pour l\u2019ajuster'
+                      : 'Touchez la carte pour définir votre position exacte'}
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-3">

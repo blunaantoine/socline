@@ -132,6 +132,9 @@ export interface Order {
   distanceKm?: number | null;
   payment?: Payment;
   review?: Review;
+  // Tracking history (WASHER_LOCATION points + status events) — returned by
+  // GET /api/orders/[id]; used to hydrate the last known washer position.
+  tracking?: TrackingEvent[];
 }
 
 export interface Payment {

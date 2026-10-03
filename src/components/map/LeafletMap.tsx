@@ -63,6 +63,9 @@ interface LeafletMapProps {
   className?: string;
   height?: string;
   selectedPosition?: [number, number] | null;
+  // When true and 2+ markers exist, auto-fit the viewport so every marker
+  // stays visible (used by the live order tracking map).
+  fitToMarkers?: boolean;
 }
 
 // Component to handle map events
@@ -84,6 +87,17 @@ function MapUpdater({ center }: { center: [number, number] }) {
   return null;
 }
 
+// Component to auto-fit the viewport around all markers (live tracking).
+function MapFit({ markers, enabled }: { markers: MapMarker[]; enabled: boolean }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!enabled || markers.length < 2) return;
+    const bounds = L.latLngBounds(markers.map((m) => L.latLng(m.position[0], m.position[1])));
+    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 });
+  }, [markers, enabled, map]);
+  return null;
+}
+
 export function LeafletMap({
   center = defaultCenter,
   zoom = 14,
@@ -94,6 +108,7 @@ export function LeafletMap({
   className = '',
   height = '400px',
   selectedPosition,
+  fitToMarkers = false,
 }: LeafletMapProps) {
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   // Use useSyncExternalStore for client-side detection (React 18+ recommended pattern)
@@ -166,6 +181,7 @@ export function LeafletMap({
 
         <MapEvents onMapClick={onMapClick} />
         <MapUpdater center={mapCenter} />
+        <MapFit markers={allMarkers} enabled={fitToMarkers} />
 
         {/* User Location Circle */}
         {userLocation && showUserLocation && (

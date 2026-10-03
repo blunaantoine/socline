@@ -98,6 +98,18 @@ export async function POST(
       },
     });
 
+    // Keep the washer's dispatch position fresh: Washer.latitude/longitude
+    // feeds the PENDING pool sorting (closest first) — updating it on every
+    // shared point keeps the dispatch distance accurate. Best-effort.
+    try {
+      await db.washer.update({
+        where: { id: washer.id },
+        data: { latitude: lat, longitude: lng },
+      });
+    } catch (geoErr) {
+      console.warn('[OrderLocation] Washer position refresh failed:', geoErr);
+    }
+
     // Housekeeping: keep only the latest MAX_KEPT points for this order.
     const cutoff = await db.trackingEvent.findMany({
       where: { orderId: order.id, event: 'WASHER_LOCATION' },

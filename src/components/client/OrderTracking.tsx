@@ -1,16 +1,17 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useOrdersStore, useAuthStore } from '@/store';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { DynamicLeafletMap } from '@/components/map/DynamicLeafletMap';
 import {
   MapPin, Phone, MessageCircle, Clock, Star,
   CheckCircle, Navigation, AlertCircle, X, ArrowLeft, Home, Loader2
 } from 'lucide-react';
-import type { Order, OrderStatus } from '@/types';
+import type { Order, OrderStatus, TrackingEvent } from '@/types';
 import type { Socket } from 'socket.io-client';
 import { toast } from 'sonner';
 
@@ -43,6 +44,18 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
 
 // Average city driving speed used for the ETA estimate (km/h).
 const WASHER_SPEED_KMH = 25;
+
+// Default map center (Lomé, Togo) — used when neither the order nor the
+// washer has coordinates yet.
+const DEFAULT_MAP_CENTER: [number, number] = [6.1725, 1.2314];
+
+// Human-readable distance ("850 m" / "1,2 km") between the washer and the
+// service location. Returns null when either position is missing.
+function formatDistanceKm(km: number | null): string | null {
+  if (km == null || !isFinite(km)) return null;
+  if (km < 1) return `${Math.max(10, Math.round(km * 1000 / 10) * 10)} m`;
+  return `${km.toFixed(1).replace('.', ',')} km`;
+}
 
 // Format a timestamp as HH:MM (fr-FR).
 function formatTime(value: string | undefined): string {
@@ -130,10 +143,27 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
       try {
         const res = await fetch(`/api/orders/${order.id}`);
         if (!res.ok) return;
+        // Fetch + hydrate: the GET response carries the persisted tracking
+        // events, so the last known washer position survives a page reload
+        // (before any live socket push arrives).
         const data = await res.json();
-        if (data?.success && data.order && data.order.status !== order.status) {
-          setCurrentOrder(data.order);
-          updateOrder(data.order);
+        if (data?.success && data.order) {
+          setWasherLocation((prev) => {
+            if (prev) return prev; // a live socket position is fresher
+            const events: TrackingEvent[] = Array.isArray(data.order.tracking)
+              ? data.order.tracking
+              : [];
+            const lastLoc = events.find(
+              (t) => t.event === 'WASHER_LOCATION' &&
+                t.latitude != null && t.longitude != null
+            );
+            if (!lastLoc || lastLoc.latitude == null || lastLoc.longitude == null) return prev;
+            return { lat: lastLoc.latitude, lng: lastLoc.longitude, at: lastLoc.createdAt };
+          });
+          if (data.order.status !== order.status) {
+            setCurrentOrder(data.order);
+            updateOrder(data.order);
+          }
         }
       } catch {
         // Network hiccup — next tick will retry.
@@ -145,6 +175,46 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
 
   const config = STATUS_CONFIG[order.status];
   const StatusIcon = config.icon;
+
+  // ---------------------------------------------------------------------
+  // Live map: client marker (service location) + washer marker (last known
+  // GPS from the socket stream or hydrated tracking history).
+  // ---------------------------------------------------------------------
+  const orderCoords: [number, number] | null =
+    order.latitude != null && order.longitude != null
+      ? [order.latitude, order.longitude]
+      : null;
+
+  const mapMarkers = useMemo(() => {
+    const list: { id: string; type: 'CLIENT' | 'WASHER'; position: [number, number]; label?: string }[] = [];
+    if (orderCoords) {
+      list.push({ id: 'client', type: 'CLIENT', position: orderCoords, label: 'Adresse du lavage' });
+    }
+    if (washerLocation) {
+      list.push({
+        id: 'washer',
+        type: 'WASHER',
+        position: [washerLocation.lat, washerLocation.lng],
+        label: 'Laveur',
+      });
+    }
+    return list;
+  }, [orderCoords, washerLocation]);
+
+  const mapCenter: [number, number] =
+    orderCoords ?? (washerLocation ? [washerLocation.lat, washerLocation.lng] : DEFAULT_MAP_CENTER);
+
+  // ETA: only with a real washer position AND order coordinates.
+  const washerDistanceKm =
+    washerLocation && orderCoords
+      ? haversineKm(washerLocation.lat, washerLocation.lng, orderCoords[0], orderCoords[1])
+      : null;
+  const washerDistanceLabel = formatDistanceKm(washerDistanceKm);
+
+  const etaMinutes =
+    washerDistanceKm != null
+      ? Math.max(1, Math.round((washerDistanceKm / WASHER_SPEED_KMH) * 60))
+      : null;
 
   // Cancel the order (client, while PENDING/ACCEPTED).
   const handleCancel = async () => {
@@ -177,14 +247,6 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
     return <OrderCompleted order={order} onBack={onBack} onGoHome={() => setCurrentOrder(null)} />;
   }
 
-  // ETA: only with a real washer position AND order coordinates.
-  const etaMinutes =
-    washerLocation && order.latitude != null && order.longitude != null
-      ? Math.max(1, Math.round(
-          haversineKm(washerLocation.lat, washerLocation.lng, order.latitude, order.longitude) / WASHER_SPEED_KMH * 60
-        ))
-      : null;
-
   const washer = order.washer;
 
   return (
@@ -216,17 +278,32 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
         </div>
       </div>
 
-      {/* Map Placeholder */}
-      <div className="h-48 bg-gradient-to-br from-blue-100 to-green-100 relative flex-shrink-0">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-center">
-            <Navigation className="w-12 h-12 text-blue-600 mx-auto mb-2 animate-bounce" />
-            <p className="text-gray-600">Carte en temps réel</p>
+      {/* Live map — real Leaflet map (client + washer markers) when the order
+          or the washer has coordinates; graceful placeholder otherwise. */}
+      <div className="h-48 relative flex-shrink-0">
+        {(orderCoords || washerLocation) ? (
+          <DynamicLeafletMap
+            center={mapCenter}
+            zoom={14}
+            height="192px"
+            className="h-48"
+            markers={mapMarkers}
+            fitToMarkers
+          />
+        ) : (
+          <div className="h-48 bg-gradient-to-br from-blue-100 to-green-100">
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-center">
+                <Navigation className="w-12 h-12 text-blue-600 mx-auto mb-2 animate-bounce" />
+                <p className="text-gray-600">Carte en temps réel</p>
+                <p className="text-xs text-gray-500 mt-1">Position indisponible pour cette commande</p>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Status Badge */}
-        <div className="absolute top-4 left-4 right-4">
+        <div className="absolute top-4 left-4 right-4 z-[900]">
           <Badge className={`${config.color} text-base px-4 py-2`}>
             <StatusIcon className="w-4 h-4 mr-2" />
             {config.label}
@@ -255,7 +332,7 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
 
         {/* Real washer position info */}
         {order.status === 'EN_ROUTE' && !washerLocation && (
-          <div className="absolute bottom-4 left-4 right-4 bg-white rounded-lg p-3 shadow-lg">
+          <div className="absolute bottom-4 left-4 right-4 z-[900] bg-white rounded-lg p-3 shadow-lg">
             <div className="flex items-center gap-2">
               <Loader2 className="w-4 h-4 text-blue-600 animate-spin flex-shrink-0" />
               <span className="text-sm text-[#616161]">En attente de la position du laveur…</span>
@@ -264,15 +341,17 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
         )}
 
         {washerLocation && (
-          <div className="absolute bottom-4 left-4 right-4 bg-white rounded-lg p-3 shadow-lg">
+          <div className="absolute bottom-4 left-4 right-4 z-[900] bg-white rounded-lg p-3 shadow-lg">
             <div className="flex items-center gap-2">
               <MapPin className="w-4 h-4 text-green-600 flex-shrink-0" />
               <div className="text-sm">
                 <span className="font-medium text-[#212121]">
-                  Position du laveur mise à jour à {formatTime(washerLocation.at)}
+                  {washerDistanceLabel
+                    ? `Le laveur est à ${washerDistanceLabel}${order.status === 'EN_ROUTE' ? ' de vous' : ''}`
+                    : 'Position du laveur reçue'}
                 </span>
                 <span className="block text-xs text-[#757575]">
-                  {washerLocation.lat.toFixed(5)}, {washerLocation.lng.toFixed(5)}
+                  Mise à jour à {formatTime(washerLocation.at)}
                 </span>
               </div>
             </div>
@@ -281,7 +360,7 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
 
         {/* Estimated arrival from the real washer position */}
         {order.status === 'EN_ROUTE' && etaMinutes !== null && (
-          <div className="absolute bottom-20 left-4 right-4 bg-white rounded-lg p-3 shadow-lg border border-blue-100">
+          <div className="absolute bottom-20 left-4 right-4 z-[900] bg-white rounded-lg p-3 shadow-lg border border-blue-100">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Clock className="w-5 h-5 text-blue-600" />

@@ -381,3 +381,26 @@ Stage Summary:
 - Pool trié par proximité: le laveur voit d'abord les commandes les plus proches.
 - Nouvelle commande = alerte in-app + socket instantané pour les laveurs en ligne.
 - FCM push natif non implémenté (aucune config Firebase fournie) — le socle (fcmToken dans le schéma, notifications in-app, socket) est prêt pour l'y brancher plus tard.
+
+---
+Task ID: 10 (session 10 — système de localisation)
+Agent: main (Z.ai Code)
+Task: "et le systeme de localisation" — corriger et améliorer le système de localisation GPS (suivi laveur, sélection d'adresse, données dispatch)
+
+Work Log:
+- Analyse complète du système: backend solide (POST /api/orders/[id]/location auth+validation+TrackingEvent max 50+socket, watchPosition WasherApp, ETA haversine) mais 3 faiblesses frontend: (1) OrderTracking = placeholder sans vraie carte avec coordonnées brutes illisibles, (2) ClientOrderFlow = adresse texte libre sans carte, coords null si GPS refusé, (3) dernière position laveur perdue au rechargement alors que GET renvoie tracking.
+- LeafletMap.tsx: nouveau prop fitToMarkers — MapFit auto-cadre la viewport sur les 2+ markers (fitBounds, padding 40px, maxZoom 16) à chaque mise à jour de position.
+- OrderTracking.tsx: remplacement du placeholder par une vraie carte Leaflet (marker CLIENT orange « Adresse du lavage » + marker WASHER bleu « Laveur », centre = coords commande sinon position laveur sinon Lomé); hydratation de la dernière position WASHER_LOCATION depuis order.tracking (survit au reload, socket prioritaire via setWasherLocation fonctionnel); remplacement des coordonnées brutes par « Le laveur est à X km/m de vous » + « Mise à jour à HH:MM » (formatDistanceKm fr-FR); ETA recomposée depuis washerDistanceKm.
+- FIX z-index: les overlays (badge statut, distance, ETA) passaient SOUS les panes Leaflet (z-index 400-800) → z-[900] sur les 4 overlays (détecté au test navigateur).
+- ClientOrderFlow.tsx: carte Leaflet cliquable dans l'étape Adresse (à domicile) — onMapClick → setCoords + adresse « Position sur la carte » (préserve une adresse tapée), selectedPosition = pin orange, hint dynamique « Touchez la carte… / Position enregistrée — touchez la carte pour l'ajuster ». Garantit des coords même sans GPS navigateur.
+- types/index.ts: Order.tracking?: TrackingEvent[] (renvoyé par GET /api/orders/[id]).
+- POST /api/orders/[id]/location: met aussi à jour Washer.latitude/longitude (best-effort) — la position du dispatch (tri du pool par proximité) reste fraîche après chaque trajet.
+- Tests curl: création commande avec coords → acceptation → 2× POST location → 200; GET order → 2 TrackingEvents WASHER_LOCATION, tracking[0]=WASHER_LOCATION; washers.latitude/longitude mis à jour au dernier point (6.171/1.23).
+- Tests agent-browser (E2E réel): login client → parcours commande complet → carte de sélection rendue (tiles OSM, pin orange déposé via MouseEvent dispatché, hint « Position enregistrée ») → création → suivi auto → acceptation laveur + push position → temps réel validé (statut Acceptée reçu via socket, marker WASHER bleu apparaît, fitBounds cadre les 2 markers) → EN_ROUTE → « Le laveur est à 1000 m de vous » + « Arrivée estimée ~2 min » affichés au-dessus de la carte. 0 erreur console.
+- Nettoyage: 2 commandes de test annulées (states machine respectée: client bloqué sur EN_ROUTE, laveur OK), tracking events de test purgés, Laveur Test remis hors ligne GPS NULL. Lint 0/0.
+
+Stage Summary:
+- Le client VOIT désormais son laveur bouger sur une vraie carte pendant EN_ROUTE (avant: placeholder + coordonnées brutes), avec distance lisible + ETA + historique de position au reload.
+- Le client dépose son adresse sur une carte cliquable → coordonnées garanties pour le dispatch même sans GPS.
+- La position dispatch (Washer.lat/lng) est rafraîchie à chaque partage → tri par proximité précis.
+- Gap UX noté (pas traité): après reload, currentOrder (zustand) est perdu — le suivi ne se réouvre pas automatiquement; il faudrait un onglet/commande active dans l'historique.
