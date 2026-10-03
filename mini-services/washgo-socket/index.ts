@@ -1,7 +1,12 @@
 import { Server } from 'socket.io';
 import http from 'http';
 
-const PORT = 3003;
+// NOTE: this is the legacy DEMO socket service (kept for reference/mobile
+// demos). The production realtime service used by the Next.js app is
+// mini-services/chat-service on port 3003 — this one MUST use another port
+// to avoid a startup race where it steals 3003 and breaks JWT-authenticated
+// notifications.
+const PORT = 3005;
 
 const io = new Server(PORT, {
   cors: {
@@ -211,6 +216,6 @@ const healthServer = http.createServer((req, res) => {
   }
 });
 
-healthServer.listen(3004, () => {
-  console.log('Health check server running on port 3004');
+healthServer.listen(3006, () => {
+  console.log('Health check server running on port 3006');
 });
