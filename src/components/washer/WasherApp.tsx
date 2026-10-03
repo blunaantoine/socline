@@ -23,7 +23,6 @@ import { toast } from 'sonner';
 import { parseJsonResponse } from '@/lib/json-helper';
 import { StationDashboard } from '@/components/washer/StationDashboard';
 import { onSoclineNotification } from '@/components/RealtimeNotifications';
-import { PushNotificationSetup } from '@/components/PushNotificationSetup';
 import { isRealtimeEnabled } from '@/lib/realtime-flag';
 
 // Washer stats type
@@ -2091,16 +2090,23 @@ function WasherProfileSection({ section, onBack, user }: {
       {section === 'notifications' && (
         <Card className="border-0 shadow-sm">
           <CardContent className="p-4 space-y-4">
-            <PushNotificationSetup
-              title="Notifications push"
-              description="Recevoir les alertes de nouvelles commandes"
-            />
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-[#212121]">Notifications temps réel</p>
+                <p className="text-xs text-[#757575]">
+                  Alertes instantanées dans l&apos;app (nouvelles commandes, paiements)
+                </p>
+              </div>
+              <Badge className="bg-[#E8F5E9] text-[#4CAF50] border-0">Actives ✅</Badge>
+            </div>
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium text-[#212121]">Notifications SMS</p>
-                <p className="text-xs text-[#757575]">Recevoir les mises à jour par SMS</p>
+                <p className="text-xs text-[#757575]">
+                  Automatiques pour les événements critiques (retraits, paiements)
+                </p>
               </div>
-              <Switch />
+              <Badge className="bg-[#E8F5E9] text-[#4CAF50] border-0">Actifs ✅</Badge>
             </div>
           </CardContent>
         </Card>

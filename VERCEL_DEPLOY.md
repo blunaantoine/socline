@@ -1,8 +1,7 @@
 # 🚀 Déployer Socline sur Vercel (démo)
 
 > **Objectif** : mettre Socline en ligne en mode **démo** (pas production) sur Vercel,
-> avec une vraie base de données distante et — en option — les **notifications push
-> Firebase** réelles. Temps de mise en place : ~20 minutes.
+> avec une vraie base de données distante. Temps de mise en place : ~15 minutes.
 
 ---
 
@@ -12,7 +11,7 @@
 |---|---|---|
 | Base de données | SQLite fichier (`db/custom.db`) | **Turso** (libSQL distant, gratuit) — le filesystem Vercel est éphémère, un fichier SQLite y serait effacé |
 | Temps réel (socket) | mini-service `chat-service` port 3003 | **Désactivé** (`NEXT_PUBLIC_ENABLE_SOCKET=false`) — les serverless Vercel ne peuvent pas héberger un socket persistant. L'app repasse sur ses filets de polling (notifications 30 s, commandes laveur 10 s, portefeuille 8 s…) |
-| Push notifications | in-app + toast socket | in-app + **vrai push FCM** (Firebase) — c'est le push qui remplace le socket pour les alertes app fermée |
+| Notifications | in-app + toast **temps réel socket** | in-app + polling (30 s) — pas de socket persistant possible sur serverless |
 | SMS / OTP | Africa's Talking si configuré | idem (optionnel — clés à recopier) |
 
 L'application détecte tout automatiquement : aucune modification de code n'est nécessaire
@@ -60,8 +59,6 @@ entre le local et Vercel.
    | `JWT_REFRESH_SECRET` | une autre longue chaîne aléatoire | ✅ |
    | `INTERNAL_SOCKET_SECRET` | une autre longue chaîne aléatoire | ✅ |
    | `NEXT_PUBLIC_ENABLE_SOCKET` | `false` | ✅ |
-   | `NEXT_PUBLIC_FIREBASE_*` (6 variables) + `NEXT_PUBLIC_FIREBASE_VAPID_KEY` | config Firebase web | ⬜ (push) |
-   | `FIREBASE_SERVICE_ACCOUNT` | JSON du compte de service (ou base64) | ⬜ (push) |
    | `SMS_PROVIDER`, `SMS_USERNAME`, `SMS_API_KEY`, `SMS_DEMO_FALLBACK=true` | compte Africa's Talking | ⬜ (SMS) |
 
    > 💡 Générer une chaîne aléatoire : `openssl rand -hex 32`
@@ -93,50 +90,22 @@ Comptes de démo créés (PIN `1234`) :
 
 ---
 
-## 4. 🔥 Notifications push Firebase (optionnel mais recommandé)
+## 4. Notifications en mode démo Vercel
 
-Le code push est **déjà branché** (lib `firebase-admin` + FCM). Il ne reste qu'à
-lui donner un projet Firebase :
+Le système de notifications est **in-app** : tout est enregistré en base
+(`GET /api/notifications`) et affiché dans la cloche de chaque profil
+(client, laveur, admin) :
 
-### 4.1 Créer le projet Firebase
-1. https://console.firebase.google.com → **Ajouter un projet** (ex. `socline-demo`).
-   Google Analytics : facultatif.
+- **Local (sandbox)** : les alertes arrivent **instantanément** via le socket
+  temps réel (`chat-service`, port 3003).
+- **Vercel (démo)** : le socket étant désactivé, les notifications sont
+  récupérées par **polling (30 s)** — la cloche et son badge de non-lues
+  fonctionnent à l'identique, avec une latence de ~30 s maximum.
+- **SMS** : les événements critiques (dépôt validé, retrait approuvé/refusé…)
+  envoient aussi un SMS best-effort via Africa's Talking si les clés sont
+  configurées.
 
-### 4.2 Application Web
-1. Vue d'ensemble du projet → icône **`</>`** (Web) → surnom `socline-web` → *Enregistrer*.
-2. Copier l'objet `firebaseConfig` et en déduire les variables Vercel :
-
-   | Config Firebase | Variable Vercel |
-   |---|---|
-   | `apiKey` | `NEXT_PUBLIC_FIREBASE_API_KEY` |
-   | `authDomain` | `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` |
-   | `projectId` | `NEXT_PUBLIC_FIREBASE_PROJECT_ID` |
-   | `storageBucket` | `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` |
-   | `messagingSenderId` | `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` |
-   | `appId` | `NEXT_PUBLIC_FIREBASE_APP_ID` |
-
-### 4.3 Clé VAPID
-1. **Paramètres du projet → Cloud Messaging** → onglet *Certificats push Web*.
-2. **Générer une paire de clés** → copier la clé publique →
-   variable `NEXT_PUBLIC_FIREBASE_VAPID_KEY`.
-
-### 4.4 Compte de service (envoi serveur)
-1. **Paramètres du projet → Comptes de service → Générer une clé privée** (JSON).
-2. Option A : coller **tout le JSON** dans `FIREBASE_SERVICE_ACCOUNT`.
-   Option B : `base64 -w0 fichier.json` et coller le base64.
-3. Vérifier que l'API **Firebase Cloud Messaging API** est bien activée pour le
-   projet (Console Google Cloud → API & Services). Sinon l'envoi renverra
-   `REQUEST_NOT_FOUND` / 403.
-
-### 4.5 Activer
-1. Ajouter toutes les variables Firebase dans Vercel → **Redeploy**.
-2. Ouvrir l'app → cloche de notifications → **« Activer »** le push → accepter
-   la permission. Le badge devient **« Activées ✅ »** (token enregistré en base).
-3. Tester : valider un dépôt depuis le compte admin → l'appareil du client
-   reçoit la notification même onglet fermé.
-
-> Mode démo : sans clés Firebase, l'app fonctionne normalement — la ligne
-> d'activation affiche « Non configuré (démo) — clés Firebase requises ».
+Aucune configuration supplémentaire n'est nécessaire.
 
 ---
 
@@ -144,13 +113,13 @@ lui donner un projet Firebase :
 
 - **DB démo partagée** : Turso free tier suffit largement pour une démo, mais
   ne pas y stocker de données sensibles réelles.
-- **Pas de temps réel socket** : les statuts (dépôt/retrait/commande) se
-  rafraîchissent par polling (8–30 s selon l'écran) ou via le push FCM.
+- **Pas de temps réel socket** : les statuts (dépôt/retrait/commande) et les
+  notifications se rafraîchissent par polling (8–30 s selon l'écran).
 - **SMS/OTP** : sans crédits Africa's Talking configurés, l'OTP retombe en mode
   démo (`SMS_DEMO_FALLBACK=true`).
 - **Fichiers uploadés** (photos chat…) : non persistants sur Vercel serverless.
 - Pour passer en **production** plus tard : Turso payant ou Postgres managé,
-  stockage objet (S3/R2), WebSocket dédié (Railway/Fly) ou FCM only, monitoring.
+  stockage objet (S3/R2), WebSocket dédié (Railway/Fly), monitoring.
 
 ---
 
@@ -161,6 +130,3 @@ lui donner un projet Firebase :
 | `Invalid env var` au build | une variable obligatoire manque dans Vercel |
 | Erreur Prisma « Timed out fetching connection » | `TURSO_DATABASE_URL`/`TURSO_AUTH_TOKEN` incorrects |
 | Login impossible après redeploy | `JWT_SECRET` a changé entre deux deploys → les sessions anciennes sont invalides, se reconnecter |
-| Push « Non configuré » malgré les clés | variables `NEXT_PUBLIC_FIREBASE_*` ajoutées après le build → **Redeploy** |
-| Push ne s'affiche pas app fermée | service worker — vérifier `/firebase-messaging-sw.js` renvoie bien la config (pas le stub) ; vérifier l'API FCM activée |
-| `REQUEST_NOT_FOUND` dans les logs Vercel | activer la **Firebase Cloud Messaging API** du projet |

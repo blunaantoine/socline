@@ -98,7 +98,6 @@ model User {
   avatar        String?
   role          UserRole  @default(CLIENT)
   isActive      Boolean   @default(true)
-  fcmToken      String?   // For push notifications
   
   // Client specific fields (for car identification)
   plateNumber   String?   // Numéro de plaque (deprecated - use Car model)

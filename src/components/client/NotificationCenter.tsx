@@ -12,12 +12,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
-  Bell, CheckCircle, Clock, Car, AlertCircle, X, MessageCircle,
+  Bell, BellRing, CheckCircle, Clock, Car, AlertCircle, X, MessageCircle,
   Star, CreditCard, MapPin
 } from 'lucide-react';
 import { parseJsonResponse } from '@/lib/json-helper';
 import { onSoclineNotification } from '@/components/RealtimeNotifications';
-import { PushNotificationSetup } from '@/components/PushNotificationSetup';
 
 interface Notification {
   id: string;
@@ -224,9 +223,21 @@ export function NotificationCenter() {
             )}
           </div>
 
-          {/* Real push (Firebase FCM — demo) activation */}
+          {/* Notifications system footer (in-app + realtime + SMS) */}
           <div className="p-4 border-t border-[#F5F5F5] bg-[#FFF8F0]">
-            <PushNotificationSetup description="Recevoir les alertes commandes et paiements même app fermée" />
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center flex-shrink-0">
+                <BellRing className="w-5 h-5 text-[#4CAF50]" />
+              </div>
+              <div className="min-w-0">
+                <p className="font-medium text-[#212121] text-sm">
+                  Notifications temps réel actives ✅
+                </p>
+                <p className="text-xs text-[#757575]">
+                  Alertes instantanées dans l&apos;app + SMS pour les paiements
+                </p>
+              </div>
+            </div>
             <p className="text-xs text-center text-[#757575] mt-3">
               Les notifications sont liées à vos commandes et paiements
             </p>

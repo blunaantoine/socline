@@ -6,9 +6,7 @@
 //      'notification' event — the RealtimeNotifications component shows an
 //      instant toast and re-broadcasts to the app via the window event
 //      `socline:notification` (WalletScreen / WasherApp listen to refresh).
-//   3. Optionally sent as an FCM PUSH (Firebase — demo project) when the
-//      server credentials are set and the user registered a device token.
-//   4. Optionally sent as SMS for critical events (deposit validated,
+//   3. Optionally sent as SMS for critical events (deposit validated,
 //      withdrawal approved/rejected...) — best-effort, never blocking.
 //
 // notify() NEVER throws: business logic must not fail because of a
@@ -17,7 +15,6 @@
 import { db } from '@/lib/db';
 import { emitRealtime } from '@/lib/realtime';
 import { sendSms } from '@/lib/sms';
-import { isPushConfigured, sendPushToToken } from '@/lib/firebase-admin';
 
 export interface NotifyInput {
   userId: string;
@@ -58,31 +55,11 @@ export async function notify(input: NotifyInput): Promise<void> {
       data: input.data ?? null,
     });
 
-    // 3. FCM push (Firebase — demo) to every registered device (best-effort).
-    if (isPushConfigured()) {
-      const pushUser = await db.user.findUnique({
-        where: { id: input.userId },
-        select: { fcmToken: true },
-      });
-      if (pushUser?.fcmToken) {
-        const sent = await sendPushToToken(pushUser.fcmToken, {
-          title: input.title,
-          body: input.message,
-          data: {
-            id: notification.id,
-            type: input.type,
-            createdAt: notification.createdAt.toISOString(),
-            ...(input.data ?? {}),
-          },
-        });
-        if (!sent) console.warn('[Notify] FCM push not delivered');
-      }
-    }
   } catch (error) {
     console.error('[Notify] In-app notification failed:', error);
   }
 
-  // 4. SMS for critical events (best-effort, independent of the DB result).
+  // 3. SMS for critical events (best-effort, independent of the DB result).
   if (input.sms?.phone && input.sms?.text) {
     try {
       const result = await sendSms(input.sms.phone, input.sms.text);

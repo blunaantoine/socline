@@ -14,10 +14,9 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Bell, Banknote, Car, AlertCircle, MessageCircle, Star, Wrench } from 'lucide-react';
+import { Bell, BellRing, Banknote, Car, AlertCircle, MessageCircle, Star, Wrench } from 'lucide-react';
 import { parseJsonResponse } from '@/lib/json-helper';
 import { onSoclineNotification } from '@/components/RealtimeNotifications';
-import { PushNotificationSetup } from '@/components/PushNotificationSetup';
 
 interface Notification {
   id: string;
@@ -188,9 +187,21 @@ export function AdminNotificationCenter() {
             )}
           </div>
 
-          {/* Real push (Firebase FCM — demo) activation */}
+          {/* Notifications system footer (in-app + realtime + SMS) */}
           <div className="p-4 border-t border-[#F5F5F5] bg-[#FFF8F0]">
-            <PushNotificationSetup description="Dépôts, retraits et demandes même app fermée" />
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center flex-shrink-0">
+                <BellRing className="w-5 h-5 text-[#4CAF50]" />
+              </div>
+              <div className="min-w-0">
+                <p className="font-medium text-[#212121] text-sm">
+                  Notifications temps réel actives ✅
+                </p>
+                <p className="text-xs text-[#757575]">
+                  Retraits, dépôts et demandes — instantanés + SMS
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </SheetContent>

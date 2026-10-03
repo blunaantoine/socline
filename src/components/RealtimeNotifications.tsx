@@ -16,7 +16,6 @@
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store';
-import { markSeen } from '@/lib/notif-dedup';
 import { isRealtimeEnabled } from '@/lib/realtime-flag';
 import type { Socket } from 'socket.io-client';
 
@@ -71,15 +70,14 @@ export function RealtimeNotifications() {
         socket.on('notification', (payload: RealtimeNotification) => {
           if (!payload?.id) return;
 
-          // 1. Instant toast — deduped against the FCM foreground handler
-          //    (the same notification can arrive through BOTH channels).
-          if ((payload.title || payload.message) && markSeen(payload.id)) {
+          // 1. Instant toast.
+          if (payload.title || payload.message) {
             toast(payload.title || 'Notification', {
               description: payload.message,
             });
           }
 
-          // 2. App-wide rebroadcast (dedup-safe listeners).
+          // 2. App-wide rebroadcast.
           try {
             window.dispatchEvent(
               new CustomEvent(SOCLINE_NOTIFICATION_EVENT, { detail: payload })
