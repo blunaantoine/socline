@@ -358,3 +358,26 @@ Stage Summary:
 - L'auth fonctionne désormais dans TOUS les contextes: navigateur direct (cookie), iframe cross-site / preview panel (Bearer), clients API mobile (header JWT existant).
 - Sécurité inchangée: token signé obligatoire; sans cookie ni header → 401.
 - Le flux cookie reste prioritaire; le Bearer n'est qu'un fallback.
+
+---
+Task ID: 9 (session 9 — dispatch commandes: disponibilité + distance + alertes)
+Agent: main (Z.ai Code)
+Task: "corrige et ameliore" — corriger les 3 faiblesses identifiées du dispatch (toggle non persisté, pas de tri géo, acceptation hors ligne possible)
+
+Work Log:
+- src/lib/geo.ts (nouveau): distance Haversine partagée, null-safe.
+- PATCH /api/washers/[userId]: { isAvailable } persisté (self/admin), option { latitude, longitude } — envoyée par le client au passage EN LIGNE (fix GPS best-effort ≤5s, n'échoue jamais).
+- WasherApp: isAvailable initial lu depuis la DB (ref first-load), toggle optimiste + revert + toasts; hors ligne → pool local vidé; handler déplacé après fetchPendingOrders (fix TDZ ReferenceError détecté au test navigateur); listener socket 'order:new' ajouté (refresh instantané); carte commande: badge distance « X km »; acceptation: erreurs serveur affichées (toast) + refetch.
+- PATCH /api/orders: garde-fou — laveur isAvailable=false → 403 à l'auto-attribution.
+- GET /api/orders PENDING: pool trié par distance croissante (sans GPS en fin), champ distanceKm ajouté (types Order +).
+- POST /api/orders: notifications in-app NEW_ORDER pour laveurs en ligne vérifiés actifs + emitRealtime 'order:new' vers leurs rooms (best-effort, try/catch).
+- NotificationCenter: icône dédiée NEW_ORDER.
+- Tests: curl (2 commandes 1,4/6,5 km → tri correct; hors ligne → 403; PATCH dispo persisté + GPS; acceptation en ligne OK; NEW_ORDER en DB) + navigateur (toggle → PATCH 200 → DB synchronisée, 0 erreur console).
+- Nettoyage: commandes/notifications de test supprimées, Laveur Test remis hors ligne.
+
+Stage Summary:
+- Commit 62ba3ac poussé (⚡).
+- La disponibilité est la source de vérité DB: le client ne voit que les vrais laveurs actifs, et un laveur hors ligne est bloqué côté serveur.
+- Pool trié par proximité: le laveur voit d'abord les commandes les plus proches.
+- Nouvelle commande = alerte in-app + socket instantané pour les laveurs en ligne.
+- FCM push natif non implémenté (aucune config Firebase fournie) — le socle (fcmToken dans le schéma, notifications in-app, socket) est prêt pour l'y brancher plus tard.
