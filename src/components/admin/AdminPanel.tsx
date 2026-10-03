@@ -41,6 +41,7 @@ import {
 import { HideableBalanceLight } from '@/components/ui/hideable-balance';
 import { toast } from 'sonner';
 import { parseJsonResponse } from '@/lib/json-helper';
+import { AdminNotificationCenter } from '@/components/admin/AdminNotificationCenter';
 
 // Component to drag and position image
 function ImagePositionEditor({ 
@@ -644,9 +645,12 @@ export function AdminPanel() {
               <div className="text-xs text-[#757575]">{user?.name || 'Socline'}</div>
             </div>
           </div>
-          <Button variant="outline" size="icon" onClick={logout} className="text-red-500">
-            <LogOut className="w-5 h-5" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <AdminNotificationCenter />
+            <Button variant="outline" size="icon" onClick={logout} className="text-red-500">
+              <LogOut className="w-5 h-5" />
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -1732,6 +1736,7 @@ function AdminWashers({ washers, isLoading, onRefresh, onVerify }: {
   onRefresh: () => void;
   onVerify: (id: string, action: 'verify' | 'reject') => void;
 }) {
+  const [numbersWasher, setNumbersWasher] = useState<{ id: string; name: string } | null>(null);
   const pendingWashers = washers.filter(w => !w.isVerified);
   const verifiedWashers = washers.filter(w => w.isVerified);
 
@@ -1839,6 +1844,15 @@ function AdminWashers({ washers, isLoading, onRefresh, onVerify }: {
                   <span>{washer.completedJobs} jobs</span>
                   <span className="font-medium text-[#4CAF50]">{washer.earnings.toLocaleString()} XOF gagnés</span>
                 </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full mt-3 border-[#FF9800] text-[#FF9800] hover:bg-[#FFF8F0]"
+                  onClick={() => setNumbersWasher({ id: washer.id, name: washer.name })}
+                >
+                  <Banknote className="w-4 h-4 mr-1" />
+                  Numéros de retrait
+                </Button>
               </CardContent>
             </Card>
           ))}
@@ -1849,7 +1863,173 @@ function AdminWashers({ washers, isLoading, onRefresh, onVerify }: {
           <p className="text-[#757575]">Aucun laveur vérifié</p>
         </div>
       )}
+
+      {/* Trusted withdrawal numbers management (admin-only) */}
+      {numbersWasher && (
+        <AdminWithdrawalNumbers
+          washerId={numbersWasher.id}
+          washerName={numbersWasher.name}
+          onClose={() => setNumbersWasher(null)}
+        />
+      )}
     </div>
+  );
+}
+
+// Trusted withdrawal numbers management — ADMIN ONLY.
+// The washer adds up to 3 numbers at setup; afterwards only the admin can
+// add/remove (following a washer request received as a notification).
+function AdminWithdrawalNumbers({ washerId, washerName, onClose }: {
+  washerId: string;
+  washerName: string;
+  onClose: () => void;
+}) {
+  const [numbers, setNumbers] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [newNumber, setNewNumber] = useState('');
+  const [newOperator, setNewOperator] = useState('Mixx by Yas');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const fetchNumbers = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(`/api/admin/washers/withdrawal-numbers?washerId=${washerId}`);
+      const data = await parseJsonResponse<any>(res);
+      if (data?.success) setNumbers(data.numbers ?? []);
+    } catch (error) {
+      console.error('Fetch withdrawal numbers error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [washerId]);
+
+  useEffect(() => {
+    fetchNumbers();
+  }, [fetchNumbers]);
+
+  const handleAdd = async () => {
+    if (!/^\d{8}$/.test(newNumber)) {
+      toast.error('Numéro invalide — 8 chiffres requis (ex: 90123456)');
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const res = await fetch('/api/admin/washers/withdrawal-numbers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ washerId, phoneNumber: newNumber, operator: newOperator }),
+      });
+      const data = await parseJsonResponse<any>(res);
+      if (data?.success) {
+        toast.success('Numéro ajouté — le laveur a été notifié');
+        setNewNumber('');
+        fetchNumbers();
+      } else {
+        toast.error(data?.error || 'Erreur');
+      }
+    } catch {
+      toast.error('Erreur de connexion');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleRemove = async (id: string, phone: string) => {
+    try {
+      const res = await fetch('/api/admin/washers/withdrawal-numbers', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      const data = await parseJsonResponse<any>(res);
+      if (data?.success) {
+        toast.success(`+228 ${phone} retiré — le laveur a été notifié`);
+        fetchNumbers();
+      } else {
+        toast.error(data?.error || 'Erreur');
+      }
+    } catch {
+      toast.error('Erreur de connexion');
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Banknote className="w-5 h-5 text-[#FF9800]" />
+            Numéros de retrait — {washerName}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 pt-2">
+          {isLoading ? (
+            <div className="flex justify-center py-4">
+              <Loader2 className="w-6 h-6 animate-spin text-[#FF9800]" />
+            </div>
+          ) : numbers.length === 0 ? (
+            <p className="text-sm text-[#757575] bg-[#F5F5F5] rounded-lg p-3 text-center">
+              Aucun numéro confirmé pour ce laveur.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {numbers.map((n) => (
+                <div key={n.id} className="flex items-center justify-between bg-[#F5F5F5] rounded-lg px-3 py-2">
+                  <div>
+                    <p className="font-medium text-sm text-[#212121]">+228 {n.phoneNumber}</p>
+                    <p className="text-xs text-[#757575]">{n.operator ?? '—'}</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => handleRemove(n.id, n.phoneNumber)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {numbers.length < 3 && (
+            <div className="space-y-2 border-t border-[#F0F0F0] pt-3">
+              <label className="text-sm font-medium text-[#757575]">Ajouter un numéro</label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#757575]">+228</span>
+                  <Input
+                    type="tel"
+                    placeholder="90 12 34 56"
+                    value={newNumber}
+                    onChange={(e) => setNewNumber(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                    className="pl-14 h-10"
+                  />
+                </div>
+                <Button onClick={handleAdd} disabled={isSaving} className="bg-[#FF9800] hover:bg-[#F57C00]">
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                </Button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {['Mixx by Yas', 'Flooz'].map((op) => (
+                  <button
+                    key={op}
+                    onClick={() => setNewOperator(op)}
+                    className={`p-2 rounded-lg border-2 text-xs font-medium transition-all ${
+                      newOperator === op ? 'border-[#FF9800] bg-[#FFF8F0] text-[#212121]' : 'border-gray-200 text-[#757575]'
+                    }`}
+                  >
+                    {op}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <p className="text-xs text-[#9E9E9E]">
+            Le laveur ne peut pas modifier ces numéros lui-même — il envoie une demande et vous seul agissez ici.
+          </p>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

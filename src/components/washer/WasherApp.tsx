@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuthStore, useOrdersStore } from '@/store';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -1261,8 +1262,17 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, isRefreshingBalance, 
   const [operator, setOperator] = useState('Mixx by Yas');
   const [isLoading, setIsLoading] = useState(false);
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
+  // Trusted withdrawal numbers (max 3, self-confirmed; admin-only changes)
+  const [numbers, setNumbers] = useState<any[]>([]);
+  const [showAddNumber, setShowAddNumber] = useState(false);
+  const [newNumber, setNewNumber] = useState('');
+  const [newOperator, setNewOperator] = useState('Mixx by Yas');
+  const [isAddingNumber, setIsAddingNumber] = useState(false);
+  const [showChangeRequest, setShowChangeRequest] = useState(false);
+  const [changeMessage, setChangeMessage] = useState('');
+  const [isSendingRequest, setIsSendingRequest] = useState(false);
 
-  // Fetch withdrawals
+  // Fetch withdrawals + trusted withdrawal numbers
   useEffect(() => {
     const fetchWithdrawals = async () => {
       try {
@@ -1277,8 +1287,19 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, isRefreshingBalance, 
       }
     };
 
+    const fetchNumbers = async () => {
+      try {
+        const res = await fetch('/api/washers/withdrawal-numbers');
+        const data = await parseJsonResponse<any>(res);
+        if (data?.success) setNumbers(data.numbers ?? []);
+      } catch (error) {
+        console.error('Fetch withdrawal numbers error:', error);
+      }
+    };
+
     if (washerId) {
       fetchWithdrawals();
+      fetchNumbers();
       // Auto-refresh while the earnings screen is open: a withdrawal request
       // can be approved/rejected by the admin at any moment.
       const interval = setInterval(fetchWithdrawals, 15000);
@@ -1320,7 +1341,7 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, isRefreshingBalance, 
     }
     
     if (!phoneNumber || phoneNumber.length < 8) {
-      toast.error('Numéro de téléphone inval');
+      toast.error('Sélectionnez un numéro de retrait confirmé');
       return;
     }
 
@@ -1341,7 +1362,7 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, isRefreshingBalance, 
       if (!data) return;
 
       if (data.success) {
-        toast.success('Demande de retrait envoyée!');
+        toast.success('Demande de retrait envoyée ! L\'administrateur a été notifié.');
         setShowWithdrawModal(false);
         setWithdrawAmount('');
         setPhoneNumber('');
@@ -1360,6 +1381,65 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, isRefreshingBalance, 
       toast.error('Erreur de connexion');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Add a trusted withdrawal number (initial self-service setup, max 3).
+  const handleAddNumber = async () => {
+    if (!/^\d{8}$/.test(newNumber)) {
+      toast.error('Numéro invalide — 8 chiffres requis (ex: 90123456)');
+      return;
+    }
+
+    setIsAddingNumber(true);
+    try {
+      const res = await fetch('/api/washers/withdrawal-numbers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNumber: newNumber, operator: newOperator }),
+      });
+      const data = await parseJsonResponse<any>(res);
+      if (data?.success) {
+        toast.success('Numéro confirmé ✅ — vous pouvez maintenant retirer vers ce numéro.');
+        setNumbers((prev) => [...prev, data.number]);
+        setNewNumber('');
+        setShowAddNumber(false);
+      } else {
+        toast.error(data?.error || 'Erreur lors de l\'ajout');
+      }
+    } catch {
+      toast.error('Erreur de connexion');
+    } finally {
+      setIsAddingNumber(false);
+    }
+  };
+
+  // Send a modification request to the admin (admin-only changes).
+  const handleSendChangeRequest = async () => {
+    if (!changeMessage.trim()) {
+      toast.error('Décrivez la modification souhaitée');
+      return;
+    }
+
+    setIsSendingRequest(true);
+    try {
+      const res = await fetch('/api/washers/withdrawal-numbers/request-change', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: changeMessage }),
+      });
+      const data = await parseJsonResponse<any>(res);
+      if (data?.success) {
+        toast.success(data.message || 'Demande envoyée à l\'administrateur');
+        setShowChangeRequest(false);
+        setChangeMessage('');
+      } else {
+        toast.error(data?.error || 'Erreur lors de l\'envoi');
+      }
+    } catch {
+      toast.error('Erreur de connexion');
+    } finally {
+      setIsSendingRequest(false);
     }
   };
 
@@ -1465,6 +1545,61 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, isRefreshingBalance, 
         </Card>
       </div>
 
+      {/* Trusted withdrawal numbers (max 3 — admin-only modifications) */}
+      <Card className="border-0 shadow-sm">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-1">
+            <h3 className="font-semibold text-[#212121] flex items-center gap-2">
+              <Banknote className="w-4 h-4 text-[#4CAF50]" />
+              Numéros de retrait confirmés
+            </h3>
+            <span className="text-xs text-[#9E9E9E]">{numbers.length}/3</span>
+          </div>
+          <p className="text-xs text-[#9E9E9E] mb-3">
+            Seuls ces numéros peuvent recevoir vos retraits. Toute modification ultérieure passe par l’administrateur.
+          </p>
+
+          {numbers.length === 0 ? (
+            <div className="bg-[#FFF8F0] border border-[#FFE0B2] rounded-xl p-3 text-sm text-[#8D6E63]">
+              Aucun numéro confirmé — ajoutez-en un pour pouvoir retirer.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {numbers.map((n: any) => (
+                <div key={n.id} className="flex items-center justify-between bg-[#F5F5F5] rounded-lg px-3 py-2">
+                  <div>
+                    <p className="font-medium text-sm text-[#212121]">+228 {n.phoneNumber}</p>
+                    <p className="text-xs text-[#757575]">{n.operator ?? '—'}{n.label ? ` • ${n.label}` : ''}</p>
+                  </div>
+                  <Badge className="bg-green-100 text-green-800">Confirmé</Badge>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex gap-2 mt-3">
+            {numbers.length < 3 && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowAddNumber(true)}
+                className="flex-1 border-[#4CAF50] text-[#4CAF50] hover:bg-[#E8F5E9]"
+              >
+                + Ajouter un numéro
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowChangeRequest(true)}
+              className="flex-1 border-gray-300 text-[#757575]"
+            >
+              Demander une modification
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Withdrawal History */}
       {withdrawals.length > 0 && (
         <div className="space-y-3">
@@ -1550,19 +1685,53 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, isRefreshingBalance, 
               </div>
             </div>
 
-            {/* Phone Number */}
+            {/* Phone Number — MUST be one of the trusted numbers */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-[#757575]">Numéro de réception</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#757575]">+228</span>
-                <Input
-                  type="tel"
-                  placeholder="90 12 34 56"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                  className="pl-14 h-12"
-                />
-              </div>
+              <label className="text-sm font-medium text-[#757575]">Numéro de réception (confirmé)</label>
+              {numbers.length === 0 ? (
+                <div className="bg-[#FFF8F0] border border-[#FFE0B2] rounded-xl p-3">
+                  <p className="text-sm text-[#8D6E63] mb-2">
+                    Aucun numéro de retrait confirmé. Ajoutez-en un avant de retirer.
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setShowWithdrawModal(false);
+                      setShowAddNumber(true);
+                    }}
+                    className="border-[#4CAF50] text-[#4CAF50]"
+                  >
+                    + Ajouter un numéro
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {numbers.map((n: any) => (
+                    <button
+                      key={n.id}
+                      type="button"
+                      onClick={() => {
+                        setPhoneNumber(n.phoneNumber);
+                        setOperator(n.operator ?? 'Mixx by Yas');
+                      }}
+                      className={`w-full flex items-center justify-between p-3 rounded-xl border-2 transition-all ${
+                        phoneNumber === n.phoneNumber
+                          ? 'border-[#4CAF50] bg-[#E8F5E9]'
+                          : 'border-gray-200'
+                      }`}
+                    >
+                      <div className="text-left">
+                        <p className="font-medium text-sm text-[#212121]">+228 {n.phoneNumber}</p>
+                        <p className="text-xs text-[#757575]">{n.operator ?? '—'}</p>
+                      </div>
+                      {phoneNumber === n.phoneNumber && (
+                        <CheckCircle className="w-5 h-5 text-[#4CAF50]" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Summary */}
@@ -1580,7 +1749,7 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, isRefreshingBalance, 
             {/* Submit Button */}
             <Button
               onClick={handleWithdraw}
-              disabled={isLoading || !withdrawAmount || parseFloat(withdrawAmount) < 500 || phoneNumber.length < 8}
+              disabled={isLoading || !withdrawAmount || parseFloat(withdrawAmount) < 500 || !phoneNumber || numbers.length === 0}
               className="w-full h-12 bg-[#4CAF50] hover:bg-[#43A047] text-white font-semibold"
             >
               {isLoading ? (
@@ -1588,6 +1757,104 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, isRefreshingBalance, 
               ) : (
                 'Confirmer la demande'
               )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Trusted Number Dialog */}
+      <Dialog open={showAddNumber} onOpenChange={setShowAddNumber}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Banknote className="w-5 h-5 text-[#4CAF50]" />
+              Ajouter un numéro de retrait
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="bg-[#FFF8F0] border border-[#FFE0B2] rounded-xl p-3 text-xs text-[#8D6E63]">
+              Confirmez ce numéro : il pourra recevoir vos retraits. Maximum 3 numéros. Toute modification ultérieure sera faite uniquement par l’administrateur, après votre demande.
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-[#757575]">Numéro Mobile Money</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#757575]">+228</span>
+                <Input
+                  type="tel"
+                  placeholder="90 12 34 56"
+                  value={newNumber}
+                  onChange={(e) => setNewNumber(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                  className="pl-14 h-12"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-[#757575]">Opérateur</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setNewOperator('Mixx by Yas')}
+                  className={`p-3 rounded-xl border-2 transition-all ${
+                    newOperator === 'Mixx by Yas' ? 'border-[#4CAF50] bg-[#E8F5E9]' : 'border-gray-200'
+                  }`}
+                >
+                  <span className="font-medium text-sm">Mixx by Yas</span>
+                </button>
+                <button
+                  onClick={() => setNewOperator('Flooz')}
+                  className={`p-3 rounded-xl border-2 transition-all ${
+                    newOperator === 'Flooz' ? 'border-[#4CAF50] bg-[#E8F5E9]' : 'border-gray-200'
+                  }`}
+                >
+                  <span className="font-medium text-sm">Flooz</span>
+                </button>
+              </div>
+            </div>
+            <Button
+              onClick={handleAddNumber}
+              disabled={isAddingNumber || !/^\d{8}$/.test(newNumber)}
+              className="w-full h-12 bg-[#4CAF50] hover:bg-[#43A047] text-white font-semibold"
+            >
+              {isAddingNumber ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Confirmer ce numéro'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modification Request Dialog (admin-only changes) */}
+      <Dialog open={showChangeRequest} onOpenChange={setShowChangeRequest}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Demander une modification</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="bg-[#F5F5F5] rounded-xl p-3">
+              <p className="text-xs text-[#757575] mb-2">Vos numéros actuels :</p>
+              {numbers.length === 0 ? (
+                <p className="text-sm text-[#212121]">Aucun numéro</p>
+              ) : (
+                numbers.map((n: any) => (
+                  <p key={n.id} className="text-sm text-[#212121]">+228 {n.phoneNumber} • {n.operator ?? '—'}</p>
+                ))
+              )}
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-[#757575]">Votre demande (remplacement, suppression…)</label>
+              <textarea
+                placeholder="Ex : remplacer le numéro 90123456 par 91234567"
+                value={changeMessage}
+                onChange={(e) => setChangeMessage(e.target.value)}
+                className="w-full p-3 border border-[#E0E0E0] rounded-xl resize-none h-24 text-sm focus:outline-none focus:border-[#4CAF50]"
+              />
+              <p className="text-xs text-[#9E9E9E]">
+                Seul l’administrateur peut modifier vos numéros. Il sera notifié immédiatement.
+              </p>
+            </div>
+            <Button
+              onClick={handleSendChangeRequest}
+              disabled={isSendingRequest || !changeMessage.trim()}
+              className="w-full h-12 bg-[#4CAF50] hover:bg-[#43A047] text-white font-semibold"
+            >
+              {isSendingRequest ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Envoyer la demande'}
             </Button>
           </div>
         </DialogContent>

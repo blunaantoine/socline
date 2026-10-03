@@ -429,3 +429,25 @@ Stage Summary:
 - Statuts dépôt/retrait vérifiés de bout en bout: PENDING → COMPLETED/FAILED|REJECTED, soldes et balanceAfter toujours justes.
 - Vrai système de notifications: événements réels uniquement (dépôt validé/rejeté, retrait approuvé/refusé, NEW_ORDER…), in-app + temps réel socket + SMS pour le critique.
 - TODO externe: recharger les crédits Africa's Talking (InsufficientBalance) ; l'envoi SMS réel reprendra automatiquement.
+
+---
+Task ID: 12 (session 12 — notifications retrait admin/laveur + numéros de retrait de confiance)
+Agent: main (Z.ai Code)
+Task: "pour quoi ils n y pas de notification chez l admin et le laveur pour le retrait" + "seul trois numero confirmer au debut par le prestataire (laveur) peuvent etre utilise comme numero de retrait et seul l admin peux le modifier apres demande du prestataire"
+
+Work Log:
+- Modèle WasherWithdrawalNumber ajouté (washerId, phoneNumber 8 chiffres, operator, label, unique [washerId, phoneNumber]) + relation Washer.withdrawalNumbers + db:push. Redémarrage du dev server requis pour charger le nouveau client Prisma.
+- API laveur /api/washers/withdrawal-numbers: GET (liste + maxNumbers + canModify:false) et POST (ajout, max 3, format Togo 8 chiffres, anti-doublon) — self-service INITIAL uniquement.
+- API demande de modification /api/washers/withdrawal-numbers/request-change: le laveur décrit sa demande → notification à TOUS les admins (in-app + temps réel + SMS best-effort) avec nom/téléphone laveur + message + numéros actuels. Aucune écriture directe des numéros.
+- API admin /api/admin/washers/withdrawal-numbers: GET ?washerId, POST (ajout, max 3), DELETE (retrait) — requireAdmin ; chaque action notifie le laveur (in-app + temps réel).
+- POST /api/withdrawals durci: le retrait ne peut cibler QUE un numéro de confiance (403 sinon) ; l'opérateur du numéro de confiance prime. À la création: notification « Demande de retrait envoyée ✅ » au laveur + « Nouvelle demande de retrait 💰 » à tous les admins (avec nom, montant, numéro) — in-app + temps réel + SMS best-effort.
+- UI laveur (WasherEarnings): section « Numéros de retrait confirmés » (x/3, badge Confirmé) + « + Ajouter un numéro » (dialog, max 3) + « Demander une modification » (dialog message → admins) ; la modal de retrait remplace l'input libre par la LISTE des numéros confirmés (opérateur auto) ; retrait impossible sans numéro confirmé ; Badge import ajouté (fix lint).
+- UI admin: AdminNotificationCenter (cloche + badge non-lus + sheet, pipeline temps réel partagé, polling 30s filet) monté dans le header AdminPanel ; AdminWithdrawalNumbers (dialog: liste + suppression + ajout avec opérateur, max 3) ouvert via bouton « Numéros de retrait » sur chaque carte laveur vérifié.
+- Tests curl: ajout 3 numéros OK, 4e → 400 « déjà 3 numéros » ; retrait vers numéro non confirmé → 403 ; retrait vers numéro confirmé → 200 + 2 notifications (laveur ✅ + admin 💰 avec détail) ; demande de modif → notif admin avec numéros actuels ; route admin appelée par laveur → 403 ; suppression par l'admin → notif laveur « Numéro de retrait retiré ».
+- Tests agent-browser: écran Revenus laveur (section 3/3 + historique) ; panneau admin cloche badge « 2 » avec les 2 notifications réelles ; dialog gestion numéros (Client Test vide + Laveur Test 3 numéros avec suppression) ; suppression test 93344556 par l'admin → notif laveur reçue. 0 erreur console. Lint 0/0.
+- Données démo laissées: Laveur Test = 2 numéros confirmés (90234567 Mixx principal, 92112233 Flooz) + 1 retrait PENDING 600 XOF pour tester le traitement admin.
+
+Stage Summary:
+- La boucle de notification du retrait est complète: création → admin notifié (realtime + SMS) ET laveur confirmé ; approbation/refus → laveur notifié (session 11).
+- Sécurité des retraits: seul un numéro confirmé peut recevoir un retrait ; max 3 ; le laveur s'auto-confirme à l'inscription de ses numéros mais TOUTE modification ultérieure est admin-only, déclenchée par une demande notifiée.
+- L'admin dispose désormais d'une cloche de notifications temps réel (retraits, dépôts, demandes de modification) dans son panneau.

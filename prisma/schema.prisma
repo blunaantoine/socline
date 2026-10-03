@@ -206,10 +206,31 @@ model Washer {
   // Relations
   orders         Order[]
   withdrawals    WasherWithdrawal[]
+  withdrawalNumbers WasherWithdrawalNumber[]
   stationId      String?
   station        Station? @relation(fields: [stationId], references: [id])
 
   @@map("washers")
+}
+
+// Trusted withdrawal numbers (numéros de retrait de confiance).
+// The washer registers up to MAX 3 numbers at setup (self-confirmed); only
+// the ADMIN can add/remove afterwards, following a washer request.
+model WasherWithdrawalNumber {
+  id          String   @id @default(cuid())
+  washerId    String
+  washer      Washer   @relation(fields: [washerId], references: [id], onDelete: Cascade)
+
+  // Togo national 8-digit format (e.g. "90123456") — always displayed +228.
+  phoneNumber String
+  operator    String?  // "Mixx by Yas" | "Flooz" — default operator for this number
+  label       String?  // e.g. "Numéro principal"
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([washerId, phoneNumber])
+  @@map("washer_withdrawal_numbers")
 }
 
 // Station model
