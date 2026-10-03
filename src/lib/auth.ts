@@ -66,14 +66,30 @@ export async function hashPin(pin: string): Promise<string> {
   return bcrypt.hash(pin, SALT_ROUNDS);
 }
 
-// Verify a PIN code against a hash
-export async function verifyPin(pin: string, hashedPin: string): Promise<boolean> {
-  // Check if the stored PIN is hashed (starts with $2a$ or $2b$)
-  if (hashedPin.startsWith('$2a$') || hashedPin.startsWith('$2b$')) {
-    return bcrypt.compare(pin, hashedPin);
+// Verify a PIN code against the stored value.
+// - Stored value is a bcrypt hash ($2a$/$2b$) → normal comparison.
+// - Stored value is a legacy PLAINTEXT PIN (accounts created before hashing
+//   was enforced) → compare as-is, then IMMEDIATELY upgrade the account to a
+//   bcrypt hash ("lazy migration") so plaintext never lingers in the DB.
+export async function verifyPin(pin: string, storedPin: string, userId?: string): Promise<boolean> {
+  if (storedPin.startsWith('$2a$') || storedPin.startsWith('$2b$')) {
+    return bcrypt.compare(pin, storedPin);
   }
-  // Fallback for legacy unhashed PINs (migration path)
-  return pin === hashedPin;
+
+  // Legacy plaintext PIN — reject if it doesn't match.
+  if (pin !== storedPin) return false;
+
+  // Lazy migration: re-hash the plaintext PIN and persist it right away.
+  if (userId) {
+    try {
+      const hashed = await bcrypt.hash(pin, SALT_ROUNDS);
+      await db.user.update({ where: { id: userId }, data: { pin: hashed } });
+      console.warn(`[SECURITY] Legacy plaintext PIN upgraded to bcrypt for user ${userId}`);
+    } catch (e) {
+      console.error('[SECURITY] Failed to upgrade legacy plaintext PIN:', e);
+    }
+  }
+  return true;
 }
 
 // Generate a signed JWT session token with userId embedded.

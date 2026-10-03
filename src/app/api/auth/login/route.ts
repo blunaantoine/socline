@@ -54,8 +54,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify PIN with bcrypt
-    if (!user.pin || !(await verifyPin(pin, user.pin))) {
+    // Verify PIN with bcrypt (legacy plaintext PINs are auto-upgraded)
+    if (!user.pin || !(await verifyPin(pin, user.pin, user.id))) {
       recordFailedLogin(cleanPhone);
       return NextResponse.json(
         { success: false, error: 'PIN incorrect' },

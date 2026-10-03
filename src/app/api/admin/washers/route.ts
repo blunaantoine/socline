@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { requireAdmin } from '@/lib/auth';
+import { hashPin, requireAdmin } from '@/lib/auth';
 
 // POST /api/admin/washers - Create a new washer
 export async function POST(request: NextRequest) {
@@ -14,6 +14,11 @@ export async function POST(request: NextRequest) {
 
     if (!phone) {
       return NextResponse.json({ error: 'Le téléphone est requis' }, { status: 400 });
+    }
+
+    // Validate optional PIN format (4 digits) if provided
+    if (pin && !/^\d{4}$/.test(pin)) {
+      return NextResponse.json({ error: 'Le PIN doit contenir exactement 4 chiffres' }, { status: 400 });
     }
 
     // Check if user already exists
@@ -41,12 +46,15 @@ export async function POST(request: NextRequest) {
       });
     } else {
       // Create new user with WASHER role
+      // SECURITY: the PIN must always be stored hashed (bcrypt), never in
+      // plaintext — a plaintext default ('1234') would be readable by anyone
+      // with database access.
       user = await db.user.create({
         data: {
           phone,
           name: name || null,
           email: email || null,
-          pin: pin || '1234',
+          pin: await hashPin(pin || '1234'),
           role: 'WASHER',
           isActive: true,
         },

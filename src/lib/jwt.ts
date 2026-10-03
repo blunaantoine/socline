@@ -86,8 +86,8 @@ export async function authenticateWithJWT(
       return { success: false, error: 'Numéro non enregistré' };
     }
 
-    // Vérifier le PIN
-    if (!user.pin || !(await verifyPin(pin, user.pin))) {
+    // Vérifier le PIN (les PIN legacy en clair sont automatiquement hashés)
+    if (!user.pin || !(await verifyPin(pin, user.pin, user.id))) {
       return { success: false, error: 'PIN incorrect' };
     }
 

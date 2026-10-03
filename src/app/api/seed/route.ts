@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { hashPin } from '@/lib/auth';
 
 // POST /api/seed - Seed database with initial data
 export async function POST() {
@@ -108,7 +109,8 @@ export async function POST() {
           phone: '90123456',
           name: 'Client Test',
           role: 'CLIENT',
-          pin: '1234',
+          // SECURITY: PIN always stored hashed (bcrypt), never plaintext
+          pin: await hashPin('1234'),
           plateNumber: 'TG-1234-A',
           carColor: 'Blanc',
           isActive: true,
@@ -124,7 +126,8 @@ export async function POST() {
           phone: '90234567',
           name: 'Laveur Test',
           role: 'WASHER',
-          pin: '1234',
+          // SECURITY: PIN always stored hashed (bcrypt), never plaintext
+          pin: await hashPin('1234'),
           isActive: true,
         },
       });
@@ -178,7 +181,8 @@ export async function POST() {
           phone: '71998155',
           name: 'Admin Socline',
           role: 'ADMIN',
-          pin: '1234',
+          // SECURITY: PIN always stored hashed (bcrypt), never plaintext
+          pin: await hashPin('1234'),
           isActive: true,
         },
       });
