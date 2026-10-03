@@ -489,3 +489,25 @@ Stage Summary:
 - Commit 001d4ae (🚀) poussé — repo 100% prêt pour l'import Vercel.
 - Turso+adaptateur = seule voie fiable pour une DB persistante sur serverless ; sockets désactivables proprement ; push FCM = canal de remplacement pour les alertes temps réel.
 - Prochaines actions utilisateur: créer Turso (2 env vars), importer le repo sur Vercel (+5 env vars de sécurité), POST /api/seed, puis clés Firebase si push voulu.
+
+---
+Task ID: 15 (session 14 — retrait de Firebase, retour au système de notifications d'origine)
+Agent: main (Z.ai Code)
+Task: "retirer firebase et intégrer l'ancien système"
+
+Work Log:
+- Suppression complète de l'intégration Firebase/FCM (session 13): src/lib/firebase.ts, src/lib/firebase-admin.ts, src/lib/notif-dedup.ts, src/components/PushNotificationSetup.tsx, route POST /api/notifications/register-token, route /firebase-messaging-sw.js, deps firebase+firebase-admin (package.json + bun.lock), colonne users.fcmToken (schema.prisma + db:push), bloc Firebase de .env.example, section push de VERCEL_DEPLOY.md (§4 réécrit « Notifications en mode démo Vercel »).
+- notify() restauré à l'ancien système (session 11): 1) DB source de vérité, 2) socket temps réel room user:<id>, 3) SMS best-effort critique. Plus aucune étape FCM.
+- RealtimeNotifications: toast socket direct (retrait du markSeen/dedup FCM).
+- Footers UI remplacés par des encarts informatifs honnêtes (aucun faux toggle): client « Notifications temps réel actives ✅ — alertes instantanées + SMS paiements », admin « Retraits, dépôts et demandes — instantanés + SMS », laveur section Notifications = 2 lignes statiques temps réel/SMS avec badges Actives (le faux Switch SMS démo est également parti).
+- Incidents détectés et corrigés en cours de route: (1) le dev server tournait avec l'ancien client Prisma après le db:push (colonne fcmToken manquante côté DB) → redémarrage; (2) .env avait de nouveau été réduit à DATABASE_URL seule (récidive de la session 13) → JWT_SECRET/JWT_REFRESH_SECRET/INTERNAL_SOCKET_SECRET/SMS_* restaurés depuis git show 81fd6bf:.env, RESTÉ LOCAL; (3) chat-service + washgo-socket redémarrés car ils tournaient avec le .env réduit (INTERNAL_SOCKET_SECRET vide → /internal/emit renvoyait forbidden) → après redémarrage, emit interne {ok:true}.
+- Découverte test navigateur: en tapant directement localhost:3000, le socket client ne peut PAS se connecter (Next.js ne proxy pas /socket.io/?XTransformPort=3003) — c'est NORMAL, le chemin utilisateur passe par le gateway Caddy (:81) qui, lui, route vers 3003. Re-test via localhost:81 = comportement Preview Panel réel.
+- Tests curl E2E: seed OK, login admin+client OK, dépôt 500→PENDING, validate admin → COMPLETED, solde 0→750, notification « Rechargement validé ✅ » en DB, double validation → 400 « Transaction déjà traitée », register-token → 404.
+- Tests agent-browser E2E (via gateway :81): login client → cloche badge « 2 » → panneau avec la notification réelle + NOUVEAU footer informatif → dépôt 450 + validation admin via API → TOAST SOCKET INSTANTANÉ « Rechargement validé ✅ — Nouveau solde : 1,500 XOF » + badge 2→3 automatique → login admin → panneau « Notifications admin » vide (normal post-seed) + footer OK. 0 erreur console (seul warning Google Maps InvalidKey préexistant).
+- Lint 0/0. Restauration des modes de fichiers parasites (644→755 posés par le sandbox sur ~20 fichiers non touchés) avant commit.
+
+Stage Summary:
+- Firebase est 100% retiré (code, deps, schéma, config, docs) — le système de notifications est de nouveau: DB + socket temps réel + SMS best-effort, tel que construit en session 11.
+- Commit 0434de6 (🗑️) poussé sur main.
+- VERCEL_DEPLOY.md mis à jour: sur Vercel les notifications fonctionnent en in-app + polling 30s (pas de socket persistant), SMS optionnel — aucune clé Firebase requise.
+- Le travail restant « OTP par WhatsApp » (demande initiale session 6b) reste en attente.
