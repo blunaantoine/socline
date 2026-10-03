@@ -340,3 +340,21 @@ Stage Summary:
 - Plus aucune source de PIN en clair: register (déjà hashé), admin/users (déjà hashé), admin/washers (corrigé), seed (corrigé).
 - Ceinture de sécurité: tout PIN en clair résiduel est automatiquement hashé au premier login réussi (lazy migration).
 - Script scripts/migrate-plaintext-pins.cjs conservé pour les futurs environnements (idempotent).
+
+---
+Task ID: 8 (session 8 — fix « Session expirée » en boucle)
+Agent: main (Z.ai Code)
+Task: "chaque foit que je me connect jai ca Session expirée, veuillez vous reconnecter" — diagnostiquer et corriger
+
+Work Log:
+- Diagnostic: backend OK (curl cookie → /api/auth/me 200); le message vient des composants frontend sur 401. Cause racine: l'app rendue dans le panneau de prévisualisation est un IFRAME cross-site → les navigateurs n'attachent pas les cookies SameSite=Lax aux fetch initiés depuis l'iframe → 401 systématique post-login → toast « Session expirée » → logout en boucle (AdminPanel/ClientOrderFlow/ChatView).
+- Fix serveur: lib/auth.ts → getSessionFromRequest(request): cookie d'abord, sinon Authorization: Bearer (même token session signé); requireAuth/requireAdmin migrent dessus; /api/auth/me et /api/subscriptions/validate aussi. sessionFromToken() extrait la logique commune.
+- Fix client: src/lib/api-auth.ts — intercepteur window.fetch (même origine /api/ uniquement) qui ajoute Authorization: Bearer <token> depuis le store persisté zustand (`socline-auth`), sans écraser un header existant, fail-safe, installé à l'éval du module; src/components/ApiAuthProvider.tsx monté dans layout.tsx.
+- Tests curl: stats avec Bearer seul → 200 (avant 401); rien → 401; /api/auth/me + /api/cars Bearer seul → 200. Lint 0/0.
+- Tests agent-browser: login admin → Dashboard OK; cookies effacés (simulation iframe exacte) → GET /api/admin/users → 200 via Bearer seul, utilisateurs affichés (Bluna Antoine, tkkh, gogo…), 0 erreur console.
+
+Stage Summary:
+- Commit f2a513b poussé (🔧).
+- L'auth fonctionne désormais dans TOUS les contextes: navigateur direct (cookie), iframe cross-site / preview panel (Bearer), clients API mobile (header JWT existant).
+- Sécurité inchangée: token signé obligatoire; sans cookie ni header → 401.
+- Le flux cookie reste prioritaire; le Bearer n'est qu'un fallback.
