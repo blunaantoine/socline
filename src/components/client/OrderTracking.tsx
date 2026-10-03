@@ -12,6 +12,7 @@ import {
   CheckCircle, Navigation, AlertCircle, X, ArrowLeft, Home, Loader2
 } from 'lucide-react';
 import type { Order, OrderStatus, TrackingEvent } from '@/types';
+import { isRealtimeEnabled } from '@/lib/realtime-flag';
 import type { Socket } from 'socket.io-client';
 import { toast } from 'sonner';
 
@@ -90,6 +91,9 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
     let cancelled = false;
 
     const initSocket = async () => {
+      // Serverless demo (Vercel): realtime disabled, polling fallbacks only.
+      if (!isRealtimeEnabled()) return;
+
       const token = useAuthStore.getState().token;
       if (!token) {
         console.warn('[Tracking] No auth token — realtime disabled, polling only');

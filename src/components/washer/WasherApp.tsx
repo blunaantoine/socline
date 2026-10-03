@@ -24,6 +24,7 @@ import { parseJsonResponse } from '@/lib/json-helper';
 import { StationDashboard } from '@/components/washer/StationDashboard';
 import { onSoclineNotification } from '@/components/RealtimeNotifications';
 import { PushNotificationSetup } from '@/components/PushNotificationSetup';
+import { isRealtimeEnabled } from '@/lib/realtime-flag';
 
 // Washer stats type
 interface WasherStats {
@@ -255,6 +256,9 @@ export function WasherApp() {
     let cancelled = false;
 
     const initSocket = async () => {
+      // Serverless demo (Vercel): realtime disabled, polling fallbacks only.
+      if (!isRealtimeEnabled()) return;
+
       const token = useAuthStore.getState().token;
       if (!token) {
         console.warn('[WasherApp] No auth token — realtime refresh disabled');

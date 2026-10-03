@@ -12,6 +12,7 @@ import {
   Car, User, Clock
 } from 'lucide-react';
 import { parseJsonResponse } from '@/lib/json-helper';
+import { isRealtimeEnabled } from '@/lib/realtime-flag';
 import { toast } from 'sonner';
 
 interface ChatViewProps {
@@ -56,6 +57,9 @@ export function ChatView({ conversation, onBack }: ChatViewProps) {
     let unauthorizedToastShown = false;
 
     const initSocket = async () => {
+      // Serverless demo (Vercel): realtime disabled, polling fallbacks only.
+      if (!isRealtimeEnabled()) return;
+
       // Token from the auth store (NOT in the effect deps on purpose:
       // a re-render with a new token is handled by the reconnect logic).
       const token = useAuthStore.getState().token;

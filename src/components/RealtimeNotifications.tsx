@@ -17,6 +17,7 @@ import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store';
 import { markSeen } from '@/lib/notif-dedup';
+import { isRealtimeEnabled } from '@/lib/realtime-flag';
 import type { Socket } from 'socket.io-client';
 
 export interface RealtimeNotification {
@@ -47,6 +48,9 @@ export function RealtimeNotifications() {
     let cancelled = false;
 
     const init = async () => {
+      // Serverless demo (Vercel): the socket mini-service cannot run there.
+      if (!isRealtimeEnabled()) return;
+
       try {
         const { io } = await import('socket.io-client');
         if (cancelled) return;
