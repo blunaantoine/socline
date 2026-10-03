@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { parseJsonResponse } from '@/lib/json-helper';
 import { onSoclineNotification } from '@/components/RealtimeNotifications';
+import { PushNotificationSetup } from '@/components/PushNotificationSetup';
 
 interface Notification {
   id: string;
@@ -223,9 +224,10 @@ export function NotificationCenter() {
             )}
           </div>
 
-          {/* Footer */}
+          {/* Real push (Firebase FCM — demo) activation */}
           <div className="p-4 border-t border-[#F5F5F5] bg-[#FFF8F0]">
-            <p className="text-xs text-center text-[#757575]">
+            <PushNotificationSetup description="Recevoir les alertes commandes et paiements même app fermée" />
+            <p className="text-xs text-center text-[#757575] mt-3">
               Les notifications sont liées à vos commandes et paiements
             </p>
           </div>

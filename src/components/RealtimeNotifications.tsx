@@ -16,6 +16,7 @@
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store';
+import { markSeen } from '@/lib/notif-dedup';
 import type { Socket } from 'socket.io-client';
 
 export interface RealtimeNotification {
@@ -66,8 +67,9 @@ export function RealtimeNotifications() {
         socket.on('notification', (payload: RealtimeNotification) => {
           if (!payload?.id) return;
 
-          // 1. Instant toast.
-          if (payload.title || payload.message) {
+          // 1. Instant toast — deduped against the FCM foreground handler
+          //    (the same notification can arrive through BOTH channels).
+          if ((payload.title || payload.message) && markSeen(payload.id)) {
             toast(payload.title || 'Notification', {
               description: payload.message,
             });

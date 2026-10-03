@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Bell, Banknote, Car, AlertCircle, MessageCircle, Star, Wrench } from 'lucide-react';
 import { parseJsonResponse } from '@/lib/json-helper';
 import { onSoclineNotification } from '@/components/RealtimeNotifications';
+import { PushNotificationSetup } from '@/components/PushNotificationSetup';
 
 interface Notification {
   id: string;
@@ -185,6 +186,11 @@ export function AdminNotificationCenter() {
                 ))}
               </div>
             )}
+          </div>
+
+          {/* Real push (Firebase FCM — demo) activation */}
+          <div className="p-4 border-t border-[#F5F5F5] bg-[#FFF8F0]">
+            <PushNotificationSetup description="Dépôts, retraits et demandes même app fermée" />
           </div>
         </div>
       </SheetContent>

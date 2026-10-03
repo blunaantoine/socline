@@ -23,6 +23,7 @@ import { toast } from 'sonner';
 import { parseJsonResponse } from '@/lib/json-helper';
 import { StationDashboard } from '@/components/washer/StationDashboard';
 import { onSoclineNotification } from '@/components/RealtimeNotifications';
+import { PushNotificationSetup } from '@/components/PushNotificationSetup';
 
 // Washer stats type
 interface WasherStats {
@@ -2086,13 +2087,10 @@ function WasherProfileSection({ section, onBack, user }: {
       {section === 'notifications' && (
         <Card className="border-0 shadow-sm">
           <CardContent className="p-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium text-[#212121]">Notifications push</p>
-                <p className="text-xs text-[#757575]">Recevoir les alertes de nouvelles commandes</p>
-              </div>
-              <Switch defaultChecked />
-            </div>
+            <PushNotificationSetup
+              title="Notifications push"
+              description="Recevoir les alertes de nouvelles commandes"
+            />
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium text-[#212121]">Notifications SMS</p>
