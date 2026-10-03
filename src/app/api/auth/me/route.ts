@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
+import { getSessionFromRequest } from '@/lib/auth';
 import { db } from '@/lib/db';
 
 // GET /api/auth/me - Check if current user session is valid
-// The user identity is derived from the signed session cookie, never from query params.
+// The user identity is derived from the signed session cookie OR the
+// Authorization: Bearer header (iframe/preview contexts block cookies).
 export async function GET(request: NextRequest) {
   try {
-    const session = await getCurrentUser();
+    const session = await getSessionFromRequest(request);
     if (!session) {
       return NextResponse.json({ valid: false, error: 'No valid session' });
     }

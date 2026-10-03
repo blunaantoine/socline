@@ -149,31 +149,63 @@ export interface Session {
   isActive: boolean;
 }
 
+// Build a Session from a signed token (shared by cookie and Bearer flows).
+async function sessionFromToken(token: string): Promise<Session | null> {
+  const parsed = parseToken(token);
+  if (!parsed || !parsed.userId) return null;
+
+  const user = await db.user.findUnique({
+    where: { id: parsed.userId },
+    select: {
+      id: true,
+      phone: true,
+      name: true,
+      role: true,
+      isActive: true,
+    },
+  });
+
+  if (!user || !user.isActive) return null;
+  return user;
+}
+
 // Get current user from cookie/token
 export async function getCurrentUser(): Promise<Session | null> {
   try {
     const token = await getAuthCookie();
     if (!token) return null;
+    return await sessionFromToken(token);
+  } catch {
+    return null;
+  }
+}
 
-    // Parse the token to get userId
-    const parsed = parseToken(token);
-    if (!parsed || !parsed.userId) return null;
+// Get the current session from a request, trying BOTH auth mechanisms:
+//  1. the signed session cookie (standard browser flow)
+//  2. the `Authorization: Bearer <token>` header (fallback)
+//
+// The Bearer fallback is required because when the app is embedded in a
+// cross-site iframe (e.g. preview panels), browsers refuse to attach
+// SameSite=Lax cookies — the session would look "expired" even though the
+// login just succeeded. The client-side fetch interceptor sends the same
+// signed session token via the header in that case.
+export async function getSessionFromRequest(request: NextRequest): Promise<Session | null> {
+  try {
+    const cookieToken = await getAuthCookie();
+    if (cookieToken) {
+      const session = await sessionFromToken(cookieToken);
+      if (session) return session;
+    }
 
-    // Find the user by ID from the token
-    const user = await db.user.findUnique({
-      where: { id: parsed.userId },
-      select: {
-        id: true,
-        phone: true,
-        name: true,
-        role: true,
-        isActive: true,
-      },
-    });
+    const authHeader = request.headers.get('authorization');
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const bearerToken = authHeader.slice(7).trim();
+      if (bearerToken) {
+        return await sessionFromToken(bearerToken);
+      }
+    }
 
-    if (!user || !user.isActive) return null;
-
-    return user;
+    return null;
   } catch {
     return null;
   }
@@ -181,7 +213,7 @@ export async function getCurrentUser(): Promise<Session | null> {
 
 // Middleware helper to check admin role
 export async function requireAdmin(request: NextRequest): Promise<{ authorized: boolean; user: Session | null; response?: NextResponse }> {
-  const user = await getCurrentUser();
+  const user = await getSessionFromRequest(request);
   
   if (!user) {
     return {
@@ -210,7 +242,7 @@ export async function requireAdmin(request: NextRequest): Promise<{ authorized: 
 
 // Middleware helper to check authenticated user
 export async function requireAuth(request: NextRequest): Promise<{ authorized: boolean; user: Session | null; response?: NextResponse }> {
-  const user = await getCurrentUser();
+  const user = await getSessionFromRequest(request);
   
   if (!user) {
     return {

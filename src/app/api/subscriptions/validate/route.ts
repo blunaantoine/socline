@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { getCurrentUser } from '@/lib/auth';
+import { getSessionFromRequest } from '@/lib/auth';
 
 /**
  * GET /api/subscriptions/validate?clientId=xxx
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
     // Resolve the washer profile from the session BEFORE comparing:
     // session.id is the User id, while order.washerId references the
     // Washer record id (they are different identifiers).
-    const session = await getCurrentUser();
+    const session = await getSessionFromRequest(request);
     if (!session) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
