@@ -21,6 +21,7 @@ import {
 import { HideableBalanceDark } from '@/components/ui/hideable-balance';
 import { toast } from 'sonner';
 import { parseJsonResponse } from '@/lib/json-helper';
+import { onSoclineNotification } from '@/components/RealtimeNotifications';
 
 interface WalletData {
   id: string;
@@ -185,6 +186,55 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
     fetchWallet();
     fetchOperators();
   }, [user?.id]);
+
+  // Realtime refresh: when a payment notification arrives (deposit validated
+  // or rejected by the admin), refresh the balance and history at once.
+  useEffect(() => {
+    const off = onSoclineNotification((payload) => {
+      if (payload?.type === 'payment' || payload?.type === 'PAYMENT') {
+        fetchWallet(true);
+      }
+    });
+    return off;
+  }, []);
+
+  // Auto-poll the pending deposit while the USSD dialog is open: as soon as
+  // the admin validates (COMPLETED) or rejects (FAILED) the transaction, the
+  // dialog closes itself with the right toast and the wallet refreshes.
+  useEffect(() => {
+    if (!showDeposit || !deposit.transactionId) return;
+
+    const checkDepositStatus = async () => {
+      try {
+        const res = await fetch(`/api/wallet?userId=${user?.id}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data?.success) return;
+
+        const tx = data.wallet?.transactions?.find(
+          (t: Transaction) => t.id === deposit.transactionId
+        );
+        if (!tx) return;
+
+        if (tx.status === 'COMPLETED') {
+          toast.success(`Rechargement de ${deposit.amount.toLocaleString('fr-FR')} XOF validé ✅`);
+          setShowDeposit(false);
+          resetDeposit();
+          fetchWallet(true);
+        } else if (tx.status === 'FAILED') {
+          toast.error('Votre rechargement a été rejeté. Contactez le support si vous avez payé.');
+          setShowDeposit(false);
+          resetDeposit();
+          fetchWallet(true);
+        }
+      } catch {
+        // Network hiccup — next tick retries.
+      }
+    };
+
+    const interval = setInterval(checkDepositStatus, 8000);
+    return () => clearInterval(interval);
+  }, [showDeposit, deposit.transactionId, deposit.amount, user?.id]);
 
   // Get selected operator
   const selectedOperator = operators.find(o => o.id === deposit.operatorId);

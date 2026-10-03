@@ -16,6 +16,7 @@ import {
   Star, CreditCard, MapPin
 } from 'lucide-react';
 import { parseJsonResponse } from '@/lib/json-helper';
+import { onSoclineNotification } from '@/components/RealtimeNotifications';
 
 interface Notification {
   id: string;
@@ -53,11 +54,36 @@ export function NotificationCenter() {
     };
 
     fetchNotifications();
-    
-    // Poll for new notifications every 30 seconds
+
+    // Poll for new notifications every 30 seconds (fallback safety net)
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
   }, [user?.id]);
+
+  // Realtime: instantly prepend notifications pushed by the socket layer
+  // (RealtimeNotifications re-broadcasts them on the window). The toast is
+  // already shown there — this only updates the list + unread badge.
+  useEffect(() => {
+    const off = onSoclineNotification((payload) => {
+      setNotifications((prev) =>
+        prev.some((n) => n.id === payload.id)
+          ? prev
+          : [
+              {
+                id: payload.id,
+                type: (payload.type as Notification['type']) ?? 'system',
+                title: payload.title,
+                message: payload.message,
+                isRead: false,
+                createdAt: payload.createdAt,
+                data: (payload.data as Notification['data']) ?? undefined,
+              },
+              ...prev,
+            ].slice(0, 50)
+      );
+    });
+    return off;
+  }, []);
 
   // Mark notification as read
   const markAsRead = async (notificationId: string) => {

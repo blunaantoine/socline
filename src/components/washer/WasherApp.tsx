@@ -21,6 +21,7 @@ import { ChatView } from '@/components/chat/ChatView';
 import { toast } from 'sonner';
 import { parseJsonResponse } from '@/lib/json-helper';
 import { StationDashboard } from '@/components/washer/StationDashboard';
+import { onSoclineNotification } from '@/components/RealtimeNotifications';
 
 // Washer stats type
 interface WasherStats {
@@ -1275,11 +1276,35 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, isRefreshingBalance, 
         console.error('Fetch withdrawals error:', error);
       }
     };
-    
+
     if (washerId) {
       fetchWithdrawals();
+      // Auto-refresh while the earnings screen is open: a withdrawal request
+      // can be approved/rejected by the admin at any moment.
+      const interval = setInterval(fetchWithdrawals, 15000);
+      return () => clearInterval(interval);
     }
   }, [washerId]);
+
+  // Realtime: a payment notification (withdrawal approved/rejected) refreshes
+  // the withdrawals list AND the earnings balance instantly.
+  useEffect(() => {
+    const off = onSoclineNotification((payload) => {
+      if (payload?.type === 'payment' || payload?.type === 'PAYMENT') {
+        onRefreshBalance();
+        (async () => {
+          try {
+            const res = await fetch(`/api/withdrawals?washerId=${washerId}`);
+            const data = await parseJsonResponse<any>(res);
+            if (data?.success) setWithdrawals(data.withdrawals);
+          } catch {
+            // next poll will reconcile
+          }
+        })();
+      }
+    });
+    return off;
+  }, [washerId, onRefreshBalance]);
 
   const handleWithdraw = async () => {
     const amount = parseFloat(withdrawAmount);

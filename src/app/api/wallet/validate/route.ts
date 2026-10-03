@@ -1,42 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { requireAdmin } from '@/lib/auth';
+import { processDeposit } from '@/lib/wallet-actions';
 
-// GET /api/wallet/validate - Get all pending deposit requests
-export async function GET(request: NextRequest) {
-  try {
-    const pendingDeposits = await db.walletTransaction.findMany({
-      where: {
-        type: 'DEPOSIT',
-        status: 'PENDING',
-      },
-      include: {
-        wallet: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                phone: true,
-              },
-            },
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    return NextResponse.json({
-      success: true,
-      deposits: pendingDeposits,
-    });
-  } catch (error) {
-    console.error('Get pending deposits error:', error);
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
-  }
-}
-
-// POST /api/wallet/validate - Validate or reject a deposit
+// POST /api/wallet/validate - Validate or reject a deposit (ADMIN ONLY).
+// SECURITY: this endpoint was previously UNAUTHENTICATED (anyone could credit
+// any wallet). It now requires an admin session and delegates to the shared
+// atomic processor (guarded status flip + crediting inside one transaction).
 export async function POST(request: NextRequest) {
+  const { authorized, response } = await requireAdmin(request);
+  if (!authorized) return response;
+
   try {
     const body = await request.json();
     const { transactionId, action } = body; // action: 'validate' or 'reject'
@@ -45,85 +18,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Paramètres manquants' }, { status: 400 });
     }
 
-    // Get the transaction
-    const transaction = await db.walletTransaction.findUnique({
-      where: { id: transactionId },
-      include: {
-        wallet: true,
-      },
-    });
-
-    if (!transaction) {
-      return NextResponse.json({ error: 'Transaction non trouvée' }, { status: 404 });
-    }
-
-    if (transaction.status !== 'PENDING') {
-      return NextResponse.json({ error: 'Transaction déjà traitée' }, { status: 400 });
-    }
-
-    if (action === 'validate') {
-      // Update transaction status
-      const updatedTransaction = await db.walletTransaction.update({
-        where: { id: transactionId },
-        data: {
-          status: 'COMPLETED',
-          balanceAfter: transaction.wallet.balance + transaction.amount,
-        },
-      });
-
-      // Update wallet balance
-      const updatedWallet = await db.wallet.update({
-        where: { id: transaction.walletId },
-        data: {
-          balance: { increment: transaction.amount },
-          totalDeposited: { increment: transaction.amount },
-        },
-      });
-
-      // Create notification for user
-      await db.notification.create({
-        data: {
-          userId: transaction.wallet.userId,
-          title: 'Rechargement validé',
-          message: `Votre rechargement de ${transaction.amount.toLocaleString()} F a été validé.`,
-          type: 'payment',
-        },
-      });
-
-      return NextResponse.json({
-        success: true,
-        message: 'Rechargement validé',
-        transaction: updatedTransaction,
-        wallet: updatedWallet,
-      });
-    } else if (action === 'reject') {
-      // Update transaction status
-      const updatedTransaction = await db.walletTransaction.update({
-        where: { id: transactionId },
-        data: {
-          status: 'FAILED',
-          description: `${transaction.description} - Rejeté`,
-        },
-      });
-
-      // Create notification for user
-      await db.notification.create({
-        data: {
-          userId: transaction.wallet.userId,
-          title: 'Rechargement échoué',
-          message: `Votre demande de rechargement de ${transaction.amount.toLocaleString()} F a été rejetée.`,
-          type: 'payment',
-        },
-      });
-
-      return NextResponse.json({
-        success: true,
-        message: 'Rechargement rejeté',
-        transaction: updatedTransaction,
-      });
-    } else {
+    if (action !== 'validate' && action !== 'reject') {
       return NextResponse.json({ error: 'Action invalide' }, { status: 400 });
     }
+
+    const result = await processDeposit(transactionId, action);
+
+    if (!result.ok) {
+      const status =
+        result.code === 'NOT_FOUND'
+          ? 404
+          : result.code === 'ALREADY_PROCESSED' || result.code === 'NOT_A_DEPOSIT'
+            ? 400
+            : 500;
+      const message =
+        result.code === 'NOT_FOUND'
+          ? 'Transaction non trouvée'
+          : result.code === 'ALREADY_PROCESSED'
+            ? 'Transaction déjà traitée'
+            : result.code === 'NOT_A_DEPOSIT'
+              ? 'Cette transaction n\'est pas un dépôt'
+              : result.error || 'Erreur lors de la validation';
+      return NextResponse.json({ error: message }, { status });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: action === 'validate' ? 'Rechargement validé' : 'Rechargement rejeté',
+      wallet: result.wallet,
+    });
   } catch (error) {
     console.error('Validate deposit error:', error);
     return NextResponse.json({ error: 'Erreur lors de la validation' }, { status: 500 });

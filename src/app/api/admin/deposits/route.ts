@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAdmin } from '@/lib/auth';
+import { processDeposit } from '@/lib/wallet-actions';
 
 // GET /api/admin/deposits - Get all pending deposits
 export async function GET(request: NextRequest) {
@@ -57,6 +58,8 @@ export async function GET(request: NextRequest) {
 }
 
 // PATCH /api/admin/deposits - Validate or reject a deposit
+// Delegates to the shared atomic processor (guarded status flip + crediting
+// inside ONE transaction) and sends the user a realtime + SMS notification.
 export async function PATCH(request: NextRequest) {
   // Check admin authorization
   const { authorized, response } = await requireAdmin(request);
@@ -70,86 +73,35 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Paramètres manquants' }, { status: 400 });
     }
 
-    // Get the transaction
-    const transaction = await db.walletTransaction.findUnique({
-      where: { id: transactionId },
-      include: {
-        wallet: true,
-      },
-    });
-
-    if (!transaction) {
-      return NextResponse.json({ error: 'Transaction non trouvée' }, { status: 404 });
-    }
-
-    if (transaction.status !== 'PENDING') {
-      return NextResponse.json({ error: 'Cette transaction a déjà été traitée' }, { status: 400 });
-    }
-
-    if (action === 'validate') {
-      // Update transaction status to COMPLETED
-      const updatedTransaction = await db.walletTransaction.update({
-        where: { id: transactionId },
-        data: {
-          status: 'COMPLETED',
-          description: `Rechargement validé via ${transaction.paymentMethod}`,
-          balanceAfter: transaction.wallet.balance + transaction.amount,
-        },
-      });
-
-      // Update wallet balance
-      const updatedWallet = await db.wallet.update({
-        where: { id: transaction.walletId },
-        data: {
-          balance: { increment: transaction.amount },
-          totalDeposited: { increment: transaction.amount },
-        },
-      });
-
-      // Create notification for user
-      await db.notification.create({
-        data: {
-          userId: transaction.wallet.userId,
-          title: 'Rechargement validé',
-          message: `Votre rechargement de ${transaction.amount.toLocaleString()} XOF a été validé avec succès.`,
-          type: 'PAYMENT',
-        },
-      });
-
-      return NextResponse.json({
-        success: true,
-        message: 'Rechargement validé avec succès',
-        transaction: updatedTransaction,
-        wallet: updatedWallet,
-      });
-    } else if (action === 'reject') {
-      // Update transaction status to FAILED
-      const updatedTransaction = await db.walletTransaction.update({
-        where: { id: transactionId },
-        data: {
-          status: 'FAILED',
-          description: `Rechargement échoué via ${transaction.paymentMethod}`,
-        },
-      });
-
-      // Create notification for user
-      await db.notification.create({
-        data: {
-          userId: transaction.wallet.userId,
-          title: 'Rechargement échoué',
-          message: `Votre demande de rechargement de ${transaction.amount.toLocaleString()} XOF a échoué. Veuillez réessayer.`,
-          type: 'PAYMENT',
-        },
-      });
-
-      return NextResponse.json({
-        success: true,
-        message: 'Rechargement marqué comme échoué',
-        transaction: updatedTransaction,
-      });
-    } else {
+    if (action !== 'validate' && action !== 'reject') {
       return NextResponse.json({ error: 'Action invalide' }, { status: 400 });
     }
+
+    const result = await processDeposit(transactionId, action);
+
+    if (!result.ok) {
+      const status =
+        result.code === 'NOT_FOUND'
+          ? 404
+          : result.code === 'ALREADY_PROCESSED' || result.code === 'NOT_A_DEPOSIT'
+            ? 400
+            : 500;
+      const message =
+        result.code === 'NOT_FOUND'
+          ? 'Transaction non trouvée'
+          : result.code === 'ALREADY_PROCESSED'
+            ? 'Cette transaction a déjà été traitée'
+            : result.code === 'NOT_A_DEPOSIT'
+              ? 'Cette transaction n\'est pas un dépôt'
+              : result.error || 'Erreur lors du traitement';
+      return NextResponse.json({ error: message }, { status });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: action === 'validate' ? 'Rechargement validé avec succès' : 'Rechargement marqué comme échoué',
+      wallet: result.wallet,
+    });
   } catch (error) {
     console.error('Update deposit error:', error);
     return NextResponse.json({ error: 'Erreur lors du traitement' }, { status: 500 });

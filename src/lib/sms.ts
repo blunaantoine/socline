@@ -32,14 +32,19 @@ export function isSmsConfigured(): boolean {
 
 // Light phone normalization for SMS destinations. Keep it simple and predictable:
 // - strips spaces, dashes, parentheses and dots
-// - "0XXXXXXXX" (Togo local, 8 digits) → "+228XXXXXXXX"
+// - "0XXXXXXXX" (Togo local with leading 0) → "+228XXXXXXXX"
+// - "9XXXXXXX" / "7XXXXXXX" (Togo national 8-digit numbers, e.g. 90123456,
+//   71998155) → "+228XXXXXXXX" — FIX: these were previously sent raw and
+//   rejected by the operator (InvalidPhoneNumber).
 // - "00228..." → "+228..."
+// - any other 8-digit number → assume Togo national → "+228XXXXXXXX"
 // - anything else is returned as-is (assumed already E.164 or provider-acceptable)
 export function normalizePhone(phone: string): string {
   const p = phone.replace(/[\s\-().]/g, '');
   if (p.startsWith('+')) return p;
   if (p.startsWith('00228')) return `+228${p.slice(5)}`;
-  if (p.startsWith('0') && p.length === 8) return `+228${p.slice(1)}`;
+  if (/^0\d{7}$/.test(p)) return `+228${p.slice(1)}`;
+  if (/^\d{8}$/.test(p)) return `+228${p}`;
   return p;
 }
 

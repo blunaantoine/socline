@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAdmin } from '@/lib/auth';
+import { processWithdrawal } from '@/lib/wallet-actions';
 
 // GET /api/admin/withdrawals - Get pending withdrawals
 export async function GET(request: NextRequest) {
@@ -44,6 +45,9 @@ export async function GET(request: NextRequest) {
 }
 
 // PATCH /api/admin/withdrawals - Approve or reject withdrawal
+// Delegates to the shared atomic processor (guarded status flip + earnings
+// debit inside ONE transaction) and notifies the washer in-app, in realtime
+// and by SMS.
 export async function PATCH(request: NextRequest) {
   // Check admin authorization
   const { authorized, response } = await requireAdmin(request);
@@ -60,56 +64,29 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const withdrawal = await db.washerWithdrawal.findUnique({
-      where: { id: withdrawalId },
-    });
-
-    if (!withdrawal) {
+    if (action !== 'approve' && action !== 'reject') {
       return NextResponse.json(
-        { success: false, error: 'Retrait non trouvé' },
-        { status: 404 }
-      );
-    }
-
-    if (withdrawal.status !== 'PENDING') {
-      return NextResponse.json(
-        { success: false, error: 'Ce retrait a déjà été traité' },
+        { success: false, error: 'Action invalide' },
         { status: 400 }
       );
     }
 
-    if (action === 'approve') {
-      // Update withdrawal status
-      await db.washerWithdrawal.update({
-        where: { id: withdrawalId },
-        data: {
-          status: 'COMPLETED',
-          processedAt: new Date(),
-        },
-      });
+    const result = await processWithdrawal(withdrawalId, action);
 
-      // Deduct from washer's earnings
-      const washer = await db.washer.findUnique({
-        where: { id: withdrawal.washerId },
-      });
-
-      if (washer) {
-        await db.washer.update({
-          where: { id: withdrawal.washerId },
-          data: {
-            totalEarnings: Math.max(0, washer.totalEarnings - withdrawal.amount),
-          },
-        });
-      }
-    } else if (action === 'reject') {
-      // Update withdrawal status
-      await db.washerWithdrawal.update({
-        where: { id: withdrawalId },
-        data: {
-          status: 'REJECTED',
-          processedAt: new Date(),
-        },
-      });
+    if (!result.ok) {
+      const status =
+        result.code === 'NOT_FOUND'
+          ? 404
+          : result.code === 'ALREADY_PROCESSED'
+            ? 400
+            : 500;
+      const message =
+        result.code === 'NOT_FOUND'
+          ? 'Retrait non trouvé'
+          : result.code === 'ALREADY_PROCESSED'
+            ? 'Ce retrait a déjà été traité'
+            : result.error || 'Erreur lors du traitement';
+      return NextResponse.json({ success: false, error: message }, { status });
     }
 
     return NextResponse.json({

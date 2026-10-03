@@ -10,56 +10,16 @@ export async function GET(request: NextRequest) {
   const userId = auth.user!.id;
 
   try {
+    // REAL notifications only — the old demo block that injected fake
+    // "Bienvenue sur Socline! 🎉" / "-20%" messages for every new user has
+    // been removed. Notifications are now created exclusively by the
+    // centralized notify() service (real events: orders, payments,
+    // withdrawals...).
     const notifications = await db.notification.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
       take: 50,
     });
-
-    // If no notifications exist, create sample ones (session user always exists)
-    if (notifications.length === 0) {
-      try {
-        await db.notification.createMany({
-          data: [
-            {
-              userId,
-              title: 'Bienvenue sur Socline! 🎉',
-              message: 'Merci de rejoindre Socline. Votre première commande vous attend!',
-              type: 'system',
-              isRead: false,
-            },
-            {
-              userId,
-              title: 'Offre spéciale',
-              message: '-20% sur votre premier lavage auto. Offre valable jusqu\'à la fin du mois!',
-              type: 'promo',
-              isRead: false,
-            },
-          ],
-        });
-
-        const newNotifications = await db.notification.findMany({
-          where: { userId },
-          orderBy: { createdAt: 'desc' },
-          take: 50,
-        });
-
-        return NextResponse.json({
-          success: true,
-          notifications: newNotifications.map((n) => ({
-            id: n.id,
-            type: n.type as 'order' | 'message' | 'payment' | 'promo' | 'system',
-            title: n.title,
-            message: n.message,
-            isRead: n.isRead,
-            createdAt: n.createdAt.toISOString(),
-          })),
-        });
-      } catch {
-        // If creation fails, just return empty notifications
-        console.log('Could not create sample notifications');
-      }
-    }
 
     return NextResponse.json({
       success: true,

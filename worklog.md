@@ -404,3 +404,28 @@ Stage Summary:
 - Le client dépose son adresse sur une carte cliquable → coordonnées garanties pour le dispatch même sans GPS.
 - La position dispatch (Washer.lat/lng) est rafraîchie à chaque partage → tri par proximité précis.
 - Gap UX noté (pas traité): après reload, currentOrder (zustand) est perdu — le suivi ne se réouvre pas automatiquement; il faudrait un onglet/commande active dans l'historique.
+
+---
+Task ID: 11 (session 11 — statuts dépôt/retrait + vrai système de notifications)
+Agent: main (Z.ai Code)
+Task: "verifie que les statut pour le depote et retait fonctione bien et se rafraichise et aussi faut installer un vrai systeme de notification pas un demo"
+
+Work Log:
+- Audit dépôt/retrait: GET/POST/PUT/PATCH /api/wallet (dépôt USSD PENDING → validation admin → COMPLETED, paiement commande atomique) + POST /api/withdrawals (retrait PENDING → admin approve/reject). Statuts corrects mais 4 problèmes trouvés.
+- 🔴 FAILLE CRITIQUE fermée: POST /api/wallet/validate était SANS AUCUNE AUTH — n'importe qui pouvait créditer n'importe quel wallet. Testé: sans auth → 401, token client → 403, admin → 200.
+- src/lib/wallet-actions.ts (nouveau): processDeposit() et processWithdrawal() ATOMIQUES — flip de statut conditionnel (updateMany WHERE status=PENDING, double-traitement impossible), crédit/débit dans la MÊME $transaction, garde INSUFFICIENT_EARNINGS avec rollback complet du retrait si gains négatifs.
+- admin/deposits PATCH + admin/withdrawals PATCH + wallet/validate POST délèguent tous au même processeur partagé (fin de la duplication), retours d'erreur précis (404/400 déjà traité/insuffisant).
+- Le "démo" trouvé: GET /api/notifications injectait de FAUSSES notifications («Bienvenue sur Socline! 🎉», «Offre -20%») pour tout nouvel utilisateur → supprimé + 16 fausses notifs purgées de la DB.
+- src/lib/notify.ts (nouveau): service centralisé notify() = 1) DB (source de vérité), 2) socket temps réel room user:<id> event 'notification', 3) SMS best-effort pour les événements critiques via le provider OTP existant. Ne lève jamais.
+- src/components/RealtimeNotifications.tsx (nouveau, monté dans layout.tsx): socket auth global → toast sonner instantané + re-broadcast window CustomEvent 'socline:notification'. Reconnexion auto au login/logout (token réactif).
+- Rafraîchissements: NotificationCenter (badge instantané + dédup, polling 30s gardé en filet) ; WalletScreen (auto-poll 8s pendant la modal USSD → détection COMPLETED/FAILED → fermeture auto + toast + refetch ; refetch sur notification payment) ; WasherApp WasherEarnings (polling 15s des retraits + refetch gains/liste sur notification payment).
+- 🔧 FIX SMS: normalizePhone rejetait les vrais numéros Togo 8 chiffres (90123456, 71998155…) → InvalidPhoneNumber. Maintenant tout numéro à 8 chiffres → +228XXXXXXXX (validé: AT reçoit +22890234567 ; seul un InsufficientBalance du compte AT subsiste = crédits à recharger, externe).
+- Tests curl E2E: dépôt 5000 PENDING → admin validate → balance 0→5000, balanceAfter 5000, double validate → 400, notif créée. Retrait: gains 3000 → retrait 1500 approuvé → COMPLETED + gains 1500 + notif « Retrait approuvé 💸 » ; retrait 500 rejeté → REJECTED + gains inchangés + notif « Retrait refusé ❌ » ; double approve → 400.
+- Tests agent-browser E2E: login client → Portefeuille → dépôt 1000 XOF via UI (opérateur + numéro + code USSD *145*1*1000*91986792*2# généré) → MODAL OUVERTE, admin valide via API → <10 s: modal fermée automatiquement, solde 5000→6000, transaction « Complété +1,000 XOF Solde: 6,000 XOF » affichée, badge cloche « 1 » (notification socket reçue). Panneau notifications: réelles, non-lues, zéro démo. 0 erreur console. Lint 0/0.
+- Données de test conservées (comptes démo): client 90123456 solde 6000 XOF ; laveur 90234567 gains 1500 XOF, 1 retrait COMPLETED + 1 REJECTED.
+
+Stage Summary:
+- Sécurité: plus aucun endpoint de validation d'argent sans auth ; dépôts/retraits atomiques (double-traitement et race conditions impossibles).
+- Statuts dépôt/retrait vérifiés de bout en bout: PENDING → COMPLETED/FAILED|REJECTED, soldes et balanceAfter toujours justes.
+- Vrai système de notifications: événements réels uniquement (dépôt validé/rejeté, retrait approuvé/refusé, NEW_ORDER…), in-app + temps réel socket + SMS pour le critique.
+- TODO externe: recharger les crédits Africa's Talking (InsufficientBalance) ; l'envoi SMS réel reprendra automatiquement.
