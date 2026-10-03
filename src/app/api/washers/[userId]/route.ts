@@ -81,3 +81,81 @@ export async function GET(
     );
   }
 }
+
+// PATCH /api/washers/[userId] - Update the washer's availability.
+// The "En ligne / Hors ligne" toggle is now PERSISTED in the database so:
+//   - clients only see genuinely available washers,
+//   - the order API can refuse acceptations from offline washers.
+// Body: { isAvailable: boolean }
+// Access: the washer itself or an ADMIN.
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ userId: string }> }
+) {
+  const auth = await requireAuth(request);
+  if (!auth.authorized) return auth.response!;
+
+  try {
+    const { userId } = await params;
+
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: 'User ID requis' },
+        { status: 400 }
+      );
+    }
+
+    // Self or admin only
+    if (auth.user!.id !== userId && auth.user!.role !== 'ADMIN') {
+      return NextResponse.json(
+        { success: false, error: 'Accès non autorisé' },
+        { status: 403 }
+      );
+    }
+
+    const body = await request.json();
+    const { isAvailable, latitude, longitude } = body;
+
+    if (typeof isAvailable !== 'boolean') {
+      return NextResponse.json(
+        { success: false, error: 'isAvailable (booléen) requis' },
+        { status: 400 }
+      );
+    }
+
+    const washer = await db.washer.findUnique({ where: { userId } });
+    if (!washer) {
+      return NextResponse.json(
+        { success: false, error: 'Profil de laveur introuvable' },
+        { status: 404 }
+      );
+    }
+
+    // Optional GPS position update (sent when the washer goes online) so the
+    // pending-job pool can be sorted by proximity.
+    const data: { isAvailable: boolean; latitude?: number; longitude?: number } = {
+      isAvailable,
+    };
+    if (
+      typeof latitude === 'number' && isFinite(latitude) &&
+      typeof longitude === 'number' && isFinite(longitude)
+    ) {
+      data.latitude = latitude;
+      data.longitude = longitude;
+    }
+
+    const updated = await db.washer.update({
+      where: { userId },
+      data,
+      select: { id: true, userId: true, isAvailable: true, latitude: true, longitude: true },
+    });
+
+    return NextResponse.json({ success: true, washer: updated });
+  } catch (error) {
+    console.error('Update washer availability error:', error);
+    return NextResponse.json(
+      { success: false, error: 'Erreur lors de la mise à jour de la disponibilité' },
+      { status: 500 }
+    );
+  }
+}

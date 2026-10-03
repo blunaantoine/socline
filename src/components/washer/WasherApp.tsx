@@ -49,6 +49,10 @@ export function WasherApp() {
   const [isRefreshingBalance, setIsRefreshingBalance] = useState(false);
   const [profileSection, setProfileSection] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
+  // Availability sync: the DB value wins on FIRST load only — afterwards the
+  // toggle is optimistic and persisted immediately (PATCH /api/washers/:id).
+  // (handleToggleAvailability is defined below, after fetchPendingOrders.)
+  const availabilitySyncedRef = useRef(false);
 
   // Fetch conversation for current order
   const fetchConversation = useCallback(async (orderId: string) => {
@@ -87,6 +91,11 @@ export function WasherApp() {
         setWasherData(data.washer as WasherType);
         // Contrat de Partenariat, Article 5: progressive partner level
         setPartnerLevel(data.partnerLevel || null);
+        // First load: adopt the PERSISTED availability (source of truth).
+        if (!availabilitySyncedRef.current && typeof data.washer.isAvailable === 'boolean') {
+          availabilitySyncedRef.current = true;
+          setIsAvailable(data.washer.isAvailable);
+        }
       }
     } catch (error) {
       console.error('Fetch washer data error:', error);
@@ -117,7 +126,7 @@ export function WasherApp() {
       const res = await fetch(`/api/orders?userId=${user.id}&role=WASHER&status=PENDING`);
       const data = await parseJsonResponse<any>(res);
       if (!data) return;
-      
+
       if (data.success) {
         setPendingOrders(data.orders);
       }
@@ -127,6 +136,63 @@ export function WasherApp() {
       setIsLoading(false);
     }
   }, [user]);
+
+  // ---------------------------------------------------------------------
+  // Persist the availability toggle. Optimistic update; reverted on failure.
+  // When going ONLINE, attach the device's last known GPS position
+  // (best-effort) so the job pool can be sorted by proximity.
+  // ---------------------------------------------------------------------
+  const handleToggleAvailability = useCallback(async (checked: boolean) => {
+    if (!user) return;
+    const previous = isAvailable;
+    setIsAvailable(checked);
+    // Going offline → drop the stale shared pool view.
+    if (!checked) setPendingOrders([]);
+    try {
+      let latitude: number | undefined;
+      let longitude: number | undefined;
+      if (checked && typeof navigator !== 'undefined' && navigator.geolocation) {
+        // Best-effort single GPS fix (≤ 5s). Failure never blocks the toggle.
+        const coords = await new Promise<GeolocationCoordinates | undefined>((resolve) => {
+          const timer = setTimeout(() => resolve(undefined), 5000);
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              clearTimeout(timer);
+              resolve(pos?.coords);
+            },
+            () => {
+              clearTimeout(timer);
+              resolve(undefined);
+            },
+            { timeout: 4500, maximumAge: 60000, enableHighAccuracy: false }
+          );
+        });
+        latitude = coords?.latitude;
+        longitude = coords?.longitude;
+      }
+
+      const res = await fetch(`/api/washers/${user.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          isAvailable: checked,
+          ...(latitude !== undefined && longitude !== undefined
+            ? { latitude, longitude }
+            : {}),
+        }),
+      });
+      const data = await parseJsonResponse<any>(res);
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error || 'Erreur');
+      }
+      toast.success(checked ? 'Vous êtes en ligne' : 'Vous êtes hors ligne');
+      if (checked) fetchPendingOrders();
+    } catch (error) {
+      console.error('Toggle availability error:', error);
+      setIsAvailable(previous);
+      toast.error('Impossible de changer votre disponibilité. Réessayez.');
+    }
+  }, [user, isAvailable, fetchPendingOrders]);
 
   // Fetch my orders (active and history)
   const fetchMyOrders = useCallback(async () => {
@@ -209,6 +275,13 @@ export function WasherApp() {
       });
 
       socket.on('order:updated', () => {
+        if (cancelled) return;
+        refreshListsRef.current();
+      });
+
+      // A client just created an order → refresh the shared job pool at once
+      // (no need to wait for the 10s poll).
+      socket.on('order:new', () => {
         if (cancelled) return;
         refreshListsRef.current();
       });
@@ -332,9 +405,14 @@ export function WasherApp() {
         setCurrentOrder(data.order);
         setPendingOrders(prev => prev.filter(o => o.id !== order.id));
         setActiveTab('active');
+      } else {
+        // e.g. offline washer (403) or order grabbed by another washer first.
+        toast.error(data.error || 'Impossible d\'accepter la commande');
+        fetchPendingOrders();
       }
     } catch (error) {
       console.error('Accept order error:', error);
+      toast.error('Erreur réseau — commande non acceptée');
     }
   };
 
@@ -464,7 +542,7 @@ export function WasherApp() {
             </div>
             <Switch
               checked={isAvailable}
-              onCheckedChange={setIsAvailable}
+              onCheckedChange={handleToggleAvailability}
               className={isAvailable ? 'bg-[#4CAF50]' : ''}
             />
           </div>
@@ -795,6 +873,11 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
                       <div className="flex items-center gap-2">
                         <MapPin className="w-4 h-4 text-[#FF9800]" />
                         <span className="text-sm text-[#212121]">{order.address || 'Adresse non spécifiée'}</span>
+                        {typeof order.distanceKm === 'number' && (
+                          <span className="ml-auto shrink-0 text-xs font-semibold text-[#FF9800] bg-[#FFF3E0] px-2 py-0.5 rounded-full">
+                            {order.distanceKm} km
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-[#757575]">Client: {order.client?.name || 'N/A'}</span>

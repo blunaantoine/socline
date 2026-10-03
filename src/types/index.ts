@@ -127,6 +127,9 @@ export interface Order {
   cancelReason?: string;
   createdAt: string;
   updatedAt: string;
+  // Distance washer↔order in km — computed server-side for the PENDING job
+  // pool (sorted closest first). Not stored in the database.
+  distanceKm?: number | null;
   payment?: Payment;
   review?: Review;
 }

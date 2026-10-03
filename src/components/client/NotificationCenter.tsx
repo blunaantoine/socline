@@ -90,6 +90,7 @@ export function NotificationCenter() {
   const getIcon = (type: string) => {
     switch (type) {
       case 'order':
+      case 'NEW_ORDER':
         return <Car className="w-5 h-5 text-[#FF9800]" />;
       case 'message':
         return <MessageCircle className="w-5 h-5 text-[#2196F3]" />;

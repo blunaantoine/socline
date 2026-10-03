@@ -4,6 +4,7 @@ import { requireAuth } from '@/lib/auth';
 import { validatePromotionCode } from '@/lib/promo';
 import { computePartnerLevel, commissionForLevel, DEFAULT_PARTNER_LEVEL } from '@/lib/washer-level';
 import { emitRealtime } from '@/lib/realtime';
+import { calculateDistanceKm } from '@/lib/geo';
 
 // GET /api/orders - Get orders (for washer or client)
 // Query params:
@@ -77,12 +78,31 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ success: true, orders: [] });
       }
       // Pending orders are a shared job pool visible to any washer.
+      // The pool is sorted by PROXIMITY to the washer (closest first);
+      // orders without coordinates land at the end of the list.
       if (status === 'PENDING') {
         orders = await db.order.findMany({
           where: { status: 'PENDING' },
           include: baseInclude,
           orderBy: { createdAt: 'desc' },
         });
+
+        if (washer.latitude != null && washer.longitude != null) {
+          const withDistance = orders.map((o) => ({
+            ...o,
+            distanceKm: calculateDistanceKm(washer.latitude, washer.longitude, o.latitude, o.longitude),
+          }));
+          withDistance.sort((a, b) => {
+            if (a.distanceKm == null && b.distanceKm == null) return 0;
+            if (a.distanceKm == null) return 1;
+            if (b.distanceKm == null) return -1;
+            return a.distanceKm - b.distanceKm;
+          });
+          orders = withDistance.map((o) => ({
+            ...o,
+            distanceKm: o.distanceKm != null ? Math.round(o.distanceKm * 10) / 10 : null,
+          }));
+        }
       } else {
         orders = await db.order.findMany({
           where: { washerId: washer.id },
@@ -280,6 +300,51 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // -----------------------------------------------------------------
+    // Alert the ONLINE washers about the new job (in-app notification
+    // + best-effort realtime push to their rooms).
+    // Only genuinely available washers are notified — availability is
+    // persisted (PATCH /api/washers/[userId]).
+    // -----------------------------------------------------------------
+    try {
+      const onlineWashers = await db.washer.findMany({
+        where: {
+          isAvailable: true,
+          isVerified: true,
+          user: { isActive: true, role: 'WASHER' },
+        },
+        select: { userId: true },
+      });
+
+      if (onlineWashers.length > 0) {
+        const notifTitle = 'Nouvelle commande';
+        const notifMessage = `${service.name} — ${address}`;
+        const notifData = JSON.stringify({ orderId: order.id, orderNumber });
+        await Promise.all(
+          onlineWashers.map((w) =>
+            db.notification.create({
+              data: {
+                userId: w.userId,
+                title: notifTitle,
+                message: notifMessage,
+                type: 'NEW_ORDER',
+                data: notifData,
+              },
+            }).catch(() => undefined)
+          )
+        );
+
+        emitRealtime(
+          onlineWashers.map((w) => `user:${w.userId}`),
+          'order:new',
+          order
+        );
+      }
+    } catch (notifyError) {
+      // Notifications are best-effort — the order must not fail because of them.
+      console.error('New-order notification error:', notifyError);
+    }
+
     return NextResponse.json({ 
       success: true, 
       order,
@@ -373,6 +438,15 @@ export async function PATCH(request: NextRequest) {
         status === 'ACCEPTED' && existingOrder.status === 'PENDING' && !existingOrder.washerId;
       const isOwnCancel =
         status === 'CANCELLED' && isOwnOrder && ['ACCEPTED', 'EN_ROUTE'].includes(existingOrder.status);
+
+      // Availability is enforced SERVER-SIDE: an offline washer cannot grab
+      // jobs from the pool (the toggle is persisted via PATCH /api/washers/[userId]).
+      if (isSelfAssign && !washer.isAvailable) {
+        return NextResponse.json(
+          { error: 'Vous êtes hors ligne. Passez « En ligne » pour accepter des commandes.' },
+          { status: 403 }
+        );
+      }
 
       if (isSelfAssign) {
         // The washer accepts a PENDING order → assign themselves.
