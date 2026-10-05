@@ -580,3 +580,27 @@ Stage Summary:
 - Chaque lavage est prouvé: photo AVANT obligatoire pour commencer, photo APRÈS obligatoire pour terminer — visibles par client, laveur et admin.
 - Le client note le service via un popup automatique (étoiles + commentaire) et peut mettre le laveur en favori (modèle Favorite + API).
 - Paiement espèces: badge permanent sur la commande + notification dédiée au laveur à l'acceptation, wallet = « rien à encaisser ».
+
+---
+Task ID: 19 (session 17 — accueil : offres refondues + distinction Extérieur vs Complet)
+Agent: main (Z.ai Code)
+Task: "la page d acceuil les offre ne s affiche pas bien et aussi ils faut arriver affaire la difference entre l avage de l exterieur et le complet"
+
+Work Log:
+- Constat navigateur (gateway :81): tuiles 4-colonnes écrasées, prix « 2.5K/4K/6.5K/10K » cryptiques, aucune indication extérieur vs complet, icônes manquantes pour essentiel/confort/prestige dans le flux de commande.
+- Schéma: Service.coverage ("EXTERIOR" | "FULL", défaut FULL) + db:push; SQL one-shot sur la DB existante (essentiel/basic → EXTERIOR); seed mis à jour pour les fraîches.
+- src/lib/service-coverage.ts: getServiceCoverage (champ explicite + fallback catégories legacy), COVERAGE_LABEL/COVERAGE_LONG_LABEL, getCoverageDetails (texte extérieur/intérieur par catégorie), formatPrice (« 2 500 F »).
+- src/components/shared/ServiceCoverage.tsx: ServiceIcon (mapping essentiel/basic→Zap, confort/standard→Droplets, premium→Sparkles, prestige/deluxe→Crown), CoverageBadge (vert « Extérieur » / orange « Complet »), CoverageDetails (Intérieur Inclus ✅ / Non inclus ❌ + suggestion).
+- ClientApp accueil: bandeau comparatif 2 cartes (Lavage Extérieur vert vs Lavage Complet orange), grille 2→4 colonnes (icône + badge + nom + prix formaté + durée), modal détail enrichi (CoverageBadge + CoverageDetails), modal station avec badges, Dialog onOpenChange garde `if (!next)` (aligné sur le reste de l'app).
+- ClientOrderFlow: badges + ServiceIcon sur les cartes (fix icônes), ligne « Prestation » dans le récapitulatif.
+- StationDashboard: ServiceFormValues.coverage + Select « Extérieur seul (carrosserie) / Complet (extérieur + intérieur) » + payload POST/PATCH + badge dans la liste; API /api/services/[id] PATCH et /api/stations/[id]/services POST acceptent et valident coverage.
+- WasherApp: CoverageBadge sur commande active + carte détails + bannière « Nouvelle commande » (Extérieur seul / Complet ext.+int.).
+- Types: Service.coverage?: 'EXTERIOR' | 'FULL'.
+- E2E navigateur: accueil (badges, prix « 2 500 F », durées), modal Essentiel « Intérieur — Non inclus », modal Confort « Intérieur — Inclus », récap « Prestation: Complet (extérieur + intérieur) », responsive 375px OK.
+- Incident outillage: pipeline d'input CDP d'agent-browser mort en cours de session (clics trusted = 0 événements DOM natifs, confirmé par listener capture; natif b.click() fonctionne) → vérifications poursuivies via clics natifs (même chemin d'événements que l'utilisateur). Browser redémarré, pipeline à surveiller.
+- Commit acc94ac (✨) poussé sur main. Lint 0/0.
+
+Stage Summary:
+- La différence Extérieur (Essentiel) vs Complet (Confort/Premium/Prestige) est désormais visible partout: accueil (badges + bandeau comparatif), modal détaillé (Intérieur inclus/non inclus), flux de commande (cartes + récap), modaux stations, app laveur (il sait quoi laver).
+- Prix affichés de façon lisible et cohérente (« 2 500 F ») au lieu de « 2.5K ».
+- coverage est un vrai champ en base: les stations peuvent créer des services « Extérieur seul » ou « Complet » via leur dashboard.
