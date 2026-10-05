@@ -60,7 +60,15 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg duration-200 sm:max-w-lg",
+          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed z-50 grid w-full gap-4 border p-6 shadow-lg duration-200",
+          // MOBILE (défaut) : bottom-sheet native — plein largeur, glisse
+          // depuis le bas, hauteur limitée et scrollable, respect de la
+          // barre gestuelle iOS (safe-area).
+          "inset-x-0 bottom-0 top-auto rounded-t-2xl rounded-b-none border-b-0 max-h-[88dvh] overflow-y-auto",
+          "max-sm:data-[state=open]:slide-in-from-bottom max-sm:data-[state=closed]:slide-out-to-bottom",
+          "max-sm:pb-[calc(1.5rem+env(safe-area-inset-bottom))]",
+          // DESKTOP (sm+) : dialog centré classique.
+          "sm:top-[50%] sm:left-[50%] sm:bottom-auto sm:right-auto sm:max-w-lg sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-lg sm:overflow-visible sm:data-[state=open]:zoom-in-95 sm:data-[state=closed]:zoom-out-95",
           className
         )}
         {...props}

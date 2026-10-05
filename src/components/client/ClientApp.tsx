@@ -277,8 +277,9 @@ export function ClientApp() {
 
   return (
     <div className="flex-1 flex flex-col bg-[#FAFAFA] relative">
-      {/* Android Status Bar */}
-      <div className="h-6 bg-[#FF9800] flex items-center justify-between px-4 flex-shrink-0">
+      {/* Android Status Bar — aperçu desktop uniquement ; sur téléphone la
+          vraie barre système existe déjà, on respecte la safe-area à la place */}
+      <div className="h-6 bg-[#FF9800] hidden md:flex items-center justify-between px-4 flex-shrink-0">
         <span className="text-white text-xs font-medium">{new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
         <div className="flex items-center gap-1">
           {/* Signal Network Bars - de petite à grande */}
@@ -299,7 +300,7 @@ export function ClientApp() {
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* App Bar (not shown on chat tab) */}
         {activeTab !== 'chat' && activeTab !== 'booking' && (
-          <header className="bg-[#FF9800] px-4 py-3 flex items-center justify-between flex-shrink-0 shadow-md">
+          <header className="bg-[#FF9800] px-4 py-3 flex items-center justify-between flex-shrink-0 shadow-md max-md:pt-[calc(0.75rem+env(safe-area-inset-top))]">
             <div className="flex items-center gap-3">
               <button onClick={getUserLocation} className="flex items-center gap-2">
                 {isLoadingLocation ? (
@@ -320,7 +321,7 @@ export function ClientApp() {
         )}
 
         {/* Content - scrollable area */}
-        <div className={`flex-1 overflow-y-auto ${activeTab !== 'chat' ? 'pb-16' : ''}`}>
+        <div className={`flex-1 overflow-y-auto ${activeTab !== 'chat' ? 'pb-[calc(4.5rem+env(safe-area-inset-bottom))]' : 'pb-safe'}`}>
           {activeTab === 'home' && (
             <HomeContent
               services={services}
@@ -376,7 +377,7 @@ export function ClientApp() {
             />
           )}
           {activeTab === 'subscriptions' && (
-            <div className="p-4 pb-16">
+            <div className="p-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))]">
               <SubscriptionPanel userId={user?.id || ''} walletBalance={walletBalance} />
             </div>
           )}
@@ -387,16 +388,16 @@ export function ClientApp() {
         </div>
       </div>
 
-      {/* Android Bottom Navigation - FIXED at bottom */}
+      {/* Android Bottom Navigation - FIXED at bottom (safe-area iOS incluse) */}
       {activeTab !== 'chat' && (
-        <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E0E0E0] flex justify-around items-center h-14 z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
+        <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E0E0E0] flex justify-around items-stretch h-[calc(3.5rem+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
           {navItems.map((item) => {
             const isActive = activeTab === item.id;
             return (
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                className={`flex flex-col items-center justify-center py-1.5 px-4 transition-all ${
+                className={`flex-1 flex flex-col items-center justify-center py-1 px-1 transition-all active:scale-95 active:bg-[#F5F5F5] ${
                   isActive ? 'text-[#FF9800]' : 'text-[#757575]'
                 }`}
               >

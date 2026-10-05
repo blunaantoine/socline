@@ -505,7 +505,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
     return (
       <div className="flex-1 flex flex-col bg-[#FFF8F0]">
         {/* Header */}
-        <div className="bg-[#FF9800] p-4 pt-8 pb-12 rounded-b-3xl">
+        <div className="bg-[#FF9800] p-4 pt-[calc(2rem+env(safe-area-inset-top))] pb-12 rounded-b-3xl">
           <button onClick={() => setMode('welcome')} className="text-white mb-4">
             <ArrowLeft className="w-6 h-6" />
           </button>
@@ -588,7 +588,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
     return (
       <div className="flex-1 flex flex-col bg-[#FFF8F0]">
         {/* Header */}
-        <div className="bg-[#FF9800] p-4 pt-8 pb-12 rounded-b-3xl">
+        <div className="bg-[#FF9800] p-4 pt-[calc(2rem+env(safe-area-inset-top))] pb-12 rounded-b-3xl">
           <button onClick={() => setMode('washer-type')} className="text-white mb-4">
             <ArrowLeft className="w-6 h-6" />
           </button>
@@ -741,6 +741,8 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
                 <Input
                   id="washer-pin"
                   type={showPin ? 'text' : 'password'}
+                  inputMode="numeric"
+                  autoComplete="new-password"
                   placeholder="••••"
                   value={pin}
                   onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
@@ -765,6 +767,8 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
                 <Input
                   id="washer-confirm-pin"
                   type={showConfirmPin ? 'text' : 'password'}
+                  inputMode="numeric"
+                  autoComplete="new-password"
                   placeholder="••••"
                   value={confirmPin}
                   onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
@@ -862,7 +866,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
     return (
       <div className="flex-1 flex flex-col bg-[#FFF8F0]">
         {/* Header */}
-        <div className="bg-[#FF9800] p-4 pt-8 pb-12 rounded-b-3xl">
+        <div className="bg-[#FF9800] p-4 pt-[calc(2rem+env(safe-area-inset-top))] pb-12 rounded-b-3xl">
           <button onClick={() => setMode('welcome')} className="text-white mb-4">
             <ArrowLeft className="w-6 h-6" />
           </button>
@@ -902,6 +906,8 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9E9E9E]" />
                 <Input
                   type={showPin ? 'text' : 'password'}
+                  inputMode="numeric"
+                  autoComplete="current-password"
                   placeholder="••••"
                   value={pin}
                   onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
@@ -954,7 +960,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
     return (
       <div className="flex-1 flex flex-col bg-[#FFF8F0]">
         {/* Header */}
-        <div className="bg-[#FF9800] p-4 pt-8 pb-12 rounded-b-3xl">
+        <div className="bg-[#FF9800] p-4 pt-[calc(2rem+env(safe-area-inset-top))] pb-12 rounded-b-3xl">
           <button onClick={() => setMode(getRegisterMode())} className="text-white mb-4">
             <ArrowLeft className="w-6 h-6" />
           </button>
@@ -998,6 +1004,8 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#9E9E9E]" />
                 <Input
                   type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
                   placeholder="······"
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}

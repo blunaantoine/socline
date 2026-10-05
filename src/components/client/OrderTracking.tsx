@@ -256,7 +256,7 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
   return (
     <div className="flex-1 flex flex-col bg-[#FAFAFA]">
       {/* Android Status Bar */}
-      <div className="h-6 bg-[#FF9800] flex items-center justify-between px-4 flex-shrink-0 sticky top-0 z-50">
+      <div className="h-6 bg-[#FF9800] hidden md:flex items-center justify-between px-4 flex-shrink-0 sticky top-0 z-50">
         <span className="text-white text-xs font-medium">9:41</span>
         <div className="flex items-center gap-1">
           <div className="flex items-end gap-0.5">
@@ -272,7 +272,7 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
       </div>
 
       {/* Header with Back Button */}
-      <div className="bg-white border-b border-[#E0E0E0] px-4 py-3 flex items-center gap-3 flex-shrink-0 sticky top-6 z-40">
+      <div className="bg-white border-b border-[#E0E0E0] px-4 py-3 flex items-center gap-3 flex-shrink-0 sticky top-0 md:top-6 z-40 max-md:pt-[calc(0.75rem+env(safe-area-inset-top))]">
         <button onClick={onBack} className="p-1 -ml-1">
           <ArrowLeft className="w-5 h-5 text-[#212121]" />
         </button>
@@ -426,7 +426,7 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
       </div>
 
       {/* Order Details */}
-      <div className="flex-1 overflow-y-auto pb-28 p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto pb-[calc(7rem+env(safe-area-inset-bottom))] p-4 space-y-4">
         {/* Service Info */}
         <Card>
           <CardContent className="p-4">
@@ -542,7 +542,7 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
 
       {/* Cancel Button — works against PATCH /api/orders (client cancel) */}
       {['PENDING', 'ACCEPTED'].includes(order.status) && (
-        <div className="px-4 pb-4">
+        <div className="px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
           <Button
             variant="outline"
             className="w-full h-12 border-red-200 text-red-600 hover:bg-red-50"
@@ -597,7 +597,7 @@ function OrderCompleted({ order, onBack, onGoHome }: { order: Order; onBack?: ()
     return (
       <div className="flex-1 flex flex-col bg-[#FAFAFA]">
         {/* Android Status Bar */}
-        <div className="h-6 bg-[#FF9800] flex items-center justify-between px-4 flex-shrink-0 sticky top-0 z-50">
+        <div className="h-6 bg-[#FF9800] hidden md:flex items-center justify-between px-4 flex-shrink-0 sticky top-0 z-50">
           <span className="text-white text-xs font-medium">9:41</span>
           <div className="flex items-center gap-1">
             <div className="flex items-end gap-0.5">
@@ -635,7 +635,7 @@ function OrderCompleted({ order, onBack, onGoHome }: { order: Order; onBack?: ()
   return (
     <div className="flex-1 flex flex-col bg-[#FAFAFA]">
       {/* Android Status Bar */}
-      <div className="h-6 bg-[#FF9800] flex items-center justify-between px-4 flex-shrink-0 sticky top-0 z-50">
+      <div className="h-6 bg-[#FF9800] hidden md:flex items-center justify-between px-4 flex-shrink-0 sticky top-0 z-50">
         <span className="text-white text-xs font-medium">9:41</span>
         <div className="flex items-center gap-1">
           <div className="flex items-end gap-0.5">
@@ -650,7 +650,7 @@ function OrderCompleted({ order, onBack, onGoHome }: { order: Order; onBack?: ()
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto pb-28 p-4">
+      <div className="flex-1 overflow-y-auto pb-[calc(7rem+env(safe-area-inset-bottom))] p-4">
         <div className="max-w-md mx-auto space-y-4">
           {/* Back Button */}
           {onBack && (

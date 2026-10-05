@@ -17,6 +17,13 @@ const geistMono = Geist_Mono({
 
 export const viewport: Viewport = {
   themeColor: "#FF9800",
+  // App mobile-first : largeur réelle de l'appareil, pas de zoom intempestif,
+  // et viewport-fit=cover pour gérer les encoches / safe areas iOS & Android.
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
 };
 
 export const metadata: Metadata = {
@@ -35,6 +42,15 @@ export const metadata: Metadata = {
     ],
   },
   manifest: "/site.webmanifest",
+  // PWA sur l'écran d'accueil du téléphone : plein écran, sans barre de navigateur.
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Socline",
+  },
+  formatDetection: {
+    telephone: false,
+  },
   openGraph: {
     title: "Socline - Lavage Auto Mobile",
     description: "Votre lavage auto, livré à votre porte",

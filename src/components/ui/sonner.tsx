@@ -10,6 +10,9 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
+      // Mobile-first : notifications en haut au centre — n'entrent pas en
+      // conflit avec la barre de navigation basse de l'app.
+      position="top-center"
       style={
         {
           "--normal-bg": "var(--popover)",

@@ -394,7 +394,7 @@ export function ClientOrderFlow({
   return (
     <div className="flex-1 flex flex-col bg-white">
       {/* Header */}
-      <div className="bg-white border-b border-[#E0E0E0] px-4 py-3 flex-shrink-0">
+      <div className="bg-white border-b border-[#E0E0E0] px-4 py-3 flex-shrink-0 sticky top-0 z-40 pt-[calc(0.75rem+env(safe-area-inset-top))]">
         <div className="flex items-center gap-3">
           <button onClick={goBack} className="p-1 -ml-1">
             <ArrowLeft className="w-5 h-5 text-[#212121]" />
@@ -411,7 +411,7 @@ export function ClientOrderFlow({
       </div>
 
       {/* Progress Steps */}
-      <div className="bg-white px-4 py-3 border-b border-[#E0E0E0] flex-shrink-0">
+      <div className="bg-white px-4 py-3 border-b border-[#E0E0E0] flex-shrink-0 sticky top-[calc(3rem+env(safe-area-inset-top))] z-30">
         <div className="flex items-center justify-between">
           {[
             { id: 'service' as StepType, label: 'Service', stepNum: 1 },
@@ -453,7 +453,7 @@ export function ClientOrderFlow({
       </div>
 
       {/* Content - Only render current step */}
-      <div className="flex-1 overflow-y-auto pb-28 p-4 bg-[#FAFAFA]">
+      <div className="flex-1 overflow-y-auto p-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] bg-[#FAFAFA]">
         {/* Step 1: Service Selection */}
         {step === 'service' && (
           <div className="space-y-4">

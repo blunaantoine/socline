@@ -627,8 +627,8 @@ export function AdminPanel() {
 
   return (
     <div className="flex-1 flex flex-col bg-[#FAFAFA] overflow-hidden">
-      {/* Android Status Bar */}
-      <div className="h-6 bg-[#FF9800] flex items-center justify-between px-4 flex-shrink-0 sticky top-0 z-50">
+      {/* Android Status Bar — aperçu desktop uniquement */}
+      <div className="h-6 bg-[#FF9800] hidden md:flex items-center justify-between px-4 flex-shrink-0 sticky top-0 z-50">
         <span className="text-white text-xs font-medium">{new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
         <div className="flex items-center gap-1">
           {/* Signal Network Bars */}
@@ -645,8 +645,8 @@ export function AdminPanel() {
         </div>
       </div>
 
-      {/* Header */}
-      <div className="bg-white border-b px-4 py-3 flex-shrink-0 sticky top-6 z-40">
+      {/* Header — sur mobile il colle au haut (pas de barre factice) + safe-area */}
+      <div className="bg-white border-b px-4 py-3 flex-shrink-0 sticky top-0 md:top-6 z-40 max-md:pt-[calc(0.75rem+env(safe-area-inset-top))]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-[#FF9800] to-[#F57C00] rounded-full flex items-center justify-center text-white text-lg font-bold">
@@ -667,7 +667,7 @@ export function AdminPanel() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto pb-16">
+      <div className="flex-1 overflow-y-auto pb-[calc(4.5rem+env(safe-area-inset-bottom))]">
         {activeTab === 'dashboard' && (
           <AdminDashboard 
             stats={stats}
@@ -788,8 +788,8 @@ export function AdminPanel() {
         )}
       </div>
 
-      {/* Android Bottom Navigation - FIXED at bottom */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E0E0E0] flex justify-around items-center h-14 z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
+      {/* Android Bottom Navigation - FIXED at bottom (safe-area iOS incluse) */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E0E0E0] flex justify-around items-stretch h-[calc(3.5rem+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
         {[
           { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
           { id: 'users', icon: Users, label: 'Utilis.' },
@@ -802,7 +802,7 @@ export function AdminPanel() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex flex-col items-center justify-center py-1.5 px-4 transition-all ${
+              className={`flex-1 flex flex-col items-center justify-center py-1 px-1 transition-all active:scale-95 active:bg-[#F5F5F5] ${
                 isActive ? 'text-[#FF9800]' : 'text-[#757575]'
               }`}
             >

@@ -119,6 +119,70 @@
   body {
     @apply bg-background text-foreground;
   }
+  /* ------------------------------------------------------------------
+     BASE MOBILE-FIRST — l'app est conçue pour les téléphones.
+     ------------------------------------------------------------------ */
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  body {
+    /* Pas de rebond / pull-to-refresh parasites, pas de scroll horizontal */
+    overscroll-behavior-y: none;
+    overflow-x: hidden;
+  }
+  /* Supprime le flash gris/bleu au tap sur Android/iOS */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* Le chrome de l'app (boutons, liens, nav) ne se sélectionne pas au
+     maintien du doigt ; les champs de saisie restent sélectionnables. */
+  button,
+  [role="button"],
+  a,
+  label,
+  nav,
+  header {
+    user-select: none;
+    -webkit-user-select: none;
+    /* Supprime le délai de 300ms + double-tap zoom sur les éléments touch */
+    touch-action: manipulation;
+  }
+  input,
+  textarea,
+  select {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+  /* iOS zoome automatiquement quand un champ < 16px reçoit le focus :
+     on force 16px sur mobile pour une saisie sans saut de zoom. */
+  @media (max-width: 767px) {
+    input,
+    textarea,
+    select {
+      font-size: 16px !important;
+    }
+  }
+  /* Sur écrans tactiles, masque les scrollbars pour un rendu applicatif */
+  @media (hover: none) and (pointer: coarse) {
+    * {
+      scrollbar-width: none;
+    }
+    *::-webkit-scrollbar {
+      display: none;
+    }
+  }
+}
+
+/* Utilitaires safe-area (encoches / barre gestuelle iOS) */
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.mb-safe {
+  margin-bottom: env(safe-area-inset-bottom);
 }
 
 /* Custom animations for carousel */

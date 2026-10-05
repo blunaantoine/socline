@@ -35,7 +35,7 @@ export default function SoclineApp() {
   // Show loading screen during hydration
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-[#FF9800] flex items-center justify-center">
+      <div className="min-h-dvh bg-[#FF9800] flex items-center justify-center">
         <div className="text-center">
           <img src="/android-chrome-192x192.png" alt="Socline" className="w-28 h-28 mx-auto mb-4 object-contain" />
           <h2 className="text-xl font-bold text-white">Socline</h2>
@@ -47,7 +47,7 @@ export default function SoclineApp() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] flex flex-col">
+    <div className="min-h-dvh bg-[#FAFAFA] flex flex-col">
       {!isAuthenticated ? (
         <AuthScreen onComplete={() => {}} />
       ) : (

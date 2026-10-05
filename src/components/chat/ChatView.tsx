@@ -421,7 +421,7 @@ export function ChatView({ conversation, onBack }: ChatViewProps) {
             <button
               key={qm.id}
               onClick={() => handleSendQuickMessage(qm)}
-              className="flex-shrink-0 px-3 py-1.5 bg-[#FFF3E0] rounded-full text-sm text-[#FF9800] font-medium whitespace-nowrap"
+              className="flex-shrink-0 min-h-[36px] px-4 py-2 bg-[#FFF3E0] rounded-full text-sm text-[#FF9800] font-medium whitespace-nowrap active:scale-95 transition-transform"
             >
               {qm.icon} {qm.label}
             </button>
@@ -429,16 +429,16 @@ export function ChatView({ conversation, onBack }: ChatViewProps) {
         </div>
       </div>
 
-      {/* Input Area */}
-      <div className="bg-white px-4 py-3 flex items-center gap-2 border-t border-[#F5F5F5]">
+      {/* Input Area — safe-area basse pour la barre gestuelle iOS */}
+      <div className="bg-white px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] flex items-center gap-2 border-t border-[#F5F5F5]">
         <button
           onClick={handleShareLocation}
-          className="w-10 h-10 flex items-center justify-center text-[#FF9800] hover:bg-[#FFF3E0] rounded-full"
+          className="w-11 h-11 flex items-center justify-center text-[#FF9800] hover:bg-[#FFF3E0] rounded-full active:scale-95 transition-transform"
         >
           <MapPin className="w-5 h-5" />
         </button>
         <button
-          className="w-10 h-10 flex items-center justify-center text-[#757575] hover:bg-[#F5F5F5] rounded-full"
+          className="w-11 h-11 flex items-center justify-center text-[#757575] hover:bg-[#F5F5F5] rounded-full active:scale-95 transition-transform"
         >
           <Camera className="w-5 h-5" />
         </button>
@@ -458,7 +458,7 @@ export function ChatView({ conversation, onBack }: ChatViewProps) {
         <button
           onClick={() => sendMessage()}
           disabled={isSending || !newMessage.trim()}
-          className="w-10 h-10 flex items-center justify-center bg-[#FF9800] text-white rounded-full disabled:opacity-50"
+          className="w-11 h-11 flex-shrink-0 flex items-center justify-center bg-[#FF9800] text-white rounded-full disabled:opacity-50 active:scale-95 transition-transform"
         >
           {isSending ? (
             <Loader2 className="w-5 h-5 animate-spin" />
