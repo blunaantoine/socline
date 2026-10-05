@@ -32,7 +32,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { 
-  LayoutDashboard, Users, Car, MapPin, DollarSign, 
+  LayoutDashboard, Users, Car, Car as CarIcon, MapPin, DollarSign, 
   TrendingUp, Clock, Star, Settings, Bell, Plus,
   CheckCircle, XCircle, AlertCircle, Search,
   ChevronDown, Download, Eye, Edit, Trash2, Tag,
@@ -191,6 +191,18 @@ interface Order {
   createdAt: string;
   time?: string;
   address?: string;
+  // Vehicle identification + wash verification photos (admin verification)
+  car?: {
+    brand?: string | null;
+    model?: string | null;
+    color?: string | null;
+    plateNumber?: string | null;
+    photo?: string | null;
+  } | null;
+  beforePhotoUrl?: string | null;
+  afterPhotoUrl?: string | null;
+  payment?: { method?: string; status?: string; amount?: number } | null;
+  review?: { rating?: number; comment?: string | null } | null;
 }
 
 interface User {
@@ -1069,7 +1081,59 @@ function AdminOrders({ orders, statusFilter, setStatusFilter, searchQuery, setSe
                   <span>Laveur: {order.washer}</span>
                   <span>•</span>
                   <span>{new Date(order.createdAt).toLocaleDateString('fr-FR')}</span>
+                  {order.payment?.method && (
+                    <>
+                      <span>•</span>
+                      <span className={order.payment.method === 'CASH' ? 'font-medium text-[#E65100]' : ''}>
+                        {order.payment.method === 'CASH' ? '💵 Espèces' : '✅ Portefeuille'}
+                        {order.payment.status === 'PENDING' ? ' (à encaisser)' : ''}
+                      </span>
+                    </>
+                  )}
                 </div>
+
+                {/* Vehicle identification */}
+                {order.car && (
+                  <div className="mt-2 flex items-center gap-2 text-xs bg-[#F5F5F5] rounded-lg px-2 py-1.5 w-fit">
+                    <CarIcon className="w-3.5 h-3.5 text-[#2196F3]" />
+                    <span className="text-[#616161]">
+                      {[order.car.brand, order.car.model, order.car.color].filter(Boolean).join(' ')}
+                      <span className="font-mono text-[#2E7D32]"> • {order.car.plateNumber}</span>
+                    </span>
+                  </div>
+                )}
+
+                {/* Wash verification photos — before/after proof */}
+                {(order.beforePhotoUrl || order.afterPhotoUrl) && (
+                  <div className="mt-2 flex gap-2">
+                    {order.beforePhotoUrl && (
+                      <a href={order.beforePhotoUrl} target="_blank" rel="noreferrer" className="block">
+                        <img
+                          src={order.beforePhotoUrl}
+                          alt={`Photo avant lavage ${order.orderNumber}`}
+                          className="w-16 h-12 object-cover rounded-md border hover:opacity-80"
+                        />
+                        <span className="text-[9px] text-[#757575] block">Avant</span>
+                      </a>
+                    )}
+                    {order.afterPhotoUrl && (
+                      <a href={order.afterPhotoUrl} target="_blank" rel="noreferrer" className="block">
+                        <img
+                          src={order.afterPhotoUrl}
+                          alt={`Photo après lavage ${order.orderNumber}`}
+                          className="w-16 h-12 object-cover rounded-md border hover:opacity-80"
+                        />
+                        <span className="text-[9px] text-[#757575] block">Après</span>
+                      </a>
+                    )}
+                    {order.review?.rating ? (
+                      <div className="self-center text-xs text-[#757575]">
+                        ⭐ {order.review.rating}/5
+                        {order.review.comment ? <span className="block max-w-[160px] truncate">“{order.review.comment}”</span> : null}
+                      </div>
+                    ) : null}
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}

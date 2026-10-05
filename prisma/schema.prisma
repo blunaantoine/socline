@@ -117,6 +117,7 @@ model User {
   receivedMessages Message[] @relation("ReceivedMessages")
   wallet        Wallet?
   cars          Car[]     // User's cars (max 10)
+  clientFavorites Favorite[] @relation("ClientFavorites") // Washers marked as favorite
   subscriptions UserSubscription[] // User's subscriptions
   addresses     Address[] // User's saved addresses
   stations      Station[] @relation("StationOwner") // Stations owned by this user (if station owner)
@@ -163,9 +164,15 @@ model Car {
   // Additional info
   year          Int?     // Année du véhicule
   
+  // Photo of the vehicle — helps the washer recognize the car on arrival
+  photo         String?
+  
   // Default car for orders
   isDefault     Boolean  @default(false)
   
+  // Orders booked for this vehicle
+  orders        Order[]
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -210,6 +217,7 @@ model Washer {
   orders         Order[]
   withdrawals    WasherWithdrawal[]
   withdrawalNumbers WasherWithdrawalNumber[]
+  favorites      Favorite[] @relation("WasherFavorites") // Clients who favorited this washer
   stationId      String?
   station        Station? @relation(fields: [stationId], references: [id])
 
@@ -329,6 +337,16 @@ model Order {
   latitude        Float?
   longitude       Float?
   
+  // Vehicle being washed — lets the washer recognize the client's car
+  carId           String?
+  car             Car?     @relation(fields: [carId], references: [id], onDelete: SetNull)
+  
+  // Verification photos taken by the washer (data URLs, downscaled client-side):
+  // BEFORE = car condition when the washer arrives, AFTER = result once done.
+  // Used by the client and the admin to verify the service.
+  beforePhotoUrl  String?
+  afterPhotoUrl   String?
+  
   // Pricing
   basePrice       Float
   discount        Float        @default(0)
@@ -368,6 +386,20 @@ model Order {
   subscriptionUsage  SubscriptionUsage?
 
   @@map("orders")
+}
+
+// Favorite washers — a client can bookmark a washer to find/recognize him
+// easily after a good experience (one favorite per client×washer pair).
+model Favorite {
+  id        String   @id @default(cuid())
+  clientId  String
+  client    User     @relation("ClientFavorites", fields: [clientId], references: [id], onDelete: Cascade)
+  washerId  String
+  washer    Washer   @relation("WasherFavorites", fields: [washerId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([clientId, washerId])
+  @@map("favorites")
 }
 
 // Payment model

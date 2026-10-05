@@ -40,12 +40,20 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { nickname, plateNumber, brand, model, color, year, isDefault } = body;
+    const { nickname, plateNumber, brand, model, color, year, isDefault, photo } = body;
 
     if (!plateNumber || !color) {
       return NextResponse.json({
         error: 'Veuillez remplir les champs obligatoires (plaque, couleur)'
       }, { status: 400 });
+    }
+
+    // Optional photo (data URL) — helps the washer recognize the car.
+    if (photo !== undefined && photo !== null && (typeof photo !== 'string' || !photo.startsWith('data:image/'))) {
+      return NextResponse.json({ error: 'Photo invalide' }, { status: 400 });
+    }
+    if (typeof photo === 'string' && photo.length > 1_500_000) {
+      return NextResponse.json({ error: 'Photo trop lourde — réessayez avec une image plus petite' }, { status: 413 });
     }
 
     // Check if user has reached the limit
@@ -84,6 +92,7 @@ export async function POST(request: NextRequest) {
         color,
         year: year ? parseInt(year) : null,
         isDefault: isDefault || isFirstCar,
+        photo: photo || null,
       },
     });
 
@@ -108,7 +117,7 @@ export async function PUT(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { carId, nickname, plateNumber, brand, model, color, year, isDefault } = body;
+    const { carId, nickname, plateNumber, brand, model, color, year, isDefault, photo } = body;
 
     if (!carId) {
       return NextResponse.json({ error: 'Paramètres manquants' }, { status: 400 });
@@ -121,6 +130,14 @@ export async function PUT(request: NextRequest) {
 
     if (!existingCar) {
       return NextResponse.json({ error: 'Véhicule non trouvé' }, { status: 404 });
+    }
+
+    // Optional photo (data URL)
+    if (photo !== undefined && photo !== null && (typeof photo !== 'string' || !photo.startsWith('data:image/'))) {
+      return NextResponse.json({ error: 'Photo invalide' }, { status: 400 });
+    }
+    if (typeof photo === 'string' && photo.length > 1_500_000) {
+      return NextResponse.json({ error: 'Photo trop lourde — réessayez avec une image plus petite' }, { status: 413 });
     }
 
     // If setting as default, unset other defaults
@@ -139,6 +156,7 @@ export async function PUT(request: NextRequest) {
     if (color) updateData.color = color;
     if (year !== undefined) updateData.year = year ? parseInt(year) : null;
     if (isDefault !== undefined) updateData.isDefault = isDefault;
+    if (photo !== undefined) updateData.photo = photo || null;
 
     const car = await db.car.update({
       where: { id: carId },

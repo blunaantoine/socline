@@ -13,7 +13,8 @@ import {
   Power, MapPin, Clock, Star, DollarSign, CheckCircle, 
   Navigation, Phone, MessageCircle, Car, AlertCircle,
   Wallet, TrendingUp, Calendar, LogOut, Settings, Home,
-  RefreshCw, Loader2, ArrowLeft, Crown, Edit, Bell, Banknote
+  RefreshCw, Loader2, ArrowLeft, Crown, Edit, Bell, Banknote,
+  Camera
 } from 'lucide-react';
 import { HideableBalanceDark, HideableBalanceLight } from '@/components/ui/hideable-balance';
 import type { Order, OrderStatus, Conversation, User, Washer as WasherType } from '@/types';
@@ -37,9 +38,158 @@ interface WasherStats {
   balance: number;
 }
 
+// ---------------------------------------------------------------------
+// Client-side photo compression: read the camera file, downscale to a
+// max 900px edge and re-encode as JPEG (~100–300 KB) so the data URL
+// fits comfortably in SQLite and over the wire.
+// ---------------------------------------------------------------------
+async function fileToCompressedDataUrl(file: File, maxSize = 900, quality = 0.72): Promise<string> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error('read failed'));
+    reader.readAsDataURL(file);
+  });
+
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error('decode failed'));
+      image.src = dataUrl;
+    });
+    const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(img.width * scale));
+    canvas.height = Math.max(1, Math.round(img.height * scale));
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return dataUrl;
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', quality);
+  } catch {
+    // If decoding fails (exotic format), send the original file as-is.
+    return dataUrl;
+  }
+}
+
+interface PhotoCaptureDialogProps {
+  open: boolean;
+  type: 'BEFORE' | 'AFTER';
+  order: Order;
+  onUploaded: (order: Order) => void;
+  onClose: () => void;
+}
+
+// Verification photo capture (BEFORE / AFTER). Uses the phone camera via
+// <input capture>, shows a preview, then uploads the compressed photo to
+// POST /api/orders/[id]/photos. The parent continues the status transition.
+function PhotoCaptureDialog({ open, type, order, onUploaded, onClose }: PhotoCaptureDialogProps) {
+  const [preview, setPreview] = useState<string>('');
+  const [file, setFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const isBefore = type === 'BEFORE';
+
+  const reset = () => {
+    setPreview('');
+    setFile(null);
+    if (inputRef.current) inputRef.current.value = '';
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files?.[0];
+    if (!selected) return;
+    setFile(selected);
+    try {
+      const compressed = await fileToCompressedDataUrl(selected);
+      setPreview(compressed);
+    } catch {
+      toast.error('Impossible de lire cette image. Réessayez.');
+      reset();
+    }
+  };
+
+  const handleConfirm = async () => {
+    if (!file || !preview) return;
+    setIsUploading(true);
+    try {
+      const res = await fetch(`/api/orders/${order.id}/photos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, photo: preview }),
+      });
+      const data = await parseJsonResponse<any>(res);
+      if (!res.ok || !data?.success) {
+        toast.error(data?.error || 'Échec de l\'envoi de la photo');
+        return;
+      }
+      toast.success(isBefore ? 'Photo avant lavage enregistrée 📸' : 'Photo après lavage enregistrée 📸');
+      reset();
+      onUploaded(data.order);
+    } catch {
+      toast.error('Erreur réseau — photo non envoyée');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => { if (!next && !isUploading) { reset(); onClose(); } }}>
+      <DialogContent className="max-w-sm rounded-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-lg">
+            <Camera className="w-5 h-5 text-[#4CAF50]" />
+            {isBefore ? 'Photo AVANT lavage' : 'Photo APRÈS lavage'}
+          </DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-[#757575] -mt-2">
+          {isBefore
+            ? 'Photographiez la voiture telle qu\'elle est arrivée — preuve de l\'état de départ.'
+            : 'Photographiez la voiture propre — preuve du résultat pour le client et l\'admin.'}
+        </p>
+
+        {preview ? (
+          <div className="space-y-3">
+            <img src={preview} alt="Aperçu" className="w-full h-48 object-cover rounded-xl border" />
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1 h-11" onClick={reset} disabled={isUploading}>
+                Reprendre
+              </Button>
+              <Button className="flex-1 h-11 bg-[#4CAF50] hover:bg-[#43A047]" onClick={handleConfirm} disabled={isUploading}>
+                {isUploading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+                {isUploading ? 'Envoi…' : 'Valider'}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            className="w-full h-40 rounded-xl border-2 border-dashed border-[#4CAF50]/50 bg-[#E8F5E9] flex flex-col items-center justify-center gap-2 hover:bg-[#E8F5E9]/70 transition-colors"
+          >
+            <Camera className="w-10 h-10 text-[#4CAF50]" />
+            <span className="text-sm font-medium text-[#2E7D32]">Prendre la photo</span>
+            <span className="text-xs text-[#757575]">Appareil photo ou galerie</span>
+          </button>
+        )}
+
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function WasherApp() {
   const { user, logout } = useAuthStore();
-  const { currentOrder, setCurrentOrder, orders, setOrders } = useOrdersStore();
+  const { currentOrder, setCurrentOrder, orders, setOrders, updateOrder } = useOrdersStore();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isAvailable, setIsAvailable] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
@@ -52,6 +202,9 @@ export function WasherApp() {
   const [isRefreshingBalance, setIsRefreshingBalance] = useState(false);
   const [profileSection, setProfileSection] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
+  // Pending verification-photo capture: set when the washer tries to start
+  // (BEFORE) or complete (AFTER) a wash without the required photo.
+  const [photoDialog, setPhotoDialog] = useState<{ type: 'BEFORE' | 'AFTER'; order: Order } | null>(null);
   // Availability sync: the DB value wins on FIRST load only — afterwards the
   // toggle is optimistic and persisted immediately (PATCH /api/washers/:id).
   // (handleToggleAvailability is defined below, after fetchPendingOrders.)
@@ -423,17 +576,30 @@ export function WasherApp() {
   };
 
   // Update order status
-  const handleUpdateStatus = async (newStatus: OrderStatus) => {
-    if (!currentOrder) return;
+  const handleUpdateStatus = async (newStatus: OrderStatus, orderOverride?: Order) => {
+    const order = orderOverride ?? currentOrder;
+    if (!order) return;
     
     try {
+      // Verification photos: the wash cannot START without a BEFORE photo and
+      // cannot be marked COMPLETED without an AFTER photo (also enforced
+      // server-side). Open the camera dialog instead of hitting the API.
+      if (newStatus === 'IN_PROGRESS' && !order.beforePhotoUrl) {
+        setPhotoDialog({ type: 'BEFORE', order });
+        return;
+      }
+      if (newStatus === 'COMPLETED' && !order.afterPhotoUrl) {
+        setPhotoDialog({ type: 'AFTER', order });
+        return;
+      }
+
       // If this is a subscription order and completing, validate subscription first
-      if (currentOrder.isSubscriptionOrder && newStatus === 'COMPLETED') {
+      if (order.isSubscriptionOrder && newStatus === 'COMPLETED') {
         const res = await fetch('/api/subscriptions/validate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            orderId: currentOrder.id,
+            orderId: order.id,
             washerId: user?.id,
             action: 'VALIDATE',
           }),
@@ -454,7 +620,7 @@ export function WasherApp() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          orderId: currentOrder.id,
+          orderId: order.id,
           status: newStatus,
         }),
       });
@@ -468,10 +634,26 @@ export function WasherApp() {
           setCurrentOrder(null);
           fetchMyOrders();
         }
+      } else if (data.error?.startsWith('PHOTO_REQUIRED')) {
+        // Server-side gate — open the same camera dialog as the UI check.
+        setPhotoDialog({ type: data.error.endsWith('AFTER') ? 'AFTER' : 'BEFORE', order });
+      } else {
+        toast.error(data.error || 'Mise à jour impossible');
       }
     } catch (error) {
       console.error('Update order error:', error);
     }
+  };
+
+  // Verification photo uploaded → continue the pending transition at once
+  // (BEFORE unlocks IN_PROGRESS, AFTER unlocks COMPLETED).
+  const handlePhotoUploaded = (updated: Order) => {
+    const type = photoDialog?.type;
+    setCurrentOrder(updated);
+    setPhotoDialog(null);
+    updateOrder(updated);
+    if (type === 'BEFORE') handleUpdateStatus('IN_PROGRESS', updated);
+    else if (type === 'AFTER') handleUpdateStatus('COMPLETED', updated);
   };
 
   // If this washer is a STATION_OWNER, render the dedicated station dashboard
@@ -649,6 +831,18 @@ export function WasherApp() {
             onBack={() => setShowChat(false)} 
           />
         </div>
+      )}
+
+      {/* Verification photo capture (BEFORE / AFTER) — opened automatically
+          when the washer starts or completes a wash without the photo. */}
+      {photoDialog && (
+        <PhotoCaptureDialog
+          open
+          type={photoDialog.type}
+          order={photoDialog.order}
+          onUploaded={handlePhotoUploaded}
+          onClose={() => setPhotoDialog(null)}
+        />
       )}
     </div>
   );
@@ -888,6 +1082,22 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-[#757575]">Client: {order.client?.name || 'N/A'}</span>
                       </div>
+                      {/* Vehicle + payment hint on the job card itself */}
+                      {order.car && (
+                        <div className="flex items-center gap-2 text-sm text-[#616161]">
+                          <Car className="w-4 h-4 text-[#2196F3] flex-shrink-0" />
+                          <span className="truncate">
+                            {[order.car.brand, order.car.model, order.car.color].filter(Boolean).join(' ')}
+                            <span className="font-mono text-xs text-[#2E7D32]"> • {order.car.plateNumber}</span>
+                          </span>
+                        </div>
+                      )}
+                      {order.payment?.method === 'CASH' && (
+                        <div className="flex items-center gap-2 text-xs font-medium text-[#E65100] bg-[#FFF8E1] border border-[#FFE082] rounded-lg px-2 py-1.5 w-fit">
+                          <Banknote className="w-3.5 h-3.5" />
+                          Espèces à encaisser : {order.payment.amount?.toLocaleString() ?? order.totalPrice?.toLocaleString()} XOF
+                        </div>
+                      )}
                       <div className="flex gap-2">
                         <Button 
                           className="flex-1 bg-[#4CAF50] hover:bg-[#43A047] rounded-xl"
@@ -1125,6 +1335,73 @@ function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat, acceptedOr
           </div>
         </CardContent>
       </Card>
+
+      {/* Vehicle recognition — photo, marque/modèle, couleur, plaque :
+          tout ce dont le laveur a besoin pour identifier la voiture. */}
+      <Card className="border-0 shadow-sm">
+        <CardContent className="p-4 space-y-3">
+          <p className="text-xs font-semibold text-[#757575] flex items-center gap-1.5">
+            <Car className="w-3.5 h-3.5 text-[#2196F3]" />
+            Véhicule à reconnaître
+          </p>
+          {order.car ? (
+            <div className="flex items-center gap-3">
+              {order.car.photo ? (
+                <img
+                  src={order.car.photo}
+                  alt={`Voiture du client ${order.car.plateNumber}`}
+                  className="w-16 h-16 rounded-xl object-cover border border-[#E0E0E0] flex-shrink-0"
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-xl bg-[#E3F2FD] flex items-center justify-center flex-shrink-0">
+                  <Car className="w-8 h-8 text-[#2196F3]" />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-[#212121]">
+                  {[order.car.brand, order.car.model].filter(Boolean).join(' ') || 'Véhicule client'}
+                  {order.car.nickname ? <span className="text-xs font-normal text-[#9E9E9E]"> ({order.car.nickname})</span> : null}
+                </p>
+                <p className="text-xs text-[#757575]">
+                  {order.car.color}{order.car.year ? ` • ${order.car.year}` : ''}
+                </p>
+                <Badge variant="outline" className="mt-1 font-mono text-xs border-[#4CAF50] text-[#2E7D32]">
+                  {order.car.plateNumber}
+                </Badge>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-[#9E9E9E]">
+              Aucun véhicule enregistré — appelez le client pour identifier la voiture.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Payment method — the washer MUST know whether to collect cash */}
+      {order.payment && (
+        order.payment.method === 'CASH' ? (
+          <div className="bg-[#FFF8E1] border border-[#FFE082] rounded-xl p-3 flex items-center gap-3">
+            <Banknote className="w-6 h-6 text-[#F57C00] flex-shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-[#E65100]">
+                Paiement en espèces 💵 — {(order.payment.amount ?? order.totalPrice).toLocaleString()} XOF
+              </p>
+              <p className="text-xs text-[#EF6C00]">Encaissez ce montant auprès du client à la fin du lavage.</p>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-[#E8F5E9] border border-[#C8E6C9] rounded-xl p-3 flex items-center gap-3">
+            <Wallet className="w-6 h-6 text-[#2E7D32] flex-shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-[#1B5E20]">
+                Déjà payé via portefeuille ✅
+              </p>
+              <p className="text-xs text-[#2E7D32]">Rien à encaisser auprès du client.</p>
+            </div>
+          </div>
+        )
+      )}
 
       {/* Live GPS sharing indicator */}
       {locationSharing && (

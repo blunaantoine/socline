@@ -118,6 +118,36 @@ export async function POST() {
       });
     }
 
+    // Demo cars for the demo client (idempotent) — lets the washer recognize
+    // the vehicle and exercises the car-selection flow end to end.
+    const existingDemoCars = await db.car.count({ where: { userId: clientUser.id } });
+    if (existingDemoCars === 0) {
+      await db.car.createMany({
+        data: [
+          {
+            userId: clientUser.id,
+            nickname: 'Ma voiture principale',
+            plateNumber: 'TG-1234-A',
+            brand: 'Toyota',
+            model: 'Corolla',
+            color: 'Blanc',
+            year: 2018,
+            isDefault: true,
+          },
+          {
+            userId: clientUser.id,
+            nickname: 'Voiture de travail',
+            plateNumber: 'TG-5678-B',
+            brand: 'Renault',
+            model: 'Logan',
+            color: 'Gris',
+            year: 2015,
+            isDefault: false,
+          },
+        ],
+      });
+    }
+
     // Create washer user with washer profile
     let washerUser = await db.user.findUnique({ where: { phone: '90234567' } });
     if (!washerUser) {

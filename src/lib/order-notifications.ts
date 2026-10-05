@@ -92,7 +92,7 @@ export async function notifyOrderStatusChange(
       });
     }
 
-    // 2. Washer side — only on the two events that concern him directly.
+    // 2. Washer side — events that concern him directly.
     if (washerUserId) {
       if (order.status === 'CANCELLED' && options.actorRole === 'CLIENT') {
         await notify({
@@ -102,6 +102,30 @@ export async function notifyOrderStatusChange(
           type: 'order',
           data: { orderId: order.id, orderNumber: order.orderNumber, status: order.status },
         });
+      }
+      // On ACCEPTED, remind the washer how he gets paid — cash means he has
+      // to collect the money on site (payment records are usually created
+      // BEFORE acceptance, so this is the first moment washerId exists).
+      if (order.status === 'ACCEPTED') {
+        const method = (order as { payment?: { method?: string; amount?: number } | null }).payment?.method;
+        const amount = (order as { payment?: { method?: string; amount?: number } | null }).payment?.amount;
+        if (method === 'CASH') {
+          await notify({
+            userId: washerUserId,
+            title: 'Paiement en espèces 💵',
+            message: `Commande ${order.orderNumber} — encaissez ${(amount ?? 0).toLocaleString('fr-FR')} XOF en espèces auprès du client à la fin du lavage.`,
+            type: 'payment',
+            data: { orderId: order.id, orderNumber: order.orderNumber, method: 'CASH', amount },
+          });
+        } else if (method === 'WALLET') {
+          await notify({
+            userId: washerUserId,
+            title: 'Paiement par portefeuille ✅',
+            message: `Commande ${order.orderNumber} — ${(amount ?? 0).toLocaleString('fr-FR')} XOF déjà réglés via le portefeuille. Rien à encaisser.`,
+            type: 'payment',
+            data: { orderId: order.id, orderNumber: order.orderNumber, method: 'WALLET', amount },
+          });
+        }
       }
       if (order.status === 'COMPLETED' && typeof options.washerAmount === 'number') {
         await notify({

@@ -20,10 +20,39 @@ import {
 import { VisuallyHidden } from '@/components/ui/visually-hidden';
 import {
   Car, Plus, Star, Trash2, CheckCircle, Loader2,
-  Edit, ChevronRight
+  Edit, ChevronRight, Camera
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { parseJsonResponse } from '@/lib/json-helper';
+
+// Downscale a camera/gallery image to a ≤ 900px JPEG data URL so it fits
+// comfortably in the DB and over the wire (same helper as the washer app).
+async function fileToCompressedDataUrl(file: File, maxSize = 900, quality = 0.72): Promise<string> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error('read failed'));
+    reader.readAsDataURL(file);
+  });
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error('decode failed'));
+      image.src = dataUrl;
+    });
+    const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(img.width * scale));
+    canvas.height = Math.max(1, Math.round(img.height * scale));
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return dataUrl;
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', quality);
+  } catch {
+    return dataUrl;
+  }
+}
 
 interface CarData {
   id: string;
@@ -33,6 +62,7 @@ interface CarData {
   model: string | null;
   color: string;
   year: number | null;
+  photo: string | null;
   isDefault: boolean;
   createdAt: string;
 }
@@ -108,6 +138,9 @@ export function CarsManager({ userId }: CarsManagerProps) {
   const [model, setModel] = useState('');
   const [color, setColor] = useState('Blanc');
   const [year, setYear] = useState('');
+  // Optional vehicle photo — the washer uses it to recognize the car
+  const [photo, setPhoto] = useState('');
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
   // Fetch cars
   useEffect(() => {
@@ -144,6 +177,22 @@ export function CarsManager({ userId }: CarsManagerProps) {
     setModel('');
     setColor('Blanc');
     setYear('');
+    setPhoto('');
+  };
+
+  // Photo picker handler — compress then preview. Failure never blocks.
+  const handlePhotoSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files?.[0];
+    if (!selected) return;
+    setIsUploadingPhoto(true);
+    try {
+      setPhoto(await fileToCompressedDataUrl(selected));
+    } catch {
+      toast.error('Impossible de lire cette image. Réessayez.');
+    } finally {
+      setIsUploadingPhoto(false);
+      e.target.value = '';
+    }
   };
 
   // Reset model when brand changes
@@ -171,6 +220,7 @@ export function CarsManager({ userId }: CarsManagerProps) {
           model: model || null,
           color,
           year: year || null,
+          photo: photo || null,
         }),
       });
 
@@ -213,6 +263,7 @@ export function CarsManager({ userId }: CarsManagerProps) {
           model: model || null,
           color,
           year: year || null,
+          photo: photo || null,
         }),
       });
 
@@ -300,6 +351,7 @@ export function CarsManager({ userId }: CarsManagerProps) {
     setModel(car.model || '');
     setColor(car.color);
     setYear(car.year?.toString() || '');
+    setPhoto(car.photo || '');
     setShowEditModal(true);
   };
 
@@ -355,10 +407,18 @@ export function CarsManager({ userId }: CarsManagerProps) {
               }`}
             >
               <div className="flex items-start gap-3">
-                {/* Car Icon */}
-                <div className="w-12 h-12 bg-[#FFF3E0] rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Car className="w-6 h-6 text-[#FF9800]" />
-                </div>
+                {/* Car photo (or icon fallback) */}
+                {car.photo ? (
+                  <img
+                    src={car.photo}
+                    alt={`Photo du véhicule ${car.plateNumber}`}
+                    className="w-12 h-12 rounded-lg object-cover border flex-shrink-0"
+                  />
+                ) : (
+                  <div className="w-12 h-12 bg-[#FFF3E0] rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Car className="w-6 h-6 text-[#FF9800]" />
+                  </div>
+                )}
 
                 {/* Car Info */}
                 <div className="flex-1 min-w-0">
@@ -501,6 +561,51 @@ export function CarsManager({ userId }: CarsManagerProps) {
               </div>
             </div>
 
+            {/* Vehicle photo — helps the washer recognize the car */}
+            <div>
+              <label className="text-sm text-[#757575] mb-1 block">Photo du véhicule (recommandé)</label>
+              {photo ? (
+                <div className="flex items-center gap-3">
+                  <img src={photo} alt="Photo du véhicule" className="w-20 h-20 rounded-lg object-cover border" />
+                  <div className="flex flex-col gap-2">
+                    <Button type="button" variant="outline" size="sm" onClick={() => document.getElementById('car-photo-input')?.click()} disabled={isUploadingPhoto}>
+                      <Camera className="w-4 h-4 mr-1" /> Changer
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" onClick={() => setPhoto('')}>
+                      Retirer
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => document.getElementById('car-photo-input')?.click()}
+                  disabled={isUploadingPhoto}
+                  className="w-full h-20 rounded-lg border-2 border-dashed border-[#FF9800]/40 bg-[#FFF8F0] flex flex-col items-center justify-center gap-1 hover:bg-[#FFF3E0] transition-colors"
+                >
+                  {isUploadingPhoto ? (
+                    <Loader2 className="w-5 h-5 text-[#FF9800] animate-spin" />
+                  ) : (
+                    <>
+                      <Camera className="w-5 h-5 text-[#FF9800]" />
+                      <span className="text-xs text-[#757575]">Prendre / choisir une photo</span>
+                    </>
+                  )}
+                </button>
+              )}
+              <input
+                id="car-photo-input"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handlePhotoSelected}
+              />
+              <p className="text-[11px] text-[#9E9E9E] mt-1">
+                Le laveur identifiera votre voiture grâce à cette photo.
+              </p>
+            </div>
+
             {/* Year */}
             <div>
               <label className="text-sm text-[#757575] mb-1 block">Année</label>
@@ -627,6 +732,51 @@ export function CarsManager({ userId }: CarsManagerProps) {
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* Vehicle photo — helps the washer recognize the car */}
+            <div>
+              <label className="text-sm text-[#757575] mb-1 block">Photo du véhicule (recommandé)</label>
+              {photo ? (
+                <div className="flex items-center gap-3">
+                  <img src={photo} alt="Photo du véhicule" className="w-20 h-20 rounded-lg object-cover border" />
+                  <div className="flex flex-col gap-2">
+                    <Button type="button" variant="outline" size="sm" onClick={() => document.getElementById('car-photo-input')?.click()} disabled={isUploadingPhoto}>
+                      <Camera className="w-4 h-4 mr-1" /> Changer
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" onClick={() => setPhoto('')}>
+                      Retirer
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => document.getElementById('car-photo-input')?.click()}
+                  disabled={isUploadingPhoto}
+                  className="w-full h-20 rounded-lg border-2 border-dashed border-[#FF9800]/40 bg-[#FFF8F0] flex flex-col items-center justify-center gap-1 hover:bg-[#FFF3E0] transition-colors"
+                >
+                  {isUploadingPhoto ? (
+                    <Loader2 className="w-5 h-5 text-[#FF9800] animate-spin" />
+                  ) : (
+                    <>
+                      <Camera className="w-5 h-5 text-[#FF9800]" />
+                      <span className="text-xs text-[#757575]">Prendre / choisir une photo</span>
+                    </>
+                  )}
+                </button>
+              )}
+              <input
+                id="car-photo-input"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handlePhotoSelected}
+              />
+              <p className="text-[11px] text-[#9E9E9E] mt-1">
+                Le laveur identifiera votre voiture grâce à cette photo.
+              </p>
             </div>
 
             {/* Year */}

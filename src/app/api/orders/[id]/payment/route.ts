@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
+import { notify } from '@/lib/notify';
 
 // POST /api/orders/[id]/payment - Create payment record for an order
 // Identity and amount are derived server-side: userId from the session,
@@ -63,6 +64,28 @@ export async function POST(
         transactionId: validMethod !== 'CASH' ? `TXN${Date.now()}` : null,
       },
     });
+
+    // The washer MUST know how he gets paid:
+    //   CASH   → he has to collect the money from the client on site.
+    //   WALLET → already settled, nothing to collect.
+    if (order.washerId) {
+      const washerRecord = await db.washer.findUnique({
+        where: { id: order.washerId },
+        select: { userId: true },
+      });
+      if (washerRecord?.userId) {
+        const amountLabel = `${amount.toLocaleString('fr-FR')} XOF`;
+        await notify({
+          userId: washerRecord.userId,
+          title: validMethod === 'CASH' ? 'Paiement en espèces 💵' : 'Paiement par portefeuille ✅',
+          message: validMethod === 'CASH'
+            ? `Commande ${order.orderNumber} — encaissez ${amountLabel} en espèces auprès du client.`
+            : `Commande ${order.orderNumber} — ${amountLabel} déjà réglés via le portefeuille. Rien à encaisser.`,
+          type: 'payment',
+          data: { orderId: order.id, orderNumber: order.orderNumber, method: validMethod, amount },
+        });
+      }
+    }
 
     return NextResponse.json({
       success: true,

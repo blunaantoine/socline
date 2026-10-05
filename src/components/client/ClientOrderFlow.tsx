@@ -11,10 +11,10 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   ArrowLeft, MapPin, Clock, CreditCard, Wallet,
   CheckCircle, Star, AlertCircle, Loader2,
-  Zap, Droplets, Sparkles, Crown, Calendar
+  Zap, Droplets, Sparkles, Crown, Calendar, Car
 } from 'lucide-react';
 import { toast } from 'sonner';
-import type { Service, Order } from '@/types';
+import type { Service, Order, Car as CarType } from '@/types';
 import { parseJsonResponse } from '@/lib/json-helper';
 import { DynamicLeafletMap } from '@/components/map/DynamicLeafletMap';
 
@@ -61,6 +61,10 @@ export function ClientOrderFlow({
   // "Utiliser ma position actuelle" (étape adresse)
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  // Vehicle selection (étape adresse) — the washer relies on it to
+  // recognize the car. Defaults to the client's default car.
+  const [cars, setCars] = useState<CarType[]>([]);
+  const [selectedCarId, setSelectedCarId] = useState<string | null>(null);
 
   // Fetch services on mount
   useEffect(() => {
@@ -89,6 +93,24 @@ export function ClientOrderFlow({
 
     loadServices();
   }, [setServices]);
+
+  // Fetch the client's cars (vehicle recognition for the washer)
+  useEffect(() => {
+    const loadCars = async () => {
+      try {
+        const res = await fetch('/api/cars');
+        const data = await parseJsonResponse<any>(res);
+        if (data?.success && Array.isArray(data.cars)) {
+          setCars(data.cars);
+          const preferred = data.cars.find((c: CarType) => c.isDefault) || data.cars[0];
+          if (preferred) setSelectedCarId(preferred.id);
+        }
+      } catch {
+        // Cars are optional — the order can still be created without one.
+      }
+    };
+    loadCars();
+  }, []);
 
   // Fetch wallet balance
   useEffect(() => {
@@ -256,6 +278,7 @@ export function ClientOrderFlow({
           serviceId: selectedService.id,
           isHomeService,
           stationId: stationId || null,
+          carId: selectedCarId || null,
           address,
           latitude: coords?.latitude ?? userLocation?.latitude,
           longitude: coords?.longitude ?? userLocation?.longitude,
@@ -309,6 +332,8 @@ export function ClientOrderFlow({
           address: data.order.address,
           latitude: data.order.latitude,
           longitude: data.order.longitude,
+          carId: data.order.carId,
+          car: data.order.car,
           basePrice: data.order.basePrice,
           discount: appliedPromo?.discountAmount || 0,
           totalPrice: data.order.totalPrice,
@@ -589,6 +614,59 @@ export function ClientOrderFlow({
                 </div>
               )}
             </div>
+
+            {/* Vehicle selection — the washer will use it to recognize the car */}
+            {cars.length > 0 && (
+              <div className="bg-white rounded-lg p-4">
+                <Label className="text-base font-medium mb-3 block">
+                  Quel véhicule laver ?
+                </Label>
+                <div className="space-y-2">
+                  {cars.map((car) => {
+                    const isSelected = selectedCarId === car.id;
+                    return (
+                      <button
+                        key={car.id}
+                        type="button"
+                        onClick={() => setSelectedCarId(car.id)}
+                        className={`w-full p-3 rounded-lg border-2 text-left transition-all flex items-center gap-3 ${
+                          isSelected ? 'border-[#FF9800] bg-[#FFF8F0]' : 'border-gray-200 bg-white'
+                        }`}
+                      >
+                        {car.photo ? (
+                          <img
+                            src={car.photo}
+                            alt={`Voiture ${car.plateNumber}`}
+                            className="w-12 h-12 rounded-lg object-cover border flex-shrink-0"
+                          />
+                        ) : (
+                          <div className={`w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 ${isSelected ? 'bg-[#FF9800]/10' : 'bg-gray-100'}`}>
+                            <Car className={`w-6 h-6 ${isSelected ? 'text-[#FF9800]' : 'text-gray-400'}`} />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-[#212121] text-sm">
+                            {[car.brand, car.model].filter(Boolean).join(' ') || 'Véhicule'}
+                            {car.nickname ? <span className="text-xs font-normal text-gray-500"> — {car.nickname}</span> : null}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {car.color}{car.year ? ` • ${car.year}` : ''}
+                          </div>
+                          <Badge variant="outline" className="mt-0.5 font-mono text-[10px]">
+                            {car.plateNumber}
+                          </Badge>
+                        </div>
+                        {isSelected && <CheckCircle className="w-5 h-5 text-[#FF9800] flex-shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                  <Car className="w-3 h-3 flex-shrink-0 text-[#FF9800]" />
+                  Le laveur verra cette fiche pour reconnaître votre voiture (photo, plaque, couleur).
+                </p>
+              </div>
+            )}
 
             <Button 
               className="w-full h-12 bg-[#FF9800] hover:bg-[#F57C00]"

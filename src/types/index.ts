@@ -109,8 +109,13 @@ export interface Order {
   address: string;
   latitude?: number;
   longitude?: number;
-  vehiclePlate?: string;
-  vehicleColor?: string;
+  // Vehicle being washed — lets the washer recognize the client's car
+  carId?: string;
+  car?: Car | null;
+  // Verification photos (data URLs) taken by the washer — BEFORE proves the
+  // car state at arrival, AFTER proves the result. Used by client + admin.
+  beforePhotoUrl?: string;
+  afterPhotoUrl?: string;
   basePrice: number;
   discount: number;
   promoCode?: string;
@@ -135,6 +140,23 @@ export interface Order {
   // Tracking history (WASHER_LOCATION points + status events) — returned by
   // GET /api/orders/[id]; used to hydrate the last known washer position.
   tracking?: TrackingEvent[];
+}
+
+// Client vehicle — the washer relies on it (photo, plate, color) to
+// recognize the car when he arrives at the service address.
+export interface Car {
+  id: string;
+  userId: string;
+  nickname?: string;
+  plateNumber: string;
+  brand?: string;
+  model?: string;
+  color: string;
+  year?: number;
+  photo?: string;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Payment {

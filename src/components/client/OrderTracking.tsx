@@ -8,8 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DynamicLeafletMap } from '@/components/map/DynamicLeafletMap';
 import {
-  MapPin, Phone, MessageCircle, Clock, Star,
-  CheckCircle, Navigation, AlertCircle, X, ArrowLeft, Home, Loader2
+  MapPin, Phone, MessageCircle, Clock, Star, Heart,
+  CheckCircle, Navigation, AlertCircle, X, ArrowLeft, Home, Loader2, Car, Camera
 } from 'lucide-react';
 import type { Order, OrderStatus, TrackingEvent } from '@/types';
 import { isRealtimeEnabled } from '@/lib/realtime-flag';
@@ -442,6 +442,34 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
           </CardContent>
         </Card>
 
+        {/* Vehicle being washed — matches what the washer sees */}
+        {order.car && (
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                {order.car.photo ? (
+                  <img
+                    src={order.car.photo}
+                    alt={`Voiture ${order.car.plateNumber}`}
+                    className="w-14 h-14 rounded-xl object-cover border flex-shrink-0"
+                  />
+                ) : (
+                  <div className="w-14 h-14 rounded-xl bg-[#E3F2FD] flex items-center justify-center flex-shrink-0">
+                    <Car className="w-7 h-7 text-[#2196F3]" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-[#212121]">
+                    {[order.car.brand, order.car.model].filter(Boolean).join(' ') || 'Votre véhicule'}
+                  </p>
+                  <p className="text-xs text-gray-500">{order.car.color}{order.car.year ? ` • ${order.car.year}` : ''}</p>
+                  <Badge variant="outline" className="mt-0.5 font-mono text-xs">{order.car.plateNumber}</Badge>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Washer Info — real assigned washer (hidden while none assigned) */}
         {order.status !== 'PENDING' && washer && (
           <Card>
@@ -534,10 +562,35 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
 function OrderCompleted({ order, onBack, onGoHome }: { order: Order; onBack?: () => void; onGoHome: () => void }) {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
+  const [favorite, setFavorite] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmitReview = () => {
-    setSubmitted(true);
+  const handleSubmitReview = async () => {
+    if (rating === 0 || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`/api/orders/${order.id}/review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating, comment: comment.trim() || undefined, favorite }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.success) {
+        toast.error(data?.error || "Impossible d'envoyer votre avis");
+        return;
+      }
+      toast.success(
+        favorite
+          ? 'Merci ! Votre avis est enregistré et le laveur ajouté à vos favoris ❤️'
+          : 'Merci pour votre avis ⭐'
+      );
+      setSubmitted(true);
+    } catch {
+      toast.error('Erreur réseau — avis non envoyé');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -618,52 +671,117 @@ function OrderCompleted({ order, onBack, onGoHome }: { order: Order; onBack?: ()
                 Votre véhicule est propre et brillant.
               </p>
               <div className="mt-3 p-3 bg-[#F5F5F5] rounded-xl">
-                <div className="text-xs text-[#757575]">Total payé</div>
+                <div className="text-xs text-[#757575]">
+                  {order.payment?.method === 'CASH' ? 'À payer en espèces' : 'Total payé'}
+                </div>
                 <div className="text-xl font-bold text-[#FF9800]">
                   {order.totalPrice.toLocaleString()} XOF
                 </div>
+                {order.payment?.method === 'CASH' && (
+                  <p className="text-xs text-[#E65100] mt-1">💵 Réglez ce montant au laveur.</p>
+                )}
               </div>
             </CardContent>
           </Card>
+
+          {/* Verification photos — proof of service (before/after) */}
+          {(order.beforePhotoUrl || order.afterPhotoUrl) && (
+            <Card className="border-0 shadow-lg">
+              <CardContent className="p-4">
+                <h3 className="font-semibold mb-3 text-[#212121] flex items-center gap-2">
+                  <Camera className="w-4 h-4 text-[#FF9800]" />
+                  Photos de vérification
+                </h3>
+                <div className="grid grid-cols-2 gap-3">
+                  {order.beforePhotoUrl && (
+                    <div>
+                      <img
+                        src={order.beforePhotoUrl}
+                        alt="Voiture avant le lavage"
+                        className="w-full h-28 object-cover rounded-lg border"
+                      />
+                      <p className="text-xs text-center text-[#757575] mt-1">Avant le lavage</p>
+                    </div>
+                  )}
+                  {order.afterPhotoUrl && (
+                    <div>
+                      <img
+                        src={order.afterPhotoUrl}
+                        alt="Voiture après le lavage"
+                        className="w-full h-28 object-cover rounded-lg border"
+                      />
+                      <p className="text-xs text-center text-[#757575] mt-1">Après le lavage</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Rating Card */}
-          <Card className="border-0 shadow-lg">
-            <CardContent className="p-4">
-              <h3 className="font-semibold mb-3 text-center text-[#212121]">Notez votre expérience</h3>
+          {!order.review && (
+            <Card className="border-0 shadow-lg">
+              <CardContent className="p-4">
+                <h3 className="font-semibold mb-3 text-center text-[#212121]">Notez votre expérience</h3>
 
-              <div className="flex justify-center gap-2 mb-4">
-                {[1, 2, 3, 4, 5].map((star) => (
+                <div className="flex justify-center gap-2 mb-4">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      onClick={() => setRating(star)}
+                      className="transition-transform hover:scale-110"
+                      aria-label={`Noter ${star} étoile${star > 1 ? 's' : ''}`}
+                    >
+                      <Star
+                        className={`w-8 h-8 ${
+                          star <= rating
+                            ? 'text-yellow-400 fill-yellow-400'
+                            : 'text-gray-300'
+                        }`}
+                      />
+                    </button>
+                  ))}
+                </div>
+
+                <textarea
+                  placeholder="Laissez un commentaire (optionnel)"
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  className="w-full p-3 border border-[#E0E0E0] rounded-xl resize-none h-20 text-sm focus:outline-none focus:border-[#FF9800]"
+                />
+
+                {/* Favorite washer toggle */}
+                {order.washer && (
                   <button
-                    key={star}
-                    onClick={() => setRating(star)}
-                    className="transition-transform hover:scale-110"
+                    type="button"
+                    onClick={() => setFavorite((v) => !v)}
+                    className={`w-full mt-3 flex items-center justify-center gap-2 rounded-xl border-2 py-3 transition-all ${
+                      favorite
+                        ? 'border-red-300 bg-red-50 text-red-600'
+                        : 'border-[#E0E0E0] bg-white text-[#757575]'
+                    }`}
+                    aria-pressed={favorite}
                   >
-                    <Star
-                      className={`w-8 h-8 ${
-                        star <= rating
-                          ? 'text-yellow-400 fill-yellow-400'
-                          : 'text-gray-300'
-                      }`}
-                    />
+                    <Heart className={`w-5 h-5 ${favorite ? 'fill-red-500 text-red-500' : ''}`} />
+                    <span className="text-sm font-medium">
+                      {favorite
+                        ? `${order.washer.user?.name || 'Ce laveur'} est dans vos favoris`
+                        : `Ajouter ${order.washer.user?.name || 'ce laveur'} en favori`}
+                    </span>
                   </button>
-                ))}
-              </div>
+                )}
 
-              <textarea
-                placeholder="Laissez un commentaire (optionnel)"
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                className="w-full p-3 border border-[#E0E0E0] rounded-xl resize-none h-20 text-sm focus:outline-none focus:border-[#FF9800]"
-              />
-              <Button
-                className="w-full h-12 bg-[#FF9800] hover:bg-[#F57C00] rounded-xl mt-3"
-                onClick={handleSubmitReview}
-                disabled={rating === 0}
-              >
-                Envoyer mon avis
-              </Button>
-            </CardContent>
-          </Card>
+                <Button
+                  className="w-full h-12 bg-[#FF9800] hover:bg-[#F57C00] rounded-xl mt-3"
+                  onClick={handleSubmitReview}
+                  disabled={rating === 0 || isSubmitting}
+                >
+                  {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  {isSubmitting ? 'Envoi…' : 'Envoyer mon avis'}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>

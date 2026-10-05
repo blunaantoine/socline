@@ -36,6 +36,9 @@ export async function GET(request: NextRequest) {
             include: { user: { select: { name: true, phone: true } } },
           },
           service: { select: { name: true, price: true } },
+          car: true,
+          payment: true,
+          review: { select: { rating: true, comment: true } },
         },
         orderBy: { createdAt: 'desc' },
         skip,
@@ -59,7 +62,24 @@ export async function GET(request: NextRequest) {
         status: o.status,
         createdAt: o.createdAt,
         address: o.address,
-        paymentStatus: 'PENDING', // Would need to fetch from Payment table
+        // Vehicle identification (washer recognition + admin verification)
+        car: o.car ? {
+          brand: o.car.brand,
+          model: o.car.model,
+          color: o.car.color,
+          plateNumber: o.car.plateNumber,
+          photo: o.car.photo,
+        } : null,
+        // Wash verification photos (before/after)
+        beforePhotoUrl: o.beforePhotoUrl,
+        afterPhotoUrl: o.afterPhotoUrl,
+        // Real payment info instead of the hardcoded PENDING
+        payment: o.payment ? {
+          method: o.payment.method,
+          status: o.payment.status,
+          amount: o.payment.amount,
+        } : null,
+        review: o.review || null,
       })),
       pagination: {
         page,

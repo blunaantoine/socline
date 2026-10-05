@@ -37,6 +37,10 @@ export async function GET(request: NextRequest) {
     // Common include for all queries
     const baseInclude = {
       client: { select: { id: true, name: true, phone: true } },
+      // Car being washed + payment method — the washer needs both to
+      // recognize the vehicle and know whether to collect cash.
+      car: true,
+      payment: true,
       service: true,
       subscriptionUsage: {
         include: {
@@ -160,7 +164,7 @@ export async function POST(request: NextRequest) {
     const {
       serviceId, isHomeService, address,
       latitude, longitude, scheduledAt,
-      promoCode, useSubscription, stationId
+      promoCode, useSubscription, stationId, carId
     } = body;
     // NOTE: body clientId / totalPrice / discount are deliberately ignored.
 
@@ -188,6 +192,17 @@ export async function POST(request: NextRequest) {
 
     if (!service) {
       return NextResponse.json({ error: 'Service non trouvé' }, { status: 400 });
+    }
+
+    // Optional vehicle: must exist AND belong to the session client —
+    // the washer will rely on it to recognize the car on arrival.
+    let verifiedCarId: string | null = null;
+    if (carId) {
+      const car = await db.car.findUnique({ where: { id: carId } });
+      if (!car || car.userId !== clientId) {
+        return NextResponse.json({ error: 'Véhicule non trouvé' }, { status: 400 });
+      }
+      verifiedCarId = car.id;
     }
 
     // Check subscription if useSubscription is true
@@ -252,6 +267,7 @@ export async function POST(request: NextRequest) {
         orderNumber,
         clientId,
         serviceId,
+        carId: verifiedCarId,
         isHomeService: isHomeService ?? true,
         stationId: stationId || null,
         address,
@@ -275,6 +291,7 @@ export async function POST(request: NextRequest) {
       include: {
         client: { select: { id: true, name: true, phone: true } },
         service: true,
+        car: true,
         ...(stationId ? { station: true } : {}),
       },
     });
@@ -492,6 +509,27 @@ export async function PATCH(request: NextRequest) {
     }
 
     // -----------------------------------------------------------------
+    // Verification photos (washers only): a wash cannot START without a
+    // BEFORE photo and cannot be marked COMPLETED without an AFTER photo.
+    // This is the proof-of-service used by the client and the admin to
+    // verify the wash really happened.
+    // -----------------------------------------------------------------
+    if (session.role === 'WASHER') {
+      if (status === 'IN_PROGRESS' && !existingOrder.beforePhotoUrl) {
+        return NextResponse.json(
+          { error: 'PHOTO_REQUIRED:BEFORE', message: 'Prenez une photo de la voiture avant de commencer le lavage.' },
+          { status: 400 }
+        );
+      }
+      if (status === 'COMPLETED' && !existingOrder.afterPhotoUrl) {
+        return NextResponse.json(
+          { error: 'PHOTO_REQUIRED:AFTER', message: 'Prenez une photo de la voiture propre avant de terminer.' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // -----------------------------------------------------------------
     // Build the update payload (timestamps per new status)
     // -----------------------------------------------------------------
     const updateData: any = { status };
@@ -558,6 +596,7 @@ export async function PATCH(request: NextRequest) {
         include: {
           client: { select: { id: true, name: true, phone: true } },
           service: true,
+          payment: true,
           washer: { include: { user: { select: { name: true, phone: true } } } },
         },
       });

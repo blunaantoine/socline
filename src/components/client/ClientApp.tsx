@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAppStore, useServicesStore, useOrdersStore, useStationsStore, useWashersStore, useAuthStore } from '@/store';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   Dialog,
@@ -13,11 +14,12 @@ import {
 } from '@/components/ui/dialog';
 import {
   MapPin, Search, Star, Clock, Car, Building,
-  CheckCircle, Phone, Loader2,
+  CheckCircle, Phone, Loader2, Heart,
   Zap, Droplets, Sparkles, Crown, RefreshCw,
   Home, Calendar, MessageCircle, User, Bell, Settings, LogOut, Wallet, Copy, Plus, ChevronRight, Headphones, MessageSquare
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { onSoclineNotification } from '@/components/RealtimeNotifications';
 import { ClientOrderFlow } from './ClientOrderFlow';
 import { OrderTracking } from './OrderTracking';
 import { OrderHistory } from './OrderHistory';
@@ -403,7 +405,160 @@ export function ClientApp() {
           })}
         </nav>
       )}
+
+      {/* Auto-popup: rate the wash as soon as it completes (realtime notification) */}
+      <ReviewPopup />
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// ReviewPopup — when a wash completes, the client receives the realtime
+// notification « Lavage terminé ✅ ». Catch it and open the rating popup
+// right away (stars + comment + favorite washer + before/after photos).
+// ---------------------------------------------------------------------
+function ReviewPopup() {
+  const [order, setOrder] = useState<any | null>(null);
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState('');
+  const [favorite, setFavorite] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    return onSoclineNotification((notif) => {
+      if (notif.type !== 'order') return;
+      const title = notif.title || '';
+      if (!title.includes('Lavage terminé')) return;
+      const data: any = notif.data || {};
+      const orderId = typeof data.orderId === 'string' ? data.orderId : null;
+      if (!orderId) return;
+      // Fetch the order detail (washer, photos, existing review) then pop up.
+      (async () => {
+        try {
+          const res = await fetch(`/api/orders/${orderId}`);
+          if (!res.ok) return;
+          const payload = await res.json().catch(() => null);
+          const fetched = payload?.order;
+          if (!fetched || fetched.status !== 'COMPLETED' || fetched.review) return;
+          setOrder(fetched);
+        } catch {
+          // best-effort — the tracking screen offers the same rating form
+        }
+      })();
+    });
+  }, []);
+
+  const close = () => {
+    setOrder(null);
+    setRating(0);
+    setComment('');
+    setFavorite(false);
+  };
+
+  const handleSubmit = async () => {
+    if (!order || rating === 0 || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`/api/orders/${order.id}/review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating, comment: comment.trim() || undefined, favorite }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.success) {
+        toast.error(data?.error || "Impossible d'envoyer votre avis");
+        return;
+      }
+      toast.success(
+        favorite
+          ? 'Merci ! Avis enregistré et laveur ajouté à vos favoris ❤️'
+          : 'Merci pour votre avis ⭐'
+      );
+      close();
+    } catch {
+      toast.error('Erreur réseau — avis non envoyé');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={!!order} onOpenChange={(next) => { if (!next && !isSubmitting) close(); }}>
+      <DialogContent className="max-w-sm rounded-2xl">
+        <DialogHeader>
+          <DialogTitle className="text-center text-lg">Notez votre lavage ⭐</DialogTitle>
+        </DialogHeader>
+        {order && (
+          <div className="space-y-4">
+            <p className="text-sm text-[#757575] text-center -mt-1">
+              « {order.service?.name} » — {order.washer?.user?.name || 'votre laveur'}
+            </p>
+
+            {(order.beforePhotoUrl || order.afterPhotoUrl) && (
+              <div className="grid grid-cols-2 gap-2">
+                {order.beforePhotoUrl && (
+                  <div>
+                    <img src={order.beforePhotoUrl} alt="Voiture avant le lavage" className="w-full h-20 object-cover rounded-lg border" />
+                    <p className="text-[10px] text-center text-[#757575] mt-0.5">Avant</p>
+                  </div>
+                )}
+                {order.afterPhotoUrl && (
+                  <div>
+                    <img src={order.afterPhotoUrl} alt="Voiture après le lavage" className="w-full h-20 object-cover rounded-lg border" />
+                    <p className="text-[10px] text-center text-[#757575] mt-0.5">Après</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex justify-center gap-2">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  onClick={() => setRating(star)}
+                  aria-label={`Noter ${star} étoile${star > 1 ? 's' : ''}`}
+                  className="transition-transform hover:scale-110"
+                >
+                  <Star className={`w-9 h-9 ${star <= rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`} />
+                </button>
+              ))}
+            </div>
+
+            <textarea
+              placeholder="Commentaire (optionnel)"
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              className="w-full p-3 border border-[#E0E0E0] rounded-xl resize-none h-16 text-sm focus:outline-none focus:border-[#FF9800]"
+            />
+
+            {order.washer && (
+              <button
+                type="button"
+                onClick={() => setFavorite((v) => !v)}
+                aria-pressed={favorite}
+                className={`w-full flex items-center justify-center gap-2 rounded-xl border-2 py-2.5 transition-all ${
+                  favorite ? 'border-red-300 bg-red-50 text-red-600' : 'border-[#E0E0E0] bg-white text-[#757575]'
+                }`}
+              >
+                <Heart className={`w-5 h-5 ${favorite ? 'fill-red-500 text-red-500' : ''}`} />
+                <span className="text-sm font-medium">
+                  {favorite ? `${order.washer.user?.name || 'Ce laveur'} est dans vos favoris` : `Ajouter ${order.washer.user?.name || 'ce laveur'} en favori`}
+                </span>
+              </button>
+            )}
+
+            <Button
+              className="w-full h-11 bg-[#FF9800] hover:bg-[#F57C00] rounded-xl"
+              onClick={handleSubmit}
+              disabled={rating === 0 || isSubmitting}
+            >
+              {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {isSubmitting ? 'Envoi…' : 'Envoyer mon avis'}
+            </Button>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 

@@ -195,6 +195,25 @@ export async function PATCH(
     }
 
     // -----------------------------------------------------------------
+    // Verification photos (washers only): a wash cannot START without a
+    // BEFORE photo and cannot be marked COMPLETED without an AFTER photo.
+    // -----------------------------------------------------------------
+    if (session.role === 'WASHER') {
+      if (status === 'IN_PROGRESS' && !existingOrder.beforePhotoUrl) {
+        return NextResponse.json(
+          { success: false, error: 'PHOTO_REQUIRED:BEFORE', message: 'Prenez une photo de la voiture avant de commencer le lavage.' },
+          { status: 400 }
+        );
+      }
+      if (status === 'COMPLETED' && !existingOrder.afterPhotoUrl) {
+        return NextResponse.json(
+          { success: false, error: 'PHOTO_REQUIRED:AFTER', message: 'Prenez une photo de la voiture propre avant de terminer.' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // -----------------------------------------------------------------
     // Build the update payload (timestamps per new status)
     // -----------------------------------------------------------------
     const updateData: any = { status };
@@ -265,6 +284,7 @@ export async function PATCH(
             },
           },
           service: true,
+          payment: true,
         },
       });
 

@@ -550,3 +550,11 @@ Stage Summary:
 - Le flux laveur complet est vérifié de bout en bout, et le client est maintenant informé à CHAQUE étape via le pipeline unifié (DB + socket + SMS optionnel).
 - Étapes UI laveur documentées (boutons exacts) pour réponse utilisateur.
 - Rappel récurrent: le sandbox réduit .env et peut remplacer la DB — surveiller dev.log pour « INTERNAL_SOCKET_SECRET not set ».
+
+---
+Task ID: 18 (session 16 — START: fiche voiture laveur + photos avant/après + notation/favoris + info paiement espèces)
+Agent: main (Z.ai Code)
+Task: "dans le profile du laveur comment il reconnais la voiture il manque d information et aussi cote verification a chaque lavage le laveur doit pendre une photo de la voiture avant et apres le lavage il sera utiliser pour verifier et apre le lavage le client recoie un popup pour noter le service si posible le metre en favorie et quand le payement est en espec le laveur doit savoire"
+
+Work Log:
+- (en cours) Exploration du schéma et des composants existants.
