@@ -105,6 +105,7 @@ export async function PATCH(
         client: { select: { id: true, name: true, phone: true } },
         washer: { include: { user: { select: { id: true, name: true, phone: true } } } },
         service: true,
+        payment: true,
       },
     });
 
@@ -266,11 +267,24 @@ export async function PATCH(
     // Credit the washer when the order transitions to COMPLETED
     // (only if its previous status was not already COMPLETED — anti double-credit)
     const isCompletion = status === 'COMPLETED' && existingOrder.status !== 'COMPLETED';
-    // washerAmount = totalPrice - commission (commission frozen at ACCEPTED),
-    // clamped to >= 0 (e.g. subscription orders at 0)
+    const totalPrice = existingOrder.totalPrice ?? 0;
+    // Commission frozen at ACCEPTED per Contrat Article 5, clamped >= 0
+    // (e.g. subscription orders at 0).
+    const commission = Math.max(0, existingOrder.commission ?? 0);
+    // -----------------------------------------------------------------
+    // ENCAISSEMENT ESPÈCES — le laveur détient PHYSIQUEMENT la totalité du
+    // montant : on lui crédite donc totalPrice EN ENTIER dans ses gains, et
+    // la commission de la plateforme est comptabilisée en DETTE (cashDebt)
+    // qu'il rembourse (portefeuille / recouvrement admin) — un garde-fou
+    // bloque les retraits tant que la dette n'est pas soldée.
+    // Paiement WALLET ou abonnement : la plateforme détient déjà l'argent,
+    // seule la part nette du partenaire est crédité (comportement initial).
+    // -----------------------------------------------------------------
+    const isCash = (existingOrder.payment?.method ?? null) === 'CASH';
     const washerAmount = isCompletion
-      ? Math.max(0, (existingOrder.totalPrice ?? 0) - (existingOrder.commission ?? 0))
+      ? (isCash ? totalPrice : Math.max(0, totalPrice - commission))
       : 0;
+    const cashDebtIncrement = isCompletion && isCash ? commission : 0;
 
     const order = await db.$transaction(async (tx) => {
       const updatedOrder = await tx.order.update({
@@ -289,14 +303,27 @@ export async function PATCH(
       });
 
       // Credit the washer: totalEarnings + completedJobs (no WalletTransaction:
-      // washer earnings are tracked via totalEarnings only)
+      // washer earnings are tracked via totalEarnings only). For CASH orders
+      // the commission is simultaneously booked as the washer's cashDebt.
       if (isCompletion && updatedOrder.washerId) {
         await tx.washer.update({
           where: { id: updatedOrder.washerId },
           data: {
             totalEarnings: { increment: washerAmount },
             completedJobs: { increment: 1 },
+            ...(cashDebtIncrement > 0
+              ? { cashDebt: { increment: cashDebtIncrement } }
+              : {}),
           },
+        });
+      }
+
+      // Cash collection is final at COMPLETED (the washer holds the money):
+      // mark the CASH payment record as completed for traceability.
+      if (isCompletion && isCash && updatedOrder.payment) {
+        await tx.payment.update({
+          where: { id: updatedOrder.payment.id },
+          data: { status: 'COMPLETED' },
         });
       }
 
@@ -345,7 +372,13 @@ export async function PATCH(
     // client cancels or the washer gets credited) — best-effort, never blocks.
     await notifyOrderStatusChange(order, {
       actorRole: session.role as 'WASHER' | 'CLIENT' | 'ADMIN',
-      ...(isCompletion ? { washerAmount } : {}),
+      ...(isCompletion
+        ? {
+            washerAmount,
+            paymentMethod: isCash ? 'CASH' as const : 'WALLET' as const,
+            commissionAmount: cashDebtIncrement,
+          }
+        : {}),
     });
 
     return NextResponse.json({

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { hashPin, requireAdmin } from '@/lib/auth';
+import { notify } from '@/lib/notify';
 
 // POST /api/admin/washers - Create a new washer
 export async function POST(request: NextRequest) {
@@ -165,6 +166,8 @@ export async function GET(request: NextRequest) {
           // Partner share = total collected - commissions actually applied
           // per order (Contrat Article 5: commission depends on washer level)
           earnings: (earnings._sum.totalPrice || 0) - (earnings._sum.commission || 0),
+          // Commission espèces à recouvrer (encaissements CASH non soldés)
+          cashDebt: washer.cashDebt,
           isAvailable: washer.isAvailable,
           isVerified: washer.isVerified,
           createdAt: washer.user.createdAt,
@@ -190,10 +193,119 @@ export async function PATCH(request: NextRequest) {
   }
   try {
     const body = await request.json();
-    const { washerId, action } = body; // action: 'verify', 'reject', 'suspend'
+    const { washerId, action } = body; // action: 'verify', 'reject', 'suspend', 'recover-commission'
 
     if (!washerId || !action) {
       return NextResponse.json({ error: 'Paramètres manquants' }, { status: 400 });
+    }
+
+    // ---------------------------------------------------------------
+    // RECOUVREMENT DE LA COMMISSION ESPÈCES — déduit la dette (cashDebt)
+    // du solde du PORTEFEUILLE du laveur (ex: après un rechargement).
+    // Réglages partiels supportés : on recouvre min(cashDebt, balance).
+    // ---------------------------------------------------------------
+    if (action === 'recover-commission') {
+      const washer = await db.washer.findUnique({
+        where: { id: washerId },
+        include: { user: { select: { name: true, phone: true } } },
+      });
+
+      if (!washer) {
+        return NextResponse.json({ error: 'Laveur non trouvé' }, { status: 404 });
+      }
+
+      if (washer.cashDebt <= 0) {
+        return NextResponse.json(
+          { error: 'Ce laveur n\'a aucune commission espèces à recouvrer' },
+          { status: 400 }
+        );
+      }
+
+      const wallet = await db.wallet.findUnique({
+        where: { userId: washer.userId },
+      });
+
+      if (!wallet || wallet.balance <= 0) {
+        return NextResponse.json(
+          {
+            error: `Portefeuille insuffisant (${(wallet?.balance ?? 0).toLocaleString('fr-FR')} XOF). Le laveur doit recharger son portefeuille — la dette de ${washer.cashDebt.toLocaleString('fr-FR')} XOF bloque déjà ses retraits.`,
+            cashDebt: washer.cashDebt,
+            balance: wallet?.balance ?? 0,
+          },
+          { status: 400 }
+        );
+      }
+
+      const recovered = Math.min(washer.cashDebt, wallet.balance);
+
+      const result = await db.$transaction(async (tx) => {
+        const freshWallet = await tx.wallet.findUnique({ where: { id: wallet.id } });
+        if (!freshWallet || freshWallet.balance < recovered) {
+          throw new Error('INSUFFICIENT_BALANCE');
+        }
+
+        const freshWasher = await tx.washer.findUnique({ where: { id: washer.id } });
+        if (!freshWasher || freshWasher.cashDebt <= 0) {
+          throw new Error('NO_DEBT');
+        }
+
+        const applied = Math.min(freshWasher.cashDebt, recovered);
+
+        const transaction = await tx.walletTransaction.create({
+          data: {
+            walletId: freshWallet.id,
+            type: 'COMMISSION_SETTLEMENT',
+            amount: applied,
+            status: 'COMPLETED',
+            description: 'Recouvrement commission espèces — par administrateur SOCLINE',
+            balanceAfter: freshWallet.balance - applied,
+          },
+        });
+
+        const updatedWallet = await tx.wallet.update({
+          where: { id: freshWallet.id },
+          data: {
+            balance: { decrement: applied },
+            totalSpent: { increment: applied },
+          },
+        });
+
+        const updatedWasher = await tx.washer.update({
+          where: { id: washer.id },
+          data: { cashDebt: { decrement: applied } },
+        });
+
+        return { transaction, updatedWallet, updatedWasher, applied };
+      });
+
+      const remaining = Math.max(0, result.updatedWasher.cashDebt);
+      const fmt = (n: number) => n.toLocaleString('fr-FR');
+
+      // Trace: notify the washer — best-effort.
+      try {
+        await notify({
+          userId: washer.userId,
+          type: 'payment',
+          title: 'Commission recouvrée 💰',
+          message: remaining > 0
+            ? `${fmt(result.applied)} XOF de commission ont été prélevés sur votre portefeuille par l'administration. Reste dû : ${fmt(remaining)} XOF.`
+            : `${fmt(result.applied)} XOF de commission ont été prélevés sur votre portefeuille par l'administration. Votre dette est soldée ✅`,
+          data: { recovered: result.applied, remaining },
+        });
+      } catch (error) {
+        console.warn('[AdminRecoverCommission] notification failed:', error);
+      }
+
+      return NextResponse.json({
+        success: true,
+        recovered: result.applied,
+        remainingDebt: remaining,
+        balance: result.updatedWallet.balance,
+        message:
+          remaining > 0
+            ? `${fmt(result.applied)} XOF recouvrés. Reste dû : ${fmt(remaining)} XOF.`
+            : `Commission entièrement recouvrée (${fmt(result.applied)} XOF) ✅`,
+      });
     }
 
     let updateData: any = {};

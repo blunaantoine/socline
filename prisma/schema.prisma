@@ -72,6 +72,7 @@ enum TransactionType {
   PAYMENT       // Paiement de commande
   REFUND        // Remboursement
   BONUS         // Bonus/Promotion
+  COMMISSION_SETTLEMENT // Règlement de la commission espèces par le laveur
 }
 
 // Wallet transaction status enum
@@ -195,6 +196,12 @@ model Washer {
   totalRatings   Int      @default(0)
   totalEarnings  Float    @default(0)
   completedJobs  Int      @default(0)
+
+  // Commission espèces à régler à SOCLINE : quand un laveur encaisse le
+  // paiement EN ESPÈCES, il détient la totalité du montant — la commission
+  // de la plateforme est donc comptabilisée comme une dette qu'il rembourse
+  // (portefeuille / recouvrement admin) avant de pouvoir retirer ses gains.
+  cashDebt       Float    @default(0)
   
   // Location
   latitude       Float?

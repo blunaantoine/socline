@@ -38,6 +38,10 @@ interface WasherStats {
   todayEarnings: number;
   todayJobs: number;
   balance: number;
+  // Commission espèces à régler à SOCLINE (encaissements CASH non soldés)
+  cashDebt: number;
+  // Solde du portefeuille (pour régler la dette depuis l'app)
+  walletBalance: number;
 }
 
 // ---------------------------------------------------------------------
@@ -199,6 +203,8 @@ export function WasherApp() {
   const [showChat, setShowChat] = useState(false);
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [washerData, setWasherData] = useState<WasherType | null>(null);
+  // Portefeuille du laveur (solde utilisable pour régler la commission espèces)
+  const [walletData, setWalletData] = useState<{ balance: number } | null>(null);
   const [partnerLevel, setPartnerLevel] = useState<any>(null);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isRefreshingBalance, setIsRefreshingBalance] = useState(false);
@@ -211,6 +217,11 @@ export function WasherApp() {
   // toggle is optimistic and persisted immediately (PATCH /api/washers/:id).
   // (handleToggleAvailability is defined below, after fetchPendingOrders.)
   const availabilitySyncedRef = useRef(false);
+  // Restauration de la prestation en cours : au premier chargement de la
+  // page (après fermeture / rechargement), si une commande active existe,
+  // le laveur est ramené directement sur l'onglet « Active » — une seule
+  // fois, pour ne jamais voler la navigation pendant l'utilisation.
+  const restoredTabRef = useRef(false);
 
   // Fetch conversation for current order
   const fetchConversation = useCallback(async (orderId: string) => {
@@ -234,6 +245,24 @@ export function WasherApp() {
       setShowChat(true);
     }
   }, [fetchConversation]);
+
+  // Fetch wallet balance (used to settle the cash commission from the app)
+  const fetchWallet = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const res = await fetch(`/api/wallet?userId=${user.id}`);
+      const data = await parseJsonResponse<any>(res);
+      if (data?.success && data.wallet) {
+        setWalletData({ balance: data.wallet.balance });
+      }
+    } catch {
+      // best-effort
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    fetchWallet();
+  }, [fetchWallet]);
 
   // Fetch washer data (stats, balance, washerType, station)
   const fetchWasherData = useCallback(async () => {
@@ -273,6 +302,8 @@ export function WasherApp() {
     todayEarnings: washerData?.todayEarnings || 0,
     todayJobs: washerData?.todayJobs || 0,
     balance: washerData?.totalEarnings || 0,
+    cashDebt: washerData?.cashDebt || 0,
+    walletBalance: walletData?.balance || 0,
   };
 
   // Fetch pending orders
@@ -370,6 +401,12 @@ export function WasherApp() {
         );
         if (active) {
           setCurrentOrder(active);
+          // Reprise après fermeture de la page : on ramène le laveur sur sa
+          // prestation en cours (premier chargement uniquement).
+          if (!restoredTabRef.current) {
+            restoredTabRef.current = true;
+            setActiveTab((prev) => (prev === 'dashboard' ? 'active' : prev));
+          }
         }
       }
     } catch (error) {
@@ -753,6 +790,7 @@ export function WasherApp() {
             isRefreshingBalance={isRefreshingBalance}
             partnerLevel={partnerLevel}
             acceptedOrders={orders.filter(o => ['ACCEPTED', 'EN_ROUTE', 'ARRIVED', 'IN_PROGRESS'].includes(o.status))}
+            onGoToEarnings={() => setActiveTab('earnings')}
           />
         )}
         {activeTab === 'active' && (
@@ -777,6 +815,7 @@ export function WasherApp() {
             stats={washerStats} 
             onBack={() => setActiveTab('dashboard')}
             onRefreshBalance={fetchWasherData}
+            onRefreshWallet={fetchWallet}
             isRefreshingBalance={isRefreshingBalance}
             washerId={user?.id || ''}
           />
@@ -851,7 +890,7 @@ export function WasherApp() {
 }
 
 // Washer Dashboard
-function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccept, onRefresh, onRefreshBalance, isRefreshingBalance, partnerLevel, acceptedOrders }: { 
+function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccept, onRefresh, onRefreshBalance, isRefreshingBalance, partnerLevel, acceptedOrders, onGoToEarnings }: { 
   stats: WasherStats; 
   isAvailable: boolean;
   isLoading: boolean;
@@ -862,6 +901,7 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
   isRefreshingBalance: boolean;
   partnerLevel: any;
   acceptedOrders: Order[];
+  onGoToEarnings: () => void;
 }) {
   return (
     <div className="p-4 space-y-4">
@@ -876,6 +916,27 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
             </p>
           </div>
         </div>
+      )}
+
+      {/* Commission espèces à régler — rappel permanent tant que la dette existe */}
+      {stats.cashDebt > 0 && (
+        <button
+          onClick={onGoToEarnings}
+          className="w-full text-left bg-[#FFF8F0] border-2 border-[#FF9800] rounded-xl p-3 flex items-center gap-3 active:scale-[0.99] transition-transform"
+        >
+          <div className="w-9 h-9 bg-[#FF9800] rounded-full flex items-center justify-center flex-shrink-0">
+            <Banknote className="w-4 h-4 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-[#E65100] text-sm">
+              Commission espèces à régler : {stats.cashDebt.toLocaleString('fr-FR')} XOF
+            </p>
+            <p className="text-xs text-[#8D6E63]">
+              Vos retraits sont bloqués — touchez pour régler depuis vos Revenus.
+            </p>
+          </div>
+          <span className="text-[#E65100] font-bold">›</span>
+        </button>
       )}
 
       {/* Partner Level Banner (Contrat Article 5 — rémunération progressive) */}
@@ -1539,10 +1600,11 @@ function WasherOrderHistory({ orders, onBack }: {
 }
 
 // Washer Earnings
-function WasherEarnings({ stats, onBack, onRefreshBalance, isRefreshingBalance, washerId }: { 
+function WasherEarnings({ stats, onBack, onRefreshBalance, onRefreshWallet, isRefreshingBalance, washerId }: { 
   stats: WasherStats;
   onBack: () => void;
   onRefreshBalance: () => void;
+  onRefreshWallet: () => void;
   isRefreshingBalance: boolean;
   washerId: string;
 }) {
@@ -1552,6 +1614,8 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, isRefreshingBalance, 
   const [operator, setOperator] = useState('Mixx by Yas');
   const [isLoading, setIsLoading] = useState(false);
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
+  // Règlement de la commission espèces (dette cashDebt) depuis le portefeuille
+  const [isSettling, setIsSettling] = useState(false);
   // Trusted withdrawal numbers (max 3, self-confirmed; admin-only changes)
   const [numbers, setNumbers] = useState<any[]>([]);
   const [showAddNumber, setShowAddNumber] = useState(false);
@@ -1619,14 +1683,19 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, isRefreshingBalance, 
 
   const handleWithdraw = async () => {
     const amount = parseFloat(withdrawAmount);
+    const withdrawable = stats.totalEarnings - stats.cashDebt;
     
     if (!amount || amount < 500) {
       toast.error('Le montant minimum est de 500 XOF');
       return;
     }
     
-    if (amount > stats.totalEarnings) {
-      toast.error('Solde insuffisant');
+    if (amount > withdrawable) {
+      toast.error(
+        stats.cashDebt > 0
+          ? `Retrait bloqué : ${stats.cashDebt.toLocaleString('fr-FR')} XOF de commission espèces à régler d'abord`
+          : 'Solde insuffisant'
+      );
       return;
     }
     
@@ -1671,6 +1740,32 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, isRefreshingBalance, 
       toast.error('Erreur de connexion');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Régler la commission espèces depuis le portefeuille — POST /api/washers/settle-commission
+  // prélève min(dette, solde) et débloque les retraits au prorata.
+  const handleSettleCommission = async () => {
+    if (isSettling) return;
+    setIsSettling(true);
+    try {
+      const res = await fetch('/api/washers/settle-commission', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const data = await parseJsonResponse<any>(res);
+      if (!res.ok || !data?.success) {
+        toast.error(data?.error || 'Impossible de régler la commission');
+        return;
+      }
+      toast.success(data.message || 'Commission réglée ✅');
+      onRefreshWallet();
+      onRefreshBalance();
+    } catch {
+      toast.error('Erreur de connexion');
+    } finally {
+      setIsSettling(false);
     }
   };
 
@@ -1804,18 +1899,69 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, isRefreshingBalance, 
           <Button 
             onClick={() => setShowWithdrawModal(true)}
             className="w-full mt-4 bg-white text-[#4CAF50] hover:bg-white/90 font-semibold"
-            disabled={stats.totalEarnings < 500}
+            disabled={stats.totalEarnings - stats.cashDebt < 500}
           >
             <Banknote className="w-4 h-4 mr-2" />
             Retirer
           </Button>
-          {stats.totalEarnings < 500 && (
+          {stats.totalEarnings - stats.cashDebt < 500 && (
             <p className="text-xs text-center mt-2 opacity-80">
-              Minimum 500 XOF pour retirer
+              {stats.cashDebt > 0
+                ? `Disponible : ${(stats.totalEarnings - stats.cashDebt).toLocaleString('fr-FR')} XOF (commission de ${stats.cashDebt.toLocaleString('fr-FR')} XOF à régler)`
+                : 'Minimum 500 XOF pour retirer'}
             </p>
           )}
         </CardContent>
       </Card>
+
+      {/* Commission espèces à régler — le laveur a encaissé le paiement en
+          espèces : la part SOCLINE doit lui être reversée avant tout retrait. */}
+      {stats.cashDebt > 0 && (
+        <Card className="border-2 border-[#FF9800] bg-[#FFF8F0]">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 bg-[#FF9800] rounded-full flex items-center justify-center flex-shrink-0">
+                <AlertCircle className="w-5 h-5 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-[#E65100]">Commission espèces à régler</h3>
+                <p className="text-2xl font-bold text-[#E65100] mt-0.5">
+                  {stats.cashDebt.toLocaleString('fr-FR')} XOF
+                </p>
+                <p className="text-xs text-[#8D6E63] mt-1">
+                  Vous avez encaissé des paiements en espèces : la part Socline (commission) doit être reversée à la plateforme. Vos retraits sont bloqués tant que cette dette n'est pas soldée.
+                </p>
+                <div className="flex items-center justify-between mt-2 text-xs">
+                  <span className="text-[#757575]">Gains totaux : <b>{stats.totalEarnings.toLocaleString('fr-FR')} XOF</b></span>
+                  <span className="text-[#4CAF50] font-medium">Disponible : <b>{(stats.totalEarnings - stats.cashDebt).toLocaleString('fr-FR')} XOF</b></span>
+                </div>
+                <Button
+                  onClick={handleSettleCommission}
+                  disabled={isSettling || stats.walletBalance <= 0}
+                  className="w-full mt-3 bg-[#FF9800] hover:bg-[#F57C00] text-white font-semibold"
+                >
+                  {isSettling ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Wallet className="w-4 h-4 mr-2" />
+                  )}
+                  Régler depuis mon portefeuille
+                </Button>
+                {stats.walletBalance <= 0 ? (
+                  <p className="text-xs text-center text-[#E65100] mt-2 font-medium">
+                    Portefeuille vide — rechargez-le d'abord pour régler la commission.
+                  </p>
+                ) : (
+                  <p className="text-xs text-center text-[#9E9E9E] mt-2">
+                    Solde du portefeuille : {stats.walletBalance.toLocaleString('fr-FR')} XOF
+                    {stats.walletBalance < stats.cashDebt && ' — règlement partiel possible'}
+                  </p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 gap-3">

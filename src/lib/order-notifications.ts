@@ -25,9 +25,15 @@ interface NotifyOptions {
   // Who triggered the transition — used to avoid notifying the actor about
   // their own action (e.g. the client who just cancelled their order).
   actorRole: 'WASHER' | 'CLIENT' | 'ADMIN';
-  // Washer payout credited at COMPLETED (totalPrice - frozen commission),
-  // only used for the washer-side "earnings credited" notification.
+  // Washer payout credited at COMPLETED, only used for the washer-side
+  // "earnings credited" notification.
   washerAmount?: number;
+  // Payment method of the order (CASH / WALLET) — the COMPLETED message for
+  // the washer differs: with cash he holds the FULL amount and owes the
+  // platform its commission back.
+  paymentMethod?: 'CASH' | 'WALLET' | null;
+  // Commission due to the platform on cash collections (same moment).
+  commissionAmount?: number;
 }
 
 const CLIENT_STATUS_NOTIFS: Record<
@@ -128,12 +134,22 @@ export async function notifyOrderStatusChange(
         }
       }
       if (order.status === 'COMPLETED' && typeof options.washerAmount === 'number') {
+        const fmt = (n: number) => n.toLocaleString('fr-FR');
+        const isCash = options.paymentMethod === 'CASH';
         await notify({
           userId: washerUserId,
           title: 'Prestation validée 💰',
-          message: `« ${serviceName} » terminée — ${options.washerAmount.toLocaleString('fr-FR')} XOF ajoutés à vos gains.`,
+          message: isCash
+            ? `« ${serviceName} » terminée — ${fmt(options.washerAmount)} XOF encaissés en espèces. Commission Socline : ${fmt(options.commissionAmount ?? 0)} XOF à régler depuis vos gains.`
+            : `« ${serviceName} » terminée — ${fmt(options.washerAmount)} XOF ajoutés à vos gains.`,
           type: 'payment',
-          data: { orderId: order.id, orderNumber: order.orderNumber, amount: options.washerAmount },
+          data: {
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            amount: options.washerAmount,
+            method: options.paymentMethod ?? undefined,
+            commissionDue: options.commissionAmount ?? 0,
+          },
         });
       }
     }

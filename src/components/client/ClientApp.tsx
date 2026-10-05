@@ -114,6 +114,44 @@ export function ClientApp() {
     fetchWallet();
   }, [user?.id]);
 
+  // ---------------------------------------------------------------------
+  // Reprendre la prestation en cours après une fermeture / rechargement de
+  // la page : si le client a une commande active (recherche de laveur,
+  // acceptée, en route, arrivé, lavage en cours), on restaure le suivi
+  // automatiquement — il n'a rien à chercher, l'app le ramène sur l'écran
+  // de suivi dès l'ouverture.
+  // ---------------------------------------------------------------------
+  useEffect(() => {
+    const restoreActiveOrder = async () => {
+      if (!user?.id) return;
+      try {
+        // GET /api/orders is session-scoped — returns this client's orders.
+        const res = await fetch('/api/orders');
+        if (!res.ok) return;
+        const contentType = res.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) return;
+        const data = await res.json();
+        if (!data.success || !Array.isArray(data.orders)) return;
+        const active = data.orders.find((o: { status: string }) =>
+          ['PENDING', 'ACCEPTED', 'EN_ROUTE', 'ARRIVED', 'IN_PROGRESS'].includes(o.status)
+        );
+        if (active) {
+          setCurrentOrder(active);
+          setShowTracking(true);
+          toast.info('Vous avez une commande en cours — reprise du suivi 📍', {
+            id: 'order-restore',
+          });
+        }
+      } catch {
+        // Best-effort — the client can still open the tracking from history.
+      }
+    };
+
+    restoreActiveOrder();
+    // Run once per login session — currentOrder changes must NOT retrigger it.
+  }, [user?.id]);
+
+
 
   // Fetch real services from API
   useEffect(() => {

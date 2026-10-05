@@ -80,8 +80,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check balance
-    if (washer.totalEarnings < amount) {
+    // Check balance — the withdrawable amount is the earnings MINUS the
+    // outstanding cash commission debt: when the washer collects cash he
+    // holds the platform's commission, and it must be settled before any
+    // withdrawal (Contrat Article 5 — commission SOCLINE).
+    const withdrawable = washer.totalEarnings - washer.cashDebt;
+    if (withdrawable < amount) {
+      if (washer.cashDebt > 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Vous avez ${washer.cashDebt.toLocaleString('fr-FR')} XOF de commission à régler (encaissements en espèces). Rechargez votre portefeuille puis réglez-la depuis l'écran Revenus pour débloquer vos retraits.`,
+            cashDebt: washer.cashDebt,
+            withdrawable,
+          },
+          { status: 400 }
+        );
+      }
       return NextResponse.json(
         { success: false, error: 'Solde insuffisant' },
         { status: 400 }

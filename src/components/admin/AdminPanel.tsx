@@ -249,6 +249,8 @@ interface Washer {
   rating: number;
   completedJobs: number;
   earnings: number;
+  // Commission espèces à recouvrer (retournée par GET /api/admin/washers)
+  cashDebt?: number;
   isAvailable: boolean;
   isVerified: boolean;
 }
@@ -1801,8 +1803,35 @@ function AdminWashers({ washers, isLoading, onRefresh, onVerify }: {
   onVerify: (id: string, action: 'verify' | 'reject') => void;
 }) {
   const [numbersWasher, setNumbersWasher] = useState<{ id: string; name: string } | null>(null);
+  // Recouvrement de la commission espèces (déduction du portefeuille laveur)
+  const [recoveringId, setRecoveringId] = useState<string | null>(null);
+  const debtors = washers.filter((w) => (w.cashDebt ?? 0) > 0);
   const pendingWashers = washers.filter(w => !w.isVerified);
   const verifiedWashers = washers.filter(w => w.isVerified);
+
+  // Recouvrer la commission espèces d'un laveur depuis son portefeuille.
+  const handleRecover = async (washer: Washer) => {
+    if (recoveringId) return;
+    setRecoveringId(washer.id);
+    try {
+      const res = await fetch('/api/admin/washers', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ washerId: washer.id, action: 'recover-commission' }),
+      });
+      const data = await parseJsonResponse<any>(res);
+      if (!res.ok || !data?.success) {
+        toast.error(data?.error || 'Recouvrement impossible');
+        return;
+      }
+      toast.success(data.message || 'Commission recouvrée ✅');
+      onRefresh();
+    } catch {
+      toast.error('Erreur de connexion');
+    } finally {
+      setRecoveringId(null);
+    }
+  };
 
   return (
     <div className="p-4 space-y-4">
@@ -1828,6 +1857,17 @@ function AdminWashers({ washers, isLoading, onRefresh, onVerify }: {
           <div className="text-xs text-yellow-800">En attente</div>
         </div>
       </div>
+
+      {/* Commission espèces en attente de recouvrement (encaissements CASH) */}
+      {debtors.length > 0 && (
+        <div className="bg-[#FFF8F0] border border-[#FFCC80] rounded-lg p-3 flex items-center gap-2">
+          <Banknote className="w-4 h-4 text-[#FF9800] flex-shrink-0" />
+          <p className="text-xs text-[#E65100]">
+            <b>{debtors.length}</b> laveur{debtors.length > 1 ? 's' : ''} avec commission espèces à recouvrer — total :{' '}
+            <b>{debtors.reduce((s, w) => s + (w.cashDebt ?? 0), 0).toLocaleString()} XOF</b>
+          </p>
+        </div>
+      )}
 
       {/* Pending Verifications */}
       {pendingWashers.length > 0 && (
@@ -1908,6 +1948,32 @@ function AdminWashers({ washers, isLoading, onRefresh, onVerify }: {
                   <span>{washer.completedJobs} jobs</span>
                   <span className="font-medium text-[#4CAF50]">{washer.earnings.toLocaleString()} XOF gagnés</span>
                 </div>
+                {/* Commission espèces à recouvrer — le laveur a encaissé le cash */}
+                {(washer.cashDebt ?? 0) > 0 && (
+                  <div className="mt-3 rounded-lg border-2 border-[#FF9800] bg-[#FFF8F0] p-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-semibold text-[#E65100]">💵 Commission espèces à recouvrer</p>
+                        <p className="text-lg font-bold text-[#E65100]">{(washer.cashDebt ?? 0).toLocaleString()} XOF</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        className="bg-[#FF9800] hover:bg-[#F57C00] text-white font-semibold"
+                        disabled={recoveringId === washer.id}
+                        onClick={() => handleRecover(washer)}
+                      >
+                        {recoveringId === washer.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          'Recouvrer'
+                        )}
+                      </Button>
+                    </div>
+                    <p className="text-[11px] text-[#8D6E63] mt-1">
+                      Déduite du portefeuille du laveur — ses retraits sont bloqués tant que la dette n'est pas soldée.
+                    </p>
+                  </div>
+                )}
                 <Button
                   size="sm"
                   variant="outline"
