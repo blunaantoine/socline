@@ -604,3 +604,28 @@ Stage Summary:
 - La différence Extérieur (Essentiel) vs Complet (Confort/Premium/Prestige) est désormais visible partout: accueil (badges + bandeau comparatif), modal détaillé (Intérieur inclus/non inclus), flux de commande (cartes + récap), modaux stations, app laveur (il sait quoi laver).
 - Prix affichés de façon lisible et cohérente (« 2 500 F ») au lieu de « 2.5K ».
 - coverage est un vrai champ en base: les stations peuvent créer des services « Extérieur seul » ou « Complet » via leur dashboard.
+
+---
+Task ID: 20 (session 18 — optimisation mobile-first complète)
+Agent: main (Z.ai Code)
+Task: "l app web est pour l est et non pour les ordinateur donnce les composant et autre doivent et fait optimiser pour l utilisation mobile phone"
+
+Work Log:
+- Viewport (layout.tsx): width device-width, maximumScale=1 + userScalable=false (plus de zoom intempestif), viewport-fit=cover (encoches), métadonnées apple-web-app (capable + black-translucent) pour le mode plein écran « ajout à l'écran d'accueil ».
+- globals.css base mobile: -webkit-tap-highlight-color transparent, user-select none sur le chrome UI (inputs intacts), touch-action manipulation, inputs à 16px sur <768px (iOS ne zoome plus au focus), overscroll-behavior-y none + overflow-x hidden, scrollbars masquées sur écrans tactiles, utilitaires .pt-safe/.pb-safe.
+- dialog.tsx: bottom-sheet native sur mobile (plein largeur, ancrée bas, rounded-t-2xl, slide-in-from-bottom, max-h 88dvh scrollable, padding safe-area) / dialog centré inchangé sur desktop (sm:zoom-in-95).
+- button.tsx: cibles tactiles 44px (default h-11, lg h-12, icon size-11) + feedback pressed active:scale-[0.97].
+- Barres de status factices (ClientApp, WasherApp, AdminPanel, StationDashboard, OrderTracking): hidden md:flex — sur téléphone la vraie barre système existe; headers sticky recalés top-0 md:top-6 + padding safe-area iOS.
+- Bottom nav des 3 apps: hauteur calc(3.5rem+env(safe-area-inset-bottom)), boutons flex-1 (cible pleine largeur), feedback active:scale-95, contenu scrollable padé calc(4.5rem+env).
+- AuthScreen: inputMode numeric + autoComplete (one-time-code / new-password / current-password) sur OTP et PIN — clavier numérique direct; headers orange padés safe-area.
+- ChatView: composer avec safe-area basse, boutons 44px, quick-messages ≥36px avec feedback tactile.
+- Toaster sonner: position top-center (ne chevauche plus la nav basse). page.tsx: min-h-dvh. ClientOrderFlow: header + barre d'étapes sticky avec safe-area, pb-28 legacy corrigé. OrderTracking: zones scroll padées safe-area.
+- E2E navigateur: mobile 390x844 (iPhone 13) — accueil client (barre factice absente, bandeau Extérieur vs Complet, grille 2 col avec badges + « 2 500 F »), bottom-sheet « Lavage Essentiel » (détail Extérieur ✅ / Intérieur Non inclus, scroll OK), portefeuille, app laveur (dashboard complet + nav 5 items); desktop 1280x800 — barre factice de retour, layout intact.
+- Pipeline d'input CDP d'agent-browser toujours mort (clics trusted ignorés): vérifications via clics natifs b.click()/dispatchEvent (même chemin d'événements que l'utilisateur).
+- Outillage: parasites de permissions sandbox (chmod 644→755 sur 43 fichiers non touchés) restaurés avant commit; dev.pid/bun.lock checkout; commit amendé pour retirer les mode changes résiduels des 7 fichiers édités.
+- Commit f01bba8 (📱) poussé sur main. Lint 0/0. Dev.log propre (200, aucune erreur).
+
+Stage Summary:
+- L'app est maintenant réellement mobile-first: plus de barre factice dupliquée sur téléphone, plus de flash de tap, plus de zoom iOS au focus des champs, dialogs en bottom-sheets natives, cibles tactiles ≥44px, safe-areas iOS respectées (encoche + barre gestuelle), mode PWA plein écran prêt.
+- Desktop reste utilisable en aperçu (barre factice + dialogs centrés conservés à partir de md).
+- Rappel récurrent: surveiller les permissions sandbox avant chaque commit (chmod 644) et la réduction du .env (INTERNAL_SOCKET_SECRET).
