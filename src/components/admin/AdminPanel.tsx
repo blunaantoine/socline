@@ -36,7 +36,7 @@ import {
   TrendingUp, Clock, Star, Settings, Bell, Plus,
   CheckCircle, XCircle, AlertCircle, Search,
   ChevronDown, Download, Eye, Edit, Trash2, Tag,
-  RefreshCw, Loader2, ArrowLeft, LogOut, Percent, Wallet, Phone, Image as ImageIcon, Move, Banknote
+  RefreshCw, Loader2, ArrowLeft, LogOut, Percent, Wallet, Phone, Image as ImageIcon, Move, Banknote, Receipt
 } from 'lucide-react';
 import { HideableBalanceLight } from '@/components/ui/hideable-balance';
 import { toast } from 'sonner';
@@ -740,6 +740,7 @@ export function AdminPanel() {
                 <h2 className="font-semibold text-lg text-[#212121]">
                   {subTab === 'deposits' && 'Demandes de recharge'}
                   {subTab === 'withdrawals' && 'Retraits Laveurs'}
+                  {subTab === 'transactions' && 'Historique des transactions'}
                   {subTab === 'subscription-plans' && 'Forfaits Abonnements'}
                   {subTab === 'subscriptions' && 'Abonnements Clients'}
                   {subTab === 'promotions' && 'Promotions'}
@@ -765,6 +766,7 @@ export function AdminPanel() {
                   onAction={handleWithdrawalAction}
                 />
               )}
+              {subTab === 'transactions' && <AdminTransactions />}
               {subTab === 'subscription-plans' && <AdminSubscriptionPlans />}
               {subTab === 'subscriptions' && <AdminSubscriptions />}
               {subTab === 'promotions' && (
@@ -2468,6 +2470,13 @@ function AdminPlusMenu({ depositsCount, withdrawalsCount, onSelect }: {
       description: 'Valider les demandes de retrait',
       badge: withdrawalsCount > 0 ? withdrawalsCount : undefined,
       color: '#9C27B0',
+    },
+    {
+      id: 'transactions',
+      icon: Receipt,
+      label: 'Historique des transactions',
+      description: 'Tous les mouvements d\'argent (recharges, paiements, retraits, commissions)',
+      color: '#2196F3',
     },
     {
       id: 'subscription-plans',
@@ -4418,6 +4427,200 @@ function AdminSubscriptions() {
             </div>
           )}
         </>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Admin Transactions — HISTORIQUE GLOBAL des mouvements d'argent de la
+// plateforme : rechargements, paiements de commandes, retraits laveurs,
+// remboursements, bonus et règlements de commission espèces.
+// ---------------------------------------------------------------------------
+interface AdminTransactionRow {
+  id: string;
+  type: string;
+  amount: number;
+  status: string;
+  description?: string | null;
+  orderId?: string | null;
+  createdAt: string;
+  wallet?: {
+    user?: { name?: string | null; phone?: string | null; role?: string } | null;
+  } | null;
+}
+
+function AdminTransactions() {
+  const [transactions, setTransactions] = useState<AdminTransactionRow[]>([]);
+  const [summary, setSummary] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [typeFilter, setTypeFilter] = useState<string>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const fetchTransactions = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (typeFilter !== 'ALL') params.set('type', typeFilter);
+      const res = await fetch(`/api/admin/transactions?${params.toString()}`);
+      const data = await parseJsonResponse<any>(res);
+      if (data?.success) {
+        setTransactions(data.transactions ?? []);
+        setSummary(data.summary ?? null);
+      }
+    } catch (error) {
+      console.error('Fetch transactions error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [typeFilter]);
+
+  useEffect(() => {
+    fetchTransactions();
+  }, [fetchTransactions]);
+
+  // Auto-refresh: les transactions changent quand les clients/laveurs agissent
+  useEffect(() => {
+    const interval = setInterval(fetchTransactions, 30000);
+    return () => clearInterval(interval);
+  }, [fetchTransactions]);
+
+  const TYPE_META: Record<string, { label: string; color: string; sign: '+' | '-' | '' }> = {
+    DEPOSIT: { label: 'Rechargement', color: 'bg-green-100 text-green-800', sign: '+' },
+    PAYMENT: { label: 'Paiement', color: 'bg-blue-100 text-blue-800', sign: '-' },
+    WITHDRAWAL: { label: 'Retrait', color: 'bg-purple-100 text-purple-800', sign: '-' },
+    REFUND: { label: 'Remboursement', color: 'bg-orange-100 text-orange-800', sign: '+' },
+    BONUS: { label: 'Bonus', color: 'bg-teal-100 text-teal-800', sign: '+' },
+    COMMISSION_SETTLEMENT: { label: 'Commission espèces', color: 'bg-amber-100 text-amber-800', sign: '' },
+  };
+
+  const STATUS_META: Record<string, { label: string; color: string }> = {
+    PENDING: { label: 'En attente', color: 'bg-yellow-100 text-yellow-800' },
+    COMPLETED: { label: 'Terminé', color: 'bg-green-100 text-green-800' },
+    FAILED: { label: 'Échoué', color: 'bg-red-100 text-red-800' },
+    CANCELLED: { label: 'Annulé', color: 'bg-gray-100 text-gray-800' },
+  };
+
+  const q = searchQuery.trim().toLowerCase();
+  const filtered = q
+    ? transactions.filter((t) =>
+        (t.wallet?.user?.name ?? '').toLowerCase().includes(q) ||
+        (t.wallet?.user?.phone ?? '').includes(q) ||
+        (t.description ?? '').toLowerCase().includes(q)
+      )
+    : transactions;
+
+  return (
+    <div className="space-y-4">
+      {/* Summary chips */}
+      {summary && (
+        <div className="grid grid-cols-2 gap-2">
+          <div className="bg-green-50 rounded-lg p-3">
+            <p className="text-xs text-green-800">Rechargements</p>
+            <p className="text-lg font-bold text-green-900">{(summary.deposits?.total ?? 0).toLocaleString()} XOF</p>
+            <p className="text-[11px] text-green-700">{summary.deposits?.count ?? 0} transaction(s)</p>
+          </div>
+          <div className="bg-purple-50 rounded-lg p-3">
+            <p className="text-xs text-purple-800">Retraits payés</p>
+            <p className="text-lg font-bold text-purple-900">{(summary.withdrawals?.total ?? 0).toLocaleString()} XOF</p>
+            <p className="text-[11px] text-purple-700">{summary.withdrawals?.count ?? 0} transaction(s)</p>
+          </div>
+          <div className="bg-blue-50 rounded-lg p-3">
+            <p className="text-xs text-blue-800">Paiements commandes</p>
+            <p className="text-lg font-bold text-blue-900">{(summary.payments?.total ?? 0).toLocaleString()} XOF</p>
+            <p className="text-[11px] text-blue-700">{summary.payments?.count ?? 0} transaction(s)</p>
+          </div>
+          <div className="bg-amber-50 rounded-lg p-3">
+            <p className="text-xs text-amber-800">Commissions récupérées</p>
+            <p className="text-lg font-bold text-amber-900">{(summary.commissionSettlements?.total ?? 0).toLocaleString()} XOF</p>
+            <p className="text-[11px] text-amber-700">{summary.commissionSettlements?.count ?? 0} règlement(s)</p>
+          </div>
+        </div>
+      )}
+
+      {/* Filters */}
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#9E9E9E]" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Rechercher (nom, téléphone, description)…"
+            className="pl-9 h-10 bg-white"
+          />
+        </div>
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger className="w-[140px] h-10 bg-white">
+            <SelectValue placeholder="Type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Tous types</SelectItem>
+            <SelectItem value="DEPOSIT">Rechargements</SelectItem>
+            <SelectItem value="PAYMENT">Paiements</SelectItem>
+            <SelectItem value="WITHDRAWAL">Retraits</SelectItem>
+            <SelectItem value="COMMISSION_SETTLEMENT">Commissions</SelectItem>
+            <SelectItem value="REFUND">Remboursements</SelectItem>
+            <SelectItem value="BONUS">Bonus</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* List */}
+      {isLoading ? (
+        <div className="flex justify-center py-8">
+          <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="bg-white rounded-2xl p-8 text-center">
+          <Receipt className="w-12 h-12 text-[#9E9E9E] mx-auto mb-3" />
+          <p className="text-[#757575]">Aucune transaction trouvée</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map((t) => {
+            const typeMeta = TYPE_META[t.type] ?? { label: t.type, color: 'bg-gray-100 text-gray-800', sign: '' as const };
+            const statusMeta = STATUS_META[t.status] ?? { label: t.status, color: 'bg-gray-100 text-gray-800' };
+            return (
+              <Card key={t.id} className="border-0 shadow-sm">
+                <CardContent className="p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${typeMeta.color}`}>
+                          {typeMeta.label}
+                        </span>
+                        <span className={`text-[11px] px-2 py-0.5 rounded-full ${statusMeta.color}`}>
+                          {statusMeta.label}
+                        </span>
+                      </div>
+                      <p className="text-sm font-medium text-[#212121] mt-1 truncate">
+                        {t.wallet?.user?.name || 'Utilisateur'}
+                        <span className="text-xs font-normal text-[#9E9E9E]">
+                          {' '}• {t.wallet?.user?.phone || '—'}{t.wallet?.user?.role ? ` • ${t.wallet.user.role}` : ''}
+                        </span>
+                      </p>
+                      <p className="text-[11px] text-[#9E9E9E] truncate">
+                        {t.description || '—'} • {new Date(t.createdAt).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className={`font-bold text-sm ${
+                        t.type === 'COMMISSION_SETTLEMENT'
+                          ? 'text-[#E65100]'
+                          : typeMeta.sign === '+'
+                          ? 'text-[#4CAF50]'
+                          : 'text-[#E53935]'
+                      }`}>
+                        {typeMeta.sign === '-' ? '−' : typeMeta.sign === '+' ? '+' : ''}
+                        {t.amount.toLocaleString()} XOF
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       )}
     </div>
   );

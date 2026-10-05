@@ -27,6 +27,7 @@ import { onSoclineNotification } from '@/components/RealtimeNotifications';
 import { isRealtimeEnabled } from '@/lib/realtime-flag';
 import { CoverageBadge } from '@/components/shared/ServiceCoverage';
 import { getServiceCoverage } from '@/lib/service-coverage';
+import { DynamicLeafletMap } from '@/components/map/DynamicLeafletMap';
 
 // Washer stats type
 interface WasherStats {
@@ -503,6 +504,8 @@ export function WasherApp() {
   // ---------------------------------------------------------------------
   const lastLocationSentRef = useRef(0);
   const [locationSharing, setLocationSharing] = useState(false);
+  // Dernière position GPS du laveur (affichée sur sa carte d'itinéraire)
+  const [myPosition, setMyPosition] = useState<{ lat: number; lng: number } | null>(null);
 
   useEffect(() => {
     const orderId = currentOrder?.id;
@@ -551,6 +554,7 @@ export function WasherApp() {
       const now = Date.now();
       if (!force && now - lastLocationSentRef.current < 10000) return;
       lastLocationSentRef.current = now;
+      setMyPosition({ lat: latitude, lng: longitude });
       postLocation(latitude, longitude);
     };
 
@@ -802,6 +806,7 @@ export function WasherApp() {
             acceptedOrders={orders.filter(o => ['ACCEPTED', 'EN_ROUTE', 'ARRIVED', 'IN_PROGRESS'].includes(o.status))}
             onSelectOrder={setCurrentOrder}
             locationSharing={locationSharing}
+            myPosition={myPosition}
           />
         )}
         {activeTab === 'history' && (
@@ -1216,7 +1221,7 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
 }
 
 // Active Order View
-function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat, acceptedOrders, onSelectOrder, locationSharing }: { 
+function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat, acceptedOrders, onSelectOrder, locationSharing, myPosition }: { 
   order: Order | null; 
   onUpdateStatus: (status: OrderStatus) => void;
   onBack: () => void;
@@ -1224,6 +1229,7 @@ function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat, acceptedOr
   acceptedOrders: Order[];
   onSelectOrder: (order: Order | null) => void;
   locationSharing?: boolean;
+  myPosition?: { lat: number; lng: number } | null;
 }) {
 
   const steps = [
@@ -1349,6 +1355,44 @@ function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat, acceptedOr
           })}
         </div>
       </div>
+
+      {/* Itinéraire vers la prestation — carte avec la destination, la
+          position live du laveur (quand le GPS est partagé) et un bouton
+          de navigation Google Maps (ouvre l'app Maps du téléphone). */}
+      {order.latitude != null && order.longitude != null && (
+        <Card className="border-0 shadow-sm overflow-hidden">
+          <div className="h-56 relative">
+            <DynamicLeafletMap
+              center={[order.latitude, order.longitude]}
+              zoom={14}
+              height="100%"
+              className="h-56"
+              fitToMarkers
+              markers={[
+                { id: 'destination', type: 'ORDER' as const, position: [order.latitude, order.longitude] as [number, number], label: 'Adresse du lavage' },
+                ...(myPosition
+                  ? [{ id: 'me', type: 'WASHER' as const, position: [myPosition.lat, myPosition.lng] as [number, number], label: 'Ma position' }]
+                  : []),
+              ]}
+            />
+          </div>
+          <CardContent className="p-3 flex items-center gap-2">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-[#757575]">Itinéraire vers la prestation</p>
+              <p className="text-sm font-medium text-[#212121] truncate">{order.address || 'Adresse du client'}</p>
+            </div>
+            <a
+              href={`https://www.google.com/maps/dir/?api=1&destination=${order.latitude},${order.longitude}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-shrink-0 inline-flex items-center justify-center h-11 px-4 bg-[#2196F3] hover:bg-[#1976D2] text-white text-sm font-semibold rounded-xl active:scale-[0.97] transition-transform"
+            >
+              <Navigation className="w-4 h-4 mr-2" />
+              Naviguer
+            </a>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Client Info */}
       <Card className="border-0 shadow-sm">
@@ -1573,6 +1617,28 @@ function WasherOrderHistory({ orders, onBack }: {
                     <p className="text-xs text-[#9E9E9E] mt-1">
                       {new Date(order.createdAt).toLocaleDateString('fr-FR')}
                     </p>
+                    {/* Étoiles reçues sur CETTE prestation */}
+                    {order.review ? (
+                      <div className="flex items-center gap-1.5 mt-2">
+                        <div className="flex items-center gap-0.5">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Star
+                              key={star}
+                              className={`w-3.5 h-3.5 ${
+                                star <= (order.review?.rating ?? 0)
+                                  ? 'text-[#FFC107] fill-[#FFC107]'
+                                  : 'text-[#E0E0E0]'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-xs font-medium text-[#757575]">
+                          {order.review.rating}/5
+                        </span>
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-[#BDBDBD] mt-2">Pas encore noté</p>
+                    )}
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-[#4CAF50]">
@@ -1580,6 +1646,11 @@ function WasherOrderHistory({ orders, onBack }: {
                     </p>
                   </div>
                 </div>
+                {order.review?.comment && (
+                  <p className="text-xs text-[#616161] italic mt-2 bg-[#F5F5F5] rounded-lg p-2">
+                    « {order.review.comment} »
+                  </p>
+                )}
               </CardContent>
             </Card>
           ))}
@@ -2368,6 +2439,7 @@ function WasherProfile({ user, stats, onLogout, onBack, onNavigate }: {
       <Card className="border-0 shadow-sm overflow-hidden">
         {[
           { icon: Car, label: 'Mes services', section: 'services' },
+          { icon: Star, label: 'Mes avis et étoiles', section: 'reviews' },
           { icon: Clock, label: 'Horaires', section: 'schedule' },
           { icon: Wallet, label: 'Paiements', section: 'payments' },
           { icon: Bell, label: 'Notifications', section: 'notifications' },
@@ -2412,6 +2484,7 @@ function WasherProfileSection({ section, onBack, user }: {
   const getSectionTitle = () => {
     switch (section) {
       case 'services': return 'Mes services';
+      case 'reviews': return 'Mes avis et étoiles';
       case 'schedule': return 'Horaires';
       case 'payments': return 'Paiements';
       case 'notifications': return 'Notifications';
@@ -2456,6 +2529,8 @@ function WasherProfileSection({ section, onBack, user }: {
       </button>
       
       <h2 className="font-semibold text-lg text-[#212121]">{getSectionTitle()}</h2>
+
+      {section === 'reviews' && <WasherReviews user={user} />}
 
       {section === 'edit-profile' && (
         <Card className="border-0 shadow-sm">
@@ -2557,6 +2632,140 @@ function WasherProfileSection({ section, onBack, user }: {
             </div>
           </CardContent>
         </Card>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Washer Reviews — le laveur voit TOUTES les étoiles que les clients lui ont
+// attribuées : moyenne générale + détail par prestation (commentaires inclus).
+// ---------------------------------------------------------------------------
+function WasherReviews({ user }: { user: User | null }) {
+  const [reviews, setReviews] = useState<Array<{
+    orderId: string;
+    rating: number;
+    comment?: string | null;
+    createdAt: string;
+    clientName?: string;
+    serviceName?: string;
+  }>>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchReviews = async () => {
+      try {
+        // GET /api/orders est scoping par session — renvoie les commandes du
+        // laveur connecté, avec la review incluse.
+        const res = await fetch('/api/orders?role=WASHER');
+        const data = await parseJsonResponse<any>(res);
+        if (data?.success && Array.isArray(data.orders)) {
+          const list = data.orders
+            .filter((o: any) => o.review)
+            .map((o: any) => ({
+              orderId: o.id,
+              rating: o.review.rating,
+              comment: o.review.comment,
+              createdAt: o.review.createdAt || o.completedAt || o.createdAt,
+              clientName: o.client?.name || 'Client',
+              serviceName: o.service?.name || 'Service',
+            }))
+            .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          setReviews(list);
+        }
+      } catch (error) {
+        console.error('Fetch reviews error:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchReviews();
+  }, []);
+
+  const average = reviews.length > 0
+    ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+    : 0;
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-8">
+        <Loader2 className="w-8 h-8 text-[#4CAF50] animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Résumé : moyenne générale */}
+      <Card className="border-0 shadow-sm bg-gradient-to-r from-[#4CAF50] to-[#2E7D32] text-white">
+        <CardContent className="p-5 text-center">
+          <p className="text-sm opacity-80">Note moyenne de vos prestations</p>
+          <p className="text-4xl font-bold mt-1">
+            {reviews.length > 0 ? average.toFixed(1) : '—'}
+            <span className="text-lg opacity-70">/5</span>
+          </p>
+          <div className="flex items-center justify-center gap-1 mt-2">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <Star
+                key={star}
+                className={`w-6 h-6 ${
+                  star <= Math.round(average) ? 'text-[#FFC107] fill-[#FFC107]' : 'text-white/40'
+                }`}
+              />
+            ))}
+          </div>
+          <p className="text-xs opacity-80 mt-2">
+            {reviews.length} avis de vos clients
+          </p>
+        </CardContent>
+      </Card>
+
+      {reviews.length === 0 ? (
+        <div className="bg-white rounded-2xl p-8 text-center shadow-sm">
+          <div className="w-16 h-16 bg-[#F5F5F5] rounded-full flex items-center justify-center mx-auto mb-4">
+            <Star className="w-8 h-8 text-[#9E9E9E]" />
+          </div>
+          <p className="font-medium text-[#757575]">Aucun avis pour le moment</p>
+          <p className="text-sm text-[#9E9E9E] mt-1">
+            Les étoiles attribuées par vos clients après chaque lavage apparaîtront ici.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {reviews.map((r) => (
+            <Card key={r.orderId} className="border-0 shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-medium text-[#212121] text-sm">{r.clientName}</p>
+                    <p className="text-xs text-[#757575]">{r.serviceName}</p>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <div className="flex items-center gap-0.5 justify-end">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          className={`w-4 h-4 ${
+                            star <= r.rating ? 'text-[#FFC107] fill-[#FFC107]' : 'text-[#E0E0E0]'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-[#9E9E9E] mt-0.5">
+                      {new Date(r.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                    </p>
+                  </div>
+                </div>
+                {r.comment && (
+                  <p className="text-xs text-[#616161] italic mt-2 bg-[#F5F5F5] rounded-lg p-2">
+                    « {r.comment} »
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       )}
     </div>
   );

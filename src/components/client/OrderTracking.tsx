@@ -283,19 +283,21 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
       </div>
 
       {/* Live map — real Leaflet map (client + washer markers) when the order
-          or the washer has coordinates; graceful placeholder otherwise. */}
-      <div className="h-48 relative flex-shrink-0">
+          or the washer has coordinates; graceful placeholder otherwise.
+          GRANDE hauteur : le client doit pouvoir suivre le déplacement du
+          laveur à l'œil nu. */}
+      <div className="h-[45dvh] max-h-[420px] min-h-[280px] relative flex-shrink-0">
         {(orderCoords || washerLocation) ? (
           <DynamicLeafletMap
             center={mapCenter}
             zoom={14}
-            height="192px"
-            className="h-48"
+            height="100%"
+            className="h-full"
             markers={mapMarkers}
             fitToMarkers
           />
         ) : (
-          <div className="h-48 bg-gradient-to-br from-blue-100 to-green-100">
+          <div className="h-full bg-gradient-to-br from-blue-100 to-green-100">
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center">
                 <Navigation className="w-12 h-12 text-blue-600 mx-auto mb-2 animate-bounce" />

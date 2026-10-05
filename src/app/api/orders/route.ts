@@ -42,6 +42,9 @@ export async function GET(request: NextRequest) {
       car: true,
       payment: true,
       service: true,
+      // Review (étoiles + commentaire) — le laveur doit voir les notes
+      // reçues sur chaque prestation terminée.
+      review: true,
       subscriptionUsage: {
         include: {
           subscription: {
