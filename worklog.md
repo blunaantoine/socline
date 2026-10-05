@@ -532,3 +532,21 @@ Stage Summary:
 - Perdu de façon irrécupérable: les données créées après le 02/10 22:47 (sessions 5-13: soldes de test 6000/1500 XOF, retraits, tracking des commandes de test) — les comptes, eux, sont revenus.
 - Le message d'erreur d'authentification montre maintenant la vraie cause, plus de « Erreur du serveur » trompeur.
 - Recommandation notée: faire des exports réguliers de la DB (le sandbox peut rollbacks les fichiers entre sessions; git n'a plus la DB depuis 847328e).
+
+---
+Task ID: 17 (session 15 — flux laveur : notifications client à chaque étape + restauration .env)
+Agent: main (Z.ai Code)
+Task: "maitenaint comment fonction ou les etape quand un laveur a cepte une commande"
+
+Work Log:
+- Santé serveur: .env de nouveau réduit à DATABASE_URL (3e récidive sandbox) → restauré depuis git show 81fd6bf:.env (JWT_*, INTERNAL_SOCKET_SECRET, SMS_*) ; dev server + chat-service (:3003) + washgo-socket (:3005) redémarrés (ils tournaient avec l'ancien env → « [Realtime] emit failed: INTERNAL_SOCKET_SECRET not set ») ; POST /api/seed OK ; /internal/emit → {ok:true}.
+- Audit du flux laveur: state machine PENDING→ACCEPTED→EN_ROUTE→ARRIVED→IN_PROGRESS→COMPLETED (2 routes PATCH identiques), self-assign à ACCEPTED (washerId du body ignoré), commission figée à l'acceptation selon le niveau (Contrat Art. 5), crédit totalEarnings+completedJobs à COMPLETED, conversation créée à ACCEPTED, GPS partagé EN_ROUTE/ARRIVED (1 push/10s), paiement client CASH/WALLET après complétion.
+- Trouve principal: le client ne recevait AUCUNE notification persistante aux transitions (seul un socket order:updated éphémère) → créé src/lib/order-notifications.ts (notifyOrderStatusChange) branché dans les 2 routes PATCH: client notifié à ACCEPTED/EN_ROUTE/ARRIVED/IN_PROGRESS/COMPLETED/CANCELLED (l'acteur ne s'auto-notifie pas) + laveur notifié à CANCELLED par client et à COMPLETED avec le montant crédité.
+- E2E curl: commande 2500 XOF (90123456) → laveur 90234567 voit le pool (tri par proximité) → ACCEPTED → EN_ROUTE → ARRIVED → IN_PROGRESS → COMPLETED; 5 notifs client reçues dans l'ordre; laveur: « Nouvelle commande » + « Prestation validée 💰 — 1 500 XOF ajoutés à vos gains »; totalEarnings 25775→27275, completedJobs 4→5; conversation créée.
+- E2E navigateur (gateway :81, login laveur): pool + boutons exacts — Démarrer le trajet → Je suis arrivé → Commencer le lavage → Terminer le lavage; la commande quitte « Commandes actives » à la fin; console propre (seuls warnings préexistants Google Maps/geoloc headless).
+- Commit 50c975e (🔔) poussé sur main.
+
+Stage Summary:
+- Le flux laveur complet est vérifié de bout en bout, et le client est maintenant informé à CHAQUE étape via le pipeline unifié (DB + socket + SMS optionnel).
+- Étapes UI laveur documentées (boutons exacts) pour réponse utilisateur.
+- Rappel récurrent: le sandbox réduit .env et peut remplacer la DB — surveiller dev.log pour « INTERNAL_SOCKET_SECRET not set ».
