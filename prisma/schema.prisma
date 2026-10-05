@@ -286,6 +286,10 @@ model Service {
   products    String?  // JSON array of products used
   isActive    Boolean  @default(true)
   
+  // Coverage of the wash — makes the difference explicit for clients & washers:
+  // EXTERIOR = outside only (carrosserie) | FULL = complete wash (extérieur + intérieur)
+  coverage    String   @default("FULL")
+  
   // Service source - APP (for independent washers) or STATION (custom station services)
   source      ServiceSource @default(APP)
   

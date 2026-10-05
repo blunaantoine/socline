@@ -25,6 +25,8 @@ import { parseJsonResponse } from '@/lib/json-helper';
 import { StationDashboard } from '@/components/washer/StationDashboard';
 import { onSoclineNotification } from '@/components/RealtimeNotifications';
 import { isRealtimeEnabled } from '@/lib/realtime-flag';
+import { CoverageBadge } from '@/components/shared/ServiceCoverage';
+import { getServiceCoverage } from '@/lib/service-coverage';
 
 // Washer stats type
 interface WasherStats {
@@ -1007,7 +1009,8 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
                     <div>
                       <p className="font-medium text-[#212121]">{order.client?.name || 'Client'}</p>
                       <p className="text-sm text-[#757575]">{order.service?.name || 'Service'}</p>
-                      <div className="flex items-center gap-2 mt-1">
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <CoverageBadge service={order.service} short />
                         <span className={`text-xs px-2 py-0.5 rounded-full ${
                           order.status === 'ACCEPTED' ? 'bg-blue-100 text-blue-800' :
                           order.status === 'EN_ROUTE' ? 'bg-yellow-100 text-yellow-800' :
@@ -1062,6 +1065,9 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
                         <div>
                           <p className="text-sm opacity-80">Nouvelle commande</p>
                           <p className="font-bold text-lg">{order.service?.name || 'Service'}</p>
+                          <span className="inline-block mt-1 bg-white/25 rounded-full px-2 py-0.5 text-[10px] font-semibold">
+                            {getServiceCoverage(order.service) === 'EXTERIOR' ? 'Extérieur seul' : 'Complet (ext. + int.)'}
+                          </span>
                         </div>
                         <div className="text-right">
                           <p className="font-bold text-xl">{order.totalPrice?.toLocaleString()} XOF</p>
@@ -1318,7 +1324,10 @@ function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat, acceptedOr
         <CardContent className="p-4 space-y-3">
           <div>
             <p className="text-xs text-[#757575]">Service</p>
-            <p className="font-medium text-[#212121]">{order.service?.name || 'N/A'}</p>
+            <p className="font-medium text-[#212121] flex items-center gap-2 flex-wrap">
+              {order.service?.name || 'N/A'}
+              <CoverageBadge service={order.service} short />
+            </p>
           </div>
           <div>
             <p className="text-xs text-[#757575]">Adresse</p>

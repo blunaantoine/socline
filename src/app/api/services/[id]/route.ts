@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
+// Valid coverage values — EXTERIOR = outside only, FULL = exterior + interior
+const VALID_COVERAGES = ['EXTERIOR', 'FULL'];
+
 // GET /api/services/[id] - Get a single service
 export async function GET(
   request: NextRequest,
@@ -33,7 +36,7 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
     
-    const { name, description, price, duration, category, isActive } = body;
+    const { name, description, price, duration, category, isActive, coverage } = body;
 
     const updateData: any = {};
     if (name !== undefined) updateData.name = name;
@@ -42,6 +45,15 @@ export async function PATCH(
     if (duration !== undefined) updateData.duration = parseInt(duration);
     if (category !== undefined) updateData.category = category;
     if (isActive !== undefined) updateData.isActive = isActive;
+    if (coverage !== undefined) {
+      if (!VALID_COVERAGES.includes(coverage)) {
+        return NextResponse.json(
+          { success: false, error: 'Prestation invalide (EXTERIOR ou FULL)' },
+          { status: 400 }
+        );
+      }
+      updateData.coverage = coverage;
+    }
 
     const service = await db.service.update({
       where: { id },

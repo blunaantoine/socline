@@ -13,7 +13,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  MapPin, Search, Star, Clock, Car, Building,
+  MapPin, Search, Star, Clock, Car, Building, Armchair,
   CheckCircle, Phone, Loader2, Heart,
   Zap, Droplets, Sparkles, Crown, RefreshCw,
   Home, Calendar, MessageCircle, User, Bell, Settings, LogOut, Wallet, Copy, Plus, ChevronRight, Headphones, MessageSquare
@@ -32,6 +32,8 @@ import { WalletScreen } from './WalletScreen';
 import { CarsManager } from './CarsManager';
 import { SubscriptionPanel } from './SubscriptionPanel';
 import { ActivityHistory, AddressesManager, AccountSettings } from './ClientSettings';
+import { ServiceIcon, CoverageBadge, CoverageDetails } from '@/components/shared/ServiceCoverage';
+import { formatPrice, getServiceCoverage } from '@/lib/service-coverage';
 
 const navItems = [
   { id: 'home', icon: Home, label: 'Accueil' },
@@ -749,25 +751,50 @@ function HomeContent({
         {serviceTab === 'independent' && (
           <>
             <p className="text-xs text-[#757575] mb-2">Le laveur se déplace chez vous</p>
-            <div className="grid grid-cols-4 gap-2">
+
+            {/* Extérieur vs Complet — quick explainer so the difference is obvious */}
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              <div className="bg-[#E8F5E9] rounded-lg p-2.5">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Car className="w-3.5 h-3.5 text-[#2E7D32] flex-shrink-0" />
+                  <p className="text-[11px] font-bold text-[#2E7D32]">Lavage Extérieur</p>
+                </div>
+                <p className="text-[10px] text-[#33691E] leading-snug">Carrosserie, vitres et jantes uniquement — rapide et économique.</p>
+              </div>
+              <div className="bg-[#FFF3E0] rounded-lg p-2.5">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Car className="w-3.5 h-3.5 text-[#E65100] flex-shrink-0" />
+                  <Armchair className="w-3.5 h-3.5 text-[#E65100] flex-shrink-0 -ml-1" />
+                  <p className="text-[11px] font-bold text-[#E65100]">Lavage Complet</p>
+                </div>
+                <p className="text-[10px] text-[#BF360C] leading-snug">Extérieur + intérieur nettoyé (aspiration, tableau de bord…).</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
               {services.length === 0 ? (
-                <div className="col-span-4 bg-white rounded-lg p-4 text-center shadow-sm">
+                <div className="col-span-2 lg:col-span-4 bg-white rounded-lg p-4 text-center shadow-sm">
                   <p className="text-sm text-[#757575]">Aucun service disponible</p>
                 </div>
               ) : services.map((service) => (
                 <button
                   key={service.id}
                   onClick={() => setSelectedService(service)}
-                  className="bg-white rounded-lg p-3 text-center shadow-sm active:bg-[#F5F5F5] transition-colors"
+                  className="bg-white rounded-lg p-3 text-left shadow-sm active:bg-[#F5F5F5] transition-colors flex flex-col"
                 >
-                  <div className="w-10 h-10 mx-auto mb-2 bg-[#FFF3E0] rounded-lg flex items-center justify-center">
-                    {(service.category === 'essentiel' || service.category === 'basic') && <Zap className="w-5 h-5 text-[#FF9800]" />}
-                    {(service.category === 'confort' || service.category === 'standard') && <Droplets className="w-5 h-5 text-[#FF9800]" />}
-                    {service.category === 'premium' && <Sparkles className="w-5 h-5 text-[#FF9800]" />}
-                    {(service.category === 'prestige' || service.category === 'deluxe') && <Crown className="w-5 h-5 text-[#FF9800]" />}
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="w-10 h-10 bg-[#FFF3E0] rounded-lg flex items-center justify-center flex-shrink-0">
+                      <ServiceIcon service={service} className="w-5 h-5 text-[#FF9800]" />
+                    </div>
+                    <CoverageBadge service={service} short />
                   </div>
-                  <p className="text-xs font-medium text-[#212121] truncate">{service.name}</p>
-                  <p className="text-xs text-[#FF9800] font-bold mt-0.5">{(service.price / 1000)}K</p>
+                  <p className="text-sm font-semibold text-[#212121] truncate">{service.name}</p>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-sm text-[#FF9800] font-bold">{formatPrice(service.price)}</span>
+                    <span className="text-[10px] text-[#757575] flex items-center gap-0.5">
+                      <Clock className="w-3 h-3" />{service.duration} min
+                    </span>
+                  </div>
                 </button>
               ))}
             </div>
@@ -827,7 +854,7 @@ function HomeContent({
       </section>
 
       {/* Service Details Modal */}
-      <Dialog open={!!selectedService} onOpenChange={() => setSelectedService(null)}>
+      <Dialog open={!!selectedService} onOpenChange={(next) => { if (!next) setSelectedService(null); }}>
         <DialogContent className="max-w-sm mx-auto rounded-2xl">
           {selectedService && (
             <>
@@ -838,18 +865,18 @@ function HomeContent({
               </DialogHeader>
               
               <div className="space-y-4 py-2">
-                {/* Service Icon & Category */}
+                {/* Service Icon, Category & Coverage */}
                 <div className="flex items-center gap-3">
                   <div className="w-14 h-14 bg-[#FFF3E0] rounded-xl flex items-center justify-center">
-                    {(selectedService.category === 'essentiel' || selectedService.category === 'basic') && <Zap className="w-7 h-7 text-[#FF9800]" />}
-                    {(selectedService.category === 'confort' || selectedService.category === 'standard') && <Droplets className="w-7 h-7 text-[#FF9800]" />}
-                    {selectedService.category === 'premium' && <Sparkles className="w-7 h-7 text-[#FF9800]" />}
-                    {(selectedService.category === 'prestige' || selectedService.category === 'deluxe') && <Crown className="w-7 h-7 text-[#FF9800]" />}
+                    <ServiceIcon service={selectedService} className="w-7 h-7 text-[#FF9800]" />
                   </div>
                   <div>
-                    <Badge className="bg-[#FFF3E0] text-[#FF9800] capitalize">
-                      {selectedService.category}
-                    </Badge>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge className="bg-[#FFF3E0] text-[#FF9800] capitalize">
+                        {selectedService.category}
+                      </Badge>
+                      <CoverageBadge service={selectedService} />
+                    </div>
                     <p className="text-sm text-[#757575] mt-1">{selectedService.duration} minutes</p>
                   </div>
                 </div>
@@ -861,8 +888,11 @@ function HomeContent({
                     <span className="text-sm">{selectedService.duration} min</span>
                   </div>
                   <div className="flex-1" />
-                  <span className="text-xl font-bold text-[#FF9800]">{selectedService.price?.toLocaleString()} XOF</span>
+                  <span className="text-xl font-bold text-[#FF9800]">{formatPrice(selectedService.price)}</span>
                 </div>
+
+                {/* What the wash includes — exterior vs interior */}
+                <CoverageDetails service={selectedService} />
 
                 {/* Description */}
                 {selectedService.description && (
@@ -947,7 +977,7 @@ function HomeContent({
       </Dialog>
 
       {/* Station Services Modal - shows the station's services, ordering = station service */}
-      <Dialog open={!!selectedStation} onOpenChange={() => setSelectedStation(null)}>
+      <Dialog open={!!selectedStation} onOpenChange={(next) => { if (!next) setSelectedStation(null); }}>
         <DialogContent className="max-w-sm mx-auto rounded-2xl max-h-[85vh] overflow-y-auto">
           {selectedStation && (
             <>
@@ -992,13 +1022,13 @@ function HomeContent({
                         <div key={service.id} className="bg-white border border-[#E0E0E0] rounded-lg p-3">
                           <div className="flex items-start gap-3">
                             <div className="w-10 h-10 bg-[#FFF3E0] rounded-lg flex items-center justify-center flex-shrink-0">
-                              {(service.category === 'essentiel' || service.category === 'basic') && <Zap className="w-5 h-5 text-[#FF9800]" />}
-                              {(service.category === 'confort' || service.category === 'standard') && <Droplets className="w-5 h-5 text-[#FF9800]" />}
-                              {service.category === 'premium' && <Sparkles className="w-5 h-5 text-[#FF9800]" />}
-                              {(service.category === 'prestige' || service.category === 'deluxe') && <Crown className="w-5 h-5 text-[#FF9800]" />}
+                              <ServiceIcon service={service} className="w-5 h-5 text-[#FF9800]" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="font-medium text-[#212121] text-sm">{service.name}</p>
+                              <div className="flex items-start justify-between gap-2">
+                                <p className="font-medium text-[#212121] text-sm">{service.name}</p>
+                                <CoverageBadge service={service} short />
+                              </div>
                               {service.description && (
                                 <p className="text-xs text-[#757575] mt-0.5 line-clamp-2">{service.description}</p>
                               )}
@@ -1006,7 +1036,7 @@ function HomeContent({
                                 <span className="text-xs text-[#757575] flex items-center gap-1">
                                   <Clock className="w-3 h-3" /> {service.duration} min
                                 </span>
-                                <span className="text-sm font-bold text-[#FF9800]">{service.price?.toLocaleString()} XOF</span>
+                                <span className="text-sm font-bold text-[#FF9800]">{formatPrice(service.price)}</span>
                               </div>
                             </div>
                           </div>

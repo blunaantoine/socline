@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { CoverageBadge } from '@/components/shared/ServiceCoverage';
 import {
   Dialog,
   DialogContent,
@@ -69,6 +70,7 @@ interface ServiceFormValues {
   duration: string;
   category: string;
   image: string;
+  coverage: string;
 }
 
 const SERVICE_CATEGORIES = [
@@ -78,6 +80,12 @@ const SERVICE_CATEGORIES = [
   { value: 'deluxe', label: 'Deluxe' },
   { value: 'express', label: 'Express' },
   { value: 'complete', label: 'Lavage complet' },
+];
+
+// What the wash covers — shown to clients as the extérieur vs complet difference
+const SERVICE_COVERAGES = [
+  { value: 'EXTERIOR', label: 'Extérieur seul (carrosserie)' },
+  { value: 'FULL', label: 'Complet (extérieur + intérieur)' },
 ];
 
 const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
@@ -139,6 +147,7 @@ export function StationDashboard({ washer, user, onLogout }: StationDashboardPro
     duration: '',
     category: 'standard',
     image: '',
+    coverage: 'FULL',
   };
   const [serviceForm, setServiceForm] = useState<ServiceFormValues>(emptyServiceForm);
 
@@ -276,6 +285,7 @@ export function StationDashboard({ washer, user, onLogout }: StationDashboardPro
       duration: service.duration !== undefined ? String(service.duration) : '',
       category: service.category || 'standard',
       image: service.image || '',
+      coverage: service.coverage === 'EXTERIOR' ? 'EXTERIOR' : 'FULL',
     });
     setIsServiceDialogOpen(true);
   };
@@ -314,6 +324,7 @@ export function StationDashboard({ washer, user, onLogout }: StationDashboardPro
             duration: numericDuration,
             category: serviceForm.category,
             image: serviceForm.image.trim() || null,
+            coverage: serviceForm.coverage === 'EXTERIOR' ? 'EXTERIOR' : 'FULL',
           }),
         });
         const data = await parseJsonResponse<{ success: boolean; service: Service; error?: string }>(res);
@@ -335,6 +346,7 @@ export function StationDashboard({ washer, user, onLogout }: StationDashboardPro
             duration: numericDuration,
             category: serviceForm.category,
             image: serviceForm.image.trim() || null,
+            coverage: serviceForm.coverage === 'EXTERIOR' ? 'EXTERIOR' : 'FULL',
           }),
         });
         const data = await parseJsonResponse<{ success: boolean; service: Service; error?: string }>(res);
@@ -654,6 +666,27 @@ export function StationDashboard({ washer, user, onLogout }: StationDashboardPro
               </Select>
             </div>
             <div className="space-y-2">
+              <Label htmlFor="service-coverage">Prestation</Label>
+              <Select
+                value={serviceForm.coverage}
+                onValueChange={(value) => setServiceForm(prev => ({ ...prev, coverage: value }))}
+              >
+                <SelectTrigger id="service-coverage" className="w-full">
+                  <SelectValue placeholder="Choisir la prestation" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SERVICE_COVERAGES.map((cov) => (
+                    <SelectItem key={cov.value} value={cov.value}>
+                      {cov.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-[#757575]">
+                « Extérieur seul » ne couvre que la carrosserie. « Complet » inclut aussi l'intérieur.
+              </p>
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="service-image">URL de l'image</Label>
               <Input
                 id="service-image"
@@ -883,11 +916,12 @@ function ServicesSection({
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <h3 className="font-semibold text-[#212121] truncate">{service.name}</h3>
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#FFF3E0] text-[#E65100] uppercase tracking-wide">
                         {service.category}
                       </span>
+                      <CoverageBadge service={service} short />
                     </div>
                     {service.description ? (
                       <p className="text-sm text-[#757575] line-clamp-2 mb-2">

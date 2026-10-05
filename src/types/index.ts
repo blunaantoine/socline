@@ -82,6 +82,8 @@ export interface Service {
   duration: number; // in minutes
   image?: string;
   category: string;
+  // EXTERIOR = outside only | FULL = complete wash (exterior + interior)
+  coverage?: 'EXTERIOR' | 'FULL';
   isActive: boolean;
   source?: ServiceSource;
   stationId?: string;

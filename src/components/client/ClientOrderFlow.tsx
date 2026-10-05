@@ -17,6 +17,8 @@ import { toast } from 'sonner';
 import type { Service, Order, Car as CarType } from '@/types';
 import { parseJsonResponse } from '@/lib/json-helper';
 import { DynamicLeafletMap } from '@/components/map/DynamicLeafletMap';
+import { ServiceIcon, CoverageBadge } from '@/components/shared/ServiceCoverage';
+import { formatPrice, COVERAGE_LONG_LABEL, getServiceCoverage } from '@/lib/service-coverage';
 
 interface ClientOrderFlowProps {
   onBack: () => void;
@@ -470,20 +472,20 @@ export function ClientOrderFlow({
                   <div className="p-4">
                     <div className="flex items-start gap-4">
                       <div className="w-16 h-16 bg-[#FFF3E0] rounded-lg flex items-center justify-center flex-shrink-0">
-                        {service.category === 'basic' && <Zap className="w-7 h-7 text-[#FF9800]" />}
-                        {service.category === 'standard' && <Droplets className="w-7 h-7 text-[#FF9800]" />}
-                        {service.category === 'premium' && <Sparkles className="w-7 h-7 text-[#FF9800]" />}
-                        {service.category === 'deluxe' && <Crown className="w-7 h-7 text-[#FF9800]" />}
+                        <ServiceIcon service={service} className="w-7 h-7 text-[#FF9800]" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-start gap-2">
                           <h3 className="font-semibold text-[#212121]">{service.name}</h3>
                           <Badge variant="secondary" className="bg-[#FFF3E0] text-[#FF9800] flex-shrink-0">{service.duration} min</Badge>
                         </div>
-                        <p className="text-sm text-[#757575] mt-1">{service.description}</p>
+                        <div className="mt-1.5">
+                          <CoverageBadge service={service} />
+                        </div>
+                        <p className="text-sm text-[#757575] mt-1.5 line-clamp-2">{service.description}</p>
                         <div className="flex justify-between items-center mt-3">
                           <span className="text-xl font-bold text-[#FF9800]">
-                            {service.price.toLocaleString()} XOF
+                            {formatPrice(service.price)}
                           </span>
                           <span className="text-sm text-[#FF9800] font-medium">Choisir →</span>
                         </div>
@@ -846,7 +848,13 @@ export function ClientOrderFlow({
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Service</span>
-                  <span className="font-medium">{selectedService.name}</span>
+                  <span className="font-medium text-right">{selectedService.name}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Prestation</span>
+                  <span className="text-right">
+                    {COVERAGE_LONG_LABEL[getServiceCoverage(selectedService)]}
+                  </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Type</span>

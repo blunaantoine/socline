@@ -108,7 +108,7 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { name, description, price, duration, category, image } = body;
+    const { name, description, price, duration, category, image, coverage } = body;
 
     // Validate required fields
     if (!name || price === undefined || price === null || !duration) {
@@ -144,6 +144,7 @@ export async function POST(
         duration: numericDuration,
         category: category || 'standard',
         image: image || null,
+        coverage: coverage === 'EXTERIOR' ? 'EXTERIOR' : 'FULL',
         source: 'STATION',
         stationId: id,
         isActive: true,

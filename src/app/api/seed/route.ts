@@ -20,6 +20,7 @@ export async function POST() {
             price: 2500,
             duration: 20,
             category: 'essentiel',
+            coverage: 'EXTERIOR', // extérieur seul — pas d'intérieur
             products: JSON.stringify([
               'Shampoing automobile au pH neutre respectueux de la peinture',
               'Eau sous pression pour un rinçage efficace',
@@ -35,6 +36,7 @@ export async function POST() {
             price: 4000,
             duration: 35,
             category: 'confort',
+            coverage: 'FULL', // extérieur + intérieur de base
             products: JSON.stringify([
               'Shampoing automobile au pH neutre',
               'Nettoyant multi-surfaces pour plastiques et tableau de bord',
@@ -51,6 +53,7 @@ export async function POST() {
             price: 6500,
             duration: 50,
             category: 'premium',
+            coverage: 'FULL', // extérieur + intérieur approfondi
             products: JSON.stringify([
               'Shampoing automobile haute qualité',
               'Nettoyant spécifique textile ou cuir selon les sièges',
@@ -68,6 +71,7 @@ export async function POST() {
             price: 10000,
             duration: 75,
             category: 'prestige',
+            coverage: 'FULL', // finition complète haut de gamme
             products: JSON.stringify([
               'Shampoing automobile premium',
               'Polish rénovateur pour raviver la peinture',
