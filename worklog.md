@@ -511,3 +511,24 @@ Stage Summary:
 - Commit 0434de6 (🗑️) poussé sur main.
 - VERCEL_DEPLOY.md mis à jour: sur Vercel les notifications fonctionnent en in-app + polling 30s (pas de socket persistant), SMS optionnel — aucune clé Firebase requise.
 - Le travail restant « OTP par WhatsApp » (demande initiale session 6b) reste en attente.
+
+---
+Task ID: 16 (session 14b — restauration des données perdues + fix message d'erreur auth)
+Agent: main (Z.ai Code)
+Task: "Erreur du serveur. Réessayez. pourquoi les anciene donner ne fonctione plus"
+
+Work Log:
+- Diagnostic: « Erreur du serveur. Réessayez. » = message générique d'AuthScreen affiché pour TOUT statut non-200 (login/inscription/OTP). La vraie erreur était 400 « Numéro non enregistré » : les comptes avaient disparu de la DB.
+- Cause: le fichier db/custom.db du sandbox a été remplacé par un état vide entre les sessions (même symptôme que .env réduit à DATABASE_URL, récidive constatée ce matin). La DB ne contenait plus que le seed frais de la session 14 (3 comptes démo à IDs neufs, wallets à 0) — les comptes réels (96222821 Bluna Antoine, 91926798 gogo, 99892198 tkkh…) et tout l'historique des sessions 1-13 avaient disparu de la DB vivante.
+- Récupération: la DB avait été retirée du suivi git en 847328e, mais le dernier auto-checkpoint la contenant (b5c5a77, 02/10 22:47, 3,5 Mo vs 283 Ko) est resté dans l'historique → extrait vers .zscripts/db-backup-old.db.
+- Restauration: arrêt serveur → snapshot de la DB fraîche (.zscripts/db-fresh-seed-2026-10-05.db) → backup git copié vers db/custom.db → bun run db:push --accept-data-loss (migré le vieux schéma: drop fcmToken, création washer_withdrawal_numbers, sync complète) → node scripts/migrate-plaintext-pins.cjs (5 PIN en clair re-hashés bcrypt: 91926798, 96222821, 99892198, 96222822, 98765432) → redémarrage serveur → POST /api/seed idempotent (complète uniquement ce qui manque: opérateurs mobile money minAmount/maxAmount, promos; aucun doublon — services/station/users déjà présents conservés).
+- Vérifié E2E (curl): logins 200 des 6 comptes (96222821/2820, 91926798/2222, 99892198/1234, démos 90123456/90234567/71998155) ; wallet gogo = 1000 XOF d'origine avec 2 transactions ; opérateurs Flooz/Mixx complets ; dépôt 500 sur gogo → validation admin → solde 1000→1500 + notification « Rechargement validé ✅ ».
+- Vérifié navigateur (gateway :81): login 96222821/2820 → accueil avec les anciennes promotions (bannière image -1,000F) ; Portefeuille = Total rechargé 10 000 F + ancienne transaction « Paiement Complété -8 000 XOF ». Lint 0/0.
+- Fix UX commité (0c8dd1e): AuthScreen affiche désormais l'erreur métier réelle de l'API (« Numéro non enregistré », « PIN incorrect »…) via serverErrorMessage(); le message générique ne reste que pour les pannes sans payload.
+- Backups locaux conservés (gitignorés): .zscripts/db-backup-old.db (backup git restauré) + .zscripts/db-fresh-seed-2026-10-05.db (état seed frais).
+
+Stage Summary:
+- Tous les comptes réels + historiques de la période backup (sessions 1→4) sont restaurés et fonctionnels; PIN migrés bcrypt; schéma aligné.
+- Perdu de façon irrécupérable: les données créées après le 02/10 22:47 (sessions 5-13: soldes de test 6000/1500 XOF, retraits, tracking des commandes de test) — les comptes, eux, sont revenus.
+- Le message d'erreur d'authentification montre maintenant la vraie cause, plus de « Erreur du serveur » trompeur.
+- Recommandation notée: faire des exports réguliers de la DB (le sandbox peut rollbacks les fichiers entre sessions; git n'a plus la DB depuis 847328e).
