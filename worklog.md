@@ -558,3 +558,25 @@ Task: "dans le profile du laveur comment il reconnais la voiture il manque d inf
 
 Work Log:
 - (en cours) Exploration du schéma et des composants existants.
+
+---
+Task ID: 18 (session 16 — fiche voiture laveur + photos avant/après + notation/favoris + info paiement espèces)
+Agent: main (Z.ai Code)
+Task: "dans le profile du laveur comment il reconnais la voiture il manque d information et aussi cote verification a chaque lavage le laveur doit pendre une photo de la voiture avant et apres le lavage il sera utiliser pour verifier et apre le lavage le client recoie un popup pour noter le service si posible le metre en favorie et quand le payement est en espec le laveur doit savoire"
+
+Work Log:
+- Schéma: Order.carId (relation Car, onDelete SetNull) + Order.beforePhotoUrl/afterPhotoUrl + Car.photo + modèle Favorite (@@unique clientId×washerId) — db:push OK.
+- Backend: POST /api/orders accepte carId (validé appartenant au client, baseInclude + car/payment pour laveur et client); POST /api/orders/[id]/photos (BEFORE: ACCEPTED/EN_ROUTE/ARRIVED, AFTER: IN_PROGRESS, laveur assigné ou admin, tracking event + notif client, gate serveur PHOTO_REQUIRED:BEFORE/AFTER sur IN_PROGRESS/COMPLETED dans les 2 routes PATCH); POST /api/orders/[id]/review (client propriétaire, COMPLETED, anti-doublon, recalcul moyenne/totalRatings laveur, favorite→upsert, notif laveur); GET/DELETE /api/favorites; payment route notifie le laveur (mais le paiement étant créé avant acceptation, la notif effective est déplacée à l'ACCEPTED dans notifyOrderStatusChange: « Paiement en espèces 💵 / Portefeuille ✅ »); admin orders retourne car + photos + payment réel + review; seed: 2 voitures démo (Toyota Corolla TG-1234-A par défaut, Renault Logan TG-5678-B).
+- UI Laveur: composant PhotoCaptureDialog (input capture=environment, compression canvas ≤900px JPEG 0.72, aperçu, upload puis transition auto), handleUpdateStatus accepte orderOverride et ouvre le dialogue quand la photo manque (UI + filet serveur), carte « Véhicule à reconnaître » (photo/marque/modèle/couleur/année/plaque), badge espèces/portefeuille sur la commande active et sur les cartes du pool, PhotoCaptureDialog rendu dans le retour principal.
+- UI Client: sélecteur de véhicule à l'étape adresse (voiture par défaut présélectionnée, carId dans le POST, Order local inclut car); OrderTracking: carte voiture + photos Avant/Après + avis réel (POST) avec cœur favori + mention « À payer en espèces » si CASH; ReviewPopup dans ClientApp déclenché par la notif temps réel « Lavage terminé ✅ » (fetch order → étoiles/commentaire/favori/photos); CarsManager: photo véhicule (formulaire ajout/édition + cartes) avec compression partagée.
+- Admin: cartes commandes enrichies (fiche voiture, vignettes Avant/Après cliquables, méthode de paiement réelle, note/avis).
+- E2E curl: blocages PHOTO_REQUIRED avant/après vérifiés (400), uploads OK, transitions débloquées, avis 5★+favori, doublon 400, notif espèces à l'acceptation, moyenne laveur recalculée (5.0/1 avis), favoris listés.
+- E2E navigateur (gateway :81): login client → réservation avec sélecteur voiture (Logan sélectionné) → paiement espèces → suivi; login laveur → pool avec « Renault Logan Gris • TG-5678-B » + « Espèces à encaisser : 2,500 XOF » → acceptation (fiche véhicule + badge espèces + toast) → Démarrer le trajet → Je suis arrivé → Commencer le lavage → dialogue photo AVANT avec upload réel (agent-browser upload) → IN_PROGRESS auto → Terminer le lavage → dialogue APRÈS → upload → COMPLETED (vue bascule sur la commande active suivante). Console propre.
+- Incidents corrigés: édition seed cassée puis réparée (structure if !washerUser restaurée), Button manquant dans ClientApp (lint), relation inverse Car.orders manquante (db:push P1012), setOrders du store n'accepte pas d'updater (utilisé updateOrder).
+- Commit 6524661 (📸) poussé. Lint 0/0.
+
+Stage Summary:
+- Le laveur voit maintenant la fiche complète du véhicule (photo, plaque, marque/modèle, couleur) dès le pool et pendant toute la prestation.
+- Chaque lavage est prouvé: photo AVANT obligatoire pour commencer, photo APRÈS obligatoire pour terminer — visibles par client, laveur et admin.
+- Le client note le service via un popup automatique (étoiles + commentaire) et peut mettre le laveur en favori (modèle Favorite + API).
+- Paiement espèces: badge permanent sur la commande + notification dédiée au laveur à l'acceptation, wallet = « rien à encaisser ».
