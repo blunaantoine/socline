@@ -15,6 +15,19 @@ import { useAuthStore } from '@/store';
 
 type WasherType = 'INDEPENDENT' | 'STATION_OWNER';
 
+// Extract the API's real error message (e.g. « Numéro non enregistré »,
+// « PIN incorrect ») from a failed response — fall back to a generic message
+// only for unexpected failures (network/5xx without a JSON payload).
+async function serverErrorMessage(res: Response, fallback: string): Promise<string> {
+  try {
+    const data = await res.json();
+    if (data?.error && typeof data.error === 'string') return data.error;
+  } catch {
+    // Not JSON — keep the fallback.
+  }
+  return fallback;
+}
+
 interface AuthScreenProps {
   onComplete: () => void;
 }
@@ -342,7 +355,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
       });
       
       if (!res.ok) {
-        setError('Erreur du serveur. Réessayez.');
+        setError(await serverErrorMessage(res, 'Erreur du serveur. Réessayez.'));
         return;
       }
       const contentType = res.headers.get('content-type');
@@ -406,7 +419,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
       });
       
       if (!res.ok) {
-        setError('Erreur du serveur. Réessayez.');
+        setError(await serverErrorMessage(res, 'Erreur du serveur. Réessayez.'));
         return;
       }
       const contentType = res.headers.get('content-type');
@@ -450,7 +463,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
       });
       
       if (!res.ok) {
-        setError('Erreur du serveur. Réessayez.');
+        setError(await serverErrorMessage(res, 'Erreur du serveur. Réessayez.'));
         return;
       }
       const contentType = res.headers.get('content-type');
