@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
 import { computePartnerLevel, commissionForLevel } from '@/lib/washer-level';
 import { emitRealtime } from '@/lib/realtime';
+import { notifyOrderStatusChange } from '@/lib/order-notifications';
 
 // GET /api/orders/[id] - Get single order
 // NOTE: migrated to Next 16 async params (was sync params — pre-existing bug:
@@ -319,6 +320,13 @@ export async function PATCH(
       'order:updated',
       order
     );
+
+    // Persistent step notification for the client (and the washer when the
+    // client cancels or the washer gets credited) — best-effort, never blocks.
+    await notifyOrderStatusChange(order, {
+      actorRole: session.role as 'WASHER' | 'CLIENT' | 'ADMIN',
+      ...(isCompletion ? { washerAmount } : {}),
+    });
 
     return NextResponse.json({
       success: true,

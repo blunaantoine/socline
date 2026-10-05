@@ -5,6 +5,7 @@ import { validatePromotionCode } from '@/lib/promo';
 import { computePartnerLevel, commissionForLevel, DEFAULT_PARTNER_LEVEL } from '@/lib/washer-level';
 import { emitRealtime } from '@/lib/realtime';
 import { calculateDistanceKm } from '@/lib/geo';
+import { notifyOrderStatusChange } from '@/lib/order-notifications';
 
 // GET /api/orders - Get orders (for washer or client)
 // Query params:
@@ -604,6 +605,13 @@ export async function PATCH(request: NextRequest) {
       'order:updated',
       order
     );
+
+    // Persistent step notification for the client (and the washer when the
+    // client cancels or the washer gets credited) — best-effort, never blocks.
+    await notifyOrderStatusChange(order, {
+      actorRole: session.role as 'WASHER' | 'CLIENT' | 'ADMIN',
+      ...(isCompletion ? { washerAmount } : {}),
+    });
 
     return NextResponse.json({ success: true, order });
   } catch (error) {
