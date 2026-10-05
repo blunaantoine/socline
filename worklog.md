@@ -629,3 +629,31 @@ Stage Summary:
 - L'app est maintenant réellement mobile-first: plus de barre factice dupliquée sur téléphone, plus de flash de tap, plus de zoom iOS au focus des champs, dialogs en bottom-sheets natives, cibles tactiles ≥44px, safe-areas iOS respectées (encoche + barre gestuelle), mode PWA plein écran prêt.
 - Desktop reste utilisable en aperçu (barre factice + dialogs centrés conservés à partir de md).
 - Rappel récurrent: surveiller les permissions sandbox avant chaque commit (chmod 644) et la réduction du .env (INTERNAL_SOCKET_SECRET).
+
+---
+Task ID: 21 (session 19 — reprise prestation en cours + récupération commission espèces)
+Agent: main (Z.ai Code)
+Task: "et si le client ou le laveur sort de la page quand il u y a une prestation encour il fait comment pour pour y retourner, si le laveur encaisse en espece comment nous recuperons notre pourcentage"
+
+Work Log:
+- Constat 1 : le client ne restaurait RIEN au rechargement (currentOrder non persisté) ; le laveur restaurait currentOrder mais restait sur l'onglet Accueil.
+- Constat 2 : en CASH le laveur garde 100% du cash, la commission n'était jamais récupérée par la plateforme (et sa part lui était même reversée au retrait).
+- Reprise prestation (ClientApp) : useEffect au login/montage → GET /api/orders (session-scoped) → commande PENDING/ACCEPTED/EN_ROUTE/ARRIVED/IN_PROGRESS trouvée → setCurrentOrder + setShowTracking + toast « Vous avez une commande en cours — reprise du suivi 📍 ».
+- Reprise prestation (WasherApp) : fetchMyOrders → si commande active au premier chargement → setActiveTab('active') via restoredTabRef (une seule fois, jamais pendant l'usage normal).
+- Commission espèces (schema) : Washer.cashDebt + TransactionType.COMMISSION_SETTLEMENT — db:push OK (Prisma 6.19.2, enums SQLite supportés).
+- À COMPLETED (2 routes PATCH /api/orders et /api/orders/[id]) : payment.method === CASH → totalEarnings += totalPrice EN ENTIER + cashDebt += commission (netting) ; paiement CASH marqué COMPLETED ; WALLET/abonnement inchangé (part nette). existingOrder now includes payment.
+- order-notifications.ts : options paymentMethod + commissionAmount → message laveur CASH « X encaissés en espèces. Commission Socline : Y à régler ».
+- Garde-fou retraits (POST /api/withdrawals) : montant ≤ totalEarnings − cashDebt sinon 400 avec message explicite (dette + recharge + écran Revenus).
+- Auto-réglement : POST /api/washers/settle-commission (nouvelle route) — prélève min(dette, solde wallet) en tx avec guards, WalletTransaction COMMISSION_SETTLEMENT, notifs laveur + admins, règlements partiels supportés.
+- Recouvrement admin : PATCH /api/admin/washers action recover-commission — déduit la dette du portefeuille laveur (tx + trace + notif laveur), message clair si portefeuille insuffisant ; GET retourne cashDebt.
+- UI laveur : WasherStats.cashDebt/walletBalance (fetch wallet extrait en useCallback), carte dette orange dans Revenus (montant, disponible, « Régler depuis mon portefeuille » désactivé si wallet vide), bandeau cliquable sur le dashboard → Revenus, bouton Retirer basé sur disponible (gains − dette).
+- UI admin : carte « Commission espèces à recouvrer » + bouton Recouvrer par laveur + bandeau récap (nb débiteurs, total dû).
+- E2E curl (script .zscripts/test-cash-commission.mjs) : commande CASH 2500 → gains +2500 / dette +1000 ✅ ; retrait bloqué avec message dette ✅ ; dépôt 2000 (operatorId Flooz requis — « FLOOZ » invalide) validé admin ✅ ; settle 1000 → dette 0 ✅ ; retrait 500 accepté ✅. Note : la machine à états exige EN_ROUTE→ARRIVED avant IN_PROGRESS.
+- E2E navigateur mobile : commande PENDING → login client → tracking ouvert auto ✅ ; reload → tracking restauré + toast ✅ ; acceptation laveur → login laveur → onglet Active restauré avec fiche complète (client, badge Complet, gains 2 400, Toyota Corolla TG-1234-A) ✅ ; reload laveur → onglet Active ✅ ; notifications espèces (acceptation + complétion) ✅.
+- Incident : .env réduit à DATABASE_URL (4e récidive sandbox, détecté via « INTERNAL_SOCKET_SECRET not set ») → restauré depuis git show 81fd6bf:.env, dev server + chat-service (:3003) + washgo-socket (:3005) redémarrés, socket OK via gateway :81.
+- Commit 4e18a2b (💰) poussé sur main. Lint 0/0.
+
+Stage Summary:
+- Sortir de l'app pendant une prestation n'est plus un problème : client ET laveur sont ramenés automatiquement sur leur prestation à la réouverture (tracking complet / onglet Active), avec toast d'information.
+- La commission sur les encaissements en espèces est maintenant réellement récupérable : dette explicite par laveur, retraits bloqués tant qu'elle existe, règlement libre-service depuis le portefeuille, recouvrement admin, notifications des deux côtés.
+- Rappels : .env re-réduit par le sandbox (4e fois) — toujours vérifier dev.log ; withdraw requires numéro de retrait confirmé (perdu au rollback DB, ré-ajouté en démo : 90234567/Flooz) ; opérateur de dépôt = ID de /api/operators.
