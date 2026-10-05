@@ -657,3 +657,23 @@ Stage Summary:
 - Sortir de l'app pendant une prestation n'est plus un problème : client ET laveur sont ramenés automatiquement sur leur prestation à la réouverture (tracking complet / onglet Active), avec toast d'information.
 - La commission sur les encaissements en espèces est maintenant réellement récupérable : dette explicite par laveur, retraits bloqués tant qu'elle existe, règlement libre-service depuis le portefeuille, recouvrement admin, notifications des deux côtés.
 - Rappels : .env re-réduit par le sandbox (4e fois) — toujours vérifier dev.log ; withdraw requires numéro de retrait confirmé (perdu au rollback DB, ré-ajouté en démo : 90234567/Flooz) ; opérateur de dépôt = ID de /api/operators.
+
+---
+Task ID: 22 (session 20 — carte itinéraire laveur, carte client agrandie, avis laveur, transactions admin)
+Agent: main (Z.ai Code)
+Task: "pour quoi le laveur na pas de maps pour sur l itinerait ver la prestation et aussi a la carte de suivie du cliente est tros petit on peu pas voire le deplacement du laveur et aussi pour quoi le laveur ne voit pas le nombre d etoile qu on lui a atribuer et aussi l il manque l historique de transanction chez l admin"
+
+Work Log:
+- Carte itinéraire laveur : ActiveOrderView n'avait AUCUNE carte. Ajout d'une carte Leaflet (DynamicLeafletMap) dans la vue commande active : marqueur destination + marqueur « Ma position » (nouvel état myPosition alimenté par l'effet GPS partagé existant), fitToMarkers, bouton « Naviguer » → Google Maps dir api=1 (guidage turn-by-turn sur téléphone). Visible pendant ACCEPTED→IN_PROGRESS.
+- Carte de suivi client : h-48 (192px) → h-[45dvh] min 280px / max 420px, height="100%" — le déplacement du marqueur laveur est maintenant lisible. Badges statut/ETA conservés.
+- Avis laveur : review:true ajouté au baseInclude de GET /api/orders ; nouvelle section « Mes avis et étoiles » (entrée menu Profil → section reviews → composant WasherReviews) : moyenne générale (note/5, étoiles, nb avis) + liste détaillée (étoiles, commentaire, service, date) ; WasherOrderHistory affiche aussi les étoiles reçues par prestation (« Pas encore noté » sinon) + commentaires en citation.
+- Historique transactions admin : nouvelle route GET /api/admin/transactions (requireAdmin, 403 sinon) — WalletTransaction avec user (nom/téléphone/rôle), filtres type/status/take, agrégats (deposits, withdrawals, payments, commissionSettlements). Nouvelle section « Historique des transactions » dans AdminPlusMenu : 4 cartes de synthèse, recherche, filtre type (Select), liste avec badges type/statut, montants signés colorés, auto-refresh 30s.
+- E2E navigateur mobile : carte client grande et lisible (Tokoin-Wuiti, rues) ✅ ; laveur → carte itinéraire avec destination + « Naviguer » ✅ ; Mes avis : moyenne 4.0/5 + 1 avis détaillé (Client Test, Lavage Confort, 4★, 5 oct.) ✅ ; admin → Plus → Historique des transactions : résumé (Rechargements 2 000, Commissions récupérées 1 000) + liste colorée ✅.
+- E2E API : /api/admin/transactions 200 admin / 403 client ✅ ; summary exact.
+- Commit 4a867d0 (🗺️) poussé. Lint 0/0.
+
+Stage Summary:
+- Le laveur a enfin sa carte : itinéraire vers la prestation + position live + navigation Google Maps en un tap.
+- Le client suit le déplacement du laveur sur une carte grande et lisible.
+- Les étoiles sont visibles par le laveur partout : moyenne globale, avis détaillés par prestation, historique annoté.
+- L'admin a un historique complet des transactions avec synthèse financière (dont les commissions espèces récupérées).
