@@ -1,0 +1,27 @@
+# ============================================================
+# Socline — Service socket washgo / suivi laveur (port 3005)
+# Installation : sudo cp deploy/socline-washgo.service /etc/systemd/system/
+# ============================================================
+[Unit]
+Description=Socline - Service socket suivi laveur temps réel (port 3005)
+After=network.target
+
+[Service]
+Type=simple
+User=socline
+Group=socline
+WorkingDirectory=__APP_DIR__
+EnvironmentFile=__APP_DIR__/.env
+Environment=NODE_ENV=production
+ExecStart=__BUN_PATH__ __APP_DIR__/mini-services/washgo-socket/index.ts
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=socline-washgo
+
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,31 @@
+# ============================================================
+# Socline — Application web Next.js (port interne __WEB_PORT__)
+# Installation : sudo cp deploy/socline-web.service /etc/systemd/system/
+#                (le script deploy/deploy.sh fait cette étape automatiquement)
+# ============================================================
+[Unit]
+Description=Socline - Application web Next.js (interne __WEB_PORT__, public 3002 via nginx)
+After=network.target
+
+[Service]
+Type=simple
+User=socline
+Group=socline
+WorkingDirectory=__APP_DIR__
+EnvironmentFile=__APP_DIR__/.env
+Environment=NODE_ENV=production
+Environment=PORT=__WEB_PORT__
+Environment=HOSTNAME=127.0.0.1
+ExecStart=__NODE_PATH__ __APP_DIR__/.next/standalone/server.js
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=socline-web
+
+# Légère consolidation
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
