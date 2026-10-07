@@ -779,3 +779,20 @@ Work Log:
 Stage Summary:
 - Le script de déploiement est maintenant tolérant aux VPS multi-applications : il ne peut plus entrer en conflit de port interne (détection + bascule auto), le port public 3002 reste garanti.
 - Reste à faire côté VPS une fois le service actif : vérifier socline-chat (3003) et socline-washgo (3005) — seuls les ports 3003/3005 pourraient aussi être occupés (le script ne fait qu'un avertissement pour eux), puis configurer le domaine socline.oquitogo.com (server_name nginx + certbot).
+
+---
+Task ID: 28 (session 22 — déploiement VPS RÉUSSI)
+Agent: main (Z.ai Code)
+Task: finalisation du déploiement VPS — vérification du succès après la bascule automatique du port interne
+
+Work Log:
+- Le re-run de deploy.sh a tout passé : dépendances (rapide, déjà installées), schéma DB en synchro, build Turbopack OK (18,3 s), détection du port 3000 occupé → bascule auto sur 3100 (message attendu), 3 services systemd ACTIFS (socline-web 3100, socline-chat 3003, socline-washgo 3005), nginx actif sur 3002, HTTP 200, seed des comptes démo OK.
+- L'app est EN LIGNE sur http://213.156.133.226:3002 (IP publique VPS LWS : 213.156.133.226).
+- VPS : conteneur (swap impossible) — build passé sans swap, 2G de RAM suffisants pour Turbopack.
+- Prochaine étape annoncée à l'utilisateur : domaine socline.oquitogo.com (A record -> 213.156.133.226, puis server_name nginx + listen 80 + certbot HTTPS), avec les commandes prêtes.
+- Rappels donnés : nettoyer /swapfile + fstab ; changer les PIN démo avant production réelle.
+
+Stage Summary:
+- PRODUCTION VPS ACTIVE : Socline en ligne sur http://213.156.133.226:3002 — déploiement 100 % automatique via deploy.sh (fix bunx + db dir + EADDRINUSE 3000→3100 tous validés en conditions réelles).
+- État VPS : dépôt privé cloné dans /opt/socline (fetch via identifiants GitHub en cache), .env généré root-only 600, SQLite /opt/socline/db/custom.db, 3 unités systemd enabled (boot persistant), nginx :3002 → interne 3100 + sockets 3003/3005 via XTransformPort.
+- Mises à jour futures : cd /opt/socline && sudo bash deploy/deploy.sh --update (préserve .env + DB).
