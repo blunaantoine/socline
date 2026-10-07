@@ -41,6 +41,7 @@ import {
 import { HideableBalanceLight } from '@/components/ui/hideable-balance';
 import { toast } from 'sonner';
 import { parseJsonResponse } from '@/lib/json-helper';
+import { useAutoRefresh, type RefreshSource } from '@/hooks/useAutoRefresh';
 import { AdminNotificationCenter } from '@/components/admin/AdminNotificationCenter';
 
 // Component to drag and position image
@@ -351,9 +352,9 @@ export function AdminPanel() {
   const [searchQuery, setSearchQuery] = useState('');
   const [subTab, setSubTab] = useState<string | null>(null); // For "Plus" menu sub-navigation
 
-  // Fetch dashboard stats
-  const fetchStats = useCallback(async () => {
-    setIsLoading(true);
+  // Fetch dashboard stats — `background` : rafraîchissement silencieux (auto-sync)
+  const fetchStats = useCallback(async (background = false) => {
+    if (!background) setIsLoading(true);
     try {
       const res = await fetch('/api/admin/stats');
 
@@ -371,20 +372,20 @@ export function AdminPanel() {
         setRevenueByDay(data.charts.revenueByDay);
         setOrdersByService(data.charts.ordersByService);
         setRecentOrders(data.recentOrders);
-      } else {
+      } else if (!background) {
         toast.error(data.error || 'Erreur lors du chargement');
       }
     } catch (error) {
       console.error('Fetch stats error:', error);
-      toast.error('Erreur lors du chargement des statistiques');
+      if (!background) toast.error('Erreur lors du chargement des statistiques');
     } finally {
-      setIsLoading(false);
+      if (!background) setIsLoading(false);
     }
   }, [logout]);
 
-  // Fetch orders
-  const fetchOrders = useCallback(async () => {
-    setIsLoading(true);
+  // Fetch orders — `background` : rafraîchissement silencieux (auto-sync)
+  const fetchOrders = useCallback(async (background = false) => {
+    if (!background) setIsLoading(true);
     try {
       const params = new URLSearchParams({
         status: statusFilter,
@@ -400,13 +401,13 @@ export function AdminPanel() {
     } catch (error) {
       console.error('Fetch orders error:', error);
     } finally {
-      setIsLoading(false);
+      if (!background) setIsLoading(false);
     }
   }, [statusFilter, searchQuery]);
 
-  // Fetch users
-  const fetchUsers = useCallback(async () => {
-    setIsLoading(true);
+  // Fetch users — `background` : rafraîchissement silencieux (auto-sync)
+  const fetchUsers = useCallback(async (background = false) => {
+    if (!background) setIsLoading(true);
     try {
       const params = new URLSearchParams({ search: searchQuery });
       const res = await fetch(`/api/admin/users?${params}`);
@@ -422,20 +423,20 @@ export function AdminPanel() {
       
       if (data.success) {
         setUsers(data.users);
-      } else {
+      } else if (!background) {
         toast.error(data.error || 'Erreur lors du chargement');
       }
     } catch (error) {
       console.error('Fetch users error:', error);
-      toast.error('Erreur lors du chargement des utilisateurs');
+      if (!background) toast.error('Erreur lors du chargement des utilisateurs');
     } finally {
-      setIsLoading(false);
+      if (!background) setIsLoading(false);
     }
   }, [searchQuery, logout]);
 
-  // Fetch washers
-  const fetchWashers = useCallback(async () => {
-    setIsLoading(true);
+  // Fetch washers — `background` : rafraîchissement silencieux (auto-sync)
+  const fetchWashers = useCallback(async (background = false) => {
+    if (!background) setIsLoading(true);
     try {
       const res = await fetch('/api/admin/washers');
       const data = await parseJsonResponse<any>(res);
@@ -447,13 +448,13 @@ export function AdminPanel() {
     } catch (error) {
       console.error('Fetch washers error:', error);
     } finally {
-      setIsLoading(false);
+      if (!background) setIsLoading(false);
     }
   }, []);
 
-  // Fetch promotions
-  const fetchPromotions = useCallback(async () => {
-    setIsLoading(true);
+  // Fetch promotions — `background` : rafraîchissement silencieux (auto-sync)
+  const fetchPromotions = useCallback(async (background = false) => {
+    if (!background) setIsLoading(true);
     try {
       const res = await fetch('/api/promotions');
       const data = await parseJsonResponse<any>(res);
@@ -465,13 +466,13 @@ export function AdminPanel() {
     } catch (error) {
       console.error('Fetch promotions error:', error);
     } finally {
-      setIsLoading(false);
+      if (!background) setIsLoading(false);
     }
   }, []);
 
-  // Fetch deposits
-  const fetchDeposits = useCallback(async () => {
-    setIsLoading(true);
+  // Fetch deposits — `background` : rafraîchissement silencieux (auto-sync)
+  const fetchDeposits = useCallback(async (background = false) => {
+    if (!background) setIsLoading(true);
     try {
       const res = await fetch('/api/admin/deposits?status=PENDING');
       const data = await parseJsonResponse<any>(res);
@@ -483,13 +484,13 @@ export function AdminPanel() {
     } catch (error) {
       console.error('Fetch deposits error:', error);
     } finally {
-      setIsLoading(false);
+      if (!background) setIsLoading(false);
     }
   }, []);
 
-  // Fetch withdrawals
-  const fetchWithdrawals = useCallback(async () => {
-    setIsLoading(true);
+  // Fetch withdrawals — `background` : rafraîchissement silencieux (auto-sync)
+  const fetchWithdrawals = useCallback(async (background = false) => {
+    if (!background) setIsLoading(true);
     try {
       const res = await fetch('/api/admin/withdrawals?status=PENDING');
       const data = await parseJsonResponse<any>(res);
@@ -501,43 +502,52 @@ export function AdminPanel() {
     } catch (error) {
       console.error('Fetch withdrawals error:', error);
     } finally {
-      setIsLoading(false);
+      if (!background) setIsLoading(false);
     }
   }, []);
 
-  // Pre-fetch deposits and withdrawals for badge count on mount
-  useEffect(() => {
-    fetchDeposits();
-    fetchWithdrawals();
-  }, []);
-
-  // Load data based on active tab or subTab
-  useEffect(() => {
+  // Rafraîchit les données de l'onglet actif. `source` distingue le chargement
+  // initial (spinner) du rafraîchissement automatique (silencieux).
+  const refreshActiveTab = useCallback((source: RefreshSource = 'initial') => {
+    const background = source !== 'initial';
     if (activeTab === 'dashboard') {
-      fetchStats();
+      fetchStats(background);
     } else if (activeTab === 'orders') {
-      fetchOrders();
+      fetchOrders(background);
     } else if (activeTab === 'users') {
-      fetchUsers();
+      fetchUsers(background);
     } else if (activeTab === 'washers') {
-      fetchWashers();
+      fetchWashers(background);
     } else if (activeTab === 'settings') {
       // Load data based on subTab
       if (subTab === 'promotions') {
-        fetchPromotions();
+        fetchPromotions(background);
       } else if (subTab === 'deposits') {
-        fetchDeposits();
+        fetchDeposits(background);
       } else if (subTab === 'withdrawals') {
-        fetchWithdrawals();
+        fetchWithdrawals(background);
       } else if (subTab === 'operators') {
         // Operators are loaded in AdminSettings
       }
     } else if (activeTab === 'promotions') {
-      fetchPromotions();
+      fetchPromotions(background);
     } else if (activeTab === 'deposits') {
-      fetchDeposits();
+      fetchDeposits(background);
     }
   }, [activeTab, subTab, fetchStats, fetchOrders, fetchUsers, fetchWashers, fetchPromotions, fetchDeposits, fetchWithdrawals]);
+
+  // Auto-sync : rafraîchit l'onglet actif toutes les 30 s, au retour sur
+  // l'app et à chaque changement d'onglet/filtre (chargement visible).
+  useAutoRefresh(refreshActiveTab, 30000);
+
+  // Badges de notification (rechargements/retraits en attente) — toujours à
+  // jour via rafraîchissement silencieux toutes les 45 s + retour sur l'app.
+  const refreshBadges = useCallback((source: RefreshSource = 'initial') => {
+    fetchDeposits(source !== 'initial');
+    fetchWithdrawals(source !== 'initial');
+  }, [fetchDeposits, fetchWithdrawals]);
+
+  useAutoRefresh(refreshBadges, 45000);
 
   // Handle washer verification
   const handleVerifyWasher = async (washerId: string, action: 'verify' | 'reject') => {
@@ -549,10 +559,15 @@ export function AdminPanel() {
       });
       
       const data = await parseJsonResponse<any>(res);
-      if (!data) return;
+      if (!data) {
+        toast.error('Aucune réponse du serveur — réessayez');
+        return;
+      }
       if (data.success) {
         toast.success(action === 'verify' ? 'Laveur vérifié' : 'Laveur rejeté');
         fetchWashers();
+      } else {
+        toast.error(data.error || 'Erreur lors de la mise à jour');
       }
     } catch (error) {
       toast.error('Erreur lors de la mise à jour');
@@ -569,7 +584,10 @@ export function AdminPanel() {
       });
       
       const data = await parseJsonResponse<any>(res);
-      if (!data) return;
+      if (!data) {
+        toast.error('Aucune réponse du serveur — réessayez');
+        return;
+      }
       if (data.success) {
         toast.success(action === 'validate' ? 'Rechargement validé' : 'Rechargement rejeté');
         fetchDeposits();
@@ -591,7 +609,10 @@ export function AdminPanel() {
       });
       
       const data = await parseJsonResponse<any>(res);
-      if (!data) return;
+      if (!data) {
+        toast.error('Aucune réponse du serveur — réessayez');
+        return;
+      }
       if (data.success) {
         toast.success(action === 'approve' ? 'Retrait approuvé' : 'Retrait rejeté');
         fetchWithdrawals();
@@ -1238,7 +1259,10 @@ function AdminUsers({ users, searchQuery, setSearchQuery, isLoading, onRefresh }
       });
 
       const data = await parseJsonResponse<any>(res);
-      if (!data) return;
+      if (!data) {
+        toast.error('Aucune réponse du serveur — réessayez');
+        return;
+      }
       if (data.success) {
         toast.success('Utilisateur créé avec succès');
         setShowAddModal(false);
@@ -1289,7 +1313,10 @@ function AdminUsers({ users, searchQuery, setSearchQuery, isLoading, onRefresh }
       });
 
       const data = await parseJsonResponse<any>(res);
-      if (!data) return;
+      if (!data) {
+        toast.error('Aucune réponse du serveur — réessayez');
+        return;
+      }
       if (data.success) {
         toast.success('Utilisateur mis à jour');
         setShowEditModal(false);
@@ -1322,6 +1349,8 @@ function AdminUsers({ users, searchQuery, setSearchQuery, isLoading, onRefresh }
       if (data.success) {
         toast.success(user.isActive ? 'Utilisateur désactivé' : 'Utilisateur activé');
         fetchUsersWithFilter();
+      } else {
+        toast.error(data.error || 'Erreur lors de la modification');
       }
     } catch (error) {
       toast.error('Erreur');
@@ -2177,8 +2206,8 @@ function AdminServices() {
   const [editDuration, setEditDuration] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  const fetchServices = useCallback(async () => {
-    setIsLoading(true);
+  const fetchServices = useCallback(async (background = false) => {
+    if (!background) setIsLoading(true);
     try {
       const res = await fetch('/api/services');
       const data = await parseJsonResponse<any>(res);
@@ -2189,13 +2218,12 @@ function AdminServices() {
     } catch (error) {
       console.error('Fetch services error:', error);
     } finally {
-      setIsLoading(false);
+      if (!background) setIsLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    fetchServices();
-  }, [fetchServices]);
+  // Auto-sync : services toujours à jour (prix modifiés ailleurs, etc.)
+  useAutoRefresh(fetchServices, 45000);
 
   const handleEditService = (service: any) => {
     setEditingService(service);
@@ -2253,6 +2281,8 @@ function AdminServices() {
       if (data.success) {
         toast.success(service.isActive ? 'Service désactivé' : 'Service activé');
         fetchServices();
+      } else {
+        toast.error(data.error || 'Erreur lors de la modification');
       }
     } catch (error) {
       toast.error('Erreur lors de la modification');
@@ -2592,8 +2622,8 @@ function AdminOperatorsSection() {
     isActive: true,
   });
 
-  const fetchOperators = useCallback(async () => {
-    setIsLoading(true);
+  const fetchOperators = useCallback(async (background = false) => {
+    if (!background) setIsLoading(true);
     try {
       const res = await fetch('/api/operators');
       const data = await parseJsonResponse<any>(res);
@@ -2604,13 +2634,12 @@ function AdminOperatorsSection() {
     } catch (error) {
       console.error('Error fetching operators:', error);
     } finally {
-      setIsLoading(false);
+      if (!background) setIsLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    fetchOperators();
-  }, [fetchOperators]);
+  // Auto-sync : opérateurs mobile money toujours à jour
+  useAutoRefresh(fetchOperators, 45000);
 
   const handleSave = async () => {
     try {
@@ -2924,6 +2953,7 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
   const [editingPromo, setEditingPromo] = useState<Promotion | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -3063,6 +3093,12 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
   };
 
   const handleSubmit = async () => {
+    if (!formData.name.trim() || !formData.discountValue) {
+      toast.error('Le nom et la valeur de la réduction sont obligatoires');
+      return;
+    }
+
+    setIsSaving(true);
     try {
       const method = editingPromo ? 'PUT' : 'POST';
       const body = editingPromo
@@ -3076,17 +3112,22 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
       });
 
       const data = await parseJsonResponse<any>(res);
-      if (!data) return;
+      if (!data) {
+        toast.error('Aucune réponse du serveur — réessayez');
+        return;
+      }
 
       if (data.success) {
         toast.success(editingPromo ? 'Promotion mise à jour' : 'Promotion créée');
         resetForm();
         onRefresh();
       } else {
-        toast.error(data.error || 'Erreur');
+        toast.error(data.error || 'Erreur lors de la sauvegarde');
       }
     } catch (error) {
-      toast.error('Erreur lors de la sauvegarde');
+      toast.error('Erreur lors de la sauvegarde — vérifiez votre connexion');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -3135,6 +3176,8 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
       if (data.success) {
         toast.success(promo.isActive ? 'Promotion désactivée' : 'Promotion activée');
         onRefresh();
+      } else {
+        toast.error(data.error || 'Erreur lors de la modification');
       }
     } catch (error) {
       toast.error('Erreur');
@@ -3392,8 +3435,10 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
               <Button 
                 className="flex-1 bg-[#FF9800] hover:bg-[#F57C00]"
                 onClick={handleSubmit}
+                disabled={isSaving}
               >
-                {editingPromo ? 'Mettre à jour' : 'Créer'}
+                {isSaving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                {isSaving ? 'Enregistrement…' : editingPromo ? 'Mettre à jour' : 'Créer'}
               </Button>
               <Button 
                 variant="outline"
@@ -3764,8 +3809,8 @@ function AdminSubscriptionPlans() {
     displayOrder: '0',
   });
 
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
+  const fetchData = useCallback(async (background = false) => {
+    if (!background) setIsLoading(true);
     try {
       const [plansRes, servicesRes] = await Promise.all([
         fetch('/api/subscription-plans'),
@@ -3784,15 +3829,14 @@ function AdminSubscriptionPlans() {
       }
     } catch (error) {
       console.error('Error fetching data:', error);
-      toast.error('Erreur lors du chargement');
+      if (!background) toast.error('Erreur lors du chargement');
     } finally {
-      setIsLoading(false);
+      if (!background) setIsLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  // Auto-sync : forfaits toujours à jour
+  useAutoRefresh(fetchData, 45000);
 
   const resetForm = () => {
     setFormData({
@@ -3888,6 +3932,8 @@ function AdminSubscriptionPlans() {
       if (data.success) {
         toast.success(plan.isActive ? 'Forfait désactivé' : 'Forfait activé');
         fetchData();
+      } else {
+        toast.error(data.error || 'Erreur lors de la modification');
       }
     } catch (error) {
       toast.error('Erreur');
@@ -4316,8 +4362,8 @@ function AdminSubscriptions() {
     cancelled: 0,
   });
 
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
+  const fetchData = useCallback(async (background = false) => {
+    if (!background) setIsLoading(true);
     try {
       // Fetch subscriptions
       const subRes = await fetch(`/api/admin/subscriptions?status=${statusFilter}`);
@@ -4338,15 +4384,14 @@ function AdminSubscriptions() {
       }
     } catch (error) {
       console.error('Fetch subscriptions error:', error);
-      toast.error('Erreur lors du chargement');
+      if (!background) toast.error('Erreur lors du chargement');
     } finally {
-      setIsLoading(false);
+      if (!background) setIsLoading(false);
     }
   }, [statusFilter]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  // Auto-sync : abonnements et validations de séances toujours à jour
+  useAutoRefresh(fetchData, 30000);
 
   const handleValidateUsage = async (usageId: string, action: 'VALIDATE' | 'CANCEL') => {
     try {

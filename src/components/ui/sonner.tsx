@@ -13,6 +13,10 @@ const Toaster = ({ ...props }: ToasterProps) => {
       // Mobile-first : notifications en haut au centre — n'entrent pas en
       // conflit avec la barre de navigation basse de l'app.
       position="top-center"
+      // richColors : succès vert / erreur rouge / info bleue bien lisibles
+      richColors
+      closeButton
+      duration={5000}
       style={
         {
           "--normal-bg": "var(--popover)",

@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { onSoclineNotification } from '@/components/RealtimeNotifications';
+import { useAutoRefresh } from '@/hooks/useAutoRefresh';
 import { ClientOrderFlow } from './ClientOrderFlow';
 import { OrderTracking } from './OrderTracking';
 import { OrderHistory } from './OrderHistory';
@@ -77,6 +78,7 @@ export function ClientApp() {
       description?: string;
       displayType?: string;
       image?: string;
+      video?: string;
       imagePosition?: string;
     }>
   >([]);
@@ -93,26 +95,24 @@ export function ClientApp() {
   // Loading state for the Home "Laveurs disponibles" section
   const [isLoadingWashers, setIsLoadingWashers] = useState(true);
 
-  // Fetch wallet balance
-  useEffect(() => {
-    const fetchWallet = async () => {
-      if (!user?.id) return;
-      try {
-        const res = await fetch(`/api/wallet?userId=${user.id}`);
-        if (!res.ok) return;
-        const contentType = res.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) return;
-        const data = await res.json();
-        if (data.success && data.wallet) {
-          setWalletBalance(data.wallet.balance);
-        }
-      } catch (error) {
-        console.error('Error fetching wallet:', error);
+  // Fetch wallet balance — auto-refresh 45 s + retour sur l'app
+  const fetchWallet = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const res = await fetch(`/api/wallet?userId=${user.id}`);
+      if (!res.ok) return;
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) return;
+      const data = await res.json();
+      if (data.success && data.wallet) {
+        setWalletBalance(data.wallet.balance);
       }
-    };
-    
-    fetchWallet();
+    } catch (error) {
+      console.error('Error fetching wallet:', error);
+    }
   }, [user?.id]);
+
+  useAutoRefresh(fetchWallet, 45000);
 
   // ---------------------------------------------------------------------
   // Reprendre la prestation en cours après une fermeture / rechargement de
@@ -153,105 +153,117 @@ export function ClientApp() {
 
 
 
-  // Fetch real services from API
-  useEffect(() => {
-    const loadServices = async () => {
-      try {
-        // Seed database if needed
+  // Fetch real services from API — auto-refresh 60 s + retour sur l'app
+  const loadServices = useCallback(async (source: 'initial' | 'interval' | 'focus' = 'initial') => {
+    try {
+      // Seed database if needed (au premier chargement uniquement)
+      if (source === 'initial') {
         const seedCheck = await fetch('/api/seed');
         if (seedCheck.ok) {
           const contentType = seedCheck.headers.get('content-type');
           if (contentType && contentType.includes('application/json')) {
             const seedData = await seedCheck.json();
-            
+
             if (!seedData.seeded || seedData.servicesCount === 0) {
               await fetch('/api/seed', { method: 'POST' });
             }
           }
         }
+      }
 
-        // Fetch services - explicitly request APP source (independent washers)
-        const res = await fetch('/api/services?source=APP');
-        if (!res.ok) return;
-        const resContentType = res.headers.get('content-type');
-        if (!resContentType || !resContentType.includes('application/json')) return;
-        const data = await res.json();
-        
-        if (data.success && data.services) {
-          setServices(data.services);
-          
-          // Seed subscription plans after services are loaded
+      // Fetch services - explicitly request APP source (independent washers)
+      const res = await fetch('/api/services?source=APP');
+      if (!res.ok) return;
+      const resContentType = res.headers.get('content-type');
+      if (!resContentType || !resContentType.includes('application/json')) return;
+      const data = await res.json();
+
+      if (data.success && data.services) {
+        setServices(data.services);
+
+        // Seed subscription plans after services are loaded (premier chargement)
+        if (source === 'initial') {
           await fetch('/api/subscriptions/seed', { method: 'POST' }).catch(() => {});
         }
-      } catch (error) {
-        console.error('Error loading services:', error);
       }
-    };
-
-    loadServices();
+    } catch (error) {
+      console.error('Error loading services:', error);
+    }
   }, [setServices]);
 
+  useAutoRefresh(loadServices, 60000);
+
   // Fetch stations (with their embedded services) from /api/stations - for the Stations tab
-  useEffect(() => {
-    const fetchStations = async () => {
-      try {
-        const res = await fetch('/api/stations');
-        if (!res.ok) return;
-        const contentType = res.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) return;
-        const data = await res.json();
-        if (data.success && Array.isArray(data.stations)) {
-          setAppStations(data.stations);
-        }
-      } catch (error) {
-        console.error('Error fetching stations:', error);
+  // Auto-refresh 60 s + retour sur l'app
+  const fetchStations = useCallback(async () => {
+    try {
+      const res = await fetch('/api/stations');
+      if (!res.ok) return;
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) return;
+      const data = await res.json();
+      if (data.success && Array.isArray(data.stations)) {
+        setAppStations(data.stations);
       }
-    };
-    fetchStations();
+    } catch (error) {
+      console.error('Error fetching stations:', error);
+    }
   }, []);
+
+  useAutoRefresh(fetchStations, 60000);
 
   // Fetch available washers ("Laveurs disponibles" section on Home)
-  useEffect(() => {
-    const fetchNearbyWashers = async () => {
-      try {
-        const res = await fetch('/api/washers?available=true');
-        if (!res.ok) return;
-        const contentType = res.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) return;
-        const data = await res.json();
-        if (data.success && Array.isArray(data.washers)) {
-          setNearbyWashers(data.washers);
-        }
-      } catch (error) {
-        console.error('Error fetching nearby washers:', error);
-      } finally {
-        setIsLoadingWashers(false);
+  // Auto-refresh 30 s + retour sur l'app — un laveur qui passe en ligne
+  // apparaît sans recharger l'application.
+  const fetchNearbyWashers = useCallback(async () => {
+    try {
+      const res = await fetch('/api/washers?available=true');
+      if (!res.ok) return;
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) return;
+      const data = await res.json();
+      if (data.success && Array.isArray(data.washers)) {
+        setNearbyWashers(data.washers);
       }
-    };
-    fetchNearbyWashers();
+    } catch (error) {
+      console.error('Error fetching nearby washers:', error);
+    } finally {
+      setIsLoadingWashers(false);
+    }
   }, [setNearbyWashers]);
 
-  // Fetch active promotions
+  useAutoRefresh(fetchNearbyWashers, 30000);
+
+  // Fetch active promotions — auto-refresh 30 s + retour sur l'app :
+  // quand l'admin crée/modifie/désactive une promo, le carousel client
+  // se met à jour tout seul, sans recharger la page.
   // Note: Google Places nearby stations feature has been removed
-  useEffect(() => {
-    const fetchPromotions = async () => {
-      try {
-        const res = await fetch('/api/promotions?active=true');
-        if (!res.ok) return;
-        const contentType = res.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) return;
-        const data = await res.json();
-        
-        if (data.success && data.promotions.length > 0) {
-          setPromotions(data.promotions);
-        }
-      } catch (error) {
-        console.error('Error fetching promotions:', error);
+  const fetchPromotions = useCallback(async () => {
+    try {
+      const res = await fetch('/api/promotions?active=true');
+      if (!res.ok) return;
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) return;
+      const data = await res.json();
+
+      if (data.success && Array.isArray(data.promotions)) {
+        // Mise à jour inconditionnelle : une promo supprimée/désactivée
+        // doit aussi disparaître du carousel.
+        setPromotions(data.promotions);
       }
-    };
-    
-    fetchPromotions();
+    } catch (error) {
+      console.error('Error fetching promotions:', error);
+    }
   }, []);
+
+  useAutoRefresh(fetchPromotions, 30000);
+
+  // Sécurité : si la liste rétrécit (promo supprimée), on repart du début
+  useEffect(() => {
+    if (promotions.length > 0 && currentPromoIndex >= promotions.length) {
+      setCurrentPromoIndex(0);
+    }
+  }, [promotions.length, currentPromoIndex]);
 
   // Auto-scroll promotions carousel
   useEffect(() => {
