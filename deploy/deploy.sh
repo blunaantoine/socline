@@ -64,6 +64,12 @@ c_ok "Bun $(bun --version)"
 NODE_PATH="$(command -v node)"
 BUN_PATH="$(command -v bun)"
 
+# « bunx » est parfois absent de l'installation officielle de Bun :
+# on crée le lien manquant pour que `bunx …` fonctionne aussi en interactif
+if ! command -v bunx &>/dev/null; then
+  ln -sf "${BUN_PATH}" "$(dirname "${BUN_PATH}")/bunx"
+fi
+
 # ------------------------------------------------------------
 # 2. Utilisateur système dédié
 # ------------------------------------------------------------
@@ -136,8 +142,10 @@ c_info "Installation des dépendances des services socket…"
 c_ok "Dépendances installées"
 
 c_info "Mise à jour du schéma de base de données (SQLite)…"
-bunx prisma db push
+# le dossier db/ est ignoré par git : le créer AVANT le push Prisma (sinon SQLite échoue)
 mkdir -p "${APP_DIR}/db"
+# « bun x » est utilisé plutôt que « bunx » : fonctionne même quand le binaire bunx est absent
+bun x prisma db push
 c_ok "Base de données prête : ${APP_DIR}/db/custom.db"
 
 c_info "6/8 — Build de production Next.js…"

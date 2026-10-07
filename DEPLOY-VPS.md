@@ -104,7 +104,7 @@ OTP_CHANNEL=sms
 bun install
 (cd mini-services/chat-service && bun install)
 (cd mini-services/washgo-socket && bun install)
-bunx prisma db push
+bun x prisma db push
 bun run build
 cp .env .next/standalone/.env
 ```
@@ -202,7 +202,7 @@ Certbot reconfigurera nginx pour le HTTPS automatique (renouvellement inclus).
 | Port 3002 déjà utilisé | `ss -tlnp \| grep 3002` → identifier/couper le process, ou changer `listen` dans la conf nginx |
 | Chat / suivi laveur figé | `journalctl -u socline-chat -n 30` et `-u socline-washgo -n 30` |
 | Le temps réel ne marche pas | Vérifier que nginx tourne : `systemctl status nginx` — sans nginx les sockets ne sont pas routés |
-| Erreur base de données | `cd /opt/socline && bunx prisma db push` puis `systemctl restart socline-web` |
+| Erreur base de données | `cd /opt/socline && bun x prisma db push` puis `systemctl restart socline-web` |
 | OTP non reçus | Renseigner les clés Africa's Talking dans `/opt/socline/.env` puis redémarrer |
 | .env modifié | `sudo systemctl restart socline-web socline-chat socline-washgo` (recharge le fichier) |
 
