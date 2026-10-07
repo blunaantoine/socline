@@ -224,9 +224,25 @@ if [[ "${NO_NGINX}" == "false" ]]; then
   if ! command -v nginx &>/dev/null; then
     apt-get install -y nginx
   fi
-  sed -e "s|__PUBLIC_PORT__|${PUBLIC_PORT}|g" \
-      -e "s|__WEB_PORT__|${WEB_PORT}|g" \
-      deploy/nginx-socline.conf > /etc/nginx/conf.d/socline.conf
+
+  NGINX_CONF="/etc/nginx/conf.d/socline.conf"
+
+  if [[ -f "${NGINX_CONF}" ]] && grep -q "ssl_certificate" "${NGINX_CONF}"; then
+    # HTTPS déjà configuré par certbot lors d'une installation précédente :
+    # on ne régénère PAS la conf (ça écraserait le certificat SSL), on se
+    # contente de resynchroniser le port interne s'il a changé.
+    c_ok "Configuration HTTPS (certbot) existante conservée"
+    OLD_PORT="$(grep -oPm1 'default\s+127\.0\.0\.1:\K[0-9]+' "${NGINX_CONF}" || true)"
+    if [[ -n "${OLD_PORT}" && "${OLD_PORT}" != "${WEB_PORT}" ]]; then
+      sed -i "s|127.0.0.1:${OLD_PORT}|127.0.0.1:${WEB_PORT}|g" "${NGINX_CONF}"
+      c_ok "Port interne nginx resynchronisé (${OLD_PORT} → ${WEB_PORT})"
+    fi
+  else
+    sed -e "s|__PUBLIC_PORT__|${PUBLIC_PORT}|g" \
+        -e "s|__WEB_PORT__|${WEB_PORT}|g" \
+        deploy/nginx-socline.conf > "${NGINX_CONF}"
+  fi
+
   # Supprimer le site par défaut s'il écoute aussi sur notre port
   if grep -q "listen ${PUBLIC_PORT}" /etc/nginx/sites-enabled/default 2>/dev/null; then
     rm -f /etc/nginx/sites-enabled/default
@@ -267,7 +283,14 @@ echo -e "\033[1;32m============================================================"
 echo "  ✅ Socline est installée sur votre VPS !"
 echo -e "============================================================\033[0m"
 echo ""
-echo "  🌐 Application   : http://${IP_ADDR}:${PUBLIC_PORT}"
+# Affiche l'URL HTTPS du domaine si le certificat certbot est en place
+NGINX_CONF="/etc/nginx/conf.d/socline.conf"
+if [[ -f "${NGINX_CONF}" ]] && grep -q "ssl_certificate" "${NGINX_CONF}"; then
+  PUBLIC_DOMAIN="$(grep -oPm1 'server_name\s+\K[^; ]+' "${NGINX_CONF}")"
+  echo "  🌐 Application   : https://${PUBLIC_DOMAIN}  (aussi : http://${IP_ADDR}:${PUBLIC_PORT})"
+else
+  echo "  🌐 Application   : http://${IP_ADDR}:${PUBLIC_PORT}"
+fi
 echo "  📱 Comptes démo  : admin 71998155 · client 90123456 · laveur 90234567 (PIN 1234)"
 echo ""
 echo "  Ports internes   : Next.js ${WEB_PORT} · chat 3003 · washgo 3005 (locaux uniquement)"
