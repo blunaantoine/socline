@@ -742,3 +742,22 @@ Stage Summary:
 - Fini les écrans figés : tout se synchronise automatiquement (30-60 s selon les données) et instantanément au retour sur l'application, côté client comme côté admin.
 - Chaque action admin a désormais un retour clair : toast vert en cas de succès, toast rouge avec le message d'erreur exact du serveur en cas d'échec, spinner pendant les sauvegardes — plus aucun clic sans réponse.
 - La cause racine du « aucun message » était parseJsonResponse qui avalait les corps d'erreur : corrigée globalement, tous les écrans en profitent (y compris laveur/client).
+
+---
+Task ID: 26 (session 22 — commande d'installation VPS port 3002 + fix bunx)
+Agent: main (Z.ai Code)
+Task: "commande pour instaler sur le seveur vps port 3002" — accompagner l'utilisateur pas à pas lors du déploiement réel sur son VPS (LWS, Debian 13, root@vps118451)
+
+Work Log:
+- Accompagnement interactif : prérequis (apt git curl) ✅ → git clone du dépôt privé dans /opt/socline (auth GitHub demandée, réussie) → lancement de deploy/deploy.sh.
+- Échec à l'étape 5/8 : « deploy/deploy.sh: line 139: bunx: command not found » — l'installeur officiel de Bun lancé avec BUN_INSTALL=/usr/local ne crée pas le binaire bunx (bun 1.4.2 fonctionne, bunx absent du PATH).
+- Second bug latent repéré à la relecture : mkdir -p "${APP_DIR}/db" s'exécutait APRÈS prisma db push alors que db/ est dans .gitignore (absent d'un clone frais) → le push SQLite aurait échoué même avec bunx fonctionnel.
+- Fix deploy.sh : `bun x prisma db push` (fonctionne toujours, même sans bunx) ; création automatique du lien symbolique bunx après install de Bun ; mkdir -p db déplacé AVANT le push Prisma.
+- Fix DEPLOY-VPS.md : mêmes corrections dans l'installation manuelle (étape 3) et la table de dépannage.
+- bash -n deploy/deploy.sh : syntaxe OK. Commit 59ebf4f (🔧) poussé, puis worklog (📝).
+- Donné à l'utilisateur : simple re-run de `cd /opt/socline && sudo bash deploy/deploy.sh` — l'étape 3/8 du script fait git fetch + reset --hard origin/main, donc la reprise récupère automatiquement le fix (aucune commande manuelle à patcher). Points d'attention transmis : identifiants GitHub possibles au fetch, et conseil swap 2G si le build Next est « Killed » (RAM limitée).
+
+Stage Summary:
+- L'installation VPS est désormais reproductible de zéro sur un Debian neuf : le script ne dépend plus de bunx et crée le dossier db/ au bon moment.
+- La reprise chez l'utilisateur = une seule commande (le script est idempotent : .env déjà généré conservé, deps déjà installées).
+- Le dépôt étant privé, les mises à jour VPS (deploy.sh --update) nécessitent des identifiants GitHub valides côté serveur (cache credential du clone actuel OK).
