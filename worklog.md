@@ -700,3 +700,26 @@ Stage Summary:
 - Le guide DEPLOY-VPS.md couvre express + manuel + HTTPS/domaine + dépannage ; les ports internes (3000/3003/3005) restent locaux, seul 3002 est exposé.
 - Le routage XTransformPort est répliqué en nginx → zéro modification du code applicatif (front relatif inchangé).
 - Rappel : .env sandbox re-réduit (5e fois) — toujours vérifier avant session ; surveiller les mode changes (chmod 755) qui se glissent dans les commits rebase.
+
+---
+Task ID: 24 (session 21 — carousel promo : vidéos + limite de taille retirée)
+Agent: main (Z.ai Code)
+Task: "RETIRE LA LIMITE DE LA TAILLE D IMAGE POUR LE CAROUSEL DE PROMO JE INTEGRE LA POSIBILITER D AJOUTER DES VIDEO"
+
+Work Log:
+- Limite trouvée : AdminPanel handleImageChange refusait > 2 Mo + texte « PNG, JPG (max 2MB) ».
+- Images : limite supprimée — ≤ 2 Mo stockées telles quelles ; > 2 Mo auto-redimensionnées (1920px max) + ré-encodées JPEG 0.88 via canvas (fileToPromoDataUrl), jamais de refus ; accept élargi (webp/gif) ; e.target.value='' pour re-sélection du même fichier ; type vérifié (image/*).
+- Vidéos (schema) : Promotion.video (String?, base64 data URL) + displayType "VIDEO" — db:push OK.
+- API /api/promotions : POST (video: displayType==='VIDEO' ? video||null : null) ; PUT — blocage croisé propre (bascule IMAGE→video null, VIDEO→image null, sans displayType fourni video seul mis à jour).
+- Admin : 3e bouton « Avec vidéo » (icône VideoIcon), zone upload MP4/WEBM/MOV max 15 Mo (≈ 20 Mo base64 < limite nginx VPS 25 Mo — message clair au-delà), preview <video controls muted loop> avec bouton retirer (stopPropagation sur le label), miniatures vidéo dans la liste (overlay icône Film), interface Promotion.video, formData.video + videoPreview + reset/handleEdit mis à jour, purge du média opposé au changement de type.
+- Client (ClientApp carousel) : branche média unifiée — si VIDEO+video → <video autoPlay muted loop playsInline h-48 object-cover bg-black>, sinon <img> (imagePosition conservé) ; overlay (réduction, Copier le code, Réserver) identique ; key={currentPromoIndex} remonte la vidéo à chaque slide active.
+- E2E navigateur : mp4 de test généré via ffmpeg (2s, 12 Ko) ; upload injecté par eval DataTransfer (pipeline CDP input toujours mort) → preview 2s ✅ → « Promotion créée » ✅ → liste admin miniature vidéo ✅ ; image 3,1 Mo (ffmpeg smptehdbars+noise) acceptée sans erreur et compressée auto (3,1 → ~1,2 Mo) ✅ ; côté client (390x844) vidéo en lecture (t>0.9s) + overlay -25% + Réserver ✅ (captures /tmp).
+- Incident : POST /api/promotions 500 « Unknown argument video » — le dev server tournait avec le Prisma Client d'avant db:push → redémarrage du dev server (bun run dev, dev.pid mis à jour) ✅.
+- Nettoyage : promos de test supprimées via API admin (DELETE, Bearer) ; public/promo-test-temp.jpg retiré ; promos d'origine intactes (Parrainage, Weekend Special, sur votre 1er lavage).
+- Commit 1489648 (🎬) poussé sur main. Lint 0/0.
+
+Stage Summary:
+- Les images de promo n'ont plus aucune limite : tout est accepté, les gros fichiers sont compressés automatiquement (1920px/JPEG 88%) au lieu d'être refusés.
+- L'admin peut créer des promos vidéo (MP4/WEBM ≤ 15 Mo) : preview dans le formulaire, miniature dans la liste, lecture en boucle autoplay muet dans le carousel client avec overlay réduction/Réserver intact.
+- displayType gère maintenant TEXT / IMAGE / VIDEO avec purge croisée propre côté API.
+- Rappel technique : après tout db:push qui ajoute un champ, REDÉMARRER le dev server (le Prisma Client en mémoire est obsolète sinon — « Unknown argument »).
