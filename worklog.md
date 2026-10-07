@@ -723,3 +723,22 @@ Stage Summary:
 - L'admin peut créer des promos vidéo (MP4/WEBM ≤ 15 Mo) : preview dans le formulaire, miniature dans la liste, lecture en boucle autoplay muet dans le carousel client avec overlay réduction/Réserver intact.
 - displayType gère maintenant TEXT / IMAGE / VIDEO avec purge croisée propre côté API.
 - Rappel technique : après tout db:push qui ajoute un champ, REDÉMARRER le dev server (le Prisma Client en mémoire est obsolète sinon — « Unknown argument »).
+
+---
+Task ID: 25 (session 21 — synchronisation auto + messages de confirmation admin)
+Agent: main (Z.ai Code)
+Task: "les choses ne se synchronisent pas ou ne s'actualisent pas automatiquement et quand l'admin fait des modifications et ajoute il n'a pas de message pour lui dire si c'est bon"
+
+Work Log:
+- Diagnostic : ① toutes les données (promos/services/stations/laveurs/wallet côté client ; stats/commandes/utilisateurs/laveurs/promos/rechargements/retraits côté admin) étaient chargées UNE SEULE FOIS au montage — aucun polling, aucune synchro. ② `parseJsonResponse` renvoyait `null` pour toute réponse non-OK + les handlers faisaient `if (!data) return;` silencieux → les erreurs API (400/401/500) n'affichaient AUCUN message ; 4 toggles (service/promo/forfait/utilisateur) n'avaient pas de branche else ; le formulaire promo n'avait aucun état de sauvegarde (pas de spinner).
+- src/lib/json-helper.ts : parseJsonResponse parse désormais AUSSI les corps d'erreur JSON ({success:false,error}) et, si le corps est illisible sur une réponse non-OK, renvoie un objet synthétique `Erreur serveur (status)` → plus aucune action utilisateur silencieuse.
+- src/hooks/useAutoRefresh.ts (nouveau) : hook de synchro — chargement au montage + à chaque changement de callback (onglet/filtre), intervalle paramétrable, rafraîchissement au retour sur l'app (visibilitychange visible + window focus + online). La callback reçoit la source ('initial'|'interval'|'focus') pour distinguer chargement visible (spinner) et rafraîchissement silencieux (pas de flash). Ref mise à jour dans un effet (exigence eslint react-hooks/refs).
+- AdminPanel : tous les loaders ont un paramètre `background` (skip spinner + skip toast d'erreur en auto-refresh) ; refreshActiveTab (30 s) selon l'onglet actif + refreshBadges deposits/withdrawals (45 s) pour les badges de notification ; sous-composants Services/Opérateurs/Forfaits/Abonnements+séances sur useAutoRefresh (30-45 s) ; formulaire promo : isSaving + spinner + bouton désactivé + validation locale (nom + valeur requis) ; branches else + toasts ajoutées sur verifyWasher/toggleService/togglePromo/toggleForfait/toggleUtilisateur + « Aucune réponse du serveur » sur les actions majeures.
+- ClientApp : promos 30 s (setPromotions INCONDITIONNEL — une promo désactivée/supprimée disparaît du carousel + clamp de l'index si la liste rétrécit), laveurs disponibles 30 s, wallet 45 s, services 60 s (seed uniquement au chargement initial), stations 60 s — le tout aussi rafraîchi au retour sur l'app.
+- sonner.tsx : richColors (succès vert / erreur rouge) + closeButton + durée 5 s, position top-center conservée.
+- E2E agent-browser : promo créée via API → apparue dans le carousel client SANS reload après évènement focus (slide « -15% Sync Test Auto ») ✅ ; admin : formulaire vide → toast « Le nom et la valeur de la réduction sont obligatoires » ✅ ; création → spinner + toast vert « Promotion créée » (capture /tmp/test-toast-created.png) + liste rafraîchie ✅ ; toggle → « Promotion désactivée » ✅ ; liste admin mise à jour après suppressions externes sans reload ✅ ; promos de test supprimées (originelles intactes) ; lint 0/0 ; dev.log sans erreur.
+
+Stage Summary:
+- Fini les écrans figés : tout se synchronise automatiquement (30-60 s selon les données) et instantanément au retour sur l'application, côté client comme côté admin.
+- Chaque action admin a désormais un retour clair : toast vert en cas de succès, toast rouge avec le message d'erreur exact du serveur en cas d'échec, spinner pendant les sauvegardes — plus aucun clic sans réponse.
+- La cause racine du « aucun message » était parseJsonResponse qui avalait les corps d'erreur : corrigée globalement, tous les écrans en profitent (y compris laveur/client).
