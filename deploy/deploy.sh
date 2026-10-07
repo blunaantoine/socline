@@ -6,6 +6,7 @@
 #   sudo bash deploy/deploy.sh               # installation complète (nginx sur 3002)
 #   sudo bash deploy/deploy.sh --no-nginx    # sans nginx (Next.js direct sur 3002, temps réel dégradé)
 #   sudo bash deploy/deploy.sh --update      # mise à jour : git pull + rebuild + restart
+#   sudo bash deploy/deploy.sh --web-port 3100   # port interne personnalisé (défaut : 3000)
 #
 # Architecture (par défaut) :
 #   Internet ──> nginx :3002 ──> Next.js :3000 (interne)
@@ -17,18 +18,22 @@ set -euo pipefail
 APP_DIR="${APP_DIR:-/opt/socline}"
 REPO_URL="${REPO_URL:-https://github.com/blunaantoine/socline.git}"
 PUBLIC_PORT=3002          # port public demandé
-WEB_PORT=3000             # port interne Next.js (derrière nginx)
+WEB_PORT="${WEB_PORT:-3000}"  # port interne Next.js (derrière nginx)
 RUN_USER=socline          # utilisateur système dédié
 NODE_MAJOR=22
 
 NO_NGINX=false
 UPDATE_ONLY=false
-for arg in "$@"; do
-  case "$arg" in
+while [[ $# -gt 0 ]]; do
+  case "$1" in
     --no-nginx) NO_NGINX=true ;;
     --update)   UPDATE_ONLY=true ;;
-    *) echo "Option inconnue : $arg (attendu : --no-nginx | --update)"; exit 1 ;;
+    --web-port)
+      [[ -n "${2:-}" && "${2}" =~ ^[0-9]+$ ]] || { echo "--web-port exige un numéro de port (ex : --web-port 3100)"; exit 1; }
+      WEB_PORT="$2"; shift ;;
+    *) echo "Option inconnue : $1 (attendu : --no-nginx | --update | --web-port N)"; exit 1 ;;
   esac
+  shift
 done
 
 c_info()  { echo -e "\033[1;36m[SOCLINE]\033[0m $*"; }
@@ -161,6 +166,28 @@ fi
 # Le serveur standalone Next charge aussi le .env de son propre dossier
 cp "${APP_DIR}/.env" "${APP_DIR}/.next/standalone/.env"
 c_ok "Build terminé"
+
+# ------------------------------------------------------------
+# Contrôle : le port interne doit être LIBRE — d'autres applications
+# peuvent déjà tourner sur ce VPS (ex : quelque chose sur 3000).
+# Si occupé, bascule automatique vers un port libre (3100, 3200, …).
+# Le port PUBLIC (3002) reste inchangé dans tous les cas.
+# ------------------------------------------------------------
+port_busy() { ss -tlnH 2>/dev/null | awk '{print $4}' | grep -qE "[:.]${1}$"; }
+if port_busy "${WEB_PORT}"; then
+  c_warn "Le port interne ${WEB_PORT} est déjà utilisé par une autre application du VPS."
+  for P in 3100 3200 3300 3400 3500 3600; do
+    if ! port_busy "${P}"; then
+      WEB_PORT="${P}"
+      c_warn "Port interne basculé automatiquement sur ${WEB_PORT} (le port public reste ${PUBLIC_PORT})"
+      break
+    fi
+  done
+  if port_busy "${WEB_PORT}"; then
+    echo "ERREUR : aucun port interne libre trouvé (3100-3600). Libérez un port ou relancez avec : --web-port N" >&2
+    exit 1
+  fi
+fi
 
 # ------------------------------------------------------------
 # 7. Services systemd (3 processus redémarrés au boot)
