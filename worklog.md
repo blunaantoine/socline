@@ -796,3 +796,21 @@ Stage Summary:
 - PRODUCTION VPS ACTIVE : Socline en ligne sur http://213.156.133.226:3002 — déploiement 100 % automatique via deploy.sh (fix bunx + db dir + EADDRINUSE 3000→3100 tous validés en conditions réelles).
 - État VPS : dépôt privé cloné dans /opt/socline (fetch via identifiants GitHub en cache), .env généré root-only 600, SQLite /opt/socline/db/custom.db, 3 unités systemd enabled (boot persistant), nginx :3002 → interne 3100 + sockets 3003/3005 via XTransformPort.
 - Mises à jour futures : cd /opt/socline && sudo bash deploy/deploy.sh --update (préserve .env + DB).
+
+---
+Task ID: 29 (session 22 — domaine + HTTPS en production, fix préservation certbot)
+Agent: main (Z.ai Code)
+Task: configurer socline.oquitogo.com en HTTPS sur le VPS et sécuriser deploy.sh --update contre l'écrasement de la config SSL
+
+Work Log:
+- DNS : erreur LWS « champ A incorrect ou CNAME du même nom » → cause : CNAME préexistant socline→oquitogo.com ; suppression du CNAME puis création du A record socline→213.156.133.226 ✅ (guide pas à pas fourni à l'utilisateur).
+- Propagation vérifiée par l'utilisateur : dig +short → 213.156.133.226.
+- nginx : sed server_name socline.oquitogo.com + listen 80 ajouté (conf sauvegardée en .bak), nginx -t OK.
+- certbot --nginx : certificat Let's Encrypt obtenu (expire 2027-01-05, renouvellement auto programmé), HTTPS actif, redirection HTTP→HTTPS → **https://socline.oquitogo.com EN LIGNE**.
+- Découverte d'un piège pour la suite : deploy.sh --update régénère /etc/nginx/conf.d/socline.conf depuis le template → aurait écrasé la conf certbot à la prochaine mise à jour. Fix deploy.sh : si la conf contient ssl_certificate → conservation + resynchronisation seule du port interne du bloc map ; sinon régénération classique. Le récap final affiche l'URL https du domaine si le certificat existe.
+- bash -n OK ; commits 🔧 + 📝 poussés.
+
+Stage Summary:
+- PRODUCTION FINALE : https://socline.oquitogo.com (certbot, TTL cert 90 j auto-renouvelé) + http://213.156.133.226:3002 toujours accessible ; 3 services systemd actifs ; port interne 3100.
+- deploy.sh est maintenant « update-safe » : les mises à jour futures préservent la config nginx/SSL du serveur.
+- Reste éventuellement côté VPS : nettoyage swap (fstab+/swapfile), changement des PIN démo avant vraie production, clés SMS Africa's Talking dans .env pour les OTP réels.
