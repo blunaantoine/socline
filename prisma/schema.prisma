@@ -492,8 +492,9 @@ model Promotion {
   code            String?        @unique
   
   // Display options
-  displayType     String         @default("TEXT") // TEXT or IMAGE
+  displayType     String         @default("TEXT") // TEXT, IMAGE or VIDEO
   image           String?        // URL or base64 of the promotional image (only if displayType is IMAGE)
+  video           String?        // base64 data URL of the promotional video (only if displayType is VIDEO)
   imagePosition   String         @default("center") // CSS object-position values: "center", "top", "bottom", "50% 30%", etc.
   
   // Validity

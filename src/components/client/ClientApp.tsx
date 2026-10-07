@@ -658,15 +658,27 @@ function HomeContent({
             key={currentPromoIndex}
             className="rounded-lg shadow-md animate-slide-in overflow-hidden"
           >
-            {currentPromo.displayType === 'IMAGE' && currentPromo.image ? (
-              // Image mode - show image only, code can be copied via button below
+            {(currentPromo.displayType === 'VIDEO' && currentPromo.video) ||
+             (currentPromo.displayType === 'IMAGE' && currentPromo.image) ? (
+              // Media mode (image ou vidéo) - code can be copied via button below
               <div className="relative">
-                <img 
-                  src={currentPromo.image} 
-                  alt={currentPromo.name}
-                  className="w-full h-48 object-cover"
-                  style={{ objectPosition: currentPromo.imagePosition || 'center' }}
-                />
+                {currentPromo.displayType === 'VIDEO' && currentPromo.video ? (
+                  <video
+                    src={currentPromo.video}
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    className="w-full h-48 object-cover bg-black"
+                  />
+                ) : (
+                  <img 
+                    src={currentPromo.image} 
+                    alt={currentPromo.name}
+                    className="w-full h-48 object-cover"
+                    style={{ objectPosition: currentPromo.imagePosition || 'center' }}
+                  />
+                )}
                 <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/60 to-transparent">
                   <div className="flex items-center justify-between">
                     <div>

@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
       code,
       displayType = 'TEXT',
       image,
+      video,
       imagePosition = 'center',
       startDate,
       endDate,
@@ -74,6 +75,7 @@ export async function POST(request: NextRequest) {
         code: code?.toUpperCase() || null,
         displayType: displayType || 'TEXT',
         image: displayType === 'IMAGE' ? (image || null) : null,
+        video: displayType === 'VIDEO' ? (video || null) : null,
         imagePosition: displayType === 'IMAGE' ? (imagePosition || 'center') : 'center',
         startDate: new Date(startDate),
         endDate: new Date(endDate),
@@ -120,10 +122,12 @@ export async function PUT(request: NextRequest) {
     if (data.code !== undefined) updateData.code = data.code?.toUpperCase() || null;
     if (data.displayType) {
       updateData.displayType = data.displayType;
-      // Only save image if displayType is IMAGE
+      // Only save the media matching the display type (IMAGE → image, VIDEO → video)
       updateData.image = data.displayType === 'IMAGE' ? (data.image || null) : null;
+      updateData.video = data.displayType === 'VIDEO' ? (data.video || null) : null;
       updateData.imagePosition = data.displayType === 'IMAGE' ? (data.imagePosition || 'center') : 'center';
     }
+    if (data.video !== undefined && !data.displayType) updateData.video = data.video || null;
     if (data.imagePosition !== undefined) updateData.imagePosition = data.imagePosition;
     if (data.startDate) updateData.startDate = new Date(data.startDate);
     if (data.endDate) updateData.endDate = new Date(data.endDate);

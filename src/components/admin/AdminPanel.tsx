@@ -36,7 +36,7 @@ import {
   TrendingUp, Clock, Star, Settings, Bell, Plus,
   CheckCircle, XCircle, AlertCircle, Search,
   ChevronDown, Download, Eye, Edit, Trash2, Tag,
-  RefreshCw, Loader2, ArrowLeft, LogOut, Percent, Wallet, Phone, Image as ImageIcon, Move, Banknote, Receipt
+  RefreshCw, Loader2, ArrowLeft, LogOut, Percent, Wallet, Phone, Image as ImageIcon, Move, Banknote, Receipt, Video as VideoIcon, Film
 } from 'lucide-react';
 import { HideableBalanceLight } from '@/components/ui/hideable-balance';
 import { toast } from 'sonner';
@@ -280,6 +280,7 @@ interface Promotion {
   code: string | null;
   displayType: string;
   image: string | null;
+  video?: string | null;
   imagePosition: string;
   startDate: string;
   endDate: string;
@@ -2922,6 +2923,7 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
   const [showForm, setShowForm] = useState(false);
   const [editingPromo, setEditingPromo] = useState<Promotion | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [videoPreview, setVideoPreview] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -2930,6 +2932,7 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
     code: '',
     displayType: 'TEXT',
     image: '',
+    video: '',
     imagePosition: 'center',
     startDate: '',
     endDate: '',
@@ -2948,6 +2951,7 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
       code: '',
       displayType: 'TEXT',
       image: '',
+      video: '',
       imagePosition: 'center',
       startDate: '',
       endDate: '',
@@ -2957,6 +2961,7 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
       isActive: true,
     });
     setImagePreview(null);
+    setVideoPreview(null);
     setEditingPromo(null);
     setShowForm(false);
   };
@@ -2977,23 +2982,84 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
     return true;
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // Check file size (max 2MB)
-      if (file.size > 2 * 1024 * 1024) {
-        toast.error('L\'image ne doit pas dépasser 2MB');
-        return;
-      }
-      
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64 = reader.result as string;
-        setImagePreview(base64);
-        setFormData({ ...formData, image: base64 });
-      };
-      reader.readAsDataURL(file);
+  // Aucune limite de taille : les images ≤ 2 Mo sont gardées telles quelles,
+  // les plus grandes sont automatiquement redimensionnées + ré-encodées
+  // (1920px max, JPEG 88%) pour rester fluides — jamais de refus.
+  const fileToPromoDataUrl = (file: File): Promise<string> => {
+    if (file.size <= 2 * 1024 * 1024) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
     }
+    return new Promise((resolve, reject) => {
+      const img = new window.Image();
+      const objectUrl = URL.createObjectURL(file);
+      img.onload = () => {
+        try {
+          const MAX_DIM = 1920;
+          const scale = Math.min(1, MAX_DIM / Math.max(img.width, img.height));
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+          const ctx = canvas.getContext('2d');
+          if (!ctx) throw new Error('canvas indisponible');
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          URL.revokeObjectURL(objectUrl);
+          resolve(canvas.toDataURL('image/jpeg', 0.88));
+        } catch (err) {
+          URL.revokeObjectURL(objectUrl);
+          reject(err);
+        }
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error('Image illisible'));
+      };
+      img.src = objectUrl;
+    });
+  };
+
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // permet de re-sélectionner le même fichier
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Veuillez choisir un fichier image (PNG, JPG, WEBP…)');
+      return;
+    }
+    try {
+      const base64 = await fileToPromoDataUrl(file);
+      setImagePreview(base64);
+      setFormData((prev) => ({ ...prev, image: base64 }));
+    } catch {
+      toast.error('Impossible de lire cette image');
+    }
+  };
+
+  // Vidéos : acceptées jusqu'à 15 Mo (≈ 20 Mo en base64, limite de payload
+  // du reverse proxy VPS : 25 Mo) — au-delà, message clair.
+  const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('video/')) {
+      toast.error('Veuillez choisir un fichier vidéo (MP4, WEBM…)');
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error('La vidéo ne doit pas dépasser 15 Mo. Compressez-la ou raccourcissez-la.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64 = reader.result as string;
+      setVideoPreview(base64);
+      setFormData((prev) => ({ ...prev, video: base64 }));
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async () => {
@@ -3034,6 +3100,7 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
       code: promo.code || '',
       displayType: promo.displayType || 'TEXT',
       image: promo.image || '',
+      video: promo.video || '',
       imagePosition: promo.imagePosition || 'center',
       startDate: new Date(promo.startDate).toISOString().split('T')[0],
       endDate: new Date(promo.endDate).toISOString().split('T')[0],
@@ -3044,6 +3111,9 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
     });
     if (promo.image) {
       setImagePreview(promo.image);
+    }
+    if (promo.video) {
+      setVideoPreview(promo.video);
     }
     setShowForm(true);
   };
@@ -3164,10 +3234,11 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
                 <button
                   type="button"
                   onClick={() => {
-                    setFormData({ ...formData, displayType: 'TEXT', image: '' });
+                    setFormData({ ...formData, displayType: 'TEXT', image: '', video: '' });
                     setImagePreview(null);
+                    setVideoPreview(null);
                   }}
-                  className={`flex-1 py-2 px-3 rounded-lg border-2 text-sm font-medium transition-all ${
+                  className={`flex-1 py-2 px-2 rounded-lg border-2 text-xs sm:text-sm font-medium transition-all ${
                     formData.displayType === 'TEXT' 
                       ? 'border-[#FF9800] bg-[#FFF3E0] text-[#FF9800]' 
                       : 'border-[#E0E0E0] text-[#757575]'
@@ -3177,14 +3248,27 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setFormData({ ...formData, displayType: 'IMAGE' })}
-                  className={`flex-1 py-2 px-3 rounded-lg border-2 text-sm font-medium transition-all ${
+                  onClick={() => setFormData({ ...formData, displayType: 'IMAGE', video: '' })}
+                  className={`flex-1 py-2 px-2 rounded-lg border-2 text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-1 ${
                     formData.displayType === 'IMAGE' 
                       ? 'border-[#FF9800] bg-[#FFF3E0] text-[#FF9800]' 
                       : 'border-[#E0E0E0] text-[#757575]'
                   }`}
                 >
+                  <ImageIcon className="w-4 h-4" />
                   Avec image
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, displayType: 'VIDEO', image: '' })}
+                  className={`flex-1 py-2 px-2 rounded-lg border-2 text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-1 ${
+                    formData.displayType === 'VIDEO' 
+                      ? 'border-[#FF9800] bg-[#FFF3E0] text-[#FF9800]' 
+                      : 'border-[#E0E0E0] text-[#757575]'
+                  }`}
+                >
+                  <VideoIcon className="w-4 h-4" />
+                  Avec vidéo
                 </button>
               </div>
             </div>
@@ -3210,14 +3294,64 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
                         <div className="flex flex-col items-center justify-center pt-5 pb-6">
                           <ImageIcon className="w-8 h-8 text-[#9E9E9E] mb-2" />
                           <p className="text-xs text-[#757575]">Cliquez pour ajouter une image</p>
-                          <p className="text-xs text-[#9E9E9E]">PNG, JPG (max 2MB)</p>
+                          <p className="text-xs text-[#9E9E9E]">PNG, JPG, WEBP — toutes tailles acceptées</p>
                         </div>
                       )}
                       <input 
                         type="file" 
                         className="hidden" 
-                        accept="image/png, image/jpeg, image/jpg"
+                        accept="image/png, image/jpeg, image/jpg, image/webp, image/gif"
                         onChange={handleImageChange}
+                      />
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Video upload - only show if displayType is VIDEO */}
+            {formData.displayType === 'VIDEO' && (
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs text-[#757575]">Vidéo de la promotion *</Label>
+                  <div className="mt-1">
+                    <label className={`flex flex-col items-center justify-center w-full ${videoPreview ? 'h-56' : 'h-32'} border-2 border-dashed border-[#E0E0E0] rounded-lg ${!videoPreview ? 'cursor-pointer hover:bg-[#FAFAFA]' : ''} transition-colors`}>
+                      {videoPreview ? (
+                        <div className="relative w-full h-full">
+                          <video
+                            src={videoPreview}
+                            controls
+                            muted
+                            loop
+                            playsInline
+                            className="w-full h-full object-cover rounded-lg"
+                          />
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setVideoPreview(null);
+                              setFormData({ ...formData, video: '' });
+                            }}
+                            className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-1.5 hover:bg-black/80 transition-colors"
+                            aria-label="Retirer la vidéo"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                          <VideoIcon className="w-8 h-8 text-[#9E9E9E] mb-2" />
+                          <p className="text-xs text-[#757575]">Cliquez pour ajouter une vidéo</p>
+                          <p className="text-xs text-[#9E9E9E]">MP4, WEBM (max 15 Mo) — lue en boucle sans le son</p>
+                        </div>
+                      )}
+                      <input 
+                        type="file" 
+                        className="hidden" 
+                        accept="video/mp4,video/webm,video/quicktime"
+                        onChange={handleVideoChange}
                       />
                     </label>
                   </div>
@@ -3283,8 +3417,21 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
             <Card key={promo.id} className={`border-0 shadow-sm ${!promo.isActive ? 'opacity-60' : ''}`}>
               <CardContent className="p-4">
                 <div className="flex flex-col sm:flex-row gap-3">
-                  {/* Image thumbnail */}
-                  {promo.image && (
+                  {/* Image / video thumbnail */}
+                  {promo.displayType === 'VIDEO' && promo.video ? (
+                    <div className="relative w-full sm:w-20 h-32 sm:h-20 flex-shrink-0 rounded-lg overflow-hidden">
+                      <video
+                        src={promo.video}
+                        muted
+                        loop
+                        playsInline
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/30 pointer-events-none">
+                        <Film className="w-6 h-6 text-white" />
+                      </div>
+                    </div>
+                  ) : promo.image ? (
                     <div className="w-full sm:w-20 h-32 sm:h-20 flex-shrink-0 rounded-lg overflow-hidden">
                       <img 
                         src={promo.image} 
@@ -3293,7 +3440,7 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
                         style={{ objectPosition: promo.imagePosition || 'center' }}
                       />
                     </div>
-                  )}
+                  ) : null}
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
                       <div className="flex-1 min-w-0">
