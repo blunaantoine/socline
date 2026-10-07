@@ -677,3 +677,26 @@ Stage Summary:
 - Le client suit le déplacement du laveur sur une carte grande et lisible.
 - Les étoiles sont visibles par le laveur partout : moyenne globale, avis détaillés par prestation, historique annoté.
 - L'admin a un historique complet des transactions avec synthèse financière (dont les commissions espèces récupérées).
+
+---
+Task ID: 23 (session 21 — installation VPS port 3002)
+Agent: main (Z.ai Code)
+Task: "JE VEUX L INSTALER SUR LE PORT 3002 DE MON SEVEUR VPS"
+
+Work Log:
+- Cible : déploiement production sur VPS du user, app servie publiquement sur le port 3002 (Next interne 3000 + sockets 3003/3005 internes, routés par reverse proxy).
+- Constat préalable : sockets clients = io('/?XTransformPort=3003') relatifs → aucun code à modifier, il suffit de répliquer le gateway (Caddyfile) en nginx sur le VPS ; DB non versionnée → seed requis ; z-ai-web-dev-sdk absent de src → aucune dépendance IA externe.
+- deploy/deploy.sh : install tout-en-un root (Ubuntu/Debian) — deps (Node 22 NodeSource, Bun /usr/local, nginx), user système dédié `socline`, clone/pull GitHub → /opt/socline, génération .env (DATABASE_URL file:/opt/socline/db/custom.db + JWT/INTERNAL secrets openssl rand -hex 32, SMS_DEMO_FALLBACK true), bun install racine + 2 mini-services, prisma db push, build standalone, cp .env → .next/standalone/.env, 3 unités systemd générées via sed placeholders (__APP_DIR__/__NODE_PATH__/__BUN_PATH__/__WEB_PORT__), enable --now, nginx conf.d/socline.conf (port public 3002), UFW allow 3002, POST /api/seed, test HTTP final + récap URLs. Flags --update (pull+rebuild, ne touche ni .env ni DB) et --no-nginx (Next direct 3002 + build NEXT_PUBLIC_ENABLE_SOCKET=false → polling).
+- deploy/nginx-socline.conf : map $arg_XTransformPort → upstream (default web:3000, 3003 chat, 3005 washgo) + map $http_upgrade (websockets), listen 3002, client_max_body_size 25M, timeouts socket 300s, proxy_buffering off.
+- deploy/socline-{web,chat,washgo}.service : systemd (User=socline, EnvironmentFile=.env, Restart=always, NoNewPrivileges) — web=NODE standalone (node), sockets=bun index.ts.
+- deploy/ecosystem.config.js : alternative PM2 (détection auto bun/node, max_memory_restart 600M) + eslint-disable no-require-imports (PM2 exige CJS).
+- DEPLOY-VPS.md : guide FR complet — architecture/ports (3002 public, 3000/3003/3005 internes), install express 1 commande, pas-à-pas manuel, comptes démo/seed, opérations courantes (logs journalctl, restart, sauvegarde db), domaine+HTTPS certbot, dépannage (port occupé, sockets, DB, OTP), alternative PM2, rappels sécurité (.env jamais versionné, ports internes non exposés).
+- package.json : script start:prod ajouté (NODE standalone PORT=3002 pour usage manuel).
+- Git : rebase sur origin/main (worklog Task 22 poussé depuis autre session), commit ee9bcff (🚀) poussé ; commit 1a10d15 rebaseé contenait les parasites sandbox (chmod 644→755 sur 47 fichiers + dev.pid) → commit correctif 19002da (🔧) modes 644 rétablis, poussé.
+- Incident récurrent : .env re-réduit à DATABASE_URL (5e récidive sandbox) → restauré depuis git show 81fd6bf:.env avant tout travail ; services dev re-vérifiés après (web 200, chat 3003 OK, washgo 3005 OK).
+
+Stage Summary:
+- Socline est maintenant déployable sur n'importe quel VPS Ubuntu/Debian en UNE commande : sudo bash deploy/deploy.sh → app publique sur http://IP:3002 avec temps réel complet (chat + suivi laveur), services systemd auto-redémarrés au boot, secrets générés automatiquement.
+- Le guide DEPLOY-VPS.md couvre express + manuel + HTTPS/domaine + dépannage ; les ports internes (3000/3003/3005) restent locaux, seul 3002 est exposé.
+- Le routage XTransformPort est répliqué en nginx → zéro modification du code applicatif (front relatif inchangé).
+- Rappel : .env sandbox re-réduit (5e fois) — toujours vérifier avant session ; surveiller les mode changes (chmod 755) qui se glissent dans les commits rebase.
