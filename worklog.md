@@ -814,3 +814,24 @@ Stage Summary:
 - PRODUCTION FINALE : https://socline.oquitogo.com (certbot, TTL cert 90 j auto-renouvelé) + http://213.156.133.226:3002 toujours accessible ; 3 services systemd actifs ; port interne 3100.
 - deploy.sh est maintenant « update-safe » : les mises à jour futures préservent la config nginx/SSL du serveur.
 - Reste éventuellement côté VPS : nettoyage swap (fstab+/swapfile), changement des PIN démo avant vraie production, clés SMS Africa's Talking dans .env pour les OTP réels.
+
+---
+Task ID: 30 (session 23 — préparation publication mobile Capacitor, branche dédiée)
+Agent: main (Z.ai Code)
+Task: reprise de la discussion utilisateur/autre-assistant — le build mobile (BUILD_MODE=mobile, output:'export') échoue sur les routes API Next ; l'utilisateur demande de travailler sur une NOUVELLE BRANCHE pour préparer la publication Android/iOS
+
+Work Log:
+- Diagnostic confirmé : `output: 'export'` est incompatible avec les ~60 routes API dynamiques (« export const dynamic = force-static not configured ») ; toutes les vues `fetch('/api/…')` + `io('/?XTransformPort=…')` relatives rendraient de toute façon le mode statique très coûteux à adapter.
+- Décision d'architecture : MODE SERVEUR DISTANT — la WebView Capacitor charge https://socline.oquitogo.com (bridge natif injecté dans la page distante : caméra/GPS/push OK, sockets relatifs OK car même origine nginx). Mises à jour du site visibles dans l'app sans nouvelle APK.
+- Branche dédiée `mobile-capacitor` (main untouched, VPS non affecté).
+- capacitor.config.ts réécrit : server.url prod + override dev CAPACITOR_DEV_SERVER_URL (cleartext + webContentsDebuggingEnabled conditionnels au dev) ; webDir → mobile-shell.
+- mobile-shell/index.html : page de secours brandée (splash #FF9800, redirect auto serveur, écran offline + Réessayer).
+- package.json : mobile:build devient informatif (aucun build Next requis).
+- Projets natifs GÉNÉRÉS et commités : `bunx cap add android` + `bunx cap add ios` (appId com.socline.app, 8 plugins), `bunx cap sync` validé (copy web OK). Vérifié : server.url bien présent dans android/app/src/main/assets/capacitor.config.json et ios/App/App/capacitor.config.json ; aucun fichier machine-spécifique (local.properties/build/.idea) commité.
+- MOBILE.md entièrement réécrit : architecture + workflow Windows (PATH Node, npm install, cap sync, Android Studio) + publication Google Play (keystore keytool, AAB, fiche store, politique de confidentialité, tests internes) + App Store (Xcode, signing, Transporter) + push (Firebase google-services.json / APNs à configurer) + roadmap.
+- Lint 0 erreur. Commit 3c69ea5 (📱) sur la branche + worklog (📝), push -u origin mobile-capacitor. PAS de merge vers main (à valider d'abord).
+
+Stage Summary:
+- La branche mobile-capacitor contient une config mobile prête à builder : sur Windows, après git pull de la branche, il suffit de npm install && npx cap sync && npm run mobile:android puis Build APK/AAB dans Android Studio.
+- L'icône/splash sont encore ceux par défaut de Capacitor — à personnaliser avant publication store.
+- Push notifications : plugin branché côté code mais FCM (google-services.json) et APNs restent à configurer avant activation réelle.
