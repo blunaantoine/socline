@@ -761,3 +761,21 @@ Stage Summary:
 - L'installation VPS est désormais reproductible de zéro sur un Debian neuf : le script ne dépend plus de bunx et crée le dossier db/ au bon moment.
 - La reprise chez l'utilisateur = une seule commande (le script est idempotent : .env déjà généré conservé, deps déjà installées).
 - Le dépôt étant privé, les mises à jour VPS (deploy.sh --update) nécessitent des identifiants GitHub valides côté serveur (cache credential du clone actuel OK).
+
+---
+Task ID: 27 (session 22 — déploiement VPS : EADDRINUSE port interne 3000)
+Agent: main (Z.ai Code)
+Task: suite de l'installation VPS — socline-web inactive en crash-loop après un déploiement qui passait bien jusqu'au build ; utilisateur annonce aussi le futur domaine socline.oquitogo.com
+
+Work Log:
+- Journal systemd reçu : « Error: listen EADDRINUSE: address already in use 127.0.0.1:3000 » en boucle (restart counter 86+) → une AUTRE application du VPS (box LWS avec Docker + plusieurs repos) occupe déjà le port interne 3000. Le crash-loop vient de Restart=always qui relance socline-web toutes les 5 s sans succès.
+- Décision : ne pas toucher à l'application existante du client — décaler le port INTERNE de Socline uniquement (le port public 3002 demandé reste identique, nginx route 3002 -> nouveau port interne).
+- deploy.sh : nouveau flag `--web-port N` (parsing réécrit en while/shift), WEB_PORT surchargeable par env, et contrôle automatique de disponibilité juste avant la génération systemd (ss -tlnH) : si 3000 occupé → bascule auto 3100→3600 avec avertissement ; erreur explicite si aucun port libre. bash -n OK.
+- Vérifié que install_unit régénère bien les unités systemd et la conf nginx avec le nouveau WEB_PORT à chaque run (idempotence conservée).
+- Commits : fix (🔧) + worklog (📝) poussés. Reprise utilisateur = relancer deploy.sh (le fetch de l'étape 3/8 ramène le fix).
+-swap : swapon impossible sur ce VPS (conteneur LXC/OpenVZ « Operation not permitted ») → le build a pourtant réussi sans, donc pas de swap nécessaire ; nettoyage conseillé (fstab + /swapfile).
+- Domaine : demande d'un A record socline.oquitogo.com -> IP VPS pendant le debug ; config nginx server_name + certbot HTTPS à faire après le démarrage OK.
+
+Stage Summary:
+- Le script de déploiement est maintenant tolérant aux VPS multi-applications : il ne peut plus entrer en conflit de port interne (détection + bascule auto), le port public 3002 reste garanti.
+- Reste à faire côté VPS une fois le service actif : vérifier socline-chat (3003) et socline-washgo (3005) — seuls les ports 3003/3005 pourraient aussi être occupés (le script ne fait qu'un avertissement pour eux), puis configurer le domaine socline.oquitogo.com (server_name nginx + certbot).
