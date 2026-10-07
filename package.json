@@ -14,7 +14,7 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:reset": "prisma migrate reset",
-    "mobile:build": "BUILD_MODE=mobile next build",
+    "mobile:build": "echo \"Build Next inutile en mode mobile : la WebView charge socline.oquitogo.com (server.url). Utilisez: npm run mobile:sync\"",
     "mobile:sync": "npx cap sync",
     "mobile:android": "npx cap open android",
     "mobile:ios": "npx cap open ios",

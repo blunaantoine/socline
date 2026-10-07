@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Socline</string>
+    <string name="title_activity_main">Socline</string>
+    <string name="package_name">com.socline.app</string>
+    <string name="custom_url_scheme">com.socline.app</string>
+</resources>
