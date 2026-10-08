@@ -975,3 +975,21 @@ Stage Summary:
 - PayDunya = validation 100 % AUTOMATIQUE par le statut PayDunya (webhook IPN + poller client 6 s + settle reconfirmant) ; l'admin n'intervient JAMAIS dans le crédit et ne peut plus ni créditer sans confirmation ni rejeter un paiement en cours.
 - La file « Demandes de recharge » admin ne contient plus que l'USSD Mixx by Yas.
 - En attente : déploiement prod (--update) puis config admin PayDunya + IPN + test sandbox complet (crédit automatique à « completed »).
+
+---
+Task ID: 38 (session 27 — 502 récurrent : le --update rejouait l'ANCIEN deploy.sh)
+Agent: main (Z.ai Code)
+Task: nouveau --update sur le VPS → encore 502. Le log montre les messages de l'ANCIEN script (« port déjà utilisé », bascule 3100, « HTTP 502 ») alors que le dépôt est passé à 4d1ec34 (scripts Tasks 35/36/37). Comprendre et corriger définitivement.
+
+Work Log:
+- CAUSE RACINE : deploy.sh fait un `git reset --hard` sur son PROPRE dépôt à l'étape 3, alors que bash a déjà lu le fichier en mémoire → tout le reste de l'exécution a utilisé l'ANCIENNE logique (pas d'arrêt des services avant la détection de port, `enable --now` no-op → pas de restart, ancien health-check). Résultat : nginx resynchronisé 3200→3100 mais l'ancien processus (reparti du restart manuel de l'utilisateur) tournait encore sur 3200 → 502.
+- Détail VPS : le port 3000 est RÉELLEMENT occupé par une autre application (l'app MAISON KHAN) → le port interne restera 3100 de façon stable ; l'unit a été réécrite PORT=3100, nginx pointe 3100, mais le process actif (code Task 34) est resté sur 3200 faute de restart.
+- COSMÉTIQUE : récap final « https://_ » → le grep server_name prenait le joker « _ » du template. FIX : ignorer « _ » + fallback socline.oquitogo.com.
+- FIX STRUCTUREL deploy.sh (bash -n OK, mécanisme SIMULÉ et validé) : 1) en tête — le script se copie dans /tmp/.socline-deploy-$$.sh puis `exec` la copie (SOCLINE_DEPLOY_RUNNING=1) : le git reset ne peut plus toucher le fichier en cours d'exécution ; 2) après le git reset — si le script du dépôt diffère de la copie en cours (`cmp -s`), re-exec automatique de la NOUVELLE version (stable, le reset est déjà fait). Simulation : v1 copiée → source remplacée par v2 en cours d'exécution → détection → re-exec → « LOGIQUE NOUVELLE exécutée ✓ ».
+- Branche fix/deploy-self-reexec, commit df4a8fb (🔧), merge main + push. Worklog en commit séparé.
+- Procédure fournie à l'utilisateur : `sudo systemctl restart socline-web socline-chat socline-washgo` — le build Task 37 est déjà sur le disque (construit pendant ce --update), le restart charge le nouveau code sur le port 3100 = cible nginx → site rétabli immédiatement. Prochain --update : la nouvelle version du script s'activera d'elle-même (relance auto en 1 seul run).
+
+Stage Summary:
+- Le piège « script qui se remplace lui-même pendant son exécution » est neutralisé structurellement (copie stable + re-exec) — un --update applique désormais TOUJOURS la logique à jour, y compris lors du run qui l'apporte.
+- État VPS attendu après le restart manuel : code Task 37, port interne 3100 (stable, 3000 réellement occupé par une autre app), nginx 3100, HTTPS conservé.
+- Reste : config admin PayDunya (Mode Test + clés) → IPN chez PayDunya → dépôt sandbox → crédit automatique à « completed ».
