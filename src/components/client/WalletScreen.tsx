@@ -708,7 +708,7 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
                   className="w-full h-14 bg-[#4CAF50] hover:bg-[#43A047] text-white rounded-xl font-bold text-base shadow-lg"
                 >
                   <PhoneCall className="w-5 h-5 mr-2" />
-                  Payer {deposit.amount.toLocaleString()} F CFA
+                  Payer {deposit.amount.toLocaleString('fr-FR')} F CFA
                 </Button>
                 <p className="text-xs text-center text-[#9E9E9E] px-2">
                   Le code de paiement est composé automatiquement : vous n'avez rien à recopier.

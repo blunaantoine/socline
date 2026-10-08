@@ -4985,23 +4985,33 @@ function AdminStations({ stations, isLoading, onRefresh, onAction }: {
                   {/* Propriétaire */}
                   <div className="bg-[#F5F5F5] rounded-lg p-3 space-y-1.5">
                     <p className="text-xs font-medium text-[#212121]">
-                      Propriétaire : {station.owner?.name || 'Non défini'}
+                      Propriétaire : {station.owner?.name || 'Aucun (station sans compte rattaché)'}
                     </p>
-                    <p className="text-xs text-[#757575] flex items-center gap-1">
-                      <Phone className="w-3 h-3" />
-                      +228 {station.owner?.phone || '—'}
-                    </p>
+                    {station.owner?.phone && (
+                      <p className="text-xs text-[#757575] flex items-center gap-1">
+                        <Phone className="w-3 h-3" />
+                        +228 {station.owner.phone}
+                      </p>
+                    )}
                     <div className="flex items-center gap-2">
-                      <Badge className={
-                        ownerVerified
-                          ? 'bg-[#E8F5E9] text-[#2E7D32] hover:bg-[#E8F5E9]'
-                          : 'bg-[#FFF3E0] text-[#E65100] hover:bg-[#FFF3E0]'
-                      }>
-                        {ownerVerified ? 'Compte vérifié' : 'En attente de validation'}
-                      </Badge>
-                      {!station.owner?.isActive && (
-                        <Badge className="bg-[#FFEBEE] text-[#C62828] hover:bg-[#FFEBEE]">
-                          Compte désactivé
+                      {station.owner ? (
+                        <>
+                          <Badge className={
+                            ownerVerified
+                              ? 'bg-[#E8F5E9] text-[#2E7D32] hover:bg-[#E8F5E9]'
+                              : 'bg-[#FFF3E0] text-[#E65100] hover:bg-[#FFF3E0]'
+                          }>
+                            {ownerVerified ? 'Compte vérifié' : 'En attente de validation'}
+                          </Badge>
+                          {!station.owner.isActive && (
+                            <Badge className="bg-[#FFEBEE] text-[#C62828] hover:bg-[#FFEBEE]">
+                              Compte désactivé
+                            </Badge>
+                          )}
+                        </>
+                      ) : (
+                        <Badge className="bg-[#F5F5F5] text-[#757575] hover:bg-[#F5F5F5]">
+                          Sans propriétaire
                         </Badge>
                       )}
                     </div>
@@ -5030,7 +5040,18 @@ function AdminStations({ stations, isLoading, onRefresh, onAction }: {
 
                   {/* Actions */}
                   <div className="flex gap-2 pt-1">
-                    {!ownerVerified ? (
+                    {!station.owner ? (
+                      <Button
+                        size="sm"
+                        variant={station.isActive ? 'outline' : 'default'}
+                        onClick={() => onAction(station.id, 'toggle-active')}
+                        className={`flex-1 h-9 text-xs ${station.isActive
+                          ? 'text-[#C62828] hover:bg-[#FFEBEE]'
+                          : 'bg-[#4CAF50] hover:bg-[#43A047] text-white'}`}
+                      >
+                        {station.isActive ? 'Désactiver la station' : 'Activer la station'}
+                      </Button>
+                    ) : !ownerVerified ? (
                       <>
                         <Button
                           size="sm"
