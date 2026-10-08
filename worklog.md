@@ -832,3 +832,26 @@ Stage Summary:
 - NOUVEAU PARCOURS : « Devenir partenaire laveur » → conditions du partenariat (avantages, pièces Article 8, contrat PDF, barème 60-80 % Article 5, processus) → « Continuer » → choix Laveur Indépendant / Station → formulaire. La flèche retour de la page info est contextuelle (mémorisation de l'origine).
 - Branche feature/inscription-info-first (commits 179a8a3 + worklog) — à merger dans main puis déployer via deploy.sh --update quand l'utilisateur valide.
 - RAPPEL TÂCHE OUVERTE : le build mobile Capacitor (discussion partagée, échec output: export × routes API) reste à traiter sur une autre nouvelle branche (architecture retenue : UI embarquée + backend distant https://socline.oquitogo.com, voie A server.url).
+
+---
+Task ID: 31 (session 23 — paiement marchant Mixx + gestion admin des stations)
+Agent: main (Z.ai Code)
+Task: 1) masquer le code USSD et le bouton Copier — le bouton « Payer » lance automatiquement le composeur ; passer Mixx by Yas au format marchand *145*5*{montant}*1416831# (compte marchant SOCLINE). 2) Distincter les stations des laveurs indépendants avec une gestion admin dédiée (liste des stations). Travail sur nouvelle branche (convention).
+
+Work Log:
+- Exploration : USSD géré par la table MobileMoneyOperator (ussdPattern + recipientNumber), transaction créée PENDING par POST /api/wallet (buildUssdCode remplace {montant}/{numero}), étape 'ussd' de WalletScreen affichait le code + boutons Copier/Lancer ; admin sans section stations (menu Plus : deposits, withdrawals, transactions…).
+- Branche feature/stations-paiement-mixx créée.
+- WalletScreen : étape USSD redessinée — plus de code affiché ni de Copier ; unique bouton vert « Payer {montant} F CFA » (PhoneCall) → window.location.href = ussdLink (tel:) ; instructions 3 lignes mises à jour ; imports nettoyés (Copy/ExternalLink retirés).
+- API operators : validation assouplie — {montant} requis + fin par # ; {numero} optionnel (format marchand sans numéro).
+- Seed : Mixx créé en format marchand *145*5*{montant}*1416831# / recipientNumber 1416831 + MIGRATION DOUCE : toute base contenant encore l'ancien pattern *145*1*… est mise à jour automatiquement au prochain appel /api/seed (deploy.sh l'appelle à chaque déploiement → le VPS sera corrigé sans intervention).
+- AdminPanel : formulaire opérateurs adapté (placeholder marchand, aide « {montant} + # », libellé « Numéro / code marchand destinataire »).
+- Nouvelle API /api/admin/stations (requireAdmin) : GET liste complète (owner + washer.isVerified, services actifs, _count services/laveurs/commandes) ; PATCH actions toggle-active / verify-owner / reject-owner.
+- AdminPanel : entrée « Stations de Lavage » dans le menu Plus (Building2, #00897B) + composant AdminStations (cartes détaillées, recherche, badges statut station/compte propriétaire, services+prix, boutons contextuels Vérifier/Rejeter puis Activer/Désactiver) + fetchStations branché dans refreshActiveTab.
+- Vérification navigateur : seed appelé en local → Mixx migré (vérifié en DB) ; parcours client 90123456 : portefeuille → recharger 1000 → Mixx → tel → étape paiement SANS code ni Copier avec bouton « Payer 1 000 F CFA » ; transaction en DB = *145*5*1000*1416831# PENDING Mixx by Yas ; parcours admin 71998155 : Plus → Stations de Lavage → station démo listée → Désactiver (badge Désactivée + toast) → Réactiver OK.
+- Correctifs suite QA (commit 🔧) : format fr-FR sur le bouton Payer ; badge « Sans propriétaire » au lieu des badges trompeurs pour les stations sans compte rattaché.
+- Lint OK ; commits 01c6b8e (💳), 392b6c8 (🏪), bb109da (🔧) + worklog (📝) sur la branche, poussée sur origin.
+
+Stage Summary:
+- PAIEMENT : l'utilisateur ne voit plus aucun code USSD — « Payer » ouvre le composeur avec le code prérempli ; Mixx by Yas paie vers le COMPTE MARCHAND 1416831 via *145*5*{montant}*1416831# (migration auto du VPS au prochain deploy --update grâce au seed). Flooz inchangé.
+- ADMIN : les stations ont leur section dédiée (Plus → Stations de Lavage) distincte de la liste des laveurs — validation du propriétaire et activation/désactivation de la station incluses. Le parcours client distinguait déjà les deux onglets (Indépendants / Stations).
+- Reste à tester en production réelle : l'appel USSD depuis un vrai téléphone (le lien tel: dépend du mobile) et l'action Vérifier le propriétaire sur une vraie inscription station.
