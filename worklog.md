@@ -880,3 +880,25 @@ Stage Summary:
 - Intégration PayDunya complète côté code (facture checkout, polling, IPN, crédit idempotent) et validée contre la VRAIE API (erreur d'authentification attendue avec des clés factices = format correct). Pour activer : créer un compte marchand sur paydunya.com, saisir mode + master key + private key + token dans l'admin, déclarer l'IPN https://socline.oquitogo.com/api/payment/paydunya/webhook, puis basculer le système sur PayDunya.
 - Fallback sûr : si PayDunya est choisi mais non configuré, le client repasse automatiquement sur le flux USSD.
 - Reste à faire quand l'utilisateur fournit ses vraies clés PayDunya : test de bout en bout en mode sandbox (paiement réel sandbox + crédit automatique du solde).
+
+---
+Task ID: 33 (session 24 — configuration IPN PayDunya + robustesse du retour de paiement)
+Agent: main (Z.ai Code)
+Task: l'utilisateur a partagé l'écran « Instant Payment Notification (IPN) » du tableau de bord marchand PayDunya (champ « Endpoint IPN » + bouton « Activer ») — il faut fournir l'URL exacte à déclarer et renforcer la chaîne de notification/retour côté Socline.
+
+Work Log:
+- Constat production : https://socline.oquitogo.com/api/payment/paydunya/webhook répondait 404 → cause : les 5 commits de la Task 32 (main local) n'étaient PAS poussés sur origin/main (origin/main = eefbb39), donc le VPS ne pouvait pas les déployer.
+- Branche feature/paydunya-ipn-retour créée depuis main.
+- lib/paydunya.ts : la création de facture envoie désormais le bloc `actions` (format officiel PayDunya) — callback_url → IPN Socline (fonctionne même si le champ IPN du dashboard marchand n'est pas activé), return_url et cancel_url → https://socline.oquitogo.com/?paydunya=return ; nouvelle fonction getAppBaseUrl() (surchargeable via NEXT_PUBLIC_APP_URL, défaut https://socline.oquitogo.com).
+- ClientApp : useEffect au montage — si l'URL contient paydunya=return → ouvre directement l'onglet Portefeuille, nettoie le paramètre via history.replaceState et affiche le toast « Retour de PayDunya — vérification de votre paiement en cours… » (le poller 6 s de WalletScreen crédite ensuite le dépôt dès confirmation PayDunya).
+- AdminPanel : le rappel IPN devient un bloc actionnable — URL dans une balise code + bouton « Copier » avec double mécanisme (navigator.clipboard puis fallback document.execCommand('copy') pour WebView/contextes non sécurisés, ex. future app Capacitor).
+- webhook IPN durci : le payload JSON {"data":"{\"token\":…}"} (data stringifiée) n'était pas parsé → extractToken gère maintenant token direct, data objet et data string JSON ; vérifié sur les 4 formats (JSON simple, data objet, data stringifié, form-urlencoded) + GET santé.
+- Vérification navigateur (agent-browser) : /?paydunya=return en tant que client → app ouverte DIRECTEMENT sur « Mon Portefeuille », paramètre nettoyé de l'URL ; admin → Plus → Système de Paiement → carte PayDunya → URL IPN affichée dans le bloc Config avec bouton Copier (toast d'erreur propre dans le navigateur headless sans permission presse-papiers — normal, les deux mécanismes fonctionnent sur appareil réel HTTPS).
+- Lint OK (zéro erreur). Commit e8f86c9 (🔧) puis worklog (📝).
+
+Stage Summary:
+- URL À DÉCLARER chez PayDunya (champ « Endpoint IPN » → « Activer ») : https://socline.oquitogo.com/api/payment/paydunya/webhook
+- L'IPN est désormais DOUBLEMENT garanti : déclaré dans la facture (actions.callback_url, prioritaire) ET configurable dans le dashboard marchand.
+- Après paiement, le client est ramené dans l'app (onglet Portefeuille ouvert automatiquement) et son solde est crédité automatiquement (poller + IPN + settle idempotent).
+- PRÉREQUIS DÉPLOIEMENT : pousser main (Task 32 + 33) sur origin PUIS cd /opt/socline && sudo bash deploy/deploy.sh --update sur le VPS — sinon PayDunya appellera une URL 404.
+- Ordre d'activation conseillé : 1) push + deploy, 2) saisir les clés PayDunya dans l'admin (mode test d'abord), 3) déclarer l'IPN chez PayDunya, 4) tester un rechargement sandbox de bout en bout, 5) basculer en live puis choisir PayDunya comme système actif.
