@@ -955,3 +955,23 @@ Stage Summary:
 - 502 expliqué et corrigé à la racine : enable --now ne redémarre pas un service actif ; deploy.sh est maintenant idempotent et autoréparant (stop avant détection de port, restart systématique, health-check interne+public avec logs en cas d'échec).
 - Le prochain --update sur le VPS embarquera ces correctifs ; en attendant, un simple restart des 3 services suffit à rétablir le site (l'unit est déjà à jour avec PORT=3200).
 - Après rétablissement : reprendre la checklist PayDunya prod — clés dans l'admin (Mode Test), IPN https://socline.oquitogo.com/api/payment/paydunya/webhook déclaré chez PayDunya, paiement sandbox complété pour valider le crédit automatique, puis Mode Live.
+
+---
+Task ID: 37 (session 26 — PayDunya : la validation vient du statut PayDunya, pas de l'admin)
+Agent: main (Z.ai Code)
+Task: l'utilisateur précise que pour PayDunya il n'y a PAS besoin de validation admin — la validation vient du statut PayDunya. Vérifier toute la chaîne et supprimer toute trace de validation admin dans le flux PayDunya.
+
+Work Log:
+- Vérifié paydunya-actions.ts : le settle crédite déjà automatiquement dès que PayDunya confirme (reconfirmation systématique, flip conditionnel anti double-crédit) — backend OK.
+- PROBLÈME 1 (file admin) : GET /api/admin/deposits?status=PENDING incluait les dépôts PayDunya → ils apparaissaient dans « Demandes de recharge » avec boutons Valider/Échoué comme s'ils attendaient l'admin. FIX : filtre serveur `OR: [{provider: null}, {provider: {not: 'PAYDUNYA'}}]` (provider nullable pour les USSD legacy) — la file n'affiche plus que les dépôts à validation manuelle (Mixx by Yas).
+- PROBLÈME 2 (trou de sécurité) : PATCH validate sur un dépôt PayDunya appelait processDeposit → crédit DIRECT sans reconfirmer PayDunya. FIX : branche dédiée — si provider=PAYDUNYA, toute action admin passe par settlePaydunyaDeposit (reconfirmation réelle) : validate+completed → « confirmé par PayDunya, crédité » ; validate+pending → 200 info « crédité automatiquement dès confirmation » ; reject tant que PayDunya dit en cours → 400 refusé ; reject/validate sur paiement non abouti → FAILED. processDeposit réservé à l'USSD.
+- UI admin : handleDepositAction affiche désormais le message précis du serveur (toast) ; carte de dépôt défensive — si un dépôt PayDunya apparaît jamais, bouton « Vérifier le statut PayDunya » au lieu de Valider/Échoué.
+- UI client (WalletScreen) : badge des dépôts PayDunya PENDING affiche « Confirmation PayDunya… » au lieu de « En attente » (helper txStatusLabel aux 2 emplacements de rendu).
+- TESTS RÉELS en local (comptes démo + clés sandbox) : création facture 1500 XOF (token test_inLS3GJQbq) → file admin : 1 dépôt Mixx by Yas seulement, PayDunya absent → PATCH validate admin → reconfirmation RÉELLE sandbox → {success, pending, message} → PATCH reject → 400 « paiement toujours en cours » → solde client INCHANGÉ (5000 XOF) → aucun crédit sans confirmation PayDunya.
+- Flux USSD Mixx by Yas INTACT : validation manuelle admin conservée (toast « Un administrateur validera » uniquement dans ce flux).
+- Lint OK. Branche fix/paydunya-validation-auto, commit 8dd427f (🔧), merge main + push. Worklog en commit séparé.
+
+Stage Summary:
+- PayDunya = validation 100 % AUTOMATIQUE par le statut PayDunya (webhook IPN + poller client 6 s + settle reconfirmant) ; l'admin n'intervient JAMAIS dans le crédit et ne peut plus ni créditer sans confirmation ni rejeter un paiement en cours.
+- La file « Demandes de recharge » admin ne contient plus que l'USSD Mixx by Yas.
+- En attente : déploiement prod (--update) puis config admin PayDunya + IPN + test sandbox complet (crédit automatique à « completed »).
