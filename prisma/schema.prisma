@@ -651,9 +651,15 @@ model WalletTransaction {
   orderId         String?
   
   // External payment reference (for deposits)
-  externalRef     String?
+  externalRef     String?           // External reference (DEP..., PayDunya)
   phoneNumber     String?           // Phone number used for deposit
-  paymentMethod   String?           // "Mixx by Yas", "Flooz", etc.
+  paymentMethod   String?           // "Mixx by Yas", "Flooz", "PayDunya"
+  provider        String?           // "MIXX_USSD" | "PAYDUNYA" — système de paiement utilisé
+  
+  // PayDunya (paiement en ligne via page de checkout)
+  paydunyaToken   String?           // Token de la facture PayDunya
+  paydunyaUrl     String?           // URL de la page de paiement PayDunya
+  paydunyaStatusCheckedAt DateTime? // Dernière vérification du statut PayDunya
   
   // USSD confirmation
   ussdCode        String?           // USSD code generated
