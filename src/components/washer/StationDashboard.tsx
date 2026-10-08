@@ -43,9 +43,14 @@ import {
   Image as ImageIcon,
   Calendar,
   User as UserIcon,
+  ImagePlus,
+  X,
+  LocateFixed,
+  Navigation,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { parseJsonResponse } from '@/lib/json-helper';
+import { fileToCompressedDataUrl, buildStationDirectionsUrl } from '@/lib/image-utils';
 import type { User, Washer, Station, Service, Order, OrderStatus } from '@/types';
 
 // ---------- Types ----------
@@ -61,7 +66,22 @@ interface StationFormValues {
   phone: string;
   description: string;
   email: string;
+  images: string[];      // Photos de la station (devanture…) — Data URLs
+  latitude: string;      // Position GPS (chaînes de formulaire, vides si non définie)
+  longitude: string;
 }
+
+// Parse le champ JSON `images` d'une station en tableau sûr
+function parseStationImages(images: unknown): string[] {
+  try {
+    const raw = typeof images === 'string' ? JSON.parse(images) : images;
+    return Array.isArray(raw) ? raw.filter((i): i is string => typeof i === 'string' && i.length > 0) : [];
+  } catch {
+    return [];
+  }
+}
+
+export { parseStationImages };
 
 interface ServiceFormValues {
   name: string;
@@ -117,6 +137,8 @@ export function StationDashboard({ washer, user, onLogout }: StationDashboardPro
   const [isLoadingStation, setIsLoadingStation] = useState(false);
   const [isStationDialogOpen, setIsStationDialogOpen] = useState(false);
   const [isSavingStation, setIsSavingStation] = useState(false);
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
+  const [isGettingPosition, setIsGettingPosition] = useState(false);
 
   // Services state
   const [services, setServices] = useState<Service[]>([]);
@@ -137,6 +159,9 @@ export function StationDashboard({ washer, user, onLogout }: StationDashboardPro
     phone: '',
     description: '',
     email: '',
+    images: [],
+    latitude: '',
+    longitude: '',
   });
 
   // Form state for service
@@ -218,8 +243,72 @@ export function StationDashboard({ washer, user, onLogout }: StationDashboardPro
       phone: station?.phone || '',
       description: station?.description || '',
       email: station?.email || '',
+      images: parseStationImages(station?.images),
+      latitude: station?.latitude != null ? String(station.latitude) : '',
+      longitude: station?.longitude != null ? String(station.longitude) : '',
     });
     setIsStationDialogOpen(true);
+  };
+
+  // Ajout de photos (devanture, enseigne…) — compression automatique
+  const handleAddStationImages = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = ''; // permet de re-sélectionner le même fichier
+    if (files.length === 0) return;
+    const remaining = 5 - stationForm.images.length;
+    if (remaining <= 0) {
+      toast.error('Maximum 5 photos par station');
+      return;
+    }
+    const selected = files.slice(0, remaining);
+    setIsUploadingImages(true);
+    try {
+      const added: string[] = [];
+      for (const file of selected) {
+        if (!file.type.startsWith('image/')) {
+          toast.error(`« ${file.name} » n'est pas une image`);
+          continue;
+        }
+        added.push(await fileToCompressedDataUrl(file, 1280, 0.85));
+      }
+      if (added.length > 0) {
+        setStationForm((prev) => ({ ...prev, images: [...prev.images, ...added] }));
+        toast.success(`${added.length} photo${added.length > 1 ? 's' : ''} ajoutée${added.length > 1 ? 's' : ''}`);
+      }
+    } catch {
+      toast.error('Impossible de lire cette image');
+    } finally {
+      setIsUploadingImages(false);
+    }
+  };
+
+  const handleRemoveStationImage = (index: number) => {
+    setStationForm((prev) => ({ ...prev, images: prev.images.filter((_, i) => i !== index) }));
+  };
+
+  // Position GPS automatique depuis l'appareil
+  const handleUseCurrentPosition = () => {
+    if (!navigator.geolocation) {
+      toast.error("La géolocalisation n'est pas disponible sur cet appareil");
+      return;
+    }
+    setIsGettingPosition(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setStationForm((prev) => ({
+          ...prev,
+          latitude: pos.coords.latitude.toFixed(6),
+          longitude: pos.coords.longitude.toFixed(6),
+        }));
+        setIsGettingPosition(false);
+        toast.success('Position GPS enregistrée');
+      },
+      () => {
+        setIsGettingPosition(false);
+        toast.error("Impossible d'obtenir votre position (autorisez la géolocalisation)");
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
+    );
   };
 
   const handleSaveStation = async () => {
@@ -247,6 +336,9 @@ export function StationDashboard({ washer, user, onLogout }: StationDashboardPro
           phone: stationForm.phone.trim() || null,
           email: stationForm.email.trim() || null,
           description: stationForm.description.trim() || null,
+          images: JSON.stringify(stationForm.images),
+          latitude: stationForm.latitude ? parseFloat(stationForm.latitude) : null,
+          longitude: stationForm.longitude ? parseFloat(stationForm.longitude) : null,
         }),
       });
       const data = await parseJsonResponse<{ success: boolean; station: Station; error?: string }>(res);
@@ -563,6 +655,109 @@ export function StationDashboard({ washer, user, onLogout }: StationDashboardPro
                 rows={3}
               />
             </div>
+
+            {/* Photos de la station (devanture...) */}
+            <div className="space-y-2">
+              <Label>Photos de la station (devanture, enseigne…)</Label>
+              <div className="flex flex-wrap gap-2">
+                {stationForm.images.map((img, index) => (
+                  <div key={index} className="relative w-20 h-20">
+                    { }
+                    <img
+                      src={img}
+                      alt={`Photo ${index + 1}`}
+                      className="w-20 h-20 object-cover rounded-lg border border-[#E0E0E0]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveStationImage(index)}
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[#E53935] text-white rounded-full flex items-center justify-center shadow-sm"
+                      aria-label={`Retirer la photo ${index + 1}`}
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                    {index === 0 && (
+                      <span className="absolute bottom-0 left-0 right-0 bg-[#212121] text-white text-[9px] text-center rounded-b-lg py-0.5">
+                        Devanture
+                      </span>
+                    )}
+                  </div>
+                ))}
+                {stationForm.images.length < 5 && (
+                  <label
+                    htmlFor="station-images-input"
+                    className={`w-20 h-20 rounded-lg border-2 border-dashed border-[#FFB74D] bg-[#FFF8F0] flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-[#FFF3E0] transition-colors ${isUploadingImages ? 'opacity-60 pointer-events-none' : ''}`}
+                  >
+                    {isUploadingImages ? (
+                      <Loader2 className="w-5 h-5 text-[#FF9800] animate-spin" />
+                    ) : (
+                      <>
+                        <ImagePlus className="w-5 h-5 text-[#FF9800]" />
+                        <span className="text-[10px] text-[#E65100] font-medium">Ajouter</span>
+                      </>
+                    )}
+                  </label>
+                )}
+              </div>
+              <input
+                id="station-images-input"
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handleAddStationImages}
+              />
+              <p className="text-xs text-[#9E9E9E]">
+                La première photo sert de devanture visible par les clients (max 5, compression automatique).
+              </p>
+            </div>
+
+            {/* Position GPS */}
+            <div className="space-y-2">
+              <Label>Localisation GPS (guide les clients vers vous)</Label>
+              {stationForm.latitude && stationForm.longitude ? (
+                <div className="flex items-center justify-between bg-[#E8F5E9] border border-[#A5D6A7] rounded-lg p-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <LocateFixed className="w-4 h-4 text-[#2E7D32] flex-shrink-0" />
+                    <span className="text-xs text-[#2E7D32] truncate">
+                      Position enregistrée ({parseFloat(stationForm.latitude).toFixed(4)}, {parseFloat(stationForm.longitude).toFixed(4)})
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setStationForm(prev => ({ ...prev, latitude: '', longitude: '' }))}
+                    className="text-xs text-[#C62828] font-medium flex-shrink-0 ml-2"
+                  >
+                    Retirer
+                  </button>
+                </div>
+              ) : (
+                <p className="text-xs text-[#9E9E9E]">
+                  Aucune position GPS — les clients seront guidés par l'adresse uniquement.
+                </p>
+              )}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleUseCurrentPosition}
+                disabled={isGettingPosition}
+                className="w-full h-11 border-[#4CAF50] text-[#2E7D32] hover:bg-[#E8F5E9]"
+              >
+                {isGettingPosition ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Localisation…
+                  </>
+                ) : (
+                  <>
+                    <LocateFixed className="w-4 h-4 mr-2" /> Utiliser ma position actuelle
+                  </>
+                )}
+              </Button>
+              <p className="text-xs text-[#9E9E9E]">
+                Placez-vous devant votre station, puis appuyez sur ce bouton : les clients pourront
+                lancer un itinéraire directement depuis l'application.
+              </p>
+            </div>
           </div>
           <DialogFooter>
             <Button
@@ -777,18 +972,18 @@ function StationInfoSection({
                 <div className="flex items-center gap-1">
                   <Star className="w-4 h-4 fill-white text-white" />
                   <span className="text-sm">{station.rating.toFixed(1)}</span>
-                  <span className="text-xs opacity-80">
+                  <span className="text-xs text-[#FFF3E0]">
                     ({station.totalRatings} avis)
                   </span>
                 </div>
               ) : (
-                <span className="text-xs opacity-80">Pas encore d&apos;avis</span>
+                <span className="text-xs text-[#FFF3E0]">Pas encore d&apos;avis</span>
               )}
             </div>
             <Button
               size="sm"
               onClick={onEdit}
-              className="bg-white text-[#FF9800] hover:bg-white/90 flex-shrink-0"
+              className="bg-white text-[#FF9800] hover:bg-[#FFF3E0] flex-shrink-0"
             >
               <Edit className="w-4 h-4 mr-1" /> Modifier
             </Button>
@@ -1114,24 +1309,73 @@ function StationProfileSection({
 
       {station ? (
         <Card className="border-0 shadow-sm">
-          <CardContent className="p-4 space-y-2">
+          <CardContent className="p-4 space-y-3">
             <h3 className="font-semibold text-[#212121] text-sm">Ma station</h3>
-            <div className="text-sm space-y-1.5 text-[#757575]">
-              <div className="flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-[#FF9800]" />
-                <span>{station.name}</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <MapPin className="w-4 h-4 text-[#FF9800] mt-0.5" />
-                <span className="break-words">{station.address}</span>
-              </div>
-              {station.phone ? (
-                <div className="flex items-center gap-2">
-                  <Phone className="w-4 h-4 text-[#FF9800]" />
-                  <span>{station.phone}</span>
-                </div>
-              ) : null}
-            </div>
+            {(() => {
+              const photos = parseStationImages(station.images);
+              const hasGps = station.latitude != null && station.longitude != null;
+              return (
+                <>
+                  {photos.length > 0 ? (
+                    <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+                      {photos.map((img, i) => (
+                        <div key={i} className="relative flex-shrink-0">
+                          { }
+                          <img
+                            src={img}
+                            alt={`Photo ${i + 1} de ${station.name}`}
+                            className="w-32 h-24 object-cover rounded-lg border border-[#E0E0E0]"
+                          />
+                          {i === 0 && (
+                            <span className="absolute bottom-0 left-0 right-0 bg-[#212121] text-white text-[9px] text-center rounded-b-lg py-0.5">
+                              Devanture
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="h-24 rounded-lg bg-[#FFF3E0] flex flex-col items-center justify-center gap-1">
+                      <ImageIcon className="w-6 h-6 text-[#FFB74D]" />
+                      <p className="text-xs text-[#E65100]">Aucune photo — ajoutez votre devanture</p>
+                    </div>
+                  )}
+                  <div className="text-sm space-y-1.5 text-[#757575]">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="w-4 h-4 text-[#FF9800]" />
+                      <span>{station.name}</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <MapPin className="w-4 h-4 text-[#FF9800] mt-0.5" />
+                      <span className="break-words">{station.address}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <LocateFixed className={`w-4 h-4 ${hasGps ? 'text-[#4CAF50]' : 'text-[#BDBDBD]'}`} />
+                      <span className={hasGps ? 'text-[#2E7D32]' : ''}>
+                        {hasGps
+                          ? `Position GPS enregistrée (${station.latitude.toFixed(4)}, ${station.longitude.toFixed(4)})`
+                          : 'Position GPS non définie'}
+                      </span>
+                    </div>
+                    {station.phone ? (
+                      <div className="flex items-center gap-2">
+                        <Phone className="w-4 h-4 text-[#FF9800]" />
+                        <span>{station.phone}</span>
+                      </div>
+                    ) : null}
+                  </div>
+                  <a
+                    href={buildStationDirectionsUrl(station.latitude, station.longitude, station.address)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 w-full h-10 bg-[#E8F5E9] text-[#2E7D32] rounded-lg text-sm font-medium hover:bg-[#C8E6C9] transition-colors"
+                  >
+                    <Navigation className="w-4 h-4" />
+                    Voir ma position sur Google Maps
+                  </a>
+                </>
+              );
+            })()}
           </CardContent>
         </Card>
       ) : null}

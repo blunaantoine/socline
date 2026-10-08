@@ -24,6 +24,7 @@ export async function POST(request: NextRequest) {
       stationLongitude,
       stationPhone,
       stationDescription,
+      stationImages, // JSON string du tableau de photos (devanture…)
     } = body;
 
     // Validate required fields
@@ -130,6 +131,10 @@ export async function POST(request: NextRequest) {
             longitude: stationLongitude ? parseFloat(stationLongitude) : null,
             phone: stationPhone || cleanPhone,
             description: stationDescription || null,
+            images:
+              typeof stationImages === 'string' && stationImages.trim().startsWith('[')
+                ? stationImages
+                : null,
             ownerId: user.id,
           },
         });

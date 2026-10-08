@@ -16,7 +16,7 @@ import {
   MapPin, Search, Star, Clock, Car, Building, Armchair,
   CheckCircle, Phone, Loader2, Heart,
   Zap, Droplets, Sparkles, Crown, RefreshCw,
-  Home, Calendar, MessageCircle, User, Bell, Settings, LogOut, Wallet, Copy, Plus, ChevronRight, Headphones, MessageSquare
+  Home, Calendar, MessageCircle, User, Bell, Settings, LogOut, Wallet, Copy, Plus, ChevronRight, Headphones, MessageSquare, Navigation
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { onSoclineNotification } from '@/components/RealtimeNotifications';
@@ -35,6 +35,7 @@ import { SubscriptionPanel } from './SubscriptionPanel';
 import { ActivityHistory, AddressesManager, AccountSettings } from './ClientSettings';
 import { ServiceIcon, CoverageBadge, CoverageDetails } from '@/components/shared/ServiceCoverage';
 import { formatPrice, getServiceCoverage } from '@/lib/service-coverage';
+import { buildStationDirectionsUrl } from '@/lib/image-utils';
 
 const navItems = [
   { id: 'home', icon: Home, label: 'Accueil' },
@@ -359,7 +360,7 @@ export function ClientApp() {
                   <MapPin className="w-5 h-5 text-white" />
                 )}
                 <div className="text-left">
-                  <p className="text-xs text-white/80">Position</p>
+                  <p className="text-xs text-[#FFF3E0]">Position</p>
                   <p className="text-sm font-medium text-white truncate max-w-[140px]">{userLocation?.address || 'Lomé'}</p>
                 </div>
               </button>
@@ -650,6 +651,16 @@ function HomeContent({
     }
   };
 
+  // Toutes les photos d'une station (devanture, enseigne…)
+  const getStationImages = (station: any): string[] => {
+    try {
+      const images = JSON.parse(station?.images || '[]');
+      return Array.isArray(images) ? images.filter((i: unknown) => typeof i === 'string' && i.length > 0) : [];
+    } catch {
+      return [];
+    }
+  };
+
   return (
     <div className="p-4 space-y-4">
       {/* Search - Android style */}
@@ -691,7 +702,7 @@ function HomeContent({
                     style={{ objectPosition: currentPromo.imagePosition || 'center' }}
                   />
                 )}
-                <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/60 to-transparent">
+                <div className="absolute bottom-0 left-0 right-0 p-3 bg-[#212121]">
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="text-white font-bold text-sm">
@@ -707,10 +718,10 @@ function HomeContent({
                             navigator.clipboard.writeText(currentPromo.code!);
                             toast.success('Code promo copié !');
                           }}
-                          className="bg-white/20 backdrop-blur rounded px-2 py-1 inline-flex items-center gap-1 hover:bg-white/30 transition-colors active:scale-95"
+                          className="bg-white text-[#E65100] rounded px-2 py-1 inline-flex items-center gap-1 hover:bg-[#FFF3E0] transition-colors active:scale-95"
                         >
-                          <Copy className="w-3 h-3 text-white" />
-                          <span className="text-white text-xs">Copier le code</span>
+                          <Copy className="w-3 h-3 text-[#E65100]" />
+                          <span className="text-[#E65100] text-xs">Copier le code</span>
                         </button>
                       )}
                       <button
@@ -726,14 +737,14 @@ function HomeContent({
             ) : (
               // Text mode - show gradient background with all details
               <div className="bg-gradient-to-r from-[#FF9800] to-[#F57C00] p-4">
-                <p className="text-white/90 text-xs font-medium mb-1">Offre spéciale</p>
+                <p className="text-[#FFF8F0] text-xs font-medium mb-1">Offre spéciale</p>
                 <h2 className="text-white text-lg font-bold mb-2">
                   {currentPromo.discountType === 'PERCENTAGE' 
                     ? `-${currentPromo.discountValue}% ${currentPromo.name}`
                     : `-${currentPromo.discountValue.toLocaleString()}F ${currentPromo.name}`}
                 </h2>
                 {currentPromo.description && (
-                  <p className="text-white/80 text-sm mb-2">{currentPromo.description}</p>
+                  <p className="text-[#FFF3E0] text-sm mb-2">{currentPromo.description}</p>
                 )}
                 {currentPromo.code && (
                   <button
@@ -741,10 +752,10 @@ function HomeContent({
                       navigator.clipboard.writeText(currentPromo.code!);
                       toast.success('Code promo copié !');
                     }}
-                    className="bg-white/20 rounded px-3 py-1.5 inline-flex items-center gap-2 mb-3 hover:bg-white/30 transition-colors active:scale-95"
+                    className="bg-white rounded px-3 py-1.5 inline-flex items-center gap-2 mb-3 hover:bg-[#FFF3E0] transition-colors active:scale-95"
                   >
-                    <span className="text-white font-mono text-sm font-bold">{currentPromo.code}</span>
-                    <Copy className="w-4 h-4 text-white/80" />
+                    <span className="text-[#E65100] font-mono text-sm font-bold">{currentPromo.code}</span>
+                    <Copy className="w-4 h-4 text-[#E65100]" />
                   </button>
                 )}
                 <button
@@ -998,7 +1009,7 @@ function HomeContent({
                           <div className="flex justify-between items-center">
                             <div>
                               <p className="font-bold text-sm">{promo.name}</p>
-                              <p className="text-xs opacity-90">
+                              <p className="text-xs text-[#FFF8F0]">
                                 {promo.discountType === 'PERCENTAGE' 
                                   ? `-${promo.discountValue}% de réduction`
                                   : `-${promo.discountValue?.toLocaleString()} XOF de réduction`}
@@ -1010,7 +1021,7 @@ function HomeContent({
                                   navigator.clipboard.writeText(promo.code);
                                   toast.success('Code promo copié !');
                                 }}
-                                className="bg-white/20 rounded-lg px-2 py-1 text-xs font-mono"
+                                className="bg-white text-[#E65100] rounded-lg px-2 py-1 text-xs font-mono"
                               >
                                 {promo.code}
                               </button>
@@ -1051,6 +1062,27 @@ function HomeContent({
               </DialogHeader>
               
               <div className="space-y-4 py-2">
+                {/* Galerie photos (devanture, enseigne…) */}
+                {getStationImages(selectedStation).length > 0 && (
+                  <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+                    {getStationImages(selectedStation).map((img, i) => (
+                      <div key={i} className="relative flex-shrink-0">
+                        { }
+                        <img
+                          src={img}
+                          alt={`Photo ${i + 1} — ${selectedStation.name}`}
+                          className="w-44 h-32 object-cover rounded-xl border border-[#E0E0E0]"
+                        />
+                        {i === 0 && (
+                          <span className="absolute bottom-0 left-0 right-0 bg-[#212121] text-white text-[10px] text-center rounded-b-xl py-0.5">
+                            Devanture
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {/* Station info card */}
                 <div className="bg-[#FAFAFA] rounded-xl p-3 space-y-1.5">
                   <div className="flex items-start gap-2 text-sm text-[#616161]">
@@ -1069,6 +1101,24 @@ function HomeContent({
                       <span>{selectedStation.rating.toFixed(1)} ({selectedStation.totalRatings} avis)</span>
                     </div>
                   )}
+                  {/* Itinéraire : guide le client vers la station */}
+                  <button
+                    onClick={() =>
+                      window.open(
+                        buildStationDirectionsUrl(
+                          selectedStation.latitude,
+                          selectedStation.longitude,
+                          selectedStation.address
+                        ),
+                        '_blank',
+                        'noopener,noreferrer'
+                      )
+                    }
+                    className="flex items-center justify-center gap-2 w-full h-10 mt-1 bg-[#4CAF50] hover:bg-[#43A047] text-white rounded-lg text-sm font-semibold transition-colors active:scale-[0.98]"
+                  >
+                    <Navigation className="w-4 h-4" />
+                    Itinéraire — aller à la station
+                  </button>
                 </div>
 
                 {/* Description */}
@@ -1296,12 +1346,12 @@ function ProfileContent({ user, onLogout }: { user: any; onLogout: () => void })
       {/* Support Client */}
       <div className="bg-gradient-to-r from-[#FF9800] to-[#F57C00] rounded-lg p-4 shadow-sm">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+          <div className="w-10 h-10 bg-[#FFAD33] rounded-full flex items-center justify-center">
             <Headphones className="w-5 h-5 text-white" />
           </div>
           <div>
             <h3 className="font-semibold text-white">Support Client</h3>
-            <p className="text-xs text-white/80">Nous sommes là pour vous aider</p>
+            <p className="text-xs text-[#FFF3E0]">Nous sommes là pour vous aider</p>
           </div>
         </div>
         <div className="flex gap-2">

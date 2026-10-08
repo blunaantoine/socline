@@ -9,9 +9,10 @@ import {
   Car, Phone, User, Lock, Palette, ArrowLeft, 
   Eye, EyeOff, CheckCircle, Loader2, AlertCircle,
   FileText, Download, IdCard, CreditCard, ChevronRight,
-  MapPin, Building, Info, TrendingUp
+  MapPin, Building, Info, TrendingUp, ImagePlus, X, LocateFixed
 } from 'lucide-react';
 import { useAuthStore } from '@/store';
+import { fileToCompressedDataUrl } from '@/lib/image-utils';
 
 type WasherType = 'INDEPENDENT' | 'STATION_OWNER';
 
@@ -64,7 +65,7 @@ function WasherRegistrationInfo({ onBack, onContinue }: { onBack: () => void; on
           <ArrowLeft className="w-6 h-6" />
         </button>
         <h1 className="text-2xl font-bold text-white">Devenir Laveur</h1>
-        <p className="text-white/80 mt-1">Rejoignez notre équipe de partenaires</p>
+        <p className="text-[#FFF3E0] mt-1">Rejoignez notre équipe de partenaires</p>
       </div>
 
       {/* Content */}
@@ -175,7 +176,7 @@ function WasherRegistrationInfo({ onBack, onContinue }: { onBack: () => void; on
                   className={`flex items-center gap-3 p-3 ${idx % 2 === 0 ? 'bg-[#FFF8F0]' : 'bg-white'} ${idx !== partnerLevels.length - 1 ? 'border-b border-[#F0F0F0]' : ''}`}
                 >
                   <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#FF9800] to-[#F57C00] text-white flex flex-col items-center justify-center flex-shrink-0">
-                    <span className="text-[9px] leading-none opacity-90">Niv.</span>
+                    <span className="text-[9px] leading-none text-[#FFF8F0]">Niv.</span>
                     <span className="text-sm font-bold leading-none">{lvl.level}</span>
                   </div>
                   <div className="flex-1 min-w-0">
@@ -228,7 +229,7 @@ function WasherRegistrationInfo({ onBack, onContinue }: { onBack: () => void; on
           {/* Contact */}
           <div className="bg-gradient-to-r from-[#4CAF50] to-[#43A047] rounded-xl p-4 text-white">
             <p className="font-semibold">Besoin d&apos;aide ?</p>
-            <p className="text-sm opacity-90 mt-1">Contactez notre équipe support</p>
+            <p className="text-sm text-[#E8F5E9] mt-1">Contactez notre équipe support</p>
             <div className="flex gap-2 mt-3">
               <a
                 href="tel:+22871998155"
@@ -284,6 +285,10 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
   const [stationAddress, setStationAddress] = useState('');
   const [stationPhone, setStationPhone] = useState('');
   const [stationDescription, setStationDescription] = useState('');
+  const [stationImages, setStationImages] = useState<string[]>([]);       // Photo(s) de devanture (Data URLs)
+  const [isUploadingStationImage, setIsUploadingStationImage] = useState(false);
+  const [isLocatingStation, setIsLocatingStation] = useState(false);
+  const [stationCoords, setStationCoords] = useState<{ lat: string; lng: string } | null>(null);
   
   // Helper: returns true when the current registration flow is for a washer
   const isWasherRegistration = washerType !== null;
@@ -398,6 +403,57 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
     }
   };
 
+  // Photo de devanture à l'inscription — compression automatique
+  const handleStationImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = ''; // permet de re-sélectionner le même fichier
+    if (files.length === 0) return;
+    const remaining = 5 - stationImages.length;
+    if (remaining <= 0) {
+      setError('Maximum 5 photos pour la station');
+      return;
+    }
+    setIsUploadingStationImage(true);
+    try {
+      const added: string[] = [];
+      for (const file of files.slice(0, remaining)) {
+        if (!file.type.startsWith('image/')) {
+          setError(`« ${file.name} » n'est pas une image`);
+          continue;
+        }
+        added.push(await fileToCompressedDataUrl(file, 1280, 0.85));
+      }
+      if (added.length > 0) setStationImages((prev) => [...prev, ...added]);
+    } catch {
+      setError('Impossible de lire cette image');
+    } finally {
+      setIsUploadingStationImage(false);
+    }
+  };
+
+  // Position GPS de la station à l'inscription
+  const handleStationLocate = () => {
+    if (!navigator.geolocation) {
+      setError("La géolocalisation n'est pas disponible sur cet appareil");
+      return;
+    }
+    setIsLocatingStation(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setStationCoords({
+          lat: pos.coords.latitude.toFixed(6),
+          lng: pos.coords.longitude.toFixed(6),
+        });
+        setIsLocatingStation(false);
+      },
+      () => {
+        setIsLocatingStation(false);
+        setError("Impossible d'obtenir votre position (autorisez la géolocalisation)");
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
+    );
+  };
+
   // Verify OTP and complete registration
   const handleVerifyOtp = async () => {
     setError(null);
@@ -420,6 +476,13 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
           // stationPhone defaults to user phone if not provided
           requestBody.stationPhone = stationPhone.trim() || phone;
           requestBody.stationDescription = stationDescription;
+          if (stationImages.length > 0) {
+            requestBody.stationImages = JSON.stringify(stationImages);
+          }
+          if (stationCoords) {
+            requestBody.stationLatitude = stationCoords.lat;
+            requestBody.stationLongitude = stationCoords.lng;
+          }
         }
       } else {
         requestBody.plateNumber = plateNumber;
@@ -528,7 +591,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
             <ArrowLeft className="w-6 h-6" />
           </button>
           <h1 className="text-2xl font-bold text-white">Devenir Laveur</h1>
-          <p className="text-white/80 mt-1">Choisissez votre type d&apos;activité</p>
+          <p className="text-[#FFF3E0] mt-1">Choisissez votre type d&apos;activité</p>
         </div>
 
         {/* Content */}
@@ -616,7 +679,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
           <h1 className="text-2xl font-bold text-white">
             {isStation ? 'Inscription Station' : 'Inscription Laveur'}
           </h1>
-          <p className="text-white/80 mt-1">
+          <p className="text-[#FFF3E0] mt-1">
             {isStation
               ? 'Créez votre compte de station de lavage'
               : 'Créez votre compte de laveur indépendant'}
@@ -751,6 +814,102 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
                     rows={3}
                   />
                 </div>
+
+                {/* Photo de la devanture */}
+                <div className="space-y-2">
+                  <Label>Photo de la devanture (optionnel)</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {stationImages.map((img, index) => (
+                      <div key={index} className="relative w-20 h-20">
+                        { }
+                        <img
+                          src={img}
+                          alt={`Photo ${index + 1}`}
+                          className="w-20 h-20 object-cover rounded-lg border border-[#E0E0E0]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setStationImages((prev) => prev.filter((_, i) => i !== index))}
+                          className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[#E53935] text-white rounded-full flex items-center justify-center shadow-sm"
+                          aria-label={`Retirer la photo ${index + 1}`}
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                        {index === 0 && (
+                          <span className="absolute bottom-0 left-0 right-0 bg-[#212121] text-white text-[9px] text-center rounded-b-lg py-0.5">
+                            Devanture
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                    {stationImages.length < 5 && (
+                      <label
+                        htmlFor="register-station-images"
+                        className={`w-20 h-20 rounded-lg border-2 border-dashed border-[#FFB74D] bg-[#FFF8F0] flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-[#FFF3E0] transition-colors ${isUploadingStationImage ? 'opacity-60 pointer-events-none' : ''}`}
+                      >
+                        {isUploadingStationImage ? (
+                          <Loader2 className="w-5 h-5 text-[#FF9800] animate-spin" />
+                        ) : (
+                          <>
+                            <ImagePlus className="w-5 h-5 text-[#FF9800]" />
+                            <span className="text-[10px] text-[#E65100] font-medium">Ajouter</span>
+                          </>
+                        )}
+                      </label>
+                    )}
+                  </div>
+                  <input
+                    id="register-station-images"
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={handleStationImageChange}
+                  />
+                  <p className="text-xs text-[#9E9E9E]">
+                    Montrez votre station aux clients (max 5 photos, compression automatique).
+                  </p>
+                </div>
+
+                {/* Position GPS de la station */}
+                <div className="space-y-2">
+                  <Label>Position GPS (optionnel)</Label>
+                  {stationCoords ? (
+                    <div className="flex items-center justify-between bg-[#E8F5E9] border border-[#A5D6A7] rounded-lg p-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <LocateFixed className="w-4 h-4 text-[#2E7D32] flex-shrink-0" />
+                        <span className="text-xs text-[#2E7D32] truncate">
+                          Position enregistrée — les clients pourront être guidés vers vous
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setStationCoords(null)}
+                        className="text-xs text-[#C62828] font-medium flex-shrink-0 ml-2"
+                      >
+                        Retirer
+                      </button>
+                    </div>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleStationLocate}
+                      disabled={isLocatingStation}
+                      className="w-full h-11 border-[#4CAF50] text-[#2E7D32] hover:bg-[#E8F5E9]"
+                    >
+                      {isLocatingStation ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Localisation…
+                        </>
+                      ) : (
+                        <>
+                          <LocateFixed className="w-4 h-4 mr-2" /> Utiliser ma position actuelle
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
               </>
             )}
 
@@ -849,20 +1008,20 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
             className="w-24 h-24 mb-6 object-contain"
           />
           <h1 className="text-3xl font-bold text-white mb-2">Socline</h1>
-          <p className="text-white/80 text-center">Votre lavage auto à domicile</p>
+          <p className="text-[#FFF3E0] text-center">Votre lavage auto à domicile</p>
         </div>
         
         {/* Buttons */}
         <div className="p-6 space-y-3">
           <Button
             onClick={() => setMode('login')}
-            className="w-full h-14 bg-white text-[#FF9800] hover:bg-white/90 rounded-2xl font-semibold text-lg"
+            className="w-full h-14 bg-white text-[#FF9800] hover:bg-[#FFF3E0] rounded-2xl font-semibold text-lg"
           >
             Se connecter
           </Button>
           <button
             onClick={() => setMode('register')}
-            className="w-full h-14 border-2 border-white text-white bg-transparent hover:bg-white/10 rounded-2xl font-semibold text-lg transition-colors"
+            className="w-full h-14 border-2 border-white text-white bg-[#FFA21A] hover:bg-[#FFB74D] rounded-2xl font-semibold text-lg transition-colors"
           >
             Créer un compte
           </button>
@@ -873,7 +1032,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
               setInfoOrigin('welcome');
               setMode('washer-info');
             }}
-            className="w-full text-center text-white/60 text-sm hover:text-white/80 transition-colors mt-4 py-2"
+            className="w-full text-center text-[#FFCC80] text-sm hover:text-[#FFF3E0] transition-colors mt-4 py-2"
           >
             <span className="flex items-center justify-center gap-1">
               Devenir partenaire laveur
@@ -895,7 +1054,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
             <ArrowLeft className="w-6 h-6" />
           </button>
           <h1 className="text-2xl font-bold text-white">Connexion</h1>
-          <p className="text-white/80 mt-1">Entrez vos identifiants</p>
+          <p className="text-[#FFF3E0] mt-1">Entrez vos identifiants</p>
         </div>
 
         {/* Form */}
@@ -992,7 +1151,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
             <ArrowLeft className="w-6 h-6" />
           </button>
           <h1 className="text-2xl font-bold text-white">Vérification</h1>
-          <p className="text-white/80 mt-1">Entrez le code envoyé au +228 {phone}</p>
+          <p className="text-[#FFF3E0] mt-1">Entrez le code envoyé au +228 {phone}</p>
         </div>
 
         {/* Form */}
@@ -1093,7 +1252,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
           <ArrowLeft className="w-6 h-6" />
         </button>
         <h1 className="text-2xl font-bold text-white">Inscription</h1>
-        <p className="text-white/80 mt-1">Créez votre compte en quelques étapes</p>
+        <p className="text-[#FFF3E0] mt-1">Créez votre compte en quelques étapes</p>
       </div>
 
       {/* Form */}

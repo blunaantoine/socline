@@ -36,11 +36,12 @@ import {
   TrendingUp, Clock, Star, Settings, Bell, Plus,
   CheckCircle, XCircle, AlertCircle, Search,
   ChevronDown, Download, Eye, Edit, Trash2, Tag,
-  RefreshCw, Loader2, ArrowLeft, LogOut, Percent, Wallet, Phone, Image as ImageIcon, Move, Banknote, Receipt, Video as VideoIcon, Film, Building2
+  RefreshCw, Loader2, ArrowLeft, LogOut, Percent, Wallet, Phone, Image as ImageIcon, Move, Banknote, Receipt, Video as VideoIcon, Film, Building2, Navigation
 } from 'lucide-react';
 import { HideableBalanceLight } from '@/components/ui/hideable-balance';
 import { toast } from 'sonner';
 import { parseJsonResponse } from '@/lib/json-helper';
+import { buildStationDirectionsUrl } from '@/lib/image-utils';
 import { useAutoRefresh, type RefreshSource } from '@/hooks/useAutoRefresh';
 import { AdminNotificationCenter } from '@/components/admin/AdminNotificationCenter';
 
@@ -130,7 +131,7 @@ function ImagePositionEditor({
   return (
     <div className="relative w-full h-full">
       {/* Instructions */}
-      <div className="absolute top-2 left-2 z-10 bg-black/50 text-white text-[10px] px-2 py-1 rounded-full flex items-center gap-1">
+      <div className="absolute top-2 left-2 z-10 bg-[#262626] text-white text-[10px] px-2 py-1 rounded-full flex items-center gap-1">
         <Move className="w-3 h-3" />
         Glissez pour ajuster
       </div>
@@ -173,7 +174,7 @@ function ImagePositionEditor({
             transform: 'translate(-50%, -50%)'
           }}
         >
-          <div className={`w-4 h-4 border-2 border-white rounded-full ${isDragging ? 'bg-[#FF9800]/50' : 'bg-transparent'} shadow-lg`} />
+          <div className={`w-4 h-4 border-2 border-white rounded-full ${isDragging ? 'bg-[#FF9800]' : 'bg-white'} shadow-lg`} />
         </div>
       </div>
     </div>
@@ -3443,7 +3444,7 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
                               setVideoPreview(null);
                               setFormData({ ...formData, video: '' });
                             }}
-                            className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-1.5 hover:bg-black/80 transition-colors"
+                            className="absolute top-2 right-2 bg-[#333333] text-white rounded-full p-1.5 hover:bg-[#1A1A1A] transition-colors"
                             aria-label="Retirer la vidéo"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -3538,7 +3539,7 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
                         playsInline
                         className="w-full h-full object-cover"
                       />
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/30 pointer-events-none">
+                      <div className="absolute inset-0 flex items-center justify-center bg-[#4D4D4D] pointer-events-none">
                         <Film className="w-6 h-6 text-white" />
                       </div>
                     </div>
@@ -4952,21 +4953,46 @@ function AdminStations({ stations, isLoading, onRefresh, onAction }: {
           {filtered.map((station) => {
             const ownerVerified = station.owner?.washer?.isVerified ?? false;
             const services = station.services || [];
+            // Première photo de la station (devanture) — champ JSON
+            let storefrontImage: string | null = null;
+            try {
+              const imgs = JSON.parse(station.images || '[]');
+              if (Array.isArray(imgs) && typeof imgs[0] === 'string' && imgs[0]) storefrontImage = imgs[0];
+            } catch { /* pas d'image */ }
             return (
               <Card key={station.id} className={`border-0 shadow-sm ${!station.isActive ? 'opacity-70' : ''}`}>
                 <CardContent className="p-4 space-y-3">
-                  {/* En-tête : nom + statut */}
+                  {/* En-tête : photo de devanture / icône + nom + statut */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-start gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-[#E0F2F1] flex items-center justify-center flex-shrink-0">
-                        <Building2 className="w-5 h-5 text-[#00897B]" />
-                      </div>
+                      {storefrontImage ? (
+                         
+                        <img
+                          src={storefrontImage}
+                          alt={`Devanture — ${station.name}`}
+                          className="w-12 h-12 rounded-xl object-cover flex-shrink-0 border border-[#E0E0E0]"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-xl bg-[#E0F2F1] flex items-center justify-center flex-shrink-0">
+                          <Building2 className="w-5 h-5 text-[#00897B]" />
+                        </div>
+                      )}
                       <div className="min-w-0">
                         <p className="font-semibold text-[#212121] truncate">{station.name}</p>
                         <p className="text-xs text-[#757575] flex items-center gap-1 mt-0.5">
                           <MapPin className="w-3 h-3 flex-shrink-0" />
                           <span className="truncate">{station.address}</span>
                         </p>
+                        <a
+                          href={buildStationDirectionsUrl(station.latitude, station.longitude, station.address)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[11px] text-[#00897B] font-medium flex items-center gap-1 mt-1 hover:underline"
+                        >
+                          <Navigation className="w-3 h-3" />
+                          Voir sur la carte
+                          {station.latitude != null && station.longitude != null ? ' (GPS)' : ''}
+                        </a>
                       </div>
                     </div>
                     <Badge className={station.isActive
