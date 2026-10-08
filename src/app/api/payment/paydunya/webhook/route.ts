@@ -18,7 +18,18 @@ async function extractToken(request: NextRequest): Promise<string | null> {
   if (contentType.includes('application/json')) {
     try {
       const json = await request.json();
-      return json?.token ?? json?.data?.token ?? null;
+      if (typeof json?.token === 'string') return json.token;
+
+      const data = json?.data;
+      // `data` peut être un objet ou une chaîne JSON stringifiée
+      if (typeof data === 'string') {
+        try {
+          return JSON.parse(data)?.token ?? null;
+        } catch {
+          return null;
+        }
+      }
+      return data?.token ?? null;
     } catch {
       return null;
     }

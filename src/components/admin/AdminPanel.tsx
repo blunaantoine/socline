@@ -36,7 +36,7 @@ import {
   TrendingUp, Clock, Star, Settings, Bell, Plus,
   CheckCircle, XCircle, AlertCircle, Search,
   ChevronDown, Download, Eye, Edit, Trash2, Tag,
-  RefreshCw, Loader2, ArrowLeft, LogOut, Percent, Wallet, Phone, Image as ImageIcon, Move, Banknote, Receipt, Video as VideoIcon, Film, Building2, CreditCard
+  RefreshCw, Loader2, ArrowLeft, LogOut, Percent, Wallet, Phone, Image as ImageIcon, Move, Banknote, Receipt, Video as VideoIcon, Film, Building2, CreditCard, Copy
 } from 'lucide-react';
 import { HideableBalanceLight } from '@/components/ui/hideable-balance';
 import { toast } from 'sonner';
@@ -2920,10 +2920,46 @@ function AdminPaymentSystem() {
             <div className="bg-[#FFF8F0] border border-[#FFE0B2] rounded-lg p-3">
               <div className="flex gap-2">
                 <AlertCircle className="w-4 h-4 text-[#F57C00] flex-shrink-0 mt-0.5" />
-                <p className="text-xs text-[#E65100]">
-                  Dans votre tableau de bord PayDunya, configurez l&apos;URL de notification (IPN) vers :
-                  <span className="font-medium break-all"> https://socline.oquitogo.com/api/payment/paydunya/webhook</span>
-                </p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-[#E65100]">
+                    Dans votre tableau de bord PayDunya, collez cette URL dans le champ « Endpoint IPN » puis appuyez sur « Activer » :
+                  </p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <code className="flex-1 min-w-0 text-xs text-[#E65100] bg-white border border-[#FFE0B2] rounded px-2 py-1.5 break-all">
+                      https://socline.oquitogo.com/api/payment/paydunya/webhook
+                    </code>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const ipnUrl = 'https://socline.oquitogo.com/api/payment/paydunya/webhook';
+                        try {
+                          await navigator.clipboard.writeText(ipnUrl);
+                          toast.success('URL IPN copiée');
+                        } catch {
+                          // Fallback WebView / contextes non sécurisés
+                          try {
+                            const ta = document.createElement('textarea');
+                            ta.value = ipnUrl;
+                            ta.style.position = 'fixed';
+                            ta.style.opacity = '0';
+                            document.body.appendChild(ta);
+                            ta.select();
+                            const ok = document.execCommand('copy');
+                            document.body.removeChild(ta);
+                            if (!ok) throw new Error('copy refusée');
+                            toast.success('URL IPN copiée');
+                          } catch {
+                            toast.error('Copie impossible — copiez l\'URL manuellement');
+                          }
+                        }
+                      }}
+                      className="flex-shrink-0 flex items-center gap-1 text-xs font-medium text-white bg-[#F57C00] hover:bg-[#E65100] rounded px-2.5 py-1.5 transition-colors"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      Copier
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </CardContent>

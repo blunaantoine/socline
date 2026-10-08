@@ -19,6 +19,13 @@ import { getPaymentConfig, type PaydunyaCredentials } from '@/lib/payment-settin
 
 const API_BASE = 'https://app.paydunya.com/api/v1';
 
+// URL de base de l'app (surchargeable via NEXT_PUBLIC_APP_URL).
+// Sert à construire les URLs IPN / retour / annulation envoyées à PayDunya.
+export function getAppBaseUrl(): string {
+  const url = process.env.NEXT_PUBLIC_APP_URL || 'https://socline.oquitogo.com';
+  return url.replace(/\/+$/, '');
+}
+
 export interface PaydunyaInvoice {
   token: string;
   checkoutUrl: string;
@@ -73,6 +80,16 @@ export async function createPaydunyaInvoice(params: {
     },
     store: {
       name: creds.storeName,
+    },
+    // URLs PayDunya :
+    //   callback_url → IPN (notification serveur-serveur, fiable même si le
+    //                  champ IPN du tableau de bord marchand n'est pas activé)
+    //   return_url   → le client revient dans l'app (onglet Portefeuille)
+    //   cancel_url   → le client revient dans l'app après annulation
+    actions: {
+      callback_url: `${getAppBaseUrl()}/api/payment/paydunya/webhook`,
+      return_url: `${getAppBaseUrl()}/?paydunya=return`,
+      cancel_url: `${getAppBaseUrl()}/?paydunya=return`,
     },
   };
 

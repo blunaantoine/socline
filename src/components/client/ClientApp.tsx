@@ -95,6 +95,25 @@ export function ClientApp() {
   // Loading state for the Home "Laveurs disponibles" section
   const [isLoadingWashers, setIsLoadingWashers] = useState(true);
 
+  // Retour de la page de paiement PayDunya (return_url = /?paydunya=return) :
+  // ouvrir directement l'onglet Portefeuille — son poller détecte le dépôt
+  // PENDING et crédite le solde dès que PayDunya confirme le paiement.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('paydunya') === 'return') {
+      params.delete('paydunya');
+      const qs = params.toString();
+      window.history.replaceState(
+        null,
+        '',
+        `${window.location.pathname}${qs ? `?${qs}` : ''}`
+      );
+      setActiveTab('wallet');
+      toast.info('Retour de PayDunya — vérification de votre paiement en cours…');
+    }
+  }, []);
+
   // Fetch wallet balance — auto-refresh 45 s + retour sur l'app
   const fetchWallet = useCallback(async () => {
     if (!user?.id) return;
