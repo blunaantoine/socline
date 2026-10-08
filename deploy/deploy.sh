@@ -9,7 +9,7 @@
 #   sudo bash deploy/deploy.sh --web-port 3100   # port interne personnalisé (défaut : 3000)
 #
 # Architecture (par défaut) :
-#   Internet ──> nginx :3002 ──> Next.js :3000 (interne)
+#   Internet ──> nginx :3002 ──> Next.js :3000 (interne, 3100-3600 si occupé)
 #                          ├──> chat-service :3003 (interne, ?XTransformPort=3003)
 #                          └──> washgo-socket :3005 (interne, ?XTransformPort=3005)
 #
@@ -170,23 +170,49 @@ c_ok "Build terminé"
 # ------------------------------------------------------------
 # Contrôle : le port interne doit être LIBRE — d'autres applications
 # peuvent déjà tourner sur ce VPS (ex : quelque chose sur 3000).
-# Si occupé, bascule automatique vers un port libre (3100, 3200, …).
+# IMPORTANT : on ARRÊTE d'abord les services Socline. Sans cela,
+# l'ancienne instance de l'app (encore active sur l'ancien port)
+# était comptée comme « autre application » → bascule de port
+# inutile → nginx resynchronisé vers le nouveau port alors que
+# l'ancien processus tournait toujours → HTTP 502.
 # Le port PUBLIC (3002) reste inchangé dans tous les cas.
 # ------------------------------------------------------------
+systemctl stop socline-web socline-chat socline-washgo 2>/dev/null || true
+
 port_busy() { ss -tlnH 2>/dev/null | awk '{print $4}' | grep -qE "[:.]${1}$"; }
+
 if port_busy "${WEB_PORT}"; then
-  c_warn "Le port interne ${WEB_PORT} est déjà utilisé par une autre application du VPS."
-  for P in 3100 3200 3300 3400 3500 3600; do
-    if ! port_busy "${P}"; then
-      WEB_PORT="${P}"
-      c_warn "Port interne basculé automatiquement sur ${WEB_PORT} (le port public reste ${PUBLIC_PORT})"
-      break
-    fi
-  done
+  c_warn "Le port interne ${WEB_PORT} est utilisé par une autre application du VPS."
+  # 1) Stabilité : réutiliser le port interne déjà configuré dans l'unit
+  #    systemd (s'il est libre) plutôt que changer de port à chaque déploiement.
+  UNIT_PORT=""
+  if [[ -f /etc/systemd/system/socline-web.service ]]; then
+    UNIT_PORT="$(grep -oPm1 '^Environment=PORT=\K[0-9]+' /etc/systemd/system/socline-web.service || true)"
+  fi
+  if [[ -n "${UNIT_PORT}" && "${UNIT_PORT}" != "${WEB_PORT}" && "${UNIT_PORT}" != "${PUBLIC_PORT}" ]] \
+     && ! port_busy "${UNIT_PORT}"; then
+    WEB_PORT="${UNIT_PORT}"
+    c_warn "Port interne conservé : ${WEB_PORT} (déjà configuré dans l'unit systemd et libre)"
+  else
+    # 2) Sinon : premier port libre parmi 3100-3600
+    for P in 3100 3200 3300 3400 3500 3600; do
+      if ! port_busy "${P}"; then
+        WEB_PORT="${P}"
+        c_warn "Port interne basculé automatiquement sur ${WEB_PORT} (le port public reste ${PUBLIC_PORT})"
+        break
+      fi
+    done
+  fi
   if port_busy "${WEB_PORT}"; then
     echo "ERREUR : aucun port interne libre trouvé (3100-3600). Libérez un port ou relancez avec : --web-port N" >&2
     exit 1
   fi
+fi
+
+# Garde-fou : avec nginx, le port interne ne peut pas être le port public
+if [[ "${NO_NGINX}" == "false" && "${WEB_PORT}" == "${PUBLIC_PORT}" ]]; then
+  echo "ERREUR : le port interne ${WEB_PORT} est réservé à nginx (port public). Relancez avec : --web-port N" >&2
+  exit 1
 fi
 
 # ------------------------------------------------------------
@@ -210,7 +236,12 @@ chown -R "${RUN_USER}:${RUN_USER}" "${APP_DIR}"
 chmod 600 "${APP_DIR}/.env"
 
 systemctl daemon-reload
-systemctl enable --now socline-web socline-chat socline-washgo
+systemctl enable socline-web socline-chat socline-washgo >/dev/null 2>&1 || true
+# RESTART (et pas seulement start) : « enable --now » est un NO-OP quand le
+# service tourne déjà → l'ancien processus continuait d'écouter sur l'ancien
+# port avec l'ANCIEN code (502 + routes PayDunya absentes). « restart »
+# applique à coup sûr le nouvel environnement (PORT) et le nouveau build.
+systemctl restart socline-web socline-chat socline-washgo
 sleep 3
 systemctl is-active --quiet socline-web      && c_ok "socline-web actif"      || c_fail "socline-web inactif — voir : journalctl -u socline-web -n 30"
 systemctl is-active --quiet socline-chat     && c_ok "socline-chat actif"     || c_warn "socline-chat inactif — journalctl -u socline-chat -n 30"
@@ -250,7 +281,10 @@ if [[ "${NO_NGINX}" == "false" ]]; then
   # référence plus (ex. conf régénérée lors d'une mise à jour) : on réinjecte
   # le bloc 443 + les redirections HTTP → HTTPS. Sans cela, le domaine sert
   # l'application par défaut de nginx (une AUTRE application du VPS) !
-  if [[ -f "${CERT_DIR}/fullchain.pem" ]] && ! grep -q "ssl_certificate" "${NGINX_CONF}"; then
+  # (on cherche le certificat de NOTRE domaine dans toutes les confs nginx
+  # actives : le bloc 443 peut avoir été restauré manuellement dans un autre
+  # fichier que socline.conf — éviter d'injecter un doublon)
+  if [[ -f "${CERT_DIR}/fullchain.pem" ]] && ! grep -qs "ssl_certificate.*${DOMAIN}" /etc/nginx/conf.d/*.conf /etc/nginx/sites-enabled/* 2>/dev/null; then
     c_warn "Certificat ${DOMAIN} présent mais absent de nginx → restauration du bloc HTTPS"
     cat >> "${NGINX_CONF}" <<NGINX_SSL
 
@@ -323,22 +357,35 @@ if command -v ufw &>/dev/null && ufw status | grep -q "Status: active"; then
 fi
 
 # ------------------------------------------------------------
-# Vérification finale + compte de démonstration
+# Vérification finale : l'app en INTERNE d'abord (port ${WEB_PORT}),
+# puis via nginx (port public) — distingue « l'app ne démarre pas »
+# de « nginx ne relaie pas ».
 # ------------------------------------------------------------
-HTTP_CODE="000"
+INTERNAL_CODE="000"
 for _attempt in 1 2 3 4; do
   sleep 3
-  HTTP_CODE="$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:${LISTEN_PORT}/" || true)"
-  [[ "${HTTP_CODE}" == "200" ]] && break
-  c_warn "L'app ne répond pas encore (tentative ${_attempt}/4, HTTP ${HTTP_CODE:-000}) — nouvel essai…"
+  INTERNAL_CODE="$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:${WEB_PORT}/" || true)"
+  [[ "${INTERNAL_CODE}" == "200" ]] && break
+  c_warn "L'app ne répond pas encore en interne (tentative ${_attempt}/4, HTTP ${INTERNAL_CODE:-000}) — nouvel essai…"
 done
-if [[ "${HTTP_CODE}" == "200" ]]; then
-  c_ok "L'application répond (HTTP ${HTTP_CODE})"
+
+if [[ "${INTERNAL_CODE}" == "200" ]]; then
+  c_ok "Application démarrée (interne 127.0.0.1:${WEB_PORT})"
+  if [[ "${NO_NGINX}" == "false" ]]; then
+    PUBLIC_CODE="$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:${PUBLIC_PORT}/" || true)"
+    if [[ "${PUBLIC_CODE}" == "200" ]]; then
+      c_ok "nginx relaie l'application (HTTP 200 via le port ${PUBLIC_PORT})"
+    else
+      c_warn "nginx répond ${PUBLIC_CODE:-000} via le port ${PUBLIC_PORT} alors que l'app tourne — vérifier : nginx -t && systemctl reload nginx"
+    fi
+  fi
   # Seed des comptes de démonstration (idempotent)
-  curl -s -X POST "http://127.0.0.1:${LISTEN_PORT}/api/seed" >/dev/null 2>&1 \
+  curl -s -X POST "http://127.0.0.1:${WEB_PORT}/api/seed" >/dev/null 2>&1 \
     && c_ok "Comptes de démonstration prêts (PIN : 1234)" || true
 else
-  c_warn "L'app répond avec HTTP ${HTTP_CODE:-000} — vérifiez : journalctl -u socline-web -n 50"
+  c_warn "L'app ne démarre PAS sur le port interne ${WEB_PORT} — extrait des logs socline-web :"
+  journalctl -u socline-web -n 30 --no-pager 2>/dev/null | tail -n 30 || true
+  c_warn "Diagnostic complet : journalctl -u socline-web -f"
 fi
 
 # Vérification HTTPS du domaine (certificat restauré/conservé)
