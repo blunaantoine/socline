@@ -902,3 +902,23 @@ Stage Summary:
 - Après paiement, le client est ramené dans l'app (onglet Portefeuille ouvert automatiquement) et son solde est crédité automatiquement (poller + IPN + settle idempotent).
 - PRÉREQUIS DÉPLOIEMENT : pousser main (Task 32 + 33) sur origin PUIS cd /opt/socline && sudo bash deploy/deploy.sh --update sur le VPS — sinon PayDunya appellera une URL 404.
 - Ordre d'activation conseillé : 1) push + deploy, 2) saisir les clés PayDunya dans l'admin (mode test d'abord), 3) déclarer l'IPN chez PayDunya, 4) tester un rechargement sandbox de bout en bout, 5) basculer en live puis choisir PayDunya comme système actif.
+
+---
+Task ID: 34 (session 24 — correction PayDunya avec les vraies clés de l'utilisateur)
+Agent: main (Z.ai Code)
+Task: l'utilisateur a fourni ses clés API de test PayDunya (master key, test_public, test_private, token) et demandé « corrige et assure-toi que PayDunya fonctionne bien ». Validation réelle + correctifs.
+
+Work Log:
+- Vérif prod : /api/payment/paydunya/webhook et /api/payment/config toujours 404 → VPS pas encore mis à jour (les commits 32/33 ne sont pas déployés).
+- Validation directe des clés contre l'API PayDunya (curl) : création sandbox OK (response_code "00", token test_OzbdTJ4Ujf, URL https://paydunya.com/sandbox-checkout/invoice/…) et confirm OK (status "pending", montant dans invoice.total_amount) → les clés de l'utilisateur sont VALIDES et le bloc actions (callback/return/cancel) est accepté.
+- DÉCOUVERTE 1 (bug critique) : le code parsait le succès sur status:"success" + checkout_url, mais le format RÉEL est response_code:"00" + URL de paiement dans response_text ; le montant confirmé est dans invoice.total_amount (pas à la racine). Sans correctif, toute facture valide était rejetée côté Socline.
+- DÉCOUVERTE 2 (bug critique) : le code appelait TOUJOURS l'API LIVE (app.paydunya.com/api/v1) même avec des clés de test → erreur « Vous devez valider vos informations de KYC » (et « Invalid Masterkey Specified » lors de la Task 32 avec clés factices). PayDunya sépare l'API sandbox (…/sandbox-api/v1) et l'API live (…/api/v1).
+- Branche feature/paydunya-fix-reponse-reelle. Correctifs lib/paydunya.ts : apiBaseUrl(mode) choisit sandbox vs live ; succès = response_code "00" (compat status:"success") ; checkoutUrl = checkout_url → response_text si URL → fallback construit au format réel paydunya.com/(sandbox-)checkout/invoice/{token} ; confirm lit invoice.total_amount ?? total_amount.
+- TEST DE BOUT EN BOUT EN LOCAL avec les vraies clés (saisies via /api/admin/payment-config en local uniquement, jamais commitées) : login admin → provider=PAYDUNYA + clés OK → login client → POST /api/payment/paydunya/create {amount:1500} → ✅ {success:true, token:test_Cqi8Bx6ItE, checkoutUrl:https://paydunya.com/sandbox-checkout/invoice/test_Cqi8Bx6ItE} → GET /api/payment/paydunya/status → PENDING (reconfirmation réelle) → POST webhook avec le VRAI token → settle → confirm réel « pending » → PAS de crédit (anti double-crédit OK) → solde client inchangé (5000), transaction PENDING en DB, les 2 échecs précédents proprement FAILED.
+- Lint OK (zéro erreur). Commit 0c0cc88 (🔧) puis worklog (📝). Merge dans main + push.
+- Le token sandbox de test (test_Cqi8Bx6ItE) n'est PAS payé — le crédit automatique à la confirmation réelle reste à valider quand un paiement sandbox sera complété (page de paiement T-Money/Moov/Wave sandbox).
+
+Stage Summary:
+- CHAÎNE PAYDUNYA ENTIÈREMENT FONCTIONNELLE validée contre la VRAIE API sandbox : création de facture ✓, URL de checkout correcte ✓, statut/reconfirmation ✓, webhook IPN avec vrai token ✓, anti double-crédit ✓.
+- Vos clés de test sont VALIDES. Le KYC n'était pas le problème : c'était l'appel à l'API live au lieu du sandbox — corrigé.
+- Reste à faire côté utilisateur : 1) cd /opt/socline && sudo bash deploy/deploy.sh --update (sinon prod 404), 2) saisir les clés dans l'admin (Plus → Système de Paiement, Mode Test), 3) déclarer l'IPN https://socline.oquitogo.com/api/payment/paydunya/webhook dans le dashboard PayDunya (+ Activer), 4) compléter un paiement sandbox pour valider le crédit automatique, 5) passer en Mode Live (clés live_…) + KYC PayDunya pour la vraie production.
