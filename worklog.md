@@ -855,3 +855,28 @@ Stage Summary:
 - PAIEMENT : l'utilisateur ne voit plus aucun code USSD — « Payer » ouvre le composeur avec le code prérempli ; Mixx by Yas paie vers le COMPTE MARCHAND 1416831 via *145*5*{montant}*1416831# (migration auto du VPS au prochain deploy --update grâce au seed). Flooz inchangé.
 - ADMIN : les stations ont leur section dédiée (Plus → Stations de Lavage) distincte de la liste des laveurs — validation du propriétaire et activation/désactivation de la station incluses. Le parcours client distinguait déjà les deux onglets (Indépendants / Stations).
 - Reste à tester en production réelle : l'appel USSD depuis un vrai téléphone (le lien tel: dépend du mobile) et l'action Vérifier le propriétaire sur une vraie inscription station.
+
+---
+Task ID: 32 (session 24 — intégration PayDunya + choix du système de paiement par l'admin)
+Agent: main (Z.ai Code)
+Task: intégrer PayDunya comme système de paiement en ligne et donner à l'admin la possibilité de choisir le système affiché aux clients (Mixx by Yas USSD ou PayDunya). Travail sur nouvelle branche (convention).
+
+Work Log:
+- Exploration : dépôts portefeuille = seul point d'entrée de l'argent client (abonnements payés via WALLET) ; flux USSD existant (MobileMoneyOperator → buildUssdCode → validation admin manuelle) ; table Setting clé/valeur déjà présente ; AdminPanel menu « Plus » avec sous-onglets.
+- Branche feature/paiement-paydunya créée depuis main.
+- Schéma : WalletTransaction + provider (« MIXX_USSD » | « PAYDUNYA »), paydunyaToken, paydunyaUrl, paydunyaStatusCheckedAt → db:push OK.
+- lib/payment-settings : config lisible/écrivable en table settings (payment_provider, paydunya_mode, paydunya_master_key/private_key/token, paydunya_store_name) + maskSecret pour l'affichage admin.
+- lib/paydunya : client API v1 PayDunya (POST checkout-invoice/create, GET checkout-invoice/confirm/{token}) ; URL checkout construite selon mode (sandbox-checkout vs checkout).
+- lib/paydunya-actions : settlePaydunyaDeposit idempotent — reconfirmation systématique auprès de PayDunya (payload IPN jamais cru), flip gardé WHERE status=PENDING (impossible de créditer deux fois), crédit balance+totalDeposited dans une seule transaction Prisma, notification in-app+SMS après commit.
+- API : GET /api/payment/config (public auth., ne renvoie jamais les clés) ; GET/POST /api/admin/payment-config (clés masquées à la lecture, champ masqué n'écrase pas la clé réelle) ; POST /api/payment/paydunya/create (100–500 000 XOF, transaction PENDING puis FAILED si facture échoue) ; GET /api/payment/paydunya/status (vérif propriétaire + settle) ; POST /api/payment/paydunya/webhook (IPN form/JSON, répond toujours 200 pour éviter les rejeux).
+- AdminPanel : entrée « Système de Paiement » (CreditCard, #E65100) dans le menu Plus ; AdminPaymentSystem — deux cartes radio (Mixx by Yas USSD / PayDunya) avec badges Actif / Non configuré, formulaire config PayDunya (mode test-live, boutique, 3 clés masquées), rappel URL IPN https://socline.oquitogo.com/api/payment/paydunya/webhook.
+- WalletScreen : fetch /api/payment/config au montage ; usePaydunyaFlow = provider PAYDUNYA && configuré (sinon fallback USSD automatique) ; nouveau flux 2 étapes « montant → paiement en ligne » avec bouton Payer → création facture → window.location.href vers le checkout PayDunya ; poller global des dépôts PayDunya PENDING (6 s) qui crédite et rafraîchit automatiquement au retour du client ; indicateur d'étapes adapté au flux actif ; flux USSD 4 étapes inchangé sinon.
+- Vérification navigateur (agent-browser) : admin 71998155 → Plus → Système de Paiement → sélection PayDunya → clés test enregistrées (toast ✅, badges Actif + Clés enregistrées) ; rechargement page → clés affichées masquées (wk_TES••••••••1234) ; client 90123456 → Recharger → indicateur 2 étapes → écran « Paiement en ligne » (montant, instructions, bouton vert Payer 2 000 F CFA) → clic Payer → API PayDunya RÉELLE atteinte (réponse « Invalid Masterkey Specified » : format de requête validé, clés factices) → toast d'erreur propre + transaction basculée FAILED avec description explicite ; retour admin sur Mixx by Yas → le client retrouve le flux USSD 4 étapes ; webhook testé (token inconnu → réponse propre, GET santé OK).
+- Nettoyage : transactions PayDunya de test supprimées, clés factices retirées des settings, provider remis sur MIXX_USSD ; lint OK (zéro erreur).
+- Commits 💳×3 + ⚙️ (socle/API/admin/wallet) puis entrée worklog (📝), branche à pousser sur origin.
+
+Stage Summary:
+- L'ADMIN CHOISIT le système affiché : Plus → Système de Paiement → Mixx by Yas (USSD, validation manuelle) ou PayDunya (validation AUTOMATIQUE du solde dès confirmation PayDunya). Le changement est immédiat pour tous les clients.
+- Intégration PayDunya complète côté code (facture checkout, polling, IPN, crédit idempotent) et validée contre la VRAIE API (erreur d'authentification attendue avec des clés factices = format correct). Pour activer : créer un compte marchand sur paydunya.com, saisir mode + master key + private key + token dans l'admin, déclarer l'IPN https://socline.oquitogo.com/api/payment/paydunya/webhook, puis basculer le système sur PayDunya.
+- Fallback sûr : si PayDunya est choisi mais non configuré, le client repasse automatiquement sur le flux USSD.
+- Reste à faire quand l'utilisateur fournit ses vraies clés PayDunya : test de bout en bout en mode sandbox (paiement réel sandbox + crédit automatique du solde).
