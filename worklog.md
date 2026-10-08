@@ -938,3 +938,20 @@ Work Log:
 Stage Summary:
 - deploy.sh est maintenant AUTORÉPARANT pour le HTTPS : impossible de perdre à nouveau le domaine au profit d'une autre application lors d'une mise à jour.
 - En attente de l'utilisateur : re-run --update ×2 puis vérification https://socline.oquitogo.com + /api/payment/paydunya/webhook, puis configuration admin PayDunya (clés + IPN) et test sandbox de bout en bout.
+
+---
+Task ID: 36 (session 25 — prod : HTTP 502 persistant, cause racine = service jamais redémarré)
+Agent: main (Z.ai Code)
+Task: après le déploiement (log utilisateur : port interne basculé 3000→3200 puis « HTTP 502 ») et la restauration manuelle du bloc HTTPS (heredoc + nginx -t OK), diagnostiquer et corriger le 502.
+
+Work Log:
+- Lecture de deploy/deploy.sh : identification de la cause racine EXACTE du 502 — « systemctl enable --now socline-web » est un NO-OP quand le service est DÉJÀ actif (cas --update) → l'ancien processus continuait d'écouter sur l'ANCIEN port avec l'ANCIEN code, pendant que le script régénérait l'unit (PORT=3200) et resynchronisait nginx vers 3200 → connection refused → 502 + routes PayDunya absentes de l'instance en cours.
+- Aggravant confirmé : le test « port 3000 occupé » était fait AVANT l'arrêt des services → c'est Socline elle-même (ancienne instance sur 3000) qui déclenchait la bascule inutile vers 3200 (« autre application du VPS »).
+- Correctifs deploy.sh (bash -n OK) : 1) systemctl stop socline-web/chat/washgo AVANT la détection de port (après le build, downtime ~10 s seulement) ; 2) stabilité : si le port par défaut est occupé, réutiliser le port déjà configuré dans l'unit systemd (Environment=PORT) s'il est libre, sinon 3100-3600 ; 3) garde-fou port interne ≠ port public ; 4) enable + systemctl RESTART (jamais enable --now) → nouvel env + nouveau build garantis ; 5) health-check en 2 temps : interne 127.0.0.1:$WEB_PORT d'abord (si KO → dump journalctl -u socline-web -n 30), puis via nginx 3002 (distingue « app down » de « nginx ne relaie pas ») ; 6) détection anti-doublon HTTPS élargie à toutes les confs nginx actives (ssl_certificate.*DOMAIN) au cas où le bloc 443 a été restauré manuellement dans un autre fichier.
+- Branche fix/deploy-502-restart-port, commit a5c28e3 (🔧), merge main, push. Worklog en commit séparé.
+- Procédure de réparation IMMÉDIATE fournie à l'utilisateur (sans redéploiement) : sudo systemctl restart socline-web socline-chat socline-washgo puis curl interne 127.0.0.1:3200 et https://socline.oquitogo.com (attendu 200) — l'unit sur le VPS dit déjà PORT=3200, seul le restart manquait.
+
+Stage Summary:
+- 502 expliqué et corrigé à la racine : enable --now ne redémarre pas un service actif ; deploy.sh est maintenant idempotent et autoréparant (stop avant détection de port, restart systématique, health-check interne+public avec logs en cas d'échec).
+- Le prochain --update sur le VPS embarquera ces correctifs ; en attendant, un simple restart des 3 services suffit à rétablir le site (l'unit est déjà à jour avec PORT=3200).
+- Après rétablissement : reprendre la checklist PayDunya prod — clés dans l'admin (Mode Test), IPN https://socline.oquitogo.com/api/payment/paydunya/webhook déclaré chez PayDunya, paiement sandbox complété pour valider le crédit automatique, puis Mode Live.
