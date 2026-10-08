@@ -89,6 +89,13 @@ const STATUS_LABELS: Record<string, string> = {
   CANCELLED: 'Annulé',
 };
 
+// Les dépôts PayDunya ne dépendent PAS d'une validation admin :
+// le statut vient de PayDunya (webhook IPN + vérification automatique).
+const txStatusLabel = (tx: Transaction) =>
+  tx.status === 'PENDING' && tx.paymentMethod === 'PayDunya'
+    ? 'Confirmation PayDunya…'
+    : STATUS_LABELS[tx.status] ?? tx.status;
+
 const STATUS_COLORS: Record<string, string> = {
   PENDING: 'bg-yellow-100 text-yellow-800 border-yellow-200',
   COMPLETED: 'bg-green-100 text-green-800 border-green-200',
@@ -604,7 +611,7 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
                             {TRANSACTION_LABELS[tx.type]}
                           </p>
                           <Badge variant="outline" className={`text-xs ${STATUS_COLORS[tx.status]}`}>
-                            {STATUS_LABELS[tx.status]}
+                            {txStatusLabel(tx)}
                           </Badge>
                         </div>
                         <p className="text-xs text-[#757575] truncate">
@@ -1069,7 +1076,7 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
                                 {TRANSACTION_LABELS[tx.type]}
                               </p>
                               <Badge variant="outline" className={`text-xs ${STATUS_COLORS[tx.status]}`}>
-                                {STATUS_LABELS[tx.status]}
+                                {txStatusLabel(tx)}
                               </Badge>
                             </div>
                             <p className="text-xs text-[#757575] mt-1">

@@ -297,6 +297,7 @@ interface Deposit {
   id: string;
   amount: number;
   status: string;
+  provider?: string | null; // "PAYDUNYA" = validation automatique par PayDunya
   phoneNumber: string;
   paymentMethod: string;
   description: string | null;
@@ -636,7 +637,8 @@ export function AdminPanel() {
         return;
       }
       if (data.success) {
-        toast.success(action === 'validate' ? 'Rechargement validé' : 'Rechargement rejeté');
+        // Le serveur fournit un message précis (ex : statut PayDunya)
+        toast.success(data.message || (action === 'validate' ? 'Rechargement validé' : 'Rechargement rejeté'));
         fetchDeposits();
       } else {
         toast.error(data.error || 'Erreur');
@@ -4014,21 +4016,36 @@ function AdminDeposits({ deposits, isLoading, onRefresh, onAction }: {
                 </div>
 
                 <div className="flex gap-2">
-                  <Button
-                    className="flex-1 bg-green-600 hover:bg-green-700"
-                    onClick={() => onAction(deposit.id, 'validate')}
-                  >
-                    <CheckCircle className="w-4 h-4 mr-2" />
-                    Valider
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    className="flex-1"
-                    onClick={() => onAction(deposit.id, 'reject')}
-                  >
-                    <XCircle className="w-4 h-4 mr-2" />
-                    Échoué
-                  </Button>
+                  {deposit.provider === 'PAYDUNYA' ? (
+                    // PayDunya : la validation vient du statut PayDunya,
+                    // jamais d'une décision admin — on ne fait que re-vérifier.
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => onAction(deposit.id, 'validate')}
+                    >
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Vérifier le statut PayDunya
+                    </Button>
+                  ) : (
+                    <>
+                      <Button
+                        className="flex-1 bg-green-600 hover:bg-green-700"
+                        onClick={() => onAction(deposit.id, 'validate')}
+                      >
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Valider
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        className="flex-1"
+                        onClick={() => onAction(deposit.id, 'reject')}
+                      >
+                        <XCircle className="w-4 h-4 mr-2" />
+                        Échoué
+                      </Button>
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>
