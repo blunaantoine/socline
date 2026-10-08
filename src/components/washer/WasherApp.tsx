@@ -173,7 +173,7 @@ function PhotoCaptureDialog({ open, type, order, onUploaded, onClose }: PhotoCap
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
-            className="w-full h-40 rounded-xl border-2 border-dashed border-[#4CAF50]/50 bg-[#E8F5E9] flex flex-col items-center justify-center gap-2 hover:bg-[#E8F5E9]/70 transition-colors"
+            className="w-full h-40 rounded-xl border-2 border-dashed border-[#81C784] bg-[#E8F5E9] flex flex-col items-center justify-center gap-2 hover:bg-[#C8E6C9] transition-colors"
           >
             <Camera className="w-10 h-10 text-[#4CAF50]" />
             <span className="text-sm font-medium text-[#2E7D32]">Prendre la photo</span>
@@ -1003,7 +1003,7 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm opacity-80">Solde disponible</p>
+              <p className="text-sm text-[#E8F5E9]">Solde disponible</p>
               <HideableBalanceDark
                 balance={stats.balance}
                 currency="XOF"
@@ -1014,7 +1014,7 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
             <button 
               onClick={onRefreshBalance}
               disabled={isRefreshingBalance}
-              className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition-colors"
+              className="w-10 h-10 bg-[#70BF73] rounded-full flex items-center justify-center hover:bg-[#82C785] transition-colors"
             >
               {isRefreshingBalance ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -1129,15 +1129,15 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
                     <div className="p-4 bg-gradient-to-r from-[#FF9800] to-[#F57C00] text-white">
                       <div className="flex justify-between items-start">
                         <div>
-                          <p className="text-sm opacity-80">Nouvelle commande</p>
+                          <p className="text-sm text-[#FFF3E0]">Nouvelle commande</p>
                           <p className="font-bold text-lg">{order.service?.name || 'Service'}</p>
-                          <span className="inline-block mt-1 bg-white/25 rounded-full px-2 py-0.5 text-[10px] font-semibold">
+                          <span className="inline-block mt-1 bg-[#FFB240] rounded-full px-2 py-0.5 text-[10px] font-semibold">
                             {getServiceCoverage(order.service) === 'EXTERIOR' ? 'Extérieur seul' : 'Complet (ext. + int.)'}
                           </span>
                         </div>
                         <div className="text-right">
                           <p className="font-bold text-xl">{order.totalPrice?.toLocaleString()} XOF</p>
-                          <p className="text-sm opacity-80">{order.service?.duration || 30} min</p>
+                          <p className="text-sm text-[#FFF3E0]">{order.service?.duration || 30} min</p>
                         </div>
                       </div>
                     </div>
@@ -1521,7 +1521,7 @@ function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat, acceptedOr
       {locationSharing && (
         <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-full px-3 py-1.5 w-fit">
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#4CAF50] opacity-75"></span>
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#4CAF50]"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-[#4CAF50]"></span>
           </span>
           <span className="text-xs font-medium text-[#2E7D32]">Position partagée</span>
@@ -1939,7 +1939,7 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, onRefreshWallet, isRe
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <p className="text-sm opacity-80">Total des gains</p>
+              <p className="text-sm text-[#E8F5E9]">Total des gains</p>
               <HideableBalanceDark
                 balance={stats.totalEarnings}
                 currency="XOF"
@@ -1956,7 +1956,7 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, onRefreshWallet, isRe
               <button 
                 onClick={onRefreshBalance}
                 disabled={isRefreshingBalance}
-                className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition-colors"
+                className="w-10 h-10 bg-[#70BF73] rounded-full flex items-center justify-center hover:bg-[#82C785] transition-colors"
               >
                 {isRefreshingBalance ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -1969,14 +1969,14 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, onRefreshWallet, isRe
           {/* Withdraw Button */}
           <Button 
             onClick={() => setShowWithdrawModal(true)}
-            className="w-full mt-4 bg-white text-[#4CAF50] hover:bg-white/90 font-semibold"
+            className="w-full mt-4 bg-white text-[#4CAF50] hover:bg-[#E8F5E9] font-semibold"
             disabled={stats.totalEarnings - stats.cashDebt < 500}
           >
             <Banknote className="w-4 h-4 mr-2" />
             Retirer
           </Button>
           {stats.totalEarnings - stats.cashDebt < 500 && (
-            <p className="text-xs text-center mt-2 opacity-80">
+            <p className="text-xs text-center mt-2 text-[#E8F5E9]">
               {stats.cashDebt > 0
                 ? `Disponible : ${(stats.totalEarnings - stats.cashDebt).toLocaleString('fr-FR')} XOF (commission de ${stats.cashDebt.toLocaleString('fr-FR')} XOF à régler)`
                 : 'Minimum 500 XOF pour retirer'}
@@ -2700,22 +2700,22 @@ function WasherReviews({ user }: { user: User | null }) {
       {/* Résumé : moyenne générale */}
       <Card className="border-0 shadow-sm bg-gradient-to-r from-[#4CAF50] to-[#2E7D32] text-white">
         <CardContent className="p-5 text-center">
-          <p className="text-sm opacity-80">Note moyenne de vos prestations</p>
+          <p className="text-sm text-[#E8F5E9]">Note moyenne de vos prestations</p>
           <p className="text-4xl font-bold mt-1">
             {reviews.length > 0 ? average.toFixed(1) : '—'}
-            <span className="text-lg opacity-70">/5</span>
+            <span className="text-lg text-[#C8E6C9]">/5</span>
           </p>
           <div className="flex items-center justify-center gap-1 mt-2">
             {[1, 2, 3, 4, 5].map((star) => (
               <Star
                 key={star}
                 className={`w-6 h-6 ${
-                  star <= Math.round(average) ? 'text-[#FFC107] fill-[#FFC107]' : 'text-white/40'
+                  star <= Math.round(average) ? 'text-[#FFC107] fill-[#FFC107]' : 'text-[#A5D6A7]'
                 }`}
               />
             ))}
           </div>
-          <p className="text-xs opacity-80 mt-2">
+          <p className="text-xs text-[#E8F5E9] mt-2">
             {reviews.length} avis de vos clients
           </p>
         </CardContent>

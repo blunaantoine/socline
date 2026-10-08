@@ -642,7 +642,7 @@ export function ClientOrderFlow({
                             className="w-12 h-12 rounded-lg object-cover border flex-shrink-0"
                           />
                         ) : (
-                          <div className={`w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 ${isSelected ? 'bg-[#FF9800]/10' : 'bg-gray-100'}`}>
+                          <div className={`w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 ${isSelected ? 'bg-[#FFF3E0]' : 'bg-gray-100'}`}>
                             <Car className={`w-6 h-6 ${isSelected ? 'text-[#FF9800]' : 'text-gray-400'}`} />
                           </div>
                         )}
@@ -769,8 +769,8 @@ export function ClientOrderFlow({
 
                   {/* Selected date/time preview */}
                   {scheduledDate && scheduledDate.split('T')[0] && scheduledDate.split('T')[1] && (
-                    <div className="bg-[#FFF8F0] border border-[#FF9800]/30 rounded-lg p-3 flex items-center gap-3">
-                      <div className="w-10 h-10 bg-[#FF9800]/10 rounded-full flex items-center justify-center">
+                    <div className="bg-[#FFF8F0] border border-[#FFCC80] rounded-lg p-3 flex items-center gap-3">
+                      <div className="w-10 h-10 bg-[#FFF3E0] rounded-full flex items-center justify-center">
                         <Calendar className="w-5 h-5 text-[#FF9800]" />
                       </div>
                       <div>
@@ -811,22 +811,22 @@ export function ClientOrderFlow({
             {activeSubscription && (
               <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-4 text-white">
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                  <div className="w-10 h-10 bg-[#C084FC] rounded-full flex items-center justify-center">
                     <Crown className="w-5 h-5" />
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold">{activeSubscription.plan?.displayName || 'Abonnement'}</h3>
-                      <Badge className="bg-white/20 text-white text-xs">Actif</Badge>
+                      <Badge className="bg-white text-purple-700 text-xs">Actif</Badge>
                     </div>
-                    <p className="text-sm text-white/80 mt-1">
+                    <p className="text-sm text-[#F3E8FF] mt-1">
                       {activeSubscription.remainingWashes} séance{activeSubscription.remainingWashes > 1 ? 's' : ''} restante{activeSubscription.remainingWashes > 1 ? 's' : ''}
                     </p>
                     <div className="mt-3 flex items-center gap-2">
                       <button
                         onClick={() => setUseSubscription(!useSubscription)}
                         className={`relative w-12 h-6 rounded-full transition-colors ${
-                          useSubscription ? 'bg-white' : 'bg-white/30'
+                          useSubscription ? 'bg-white' : 'bg-[#D8B4FE]'
                         }`}
                       >
                         <div className={`absolute top-1 w-4 h-4 rounded-full transition-all ${

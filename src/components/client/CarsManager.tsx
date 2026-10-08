@@ -581,7 +581,7 @@ export function CarsManager({ userId }: CarsManagerProps) {
                   type="button"
                   onClick={() => document.getElementById('car-photo-input')?.click()}
                   disabled={isUploadingPhoto}
-                  className="w-full h-20 rounded-lg border-2 border-dashed border-[#FF9800]/40 bg-[#FFF8F0] flex flex-col items-center justify-center gap-1 hover:bg-[#FFF3E0] transition-colors"
+                  className="w-full h-20 rounded-lg border-2 border-dashed border-[#FFB74D] bg-[#FFF8F0] flex flex-col items-center justify-center gap-1 hover:bg-[#FFF3E0] transition-colors"
                 >
                   {isUploadingPhoto ? (
                     <Loader2 className="w-5 h-5 text-[#FF9800] animate-spin" />
@@ -754,7 +754,7 @@ export function CarsManager({ userId }: CarsManagerProps) {
                   type="button"
                   onClick={() => document.getElementById('car-photo-input')?.click()}
                   disabled={isUploadingPhoto}
-                  className="w-full h-20 rounded-lg border-2 border-dashed border-[#FF9800]/40 bg-[#FFF8F0] flex flex-col items-center justify-center gap-1 hover:bg-[#FFF3E0] transition-colors"
+                  className="w-full h-20 rounded-lg border-2 border-dashed border-[#FFB74D] bg-[#FFF8F0] flex flex-col items-center justify-center gap-1 hover:bg-[#FFF3E0] transition-colors"
                 >
                   {isUploadingPhoto ? (
                     <Loader2 className="w-5 h-5 text-[#FF9800] animate-spin" />

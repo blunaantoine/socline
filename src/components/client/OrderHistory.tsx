@@ -260,18 +260,18 @@ function OrderDetails({ order, onClose }: { order: Order; onClose: () => void })
       {/* Header */}
       <div className="bg-gradient-to-r from-[#FF9800] to-[#F57C00] p-4 text-white">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm opacity-80">Commande</span>
-          <Badge className="bg-white/20 text-white">
+          <span className="text-sm text-[#FFF3E0]">Commande</span>
+          <Badge className="bg-white text-[#E65100] hover:bg-white">
             {STATUS_LABELS[order.status]}
           </Badge>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xl font-bold">{order.orderNumber}</span>
-          <button onClick={copyOrderNumber} className="p-1 hover:bg-white/20 rounded">
+          <button onClick={copyOrderNumber} className="p-1 hover:bg-[#FFAD33] rounded">
             <Copy className="w-4 h-4" />
           </button>
         </div>
-        <div className="mt-2 text-sm opacity-80">
+        <div className="mt-2 text-sm text-[#FFF3E0]">
           {formatDate(order.createdAt)}
         </div>
       </div>

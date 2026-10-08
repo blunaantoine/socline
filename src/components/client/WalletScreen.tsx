@@ -388,7 +388,7 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             {onBack && (
-              <button onClick={onBack} className="p-2 hover:bg-white/20 rounded-lg">
+              <button onClick={onBack} className="p-2 hover:bg-[#FFAD33] rounded-lg">
                 <ArrowLeft className="w-5 h-5" />
               </button>
             )}
@@ -397,15 +397,15 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
           <button 
             onClick={() => fetchWallet(true)} 
             disabled={isRefreshing}
-            className="p-2 hover:bg-white/20 rounded-lg transition-all"
+            className="p-2 hover:bg-[#FFAD33] rounded-lg transition-all"
           >
             <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
           </button>
         </div>
 
         {/* Balance Card */}
-        <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4">
-          <p className="text-white/80 text-sm mb-1">Solde disponible</p>
+        <div className="bg-[#FFA21A] rounded-2xl p-4">
+          <p className="text-[#FFF3E0] text-sm mb-1">Solde disponible</p>
           <HideableBalanceDark
             balance={wallet?.balance || 0}
             currency="XOF"
@@ -413,19 +413,19 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
             storageKey="hide-client-wallet-balance"
           />
 
-          <div className="flex gap-4 mt-4 pt-4 border-t border-white/20">
+          <div className="flex gap-4 mt-4 pt-4 border-t border-[#FFB74D]">
             <div className="flex-1">
-              <p className="text-xs text-white/60">Total rechargé</p>
+              <p className="text-xs text-[#FFCC80]">Total rechargé</p>
               <p className="font-semibold">{wallet?.totalDeposited?.toLocaleString() || 0} F</p>
             </div>
             <div className="flex-1">
               <button 
                 onClick={() => setShowHistory(true)}
-                className="w-full text-left hover:bg-white/10 rounded-lg p-1 -m-1 transition-all"
+                className="w-full text-left hover:bg-[#FFA21A] rounded-lg p-1 -m-1 transition-all"
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs text-white/60">Historique</p>
+                    <p className="text-xs text-[#FFCC80]">Historique</p>
                     <p className="font-semibold flex items-center gap-1">
                       <History className="w-3 h-3" />
                       Voir tout
@@ -445,7 +445,7 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
               resetDeposit();
               setShowDeposit(true);
             }}
-            className="flex-1 bg-white text-[#FF9800] hover:bg-white/90"
+            className="flex-1 bg-white text-[#FF9800] hover:bg-[#FFF3E0]"
           >
             <Plus className="w-4 h-4 mr-2" />
             Recharger

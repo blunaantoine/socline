@@ -65,13 +65,13 @@ export function HideableBalance({
       {showToggle && (
         <button
           onClick={toggleVisibility}
-          className="p-1.5 rounded-full hover:bg-white/20 transition-colors"
+          className="p-1.5 rounded-full hover:ring-2 hover:ring-white transition-all"
           title={isHidden ? 'Afficher le solde' : 'Cacher le solde'}
         >
           {isHidden ? (
-            <EyeOff className="w-5 h-5 text-white/80" />
+            <EyeOff className="w-5 h-5 text-white" />
           ) : (
-            <Eye className="w-5 h-5 text-white/80" />
+            <Eye className="w-5 h-5 text-white" />
           )}
         </button>
       )}
@@ -110,13 +110,13 @@ export function HideableBalanceDark({
       {showToggle && (
         <button
           onClick={toggleVisibility}
-          className="p-1.5 rounded-full hover:bg-white/20 transition-colors"
+          className="p-1.5 rounded-full hover:ring-2 hover:ring-white transition-all"
           title={isHidden ? 'Afficher le solde' : 'Cacher le solde'}
         >
           {isHidden ? (
-            <EyeOff className="w-5 h-5 text-white/80" />
+            <EyeOff className="w-5 h-5 text-white" />
           ) : (
-            <Eye className="w-5 h-5 text-white/80" />
+            <Eye className="w-5 h-5 text-white" />
           )}
         </button>
       )}

@@ -318,17 +318,17 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
           {(order.acceptedAt || order.startedAt || order.completedAt) && (
             <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
               {order.acceptedAt && (
-                <span className="text-[11px] bg-white/80 rounded-full px-2 py-0.5 text-[#616161]">
+                <span className="text-[11px] bg-white rounded-full border border-[#E0E0E0] px-2 py-0.5 text-[#616161]">
                   Acceptée à {formatTime(order.acceptedAt)}
                 </span>
               )}
               {order.startedAt && (
-                <span className="text-[11px] bg-white/80 rounded-full px-2 py-0.5 text-[#616161]">
+                <span className="text-[11px] bg-white rounded-full border border-[#E0E0E0] px-2 py-0.5 text-[#616161]">
                   Départ à {formatTime(order.startedAt)}
                 </span>
               )}
               {order.completedAt && (
-                <span className="text-[11px] bg-white/80 rounded-full px-2 py-0.5 text-[#616161]">
+                <span className="text-[11px] bg-white rounded-full border border-[#E0E0E0] px-2 py-0.5 text-[#616161]">
                   Terminée à {formatTime(order.completedAt)}
                 </span>
               )}
