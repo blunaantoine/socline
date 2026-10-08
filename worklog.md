@@ -922,3 +922,19 @@ Stage Summary:
 - CHAÎNE PAYDUNYA ENTIÈREMENT FONCTIONNELLE validée contre la VRAIE API sandbox : création de facture ✓, URL de checkout correcte ✓, statut/reconfirmation ✓, webhook IPN avec vrai token ✓, anti double-crédit ✓.
 - Vos clés de test sont VALIDES. Le KYC n'était pas le problème : c'était l'appel à l'API live au lieu du sandbox — corrigé.
 - Reste à faire côté utilisateur : 1) cd /opt/socline && sudo bash deploy/deploy.sh --update (sinon prod 404), 2) saisir les clés dans l'admin (Plus → Système de Paiement, Mode Test), 3) déclarer l'IPN https://socline.oquitogo.com/api/payment/paydunya/webhook dans le dashboard PayDunya (+ Activer), 4) compléter un paiement sandbox pour valider le crédit automatique, 5) passer en Mode Live (clés live_…) + KYC PayDunya pour la vraie production.
+
+---
+Task ID: 35 (session 24 — prod : déploiement Task 34 OK mais HTTPS perdu, correction deploy.sh)
+Agent: main (Z.ai Code)
+Task: l'utilisateur a exécuté deploy.sh --update sur le VPS (code à jour c93c629, build OK, routes PayDunya présentes) mais le script a signalé port interne 3000→3200 et HTTP 502. Diagnostic et correction.
+
+Work Log:
+- Diagnostic depuis l'extérieur : https://socline.oquitogo.com servait le CERTIFICAT d'une autre application (CN=shop.maison-khan.com) et la page « MAISON KHAN | Chaussures de Luxe » → le bloc 443 de Socline avait disparu de la conf nginx active ; http://socline.oquitogo.com renvoyait bien 301 vers HTTPS (on tombait sur l'autre app) ; :3002 injoignable depuis l'extérieur (timeout).
+- Cause : le log de déploiement ne contient PAS « Configuration HTTPS (certbot) existante conservée » → la branche de régénération de l'étape 8 a écrasé /etc/nginx/conf.d/socline.conf (conf HTTP template, server_name _) → SNI socline.oquitogo.com retombait sur le serveur par défaut (l'autre app). Le HTTP 502 du script venait probablement du démarrage trop lent de socline-web au moment du check (sleep 2 unique) et/ou du changement de port interne (3100→3200, l'ancienne instance occupait encore 3100 à la détection).
+- Correctif deploy/deploy.sh (bash -n OK) : 1) NOUVELLE restauration automatique HTTPS — si /etc/letsencrypt/live/socline.oquitogo.com/fullchain.pem existe et que la conf ne référence plus ssl_certificate → injection du bloc 443 ssl (proxy $socline_backend, websockets, X-Forwarded-Proto https) + redirections 80→HTTPS et 3002→HTTPS pour le domaine (le domaine sert toujours Socline, jamais l'autre app) ; 2) health-check en boucle 4×3 s au lieu d'un unique sleep 2 ; 3) vérification HTTPS locale (curl --resolve 127.0.0.1) avec message explicite ; 4) DOMAIN surchargeable via SOCLINE_DOMAIN.
+- Commit c65b7a2 (🔧) + worklog (📝), push.
+- Procédure de remise en route immédiate fournie à l'utilisateur : relancer deploy.sh --update DEUX FOIS (1er run : ramène le nouveau script ; 2e run : la restauration HTTPS s'exécute), ou réparation manuelle par heredoc (bloc 443 avec proxy_pass $socline_backend) si préféré. Le port public 3002 reste inaccessible depuis l'extérieur (probable pare-feu périmètre LWS) — non bloquant, le HTTPS domaine est la voie canonique.
+
+Stage Summary:
+- deploy.sh est maintenant AUTORÉPARANT pour le HTTPS : impossible de perdre à nouveau le domaine au profit d'une autre application lors d'une mise à jour.
+- En attente de l'utilisateur : re-run --update ×2 puis vérification https://socline.oquitogo.com + /api/payment/paydunya/webhook, puis configuration admin PayDunya (clés + IPN) et test sandbox de bout en bout.
