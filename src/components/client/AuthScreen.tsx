@@ -46,7 +46,7 @@ const CAR_COLORS = [
 ];
 
 // Washer Registration Info Component
-function WasherRegistrationInfo({ onBack }: { onBack: () => void }) {
+function WasherRegistrationInfo({ onBack, onContinue }: { onBack: () => void; onContinue: () => void }) {
   // Contrat de Partenariat SOCLINE (Article 5) — barème de rémunération progressive
   const partnerLevels = [
     { level: 1, name: 'Départ', share: '60 %', conditions: 'Dès la signature du contrat' },
@@ -244,6 +244,15 @@ function WasherRegistrationInfo({ onBack }: { onBack: () => void }) {
               </a>
             </div>
           </div>
+
+          {/* CTA — passage à l&apos;étape suivante : choix du type de laveur */}
+          <Button
+            onClick={onContinue}
+            className="w-full h-14 bg-[#4CAF50] hover:bg-[#43A047] text-white rounded-2xl font-semibold text-base shadow-lg"
+          >
+            Continuer — Choisir mon type de laveur
+            <ChevronRight className="w-5 h-5 ml-1" />
+          </Button>
         </div>
       </div>
     </div>
@@ -251,7 +260,11 @@ function WasherRegistrationInfo({ onBack }: { onBack: () => void }) {
 }
 
 export function AuthScreen({ onComplete }: AuthScreenProps) {
-  const [mode, setMode] = useState<'welcome' | 'login' | 'register' | 'verify-otp' | 'washer-info' | 'washer-type' | 'register-independent' | 'register-station'>('welcome');
+  type AuthMode = 'welcome' | 'login' | 'register' | 'verify-otp' | 'washer-info' | 'washer-type' | 'register-independent' | 'register-station';
+  const [mode, setMode] = useState<AuthMode>('welcome');
+  // Option B : la page « conditions du partenariat » s'affiche AVANT le choix du type.
+  // On mémorise l'écran d'origine pour que la flèche retour ramène au bon endroit.
+  const [infoOrigin, setInfoOrigin] = useState<AuthMode>('welcome');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPin, setShowPin] = useState(false);
@@ -497,7 +510,12 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
 
   // Washer Info Screen
   if (mode === 'washer-info') {
-    return <WasherRegistrationInfo onBack={() => setMode('washer-type')} />;
+    return (
+      <WasherRegistrationInfo
+        onBack={() => setMode(infoOrigin)}
+        onContinue={() => setMode('washer-type')}
+      />
+    );
   }
 
   // Washer Type Selection Screen
@@ -570,7 +588,10 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
 
             {/* Info Link */}
             <button
-              onClick={() => setMode('washer-info')}
+              onClick={() => {
+                setInfoOrigin('washer-type');
+                setMode('washer-info');
+              }}
               className="w-full text-center text-[#FF9800] text-sm hover:text-[#F57C00] transition-colors mt-2 py-2 flex items-center justify-center gap-1"
             >
               <Info className="w-4 h-4" />
@@ -846,9 +867,12 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
             Créer un compte
           </button>
           
-          {/* Discrete Washer Link */}
+          {/* Discrete Washer Link — option B : page info partenariat en premier */}
           <button
-            onClick={() => setMode('washer-type')}
+            onClick={() => {
+              setInfoOrigin('welcome');
+              setMode('washer-info');
+            }}
             className="w-full text-center text-white/60 text-sm hover:text-white/80 transition-colors mt-4 py-2"
           >
             <span className="flex items-center justify-center gap-1">
@@ -943,9 +967,12 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
             </button>
           </p>
           
-          {/* Discrete Washer Link */}
+          {/* Discrete Washer Link — option B : page info partenariat en premier */}
           <button
-            onClick={() => setMode('washer-type')}
+            onClick={() => {
+              setInfoOrigin('login');
+              setMode('washer-info');
+            }}
             className="w-full text-center text-[#9E9E9E] text-sm hover:text-[#757575] transition-colors mt-4"
           >
             Devenir partenaire laveur ?
@@ -1229,9 +1256,12 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
           </button>
         </p>
         
-        {/* Discrete Washer Link */}
+        {/* Discrete Washer Link — option B : page info partenariat en premier */}
         <button
-          onClick={() => setMode('washer-type')}
+          onClick={() => {
+            setInfoOrigin('register');
+            setMode('washer-info');
+          }}
           className="w-full text-center text-[#9E9E9E] text-sm hover:text-[#757575] transition-colors mt-4"
         >
           Devenir partenaire laveur ?
