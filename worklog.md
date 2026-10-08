@@ -814,3 +814,21 @@ Stage Summary:
 - PRODUCTION FINALE : https://socline.oquitogo.com (certbot, TTL cert 90 j auto-renouvelé) + http://213.156.133.226:3002 toujours accessible ; 3 services systemd actifs ; port interne 3100.
 - deploy.sh est maintenant « update-safe » : les mises à jour futures préservent la config nginx/SSL du serveur.
 - Reste éventuellement côté VPS : nettoyage swap (fstab+/swapfile), changement des PIN démo avant vraie production, clés SMS Africa's Talking dans .env pour les OTP réels.
+
+---
+Task ID: 30 (session 23 — UX inscription : conditions partenariat en premier)
+Agent: main (Z.ai Code)
+Task: option B choisie par l'utilisateur — afficher la page des conditions d'inscription laveur/station (« En savoir plus sur le partenariat ») AVANT l'écran de choix du type de laveur. Travail demandé sur une nouvelle branche git.
+
+Work Log:
+- Lecture du code : src/components/client/AuthScreen.tsx — 3 liens « Devenir partenaire laveur » (welcome, login, register) pointaient vers washer-type ; la page info (WasherRegistrationInfo) n'était atteignable que depuis washer-type.
+- Nouvelle branche feature/inscription-info-first créée depuis main (instruction explicite de l'utilisateur : travailler sur une nouvelle branche).
+- Modifications AuthScreen.tsx : extraction du type AuthMode ; ajout du state infoOrigin pour mémoriser l'écran d'origine ; les 3 liens « Devenir partenaire laveur » ouvrent désormais washer-info directement ; nouveau bouton « Continuer — Choisir mon type de laveur » en bas de WasherRegistrationInfo (prop onContinue) ; la flèche retour de la page info renvoie vers infoOrigin ; le lien « En savoir plus sur le partenariat » conservé sur washer-type (avec infoOrigin=washer-type).
+- Lint OK (bun run lint, zéro erreur) ; dev server : compilation ✓, GET / 200.
+- Vérification navigateur (agent-browser) : accueil → partenaire → page info ✓ ; info → Continuer → choix du type ✓ ; choix type → En savoir plus → info → retour → choix du type ✓ ; accueil → info → retour → accueil ✓. Aucune erreur console (seul l'avertissement préexistant clé Google Maps, sans rapport).
+- Commit 179a8a3 (✨) puis entrée worklog (📝), branche à pousser sur origin.
+
+Stage Summary:
+- NOUVEAU PARCOURS : « Devenir partenaire laveur » → conditions du partenariat (avantages, pièces Article 8, contrat PDF, barème 60-80 % Article 5, processus) → « Continuer » → choix Laveur Indépendant / Station → formulaire. La flèche retour de la page info est contextuelle (mémorisation de l'origine).
+- Branche feature/inscription-info-first (commits 179a8a3 + worklog) — à merger dans main puis déployer via deploy.sh --update quand l'utilisateur valide.
+- RAPPEL TÂCHE OUVERTE : le build mobile Capacitor (discussion partagée, échec output: export × routes API) reste à traiter sur une autre nouvelle branche (architecture retenue : UI embarquée + backend distant https://socline.oquitogo.com, voie A server.url).
