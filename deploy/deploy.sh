@@ -15,6 +15,21 @@
 #
 set -euo pipefail
 
+# ------------------------------------------------------------
+# AUTO-RELANCE DEPUIS UNE COPIE STABLE :
+# ce script fait un « git reset --hard » sur son PROPRE dépôt pendant son
+# exécution. bash, qui a déjà lu le fichier en mémoire, continuerait alors
+# avec l'ANCIENNE version (c'est exactement ce qui a rejoué une ancienne
+# logique et causé un 502 : nouveau port nginx, ancien processus jamais
+# redémarré). On copie donc le script HORS du dépôt et on exécute la copie.
+# ------------------------------------------------------------
+if [[ "${SOCLINE_DEPLOY_RUNNING:-}" != "1" ]]; then
+  CP_DEST="/tmp/.socline-deploy-$$.sh"
+  cp "$0" "${CP_DEST}"
+  export SOCLINE_DEPLOY_RUNNING=1
+  exec bash "${CP_DEST}" "$@"
+fi
+
 APP_DIR="${APP_DIR:-/opt/socline}"
 REPO_URL="${REPO_URL:-https://github.com/blunaantoine/socline.git}"
 PUBLIC_PORT=3002          # port public demandé
@@ -101,6 +116,16 @@ else
   git config --global --add safe.directory "${APP_DIR}" 2>/dev/null || true
 fi
 cd "${APP_DIR}"
+# Si cette mise à jour a apporté une NOUVELLE version du script de
+# déploiement, on relance la version à jour (on tourne sur une copie
+# stable hors du dépôt : re-exec sans risque d'être remplacé en cours
+# d'exécution — le git reset est déjà fait, le fichier ne bougera plus).
+DEPLOY_SRC="${APP_DIR}/deploy/deploy.sh"
+if [[ -f "${DEPLOY_SRC}" && "$(readlink -f "$0")" != "$(readlink -f "${DEPLOY_SRC}")" ]] \
+   && ! cmp -s "$0" "${DEPLOY_SRC}"; then
+  c_info "Nouvelle version du script de déploiement détectée — relance automatique…"
+  exec bash "${DEPLOY_SRC}" "$@"
+fi
 c_ok "Code à jour dans ${APP_DIR}"
 
 # ------------------------------------------------------------
@@ -408,7 +433,9 @@ echo ""
 # Affiche l'URL HTTPS du domaine si le certificat certbot est en place
 NGINX_CONF="/etc/nginx/conf.d/socline.conf"
 if [[ -f "${NGINX_CONF}" ]] && grep -q "ssl_certificate" "${NGINX_CONF}"; then
-  PUBLIC_DOMAIN="$(grep -oPm1 'server_name\s+\K[^; ]+' "${NGINX_CONF}")"
+  # Prendre le premier server_name réel (ignorer le joker « _ » du template)
+  PUBLIC_DOMAIN="$(grep -oP 'server_name\s+\K[^; ]+' "${NGINX_CONF}" 2>/dev/null | grep -v '^_$' | head -n1 || true)"
+  [[ -n "${PUBLIC_DOMAIN}" ]] || PUBLIC_DOMAIN="socline.oquitogo.com"
   echo "  🌐 Application   : https://${PUBLIC_DOMAIN}  (aussi : http://${IP_ADDR}:${PUBLIC_PORT})"
 else
   echo "  🌐 Application   : http://${IP_ADDR}:${PUBLIC_PORT}"
