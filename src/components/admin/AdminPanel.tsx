@@ -36,7 +36,7 @@ import {
   TrendingUp, Clock, Star, Settings, Bell, Plus,
   CheckCircle, XCircle, AlertCircle, Search,
   ChevronDown, Download, Eye, Edit, Trash2, Tag,
-  RefreshCw, Loader2, ArrowLeft, LogOut, Percent, Wallet, Phone, Image as ImageIcon, Move, Banknote, Receipt, Video as VideoIcon, Film
+  RefreshCw, Loader2, ArrowLeft, LogOut, Percent, Wallet, Phone, Image as ImageIcon, Move, Banknote, Receipt, Video as VideoIcon, Film, Building2
 } from 'lucide-react';
 import { HideableBalanceLight } from '@/components/ui/hideable-balance';
 import { toast } from 'sonner';
@@ -348,6 +348,8 @@ export function AdminPanel() {
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [deposits, setDeposits] = useState<Deposit[]>([]);
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
+  // Stations de lavage — gérées séparément des laveurs indépendants
+  const [stations, setStations] = useState<any[]>([]);
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [subTab, setSubTab] = useState<string | null>(null); // For "Plus" menu sub-navigation
@@ -506,6 +508,24 @@ export function AdminPanel() {
     }
   }, []);
 
+  // Fetch stations — liste admin des stations de lavage
+  const fetchStations = useCallback(async (background = false) => {
+    if (!background) setIsLoading(true);
+    try {
+      const res = await fetch('/api/admin/stations');
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
+
+      if (data.success) {
+        setStations(data.stations);
+      }
+    } catch (error) {
+      console.error('Fetch stations error:', error);
+    } finally {
+      if (!background) setIsLoading(false);
+    }
+  }, []);
+
   // Rafraîchit les données de l'onglet actif. `source` distingue le chargement
   // initial (spinner) du rafraîchissement automatique (silencieux).
   const refreshActiveTab = useCallback((source: RefreshSource = 'initial') => {
@@ -526,6 +546,8 @@ export function AdminPanel() {
         fetchDeposits(background);
       } else if (subTab === 'withdrawals') {
         fetchWithdrawals(background);
+      } else if (subTab === 'stations') {
+        fetchStations(background);
       } else if (subTab === 'operators') {
         // Operators are loaded in AdminSettings
       }
@@ -534,7 +556,7 @@ export function AdminPanel() {
     } else if (activeTab === 'deposits') {
       fetchDeposits(background);
     }
-  }, [activeTab, subTab, fetchStats, fetchOrders, fetchUsers, fetchWashers, fetchPromotions, fetchDeposits, fetchWithdrawals]);
+  }, [activeTab, subTab, fetchStats, fetchOrders, fetchUsers, fetchWashers, fetchPromotions, fetchDeposits, fetchWithdrawals, fetchStations]);
 
   // Auto-sync : rafraîchit l'onglet actif toutes les 30 s, au retour sur
   // l'app et à chaque changement d'onglet/filtre (chargement visible).
@@ -566,6 +588,31 @@ export function AdminPanel() {
       if (data.success) {
         toast.success(action === 'verify' ? 'Laveur vérifié' : 'Laveur rejeté');
         fetchWashers();
+      } else {
+        toast.error(data.error || 'Erreur lors de la mise à jour');
+      }
+    } catch (error) {
+      toast.error('Erreur lors de la mise à jour');
+    }
+  };
+
+  // Handle station management actions (activer/désactiver, vérifier le propriétaire)
+  const handleStationAction = async (stationId: string, action: 'toggle-active' | 'verify-owner' | 'reject-owner') => {
+    try {
+      const res = await fetch('/api/admin/stations', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stationId, action }),
+      });
+
+      const data = await parseJsonResponse<any>(res);
+      if (!data) {
+        toast.error('Aucune réponse du serveur — réessayez');
+        return;
+      }
+      if (data.success) {
+        toast.success(data.message || 'Station mise à jour');
+        fetchStations();
       } else {
         toast.error(data.error || 'Erreur lors de la mise à jour');
       }
@@ -762,6 +809,7 @@ export function AdminPanel() {
                 <h2 className="font-semibold text-lg text-[#212121]">
                   {subTab === 'deposits' && 'Demandes de recharge'}
                   {subTab === 'withdrawals' && 'Retraits Laveurs'}
+                  {subTab === 'stations' && 'Stations de Lavage'}
                   {subTab === 'transactions' && 'Historique des transactions'}
                   {subTab === 'subscription-plans' && 'Forfaits Abonnements'}
                   {subTab === 'subscriptions' && 'Abonnements Clients'}
@@ -786,6 +834,14 @@ export function AdminPanel() {
                   isLoading={isLoading}
                   onRefresh={fetchWithdrawals}
                   onAction={handleWithdrawalAction}
+                />
+              )}
+              {subTab === 'stations' && (
+                <AdminStations
+                  stations={stations}
+                  isLoading={isLoading}
+                  onRefresh={fetchStations}
+                  onAction={handleStationAction}
                 />
               )}
               {subTab === 'transactions' && <AdminTransactions />}
@@ -2503,6 +2559,13 @@ function AdminPlusMenu({ depositsCount, withdrawalsCount, onSelect }: {
       color: '#9C27B0',
     },
     {
+      id: 'stations',
+      icon: Building2,
+      label: 'Stations de Lavage',
+      description: 'Liste et gestion des stations partenaires (distinctes des laveurs indépendants)',
+      color: '#00897B',
+    },
+    {
       id: 'transactions',
       icon: Receipt,
       label: 'Historique des transactions',
@@ -2750,17 +2813,20 @@ function AdminOperatorsSection() {
               <Input
                 value={form.ussdPattern}
                 onChange={(e) => setForm({ ...form, ussdPattern: e.target.value })}
-                placeholder="*145*1*{montant}*{numero}*2#"
+                placeholder="*145*5*{montant}*1416831#  (marchand)  ou  *145*1*{montant}*{numero}*2#"
                 className="mt-1"
               />
+              <p className="text-[11px] text-[#9E9E9E] mt-1">
+                Le pattern doit contenir {'{montant}'} et se terminer par #. Format marchand Mixx : *145*5*{'{montant}'}*1416831#
+              </p>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label className="text-xs text-[#757575]">Numéro destinataire</Label>
+                <Label className="text-xs text-[#757575]">Numéro / code marchand destinataire</Label>
                 <Input
                   value={form.recipientNumber}
                   onChange={(e) => setForm({ ...form, recipientNumber: e.target.value })}
-                  placeholder="90000000"
+                  placeholder="1416831"
                   className="mt-1"
                 />
               </div>
@@ -4807,6 +4873,195 @@ function AdminTransactions() {
                         {t.amount.toLocaleString()} XOF
                       </p>
                     </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Admin Stations — Gestion des stations de lavage (distinctes des laveurs
+// indépendants) : liste complète, activation, vérification du propriétaire.
+function AdminStations({ stations, isLoading, onRefresh, onAction }: {
+  stations: any[];
+  isLoading: boolean;
+  onRefresh: () => void;
+  onAction: (stationId: string, action: 'toggle-active' | 'verify-owner' | 'reject-owner') => void;
+}) {
+  const [search, setSearch] = useState('');
+
+  const filtered = stations.filter((s) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      (s.name || '').toLowerCase().includes(q) ||
+      (s.address || '').toLowerCase().includes(q) ||
+      (s.owner?.phone || '').includes(q) ||
+      (s.owner?.name || '').toLowerCase().includes(q)
+    );
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-[#757575]">
+          {stations.length} station{stations.length > 1 ? 's' : ''} partenaire{stations.length > 1 ? 's' : ''}
+        </p>
+        <Button variant="outline" size="sm" onClick={onRefresh}>
+          <RefreshCw className="w-4 h-4 mr-1.5" />
+          Actualiser
+        </Button>
+      </div>
+
+      {/* Recherche */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9E9E9E]" />
+        <Input
+          placeholder="Rechercher (nom, adresse, propriétaire, téléphone...)"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+
+      {filtered.length === 0 ? (
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-8 text-center">
+            <Building2 className="w-12 h-12 text-[#BDBDBD] mx-auto mb-3" />
+            <p className="text-[#757575]">
+              {stations.length === 0
+                ? 'Aucune station enregistrée. Les propriétaires de station s\'inscrivent via « Devenir partenaire laveur » → « Station de Lavage ».'
+                : 'Aucune station ne correspond à votre recherche.'}
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {filtered.map((station) => {
+            const ownerVerified = station.owner?.washer?.isVerified ?? false;
+            const services = station.services || [];
+            return (
+              <Card key={station.id} className={`border-0 shadow-sm ${!station.isActive ? 'opacity-70' : ''}`}>
+                <CardContent className="p-4 space-y-3">
+                  {/* En-tête : nom + statut */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-[#E0F2F1] flex items-center justify-center flex-shrink-0">
+                        <Building2 className="w-5 h-5 text-[#00897B]" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-[#212121] truncate">{station.name}</p>
+                        <p className="text-xs text-[#757575] flex items-center gap-1 mt-0.5">
+                          <MapPin className="w-3 h-3 flex-shrink-0" />
+                          <span className="truncate">{station.address}</span>
+                        </p>
+                      </div>
+                    </div>
+                    <Badge className={station.isActive
+                      ? 'bg-[#E8F5E9] text-[#2E7D32] hover:bg-[#E8F5E9]'
+                      : 'bg-[#FFEBEE] text-[#C62828] hover:bg-[#FFEBEE]'}
+                    >
+                      {station.isActive ? 'Active' : 'Désactivée'}
+                    </Badge>
+                  </div>
+
+                  {/* Description */}
+                  {station.description && (
+                    <p className="text-xs text-[#757575] line-clamp-2">{station.description}</p>
+                  )}
+
+                  {/* Propriétaire */}
+                  <div className="bg-[#F5F5F5] rounded-lg p-3 space-y-1.5">
+                    <p className="text-xs font-medium text-[#212121]">
+                      Propriétaire : {station.owner?.name || 'Non défini'}
+                    </p>
+                    <p className="text-xs text-[#757575] flex items-center gap-1">
+                      <Phone className="w-3 h-3" />
+                      +228 {station.owner?.phone || '—'}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Badge className={
+                        ownerVerified
+                          ? 'bg-[#E8F5E9] text-[#2E7D32] hover:bg-[#E8F5E9]'
+                          : 'bg-[#FFF3E0] text-[#E65100] hover:bg-[#FFF3E0]'
+                      }>
+                        {ownerVerified ? 'Compte vérifié' : 'En attente de validation'}
+                      </Badge>
+                      {!station.owner?.isActive && (
+                        <Badge className="bg-[#FFEBEE] text-[#C62828] hover:bg-[#FFEBEE]">
+                          Compte désactivé
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Services + stats */}
+                  <div className="flex items-center gap-4 text-xs text-[#757575]">
+                    <span>{station._count?.services ?? services.length} service(s)</span>
+                    <span>{station._count?.washers ?? 0} laveur(s)</span>
+                    <span>{station._count?.orders ?? 0} commande(s)</span>
+                  </div>
+                  {services.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {services.slice(0, 4).map((svc: any) => (
+                        <span key={svc.id} className="text-[11px] bg-[#FFF8F0] text-[#E65100] border border-[#FFCC80] rounded px-1.5 py-0.5">
+                          {svc.name} · {svc.price.toLocaleString()} F
+                        </span>
+                      ))}
+                      {services.length > 4 && (
+                        <span className="text-[11px] text-[#9E9E9E] px-1 py-0.5">
+                          +{services.length - 4} autre(s)
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="flex gap-2 pt-1">
+                    {!ownerVerified ? (
+                      <>
+                        <Button
+                          size="sm"
+                          onClick={() => onAction(station.id, 'verify-owner')}
+                          className="flex-1 bg-[#4CAF50] hover:bg-[#43A047] text-white h-9 text-xs"
+                        >
+                          <CheckCircle className="w-4 h-4 mr-1" />
+                          Vérifier le propriétaire
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => onAction(station.id, 'reject-owner')}
+                          className="flex-1 h-9 text-xs text-[#C62828] hover:bg-[#FFEBEE]"
+                        >
+                          <XCircle className="w-4 h-4 mr-1" />
+                          Rejeter
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant={station.isActive ? 'outline' : 'default'}
+                        onClick={() => onAction(station.id, 'toggle-active')}
+                        className={`flex-1 h-9 text-xs ${station.isActive
+                          ? 'text-[#C62828] hover:bg-[#FFEBEE]'
+                          : 'bg-[#4CAF50] hover:bg-[#43A047] text-white'}`}
+                      >
+                        {station.isActive ? 'Désactiver la station' : 'Activer la station'}
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
