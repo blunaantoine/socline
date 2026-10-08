@@ -855,3 +855,27 @@ Stage Summary:
 - PAIEMENT : l'utilisateur ne voit plus aucun code USSD — « Payer » ouvre le composeur avec le code prérempli ; Mixx by Yas paie vers le COMPTE MARCHAND 1416831 via *145*5*{montant}*1416831# (migration auto du VPS au prochain deploy --update grâce au seed). Flooz inchangé.
 - ADMIN : les stations ont leur section dédiée (Plus → Stations de Lavage) distincte de la liste des laveurs — validation du propriétaire et activation/désactivation de la station incluses. Le parcours client distinguait déjà les deux onglets (Indépendants / Stations).
 - Reste à tester en production réelle : l'appel USSD depuis un vrai téléphone (le lien tel: dépend du mobile) et l'action Vérifier le propriétaire sur une vraie inscription station.
+
+---
+Task ID: 32 (session 24 — devanture station + itinéraire client + couleurs solides)
+Agent: main (Z.ai Code)
+Task: 1) les stations ajoutent une image de leur devanture + leur localisation qui guide le client vers elles ; 2) remplacer toutes les couleurs transparentes par de vraies couleurs (ex. cartes « Lavage Extérieur »), y compris dans le menu admin. Branche feature/station-devanture-couleurs.
+
+Work Log:
+- Découverte : le modèle Station avait déjà images (JSON) + latitude/longitude, et PATCH /api/stations/[id] les acceptait — mais AUCUNE UI ne les exploitait ; le client affichait seulement images[0] dans la liste.
+- src/lib/image-utils.ts (nouveau) : fileToCompressedDataUrl (canvas, 1280px/JPEG 0.85, fallback lecture brute si canvas échoue) + buildStationDirectionsUrl (Google Maps dir API : coords si présentes sinon adresse encodée).
+- Inscription station : AuthScreen ajoute « Photo de la devanture (optionnel) » (max 5, miniatures + badge Devanture + suppression) et « Position GPS (optionnel) » (navigator.geolocation, bloc vert de confirmation + Retirer) ; register API stocke stationImages (JSON validé) + lat/lng.
+- StationDashboard : formulaire « Modifier la station » enrichi (photos multi-upload avec compression, badge « Devanture » sur la 1ère, GPS « Utiliser ma position actuelle » avec états Localisation…/Retirer) ; profil « Ma station » : galerie scrollable, état GPS coloré, lien « Voir ma position sur Google Maps » ; body PATCH : images JSON + latitude/longitude.
+- ClientApp : fiche station = galerie photos (badge Devanture) + bouton vert « Itinéraire — aller à la station » (window.open Google Maps dir) au-dessus des services ; helper getStationImages.
+- AdminStations (AdminPanel) : vignette devanture à la place de l'icône si photos + lien « Voir sur la carte (GPS) » par station.
+- COULEURS SOLIDES : sweep complet des surfaces translucides remplacées par la couleur du mélange calculée sur le fond réel — orange (#FFAD33/#FFB240/#FFA21A/#FFF3E0/#FFCC80/#FFF8F0), vert (#70BF73/#82C785/#79C37C/#E8F5E9/#C8E6C9/#A5D6A7), violet (#C084FC/#D8B4FE/#F3E8FF), sombres sur images (#262626/#333333/#4D4D4D/#212121), bordures alpha → #FFCC80/#FFB74D, ping opaque, code promo/badges blancs à texte orange, OrderTracking pastilles blanches bordées, hideable-balance → anneau blanc au survol. Scrim de modales ui/*.tsx conservé (couche fonctionnelle, pas une surface). Fichiers : ClientApp, ClientOrderFlow, WalletScreen, AuthScreen, OrderHistory, OrderTracking, WasherApp, StationDashboard, CarsManager, AdminPanel, hideable-balance.
+- E2E navigateur : inscription station test via API (2 photos + GPS 6.1319/1.2228) → visibles client (galerie 2 photos, badge, bouton Itinéraire → URL https://www.google.com/maps/dir/?api=1&destination=6.1319,1.2228 interceptée), admin (vignette + lien GPS) et dashboard propriétaire (profil + formulaire) ; upload réel d'une 3e photo → « 1 photo ajoutée » + « Station mise à jour avec succès » → DB : 3 photos, coords conservées ; parcours client/wallet/admin captures vérifiées (plus aucune surface translucide).
+- Correctifs process : dev server restart non requis (aucun changement Prisma) ; lint 0/0 (5 directives eslint-disable inutiles auto-supprimées) ; station de test purgée de la DB après vérification (Socline Centre-Ville seule restante).
+- NOTE : un login UI propriétaire a semblé échouer dans l'automatisation — artefact de timing des refs agent-browser (re-render après fill) ; le même clic a réussi ensuite et le store + dashboard se sont chargés correctement. Ligne pré-existante suspecte `}, ode]);` (AuthScreen l.572, commit de juillet) : parsée sans erreur par esbuild/tsc, non modifiée.
+- Commits 09b12ee (✨ stations) + 2e796b9 (🎨 couleurs) + worklog (📝) ; branche poussée sur origin.
+
+Stage Summary:
+- Les stations disposent désormais d'une vraie vitrine : photo de devanture (et jusqu'à 5 photos) + position GPS capturables à l'inscription ou depuis le tableau de bord, visibles par les clients avec un bouton d'itinéraire Google Maps qui les guide jusqu'à la station (GPS priorisé, sinon adresse).
+- L'admin voit la devanture et peut ouvrir la carte directement depuis l'onglet Stations de Lavage.
+- Toutes les surfaces colorées de l'app (client, laveur, station, admin) sont en couleurs pleines : plus aucun blanc/noir translucide ni dégradé vers transparent en dehors des fonds de modales fonctionnels.
+- Reste ouvert : build mobile Capacitor (server.url vers https://socline.oquitogo.com) sur une autre branche ; validation de cette branche puis deploy.sh --update pour le VPS.
