@@ -300,13 +300,15 @@ export async function POST() {
     // Create Mobile Money operators if they don't exist
     const existingOperators = await db.mobileMoneyOperator.count();
     if (existingOperators === 0) {
-      // Mixx by Yas (Togo Telecom)
+      // Mixx by Yas (Togocom) — COMPTE MARCHAND SOCLINE
+      // Format marchand : le client paie directement vers le code marchand
+      // 1416831 (pas de {numero} : c'est la SIM du client qui l'identifie).
       await db.mobileMoneyOperator.create({
         data: {
           name: 'Mixx by Yas',
           displayName: 'Mixx by Yas (Togo Telecom)',
-          ussdPattern: '*145*1*{montant}*{numero}*2#',
-          recipientNumber: '90000000',
+          ussdPattern: '*145*5*{montant}*1416831#',
+          recipientNumber: '1416831',
           color: '#0066CC',
           minAmount: 100,
           maxAmount: 500000,
@@ -325,6 +327,23 @@ export async function POST() {
           minAmount: 100,
           maxAmount: 500000,
           isActive: true,
+        },
+      });
+    }
+
+    // Migration douce — compte marchant Mixx by Yas : les bases créées avant
+    // le format marchand conservent l'ancien pattern de transfert personnel.
+    // deploy.sh appelle /api/seed à chaque mise à jour → correction automatique.
+    const OLD_MIXX_PATTERN = '*145*1*{montant}*{numero}*2#';
+    const legacyMixx = await db.mobileMoneyOperator.findFirst({
+      where: { name: 'Mixx by Yas', ussdPattern: OLD_MIXX_PATTERN },
+    });
+    if (legacyMixx) {
+      await db.mobileMoneyOperator.update({
+        where: { id: legacyMixx.id },
+        data: {
+          ussdPattern: '*145*5*{montant}*1416831#',
+          recipientNumber: '1416831',
         },
       });
     }

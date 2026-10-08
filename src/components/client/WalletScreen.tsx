@@ -14,9 +14,9 @@ import {
 } from '@/components/ui/dialog';
 import {
   Wallet, ArrowDownLeft, ArrowUpRight, Clock, Plus, 
-  Loader2, CheckCircle, XCircle, ArrowLeft, Phone,
+  Loader2, CheckCircle, XCircle, ArrowLeft, Phone, PhoneCall,
   CreditCard, ChevronRight, Sparkles, RefreshCw, History,
-  Copy, ExternalLink, AlertCircle, Check
+  AlertCircle, Check
 } from 'lucide-react';
 import { HideableBalanceDark } from '@/components/ui/hideable-balance';
 import { toast } from 'sonner';
@@ -127,7 +127,8 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
   const [showDeposit, setShowDeposit] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [copied, setCopied] = useState(false);
+  // NOTE UX : l'utilisateur ne voit plus ni le code USSD ni de bouton « Copier » —
+  // le bouton « Payer » lance directement le composeur avec le code prérempli (tel:).
   
   const [deposit, setDeposit] = useState<DepositState>({
     step: 'amount',
@@ -301,16 +302,9 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
 
   const handleLaunchUssd = () => {
     if (deposit.ussdLink) {
+      // Ouvre le composeur du téléphone avec le code USSD prérempli —
+      // l'utilisateur n'a plus rien à recopier, il valide simplement l'appel.
       window.location.href = deposit.ussdLink;
-    }
-  };
-
-  const handleCopyUssd = async () => {
-    if (deposit.ussdCode) {
-      await navigator.clipboard.writeText(deposit.ussdCode);
-      setCopied(true);
-      toast.success('Code USSD copié !');
-      setTimeout(() => setCopied(false), 2000);
     }
   };
 
@@ -699,47 +693,26 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
                     <div>
                       <p className="font-medium text-yellow-800 text-sm">Instructions</p>
                       <p className="text-xs text-yellow-700 mt-1">
-                        1. Lancez le code USSD<br/>
-                        2. Entrez votre code PIN<br/>
-                        3. Revenez et cliquez "J'ai payé"
+                        1. Appuyez sur « Payer » : le code s'affiche dans votre composeur<br/>
+                        2. Validez l'appel et entrez votre PIN Mobile Money<br/>
+                        3. Revenez ici et appuyez « J'ai payé »
                       </p>
                     </div>
                   </div>
                 </div>
 
-                {/* Code USSD */}
-                <div className="bg-[#212121] rounded-xl p-4 text-center">
-                  <p className="text-white/60 text-xs mb-1">Code USSD</p>
-                  <p className="text-white text-xl font-mono font-bold tracking-wide break-all">
-                    {deposit.ussdCode}
-                  </p>
-                </div>
-
-                {/* Boutons */}
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={handleCopyUssd}
-                    className="h-11"
-                  >
-                    {copied ? <Check className="w-4 h-4 mr-1.5 text-green-500" /> : <Copy className="w-4 h-4 mr-1.5" />}
-                    {copied ? 'Copié !' : 'Copier'}
-                  </Button>
-                  <Button
-                    onClick={handleLaunchUssd}
-                    className="h-11 bg-[#FF9800] hover:bg-[#F57C00]"
-                  >
-                    <ExternalLink className="w-4 h-4 mr-1.5" />
-                    Lancer
-                  </Button>
-                </div>
-
-                {/* Info destinataire */}
-                <div className="bg-[#F5F5F5] rounded-lg p-2.5 text-center">
-                  <p className="text-xs text-[#757575]">
-                    Destinataire: <span className="font-mono font-bold text-[#212121]">{deposit.recipientNumber}</span>
-                  </p>
-                </div>
+                {/* Bouton Payer — lance automatiquement le code USSD dans le composeur */}
+                <Button
+                  onClick={handleLaunchUssd}
+                  disabled={!deposit.ussdLink}
+                  className="w-full h-14 bg-[#4CAF50] hover:bg-[#43A047] text-white rounded-xl font-bold text-base shadow-lg"
+                >
+                  <PhoneCall className="w-5 h-5 mr-2" />
+                  Payer {deposit.amount.toLocaleString()} F CFA
+                </Button>
+                <p className="text-xs text-center text-[#9E9E9E] px-2">
+                  Le code de paiement est composé automatiquement : vous n'avez rien à recopier.
+                </p>
               </div>
             )}
 

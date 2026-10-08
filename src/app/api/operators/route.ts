@@ -38,10 +38,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Valider le pattern USSD
-    if (!ussdPattern.includes('{montant}') || !ussdPattern.includes('{numero}')) {
+    // Valider le pattern USSD — deux formats acceptés :
+    //  - transfert vers un numéro : *145*1*{montant}*{numero}*2#
+    //  - paiement marchand : *145*5*{montant}*1416831# (pas de {numero}, le
+    //    code marchand de la plateforme est écrit en dur dans le pattern)
+    if (!ussdPattern.includes('{montant}') || !ussdPattern.trim().endsWith('#')) {
       return NextResponse.json(
-        { success: false, error: 'Le pattern USSD doit contenir {montant} et {numero}' },
+        { success: false, error: 'Le pattern USSD doit contenir {montant} et se terminer par #' },
         { status: 400 }
       );
     }
