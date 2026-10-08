@@ -36,7 +36,7 @@ import {
   TrendingUp, Clock, Star, Settings, Bell, Plus,
   CheckCircle, XCircle, AlertCircle, Search,
   ChevronDown, Download, Eye, Edit, Trash2, Tag,
-  RefreshCw, Loader2, ArrowLeft, LogOut, Percent, Wallet, Phone, Image as ImageIcon, Move, Banknote, Receipt, Video as VideoIcon, Film, Building2
+  RefreshCw, Loader2, ArrowLeft, LogOut, Percent, Wallet, Phone, Image as ImageIcon, Move, Banknote, Receipt, Video as VideoIcon, Film, Building2, CreditCard
 } from 'lucide-react';
 import { HideableBalanceLight } from '@/components/ui/hideable-balance';
 import { toast } from 'sonner';
@@ -817,6 +817,7 @@ export function AdminPanel() {
                   {subTab === 'services' && 'Services'}
                   {subTab === 'finances' && 'Finances'}
                   {subTab === 'operators' && 'Opérateurs Mobile Money'}
+                  {subTab === 'payment-system' && 'Système de Paiement'}
                   {subTab === 'settings' && 'Paramètres'}
                 </h2>
               </div>
@@ -857,6 +858,7 @@ export function AdminPanel() {
               {subTab === 'services' && <AdminServices />}
               {subTab === 'finances' && <AdminFinances stats={stats} />}
               {subTab === 'operators' && <AdminOperatorsSection />}
+              {subTab === 'payment-system' && <AdminPaymentSystem />}
               {subTab === 'settings' && <AdminSettingsContent />}
             </div>
           ) : (
@@ -2615,6 +2617,13 @@ function AdminPlusMenu({ depositsCount, withdrawalsCount, onSelect }: {
       color: '#00BCD4',
     },
     {
+      id: 'payment-system',
+      icon: CreditCard,
+      label: 'Système de Paiement',
+      description: "Choisir le système affiché aux clients (Mixx by Yas ou PayDunya)",
+      color: '#E65100',
+    },
+    {
       id: 'settings',
       icon: Settings,
       label: 'Paramètres',
@@ -2669,6 +2678,275 @@ function AdminPlusMenu({ depositsCount, withdrawalsCount, onSelect }: {
 }
 
 // Admin Operators Section
+// ---------------------------------------------------------------------------
+// Système de Paiement — l'admin choisit le système affiché aux clients
+// (Mixx by Yas via USSD, ou PayDunya via page de checkout en ligne)
+// ---------------------------------------------------------------------------
+function AdminPaymentSystem() {
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [provider, setProvider] = useState<'MIXX_USSD' | 'PAYDUNYA'>('MIXX_USSD');
+  const [paydunyaConfigured, setPaydunyaConfigured] = useState(false);
+  const [form, setForm] = useState({
+    mode: 'test',
+    storeName: 'Socline',
+    masterKey: '',
+    privateKey: '',
+    token: '',
+  });
+  const [hasKeys, setHasKeys] = useState({ masterKey: false, privateKey: false, token: false });
+
+  const fetchConfig = useCallback(async (background = false) => {
+    if (!background) setIsLoading(true);
+    try {
+      const res = await fetch('/api/admin/payment-config');
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
+      if (data.success) {
+        setProvider(data.provider);
+        setPaydunyaConfigured(data.paydunyaConfigured);
+        setForm({
+          mode: data.paydunya.mode,
+          storeName: data.paydunya.storeName || 'Socline',
+          masterKey: data.paydunya.masterKey || '',
+          privateKey: data.paydunya.privateKey || '',
+          token: data.paydunya.token || '',
+        });
+        setHasKeys({
+          masterKey: Boolean(data.paydunya.hasMasterKey),
+          privateKey: Boolean(data.paydunya.hasPrivateKey),
+          token: Boolean(data.paydunya.hasToken),
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching payment config:', error);
+    } finally {
+      if (!background) setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchConfig();
+  }, [fetchConfig]);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const res = await fetch('/api/admin/payment-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider,
+          paydunya: {
+            mode: form.mode,
+            storeName: form.storeName,
+            masterKey: form.masterKey,
+            privateKey: form.privateKey,
+            token: form.token,
+          },
+        }),
+      });
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
+
+      if (data.success) {
+        toast.success('Configuration de paiement enregistrée ✅');
+        await fetchConfig(true);
+      } else {
+        toast.error(data.error || 'Erreur lors de la sauvegarde');
+      }
+    } catch (error) {
+      toast.error('Erreur lors de la sauvegarde');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-10">
+        <Loader2 className="w-6 h-6 animate-spin text-[#FF9800]" />
+      </div>
+    );
+  }
+
+  const systems = [
+    {
+      id: 'MIXX_USSD' as const,
+      name: 'Mixx by Yas (USSD)',
+      description: "Le client compose le code USSD prérempli depuis son téléphone. Validation manuelle par l'admin.",
+      icon: Phone,
+      color: '#00BCD4',
+      ready: true,
+    },
+    {
+      id: 'PAYDUNYA' as const,
+      name: 'PayDunya',
+      description: 'Le client paie en ligne sur la page PayDunya (T-Money, Moov Money, Wave…). Validation automatique du solde.',
+      icon: CreditCard,
+      color: '#E65100',
+      ready: paydunyaConfigured,
+    },
+  ];
+
+  return (
+    <div className="space-y-4 pb-24">
+      <p className="text-sm text-[#757575]">
+        Choisissez le système de paiement affiché aux clients pour recharger leur portefeuille.
+      </p>
+
+      {/* Sélecteur du système actif */}
+      <div className="space-y-3">
+        {systems.map((sys) => {
+          const isActive = provider === sys.id;
+          return (
+            <button
+              key={sys.id}
+              onClick={() => setProvider(sys.id)}
+              className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
+                isActive
+                  ? 'border-[#FF9800] bg-[#FFF8F0]'
+                  : 'border-[#E0E0E0] bg-white hover:border-[#BDBDBD]'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: sys.color }}
+                >
+                  <sys.icon className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-[#212121]">{sys.name}</span>
+                    {isActive ? (
+                      <Badge className="bg-green-100 text-green-700 border-green-200">Actif</Badge>
+                    ) : null}
+                    {!sys.ready ? (
+                      <Badge className="bg-red-100 text-red-700 border-red-200">Non configuré</Badge>
+                    ) : null}
+                  </div>
+                  <p className="text-xs text-[#757575] mt-1">{sys.description}</p>
+                </div>
+                <div
+                  className={`w-5 h-5 rounded-full border-2 flex-shrink-0 ${
+                    isActive ? 'border-[#FF9800] bg-[#FF9800]' : 'border-[#BDBDBD]'
+                  }`}
+                />
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Configuration PayDunya (affichée si PayDunya sélectionné) */}
+      {provider === 'PAYDUNYA' && (
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-medium text-[#212121] flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-[#E65100]" />
+                Configuration PayDunya
+              </h3>
+              <Badge
+                className={
+                  paydunyaConfigured
+                    ? 'bg-green-100 text-green-700 border-green-200'
+                    : 'bg-red-100 text-red-700 border-red-200'
+                }
+              >
+                {paydunyaConfigured ? 'Clés enregistrées' : 'Clés manquantes'}
+              </Badge>
+            </div>
+
+            <p className="text-xs text-[#757575]">
+              Récupérez ces informations sur <span className="font-medium">paydunya.com</span> → Compte marchand → API / Intégration.
+              Les clés enregistrées sont masquées ; ne renseignez un champ que pour le changer.
+            </p>
+
+            <div className="space-y-2">
+              <Label>Mode</Label>
+              <Select value={form.mode} onValueChange={(v) => setForm(prev => ({ ...prev, mode: v }))}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Choisir le mode" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="test">Test (sandbox)</SelectItem>
+                  <SelectItem value="live">Production (live)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-[#9E9E9E]">
+                En mode test, les paiements passent sur la page sandbox PayDunya — aucun argent réel.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Nom de la boutique</Label>
+              <Input
+                value={form.storeName}
+                onChange={(e) => setForm(prev => ({ ...prev, storeName: e.target.value }))}
+                placeholder="Socline"
+              />
+              <p className="text-xs text-[#9E9E9E]">Nom affiché au client sur la page de paiement.</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Clé maître (Master Key)</Label>
+              <Input
+                value={form.masterKey}
+                onChange={(e) => setForm(prev => ({ ...prev, masterKey: e.target.value }))}
+                placeholder={hasKeys.masterKey ? '•••••••• (enregistrée — laisser tel quel pour conserver)' : 'ex. wk_Txxx-xxxx-xxxx'}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Clé privée (Private Key)</Label>
+              <Input
+                value={form.privateKey}
+                onChange={(e) => setForm(prev => ({ ...prev, privateKey: e.target.value }))}
+                placeholder={hasKeys.privateKey ? '•••••••• (enregistrée — laisser tel quel pour conserver)' : 'ex. test_private_xxxx / live_private_xxxx'}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Token marchand</Label>
+              <Input
+                value={form.token}
+                onChange={(e) => setForm(prev => ({ ...prev, token: e.target.value }))}
+                placeholder={hasKeys.token ? '•••••••• (enregistré — laisser tel quel pour conserver)' : 'ex. +2xxx-xxxx-xxxx'}
+              />
+            </div>
+
+            <div className="bg-[#FFF8F0] border border-[#FFE0B2] rounded-lg p-3">
+              <div className="flex gap-2">
+                <AlertCircle className="w-4 h-4 text-[#F57C00] flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-[#E65100]">
+                  Dans votre tableau de bord PayDunya, configurez l&apos;URL de notification (IPN) vers :
+                  <span className="font-medium break-all"> https://socline.oquitogo.com/api/payment/paydunya/webhook</span>
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Enregistrer */}
+      <Button
+        onClick={handleSave}
+        disabled={isSaving}
+        className="w-full bg-[#FF9800] hover:bg-[#F57C00] h-12"
+      >
+        {isSaving ? (
+          <Loader2 className="w-5 h-5 animate-spin mr-2" />
+        ) : (
+          <CheckCircle className="w-5 h-5 mr-2" />
+        )}
+        Enregistrer la configuration
+      </Button>
+    </div>
+  );
+}
+
 function AdminOperatorsSection() {
   const [operators, setOperators] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
