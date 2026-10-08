@@ -105,7 +105,14 @@ const AMOUNT_OPTIONS = [
   { value: 50000, label: '50 000 XOF' },
 ];
 
-type DepositStep = 'amount' | 'operator' | 'phone' | 'ussd' | 'confirm';
+type DepositStep = 'amount' | 'operator' | 'phone' | 'ussd' | 'confirm' | 'paydunya';
+
+// Système de paiement actif (choisi par l'admin) — détermine le flux de dépôt
+interface PaymentConfigData {
+  provider: 'MIXX_USSD' | 'PAYDUNYA';
+  paydunyaConfigured: boolean;
+  paydunyaStoreName?: string;
+}
 
 interface DepositState {
   step: DepositStep;
@@ -122,6 +129,7 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
   const { user } = useAuthStore();
   const [wallet, setWallet] = useState<WalletData | null>(null);
   const [operators, setOperators] = useState<Operator[]>([]);
+  const [paymentConfig, setPaymentConfig] = useState<PaymentConfigData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showDeposit, setShowDeposit] = useState(false);
@@ -183,9 +191,29 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
     }
   };
 
+  // Fetch payment system config (admin's choice: Mixx USSD or PayDunya)
+  const fetchPaymentConfig = async () => {
+    try {
+      const res = await fetch('/api/payment/config');
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
+
+      if (data.success) {
+        setPaymentConfig({
+          provider: data.provider,
+          paydunyaConfigured: Boolean(data.paydunyaConfigured),
+          paydunyaStoreName: data.paydunyaStoreName,
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching payment config:', error);
+    }
+  };
+
   useEffect(() => {
     fetchWallet();
     fetchOperators();
+    fetchPaymentConfig();
   }, [user?.id]);
 
   // Realtime refresh: when a payment notification arrives (deposit validated
@@ -237,12 +265,63 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
     return () => clearInterval(interval);
   }, [showDeposit, deposit.transactionId, deposit.amount, user?.id]);
 
+  // Système actif : le flux PayDunya ne s'affiche que si l'admin l'a choisi
+  // ET l'a configuré — sinon on garde le flux USSD classique.
+  const usePaydunyaFlow =
+    paymentConfig?.provider === 'PAYDUNYA' && paymentConfig.paydunyaConfigured;
+
+  // Poller global des dépôts PayDunya en attente : quand l'utilisateur revient
+  // de la page de paiement PayDunya, dès que PayDunya confirme, le solde
+  // s'actualise automatiquement (validation 100 % automatique).
+  useEffect(() => {
+    const pendingPaydunya = (wallet?.transactions ?? []).filter(
+      (t: Transaction) => t.status === 'PENDING' && t.paymentMethod === 'PayDunya'
+    );
+
+    if (pendingPaydunya.length === 0) return;
+
+    const checkStatuses = async () => {
+      for (const tx of pendingPaydunya.slice(0, 3)) {
+        try {
+          const res = await fetch(`/api/payment/paydunya/status?transactionId=${tx.id}`);
+          if (!res.ok) continue;
+          const data = await res.json();
+
+          if (data?.status === 'COMPLETED') {
+            toast.success(`Rechargement de ${tx.amount.toLocaleString('fr-FR')} XOF confirmé ✅`);
+            fetchWallet(true);
+            return;
+          }
+          if (data?.status === 'FAILED') {
+            toast.error('Le paiement PayDunya n\'a pas abouti. Vous pouvez réessayer.');
+            fetchWallet(true);
+            return;
+          }
+        } catch {
+          // Network hiccup — next tick retries.
+        }
+      }
+    };
+
+    const interval = setInterval(checkStatuses, 6000);
+    checkStatuses();
+    return () => clearInterval(interval);
+  }, [wallet?.transactions, user?.id]);
+
   // Get selected operator
   const selectedOperator = operators.find(o => o.id === deposit.operatorId);
 
+  // Étapes du flux selon le système de paiement actif :
+  //  - MIXX_USSD : montant → opérateur → téléphone → USSD → confirmation
+  //  - PAYDUNYA  : montant → paiement en ligne (redirection checkout)
+  const getFlowSteps = (): DepositStep[] =>
+    usePaydunyaFlow
+      ? ['amount', 'paydunya']
+      : ['amount', 'operator', 'phone', 'ussd', 'confirm'];
+
   // Handle deposit flow
   const handleNextStep = () => {
-    const steps: DepositStep[] = ['amount', 'operator', 'phone', 'ussd', 'confirm'];
+    const steps = getFlowSteps();
     const currentIndex = steps.indexOf(deposit.step);
     
     if (currentIndex < steps.length - 1) {
@@ -251,7 +330,7 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
   };
 
   const handlePrevStep = () => {
-    const steps: DepositStep[] = ['amount', 'operator', 'phone', 'ussd', 'confirm'];
+    const steps = getFlowSteps();
     const currentIndex = steps.indexOf(deposit.step);
     
     if (currentIndex > 0) {
@@ -305,6 +384,36 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
       // Ouvre le composeur du téléphone avec le code USSD prérempli —
       // l'utilisateur n'a plus rien à recopier, il valide simplement l'appel.
       window.location.href = deposit.ussdLink;
+    }
+  };
+
+  // Créer la facture PayDunya puis rediriger vers la page de paiement en ligne
+  const handlePaydunyaPayment = async () => {
+    if (!user?.id || deposit.amount <= 0) return;
+
+    setIsProcessing(true);
+    try {
+      const res = await fetch('/api/payment/paydunya/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: deposit.amount }),
+      });
+
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
+
+      if (data.success && data.checkoutUrl) {
+        toast.info('Redirection vers la page de paiement PayDunya…');
+        // Redirection vers le checkout PayDunya — à son retour, le poller
+        // détecte automatiquement la confirmation et crédite le solde.
+        window.location.href = data.checkoutUrl;
+      } else {
+        toast.error(data.error || 'Erreur lors de la création du paiement PayDunya');
+      }
+    } catch (error) {
+      toast.error('Erreur lors de la création du paiement PayDunya');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -540,7 +649,12 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
           <div className="p-4 border-b border-[#E0E0E0]">
             <DialogHeader>
               <DialogTitle className="text-xl font-bold text-[#212121] flex items-center gap-2">
-                {deposit.step === 'ussd' || deposit.step === 'confirm' ? (
+                {deposit.step === 'paydunya' ? (
+                  <>
+                    <CreditCard className="w-5 h-5 text-[#FF9800]" />
+                    Paiement en ligne
+                  </>
+                ) : deposit.step === 'ussd' || deposit.step === 'confirm' ? (
                   <>
                     <Phone className="w-5 h-5 text-[#FF9800]" />
                     Paiement USSD
@@ -556,27 +670,50 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
           </div>
 
           <div className="p-4">
-            {/* Step indicator */}
-            <div className="flex items-center justify-center gap-2 mb-4">
-              {['amount', 'operator', 'phone', 'ussd'].map((step, index) => (
-                <div key={step} className="flex items-center">
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
-                    ['amount', 'operator', 'phone', 'ussd', 'confirm'].indexOf(deposit.step) >= index
-                      ? 'bg-[#FF9800] text-white'
-                      : 'bg-[#E0E0E0] text-[#757575]'
-                  }`}>
-                    {index + 1}
+            {/* Step indicator — adapté au flux actif */}
+            {usePaydunyaFlow ? (
+              <div className="flex items-center justify-center gap-2 mb-4">
+                {['amount', 'paydunya'].map((step, index) => (
+                  <div key={step} className="flex items-center">
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
+                      ['amount', 'paydunya'].indexOf(deposit.step) >= index
+                        ? 'bg-[#FF9800] text-white'
+                        : 'bg-[#E0E0E0] text-[#757575]'
+                    }`}>
+                      {index + 1}
+                    </div>
+                    {index < 1 && (
+                      <div className={`w-6 h-0.5 ${
+                        ['amount', 'paydunya'].indexOf(deposit.step) > index
+                          ? 'bg-[#FF9800]'
+                          : 'bg-[#E0E0E0]'
+                      }`} />
+                    )}
                   </div>
-                  {index < 3 && (
-                    <div className={`w-6 h-0.5 ${
-                      ['amount', 'operator', 'phone', 'ussd', 'confirm'].indexOf(deposit.step) > index
-                        ? 'bg-[#FF9800]'
-                        : 'bg-[#E0E0E0]'
-                    }`} />
-                  )}
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex items-center justify-center gap-2 mb-4">
+                {['amount', 'operator', 'phone', 'ussd'].map((step, index) => (
+                  <div key={step} className="flex items-center">
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
+                      ['amount', 'operator', 'phone', 'ussd', 'confirm'].indexOf(deposit.step) >= index
+                        ? 'bg-[#FF9800] text-white'
+                        : 'bg-[#E0E0E0] text-[#757575]'
+                    }`}>
+                      {index + 1}
+                    </div>
+                    {index < 3 && (
+                      <div className={`w-6 h-0.5 ${
+                        ['amount', 'operator', 'phone', 'ussd', 'confirm'].indexOf(deposit.step) > index
+                          ? 'bg-[#FF9800]'
+                          : 'bg-[#E0E0E0]'
+                      }`} />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Step: Amount */}
             {deposit.step === 'amount' && (
@@ -716,6 +853,52 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
               </div>
             )}
 
+            {/* Step: PayDunya — paiement en ligne (redirection checkout) */}
+            {deposit.step === 'paydunya' && (
+              <div className="space-y-3">
+                <div className="bg-[#FFF8F0] rounded-lg p-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[#757575]">Montant à recharger</span>
+                    <span className="font-bold text-[#FF9800] text-xl">
+                      {deposit.amount.toLocaleString('fr-FR')} XOF
+                    </span>
+                  </div>
+                </div>
+
+                {/* Instructions */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <div className="flex gap-2">
+                    <CreditCard className="w-4 h-4 text-[#00838F] flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-[#00695C] text-sm">Paiement sécurisé PayDunya</p>
+                      <p className="text-xs text-[#00838F] mt-1">
+                        1. Appuyez sur « Payer » : vous êtes redirigé vers la page de paiement PayDunya<br/>
+                        2. Choisissez votre moyen de paiement (T-Money, Moov Money, Wave…)<br/>
+                        3. Votre solde est crédité automatiquement dès la confirmation
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bouton Payer — redirige vers la page de paiement PayDunya */}
+                <Button
+                  onClick={handlePaydunyaPayment}
+                  disabled={isProcessing}
+                  className="w-full h-14 bg-[#4CAF50] hover:bg-[#43A047] text-white rounded-xl font-bold text-base shadow-lg"
+                >
+                  {isProcessing ? (
+                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                  ) : (
+                    <CreditCard className="w-5 h-5 mr-2" />
+                  )}
+                  Payer {deposit.amount.toLocaleString('fr-FR')} F CFA
+                </Button>
+                <p className="text-xs text-center text-[#9E9E9E] px-2">
+                  Aucun code à recopier : tout se passe en ligne, votre solde est crédité automatiquement.
+                </p>
+              </div>
+            )}
+
             {/* Step: Confirm */}
             {deposit.step === 'confirm' && (
               <div className="space-y-3">
@@ -797,6 +980,12 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
                   Retour
                 </Button>
               </>
+            )}
+
+            {deposit.step === 'paydunya' && (
+              <Button variant="outline" onClick={handlePrevStep} className="w-full">
+                Retour
+              </Button>
             )}
 
             {deposit.step === 'ussd' && (
