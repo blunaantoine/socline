@@ -226,6 +226,8 @@ if [[ "${NO_NGINX}" == "false" ]]; then
   fi
 
   NGINX_CONF="/etc/nginx/conf.d/socline.conf"
+  DOMAIN="${SOCLINE_DOMAIN:-socline.oquitogo.com}"
+  CERT_DIR="/etc/letsencrypt/live/${DOMAIN}"
 
   if [[ -f "${NGINX_CONF}" ]] && grep -q "ssl_certificate" "${NGINX_CONF}"; then
     # HTTPS déjà configuré par certbot lors d'une installation précédente :
@@ -241,6 +243,64 @@ if [[ "${NO_NGINX}" == "false" ]]; then
     sed -e "s|__PUBLIC_PORT__|${PUBLIC_PORT}|g" \
         -e "s|__WEB_PORT__|${WEB_PORT}|g" \
         deploy/nginx-socline.conf > "${NGINX_CONF}"
+  fi
+
+  # --- Restauration automatique HTTPS --------------------------------------
+  # Le certificat Let's Encrypt existe sur le disque mais la conf nginx ne le
+  # référence plus (ex. conf régénérée lors d'une mise à jour) : on réinjecte
+  # le bloc 443 + les redirections HTTP → HTTPS. Sans cela, le domaine sert
+  # l'application par défaut de nginx (une AUTRE application du VPS) !
+  if [[ -f "${CERT_DIR}/fullchain.pem" ]] && ! grep -q "ssl_certificate" "${NGINX_CONF}"; then
+    c_warn "Certificat ${DOMAIN} présent mais absent de nginx → restauration du bloc HTTPS"
+    cat >> "${NGINX_CONF}" <<NGINX_SSL
+
+# ------------------------------------------------------------
+# Bloc HTTPS restauré automatiquement par deploy.sh
+# (certificat Let's Encrypt détecté dans ${CERT_DIR})
+# ------------------------------------------------------------
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name ${DOMAIN};
+
+    ssl_certificate     ${CERT_DIR}/fullchain.pem;
+    ssl_certificate_key ${CERT_DIR}/privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+
+    client_max_body_size 25M;
+
+    location / {
+        proxy_pass http://\$socline_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host              \$host;
+        proxy_set_header X-Real-IP         \$remote_addr;
+        proxy_set_header X-Forwarded-For   \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header Upgrade    \$http_upgrade;
+        proxy_set_header Connection \$connection_upgrade;
+        proxy_read_timeout    300s;
+        proxy_send_timeout    300s;
+        proxy_connect_timeout 30s;
+        proxy_buffering off;
+    }
+}
+
+# Redirection HTTP (port 80) du domaine vers HTTPS
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${DOMAIN};
+    return 301 https://\$host\$request_uri;
+}
+
+# Redirection du port public du domaine vers HTTPS
+server {
+    listen ${PUBLIC_PORT};
+    server_name ${DOMAIN};
+    return 301 https://\$host\$request_uri;
+}
+NGINX_SSL
+    c_ok "Bloc HTTPS restauré pour ${DOMAIN}"
   fi
 
   # Supprimer le site par défaut s'il écoute aussi sur notre port
@@ -265,15 +325,30 @@ fi
 # ------------------------------------------------------------
 # Vérification finale + compte de démonstration
 # ------------------------------------------------------------
-sleep 2
-HTTP_CODE="$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:${LISTEN_PORT}/" || true)"
+HTTP_CODE="000"
+for _attempt in 1 2 3 4; do
+  sleep 3
+  HTTP_CODE="$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:${LISTEN_PORT}/" || true)"
+  [[ "${HTTP_CODE}" == "200" ]] && break
+  c_warn "L'app ne répond pas encore (tentative ${_attempt}/4, HTTP ${HTTP_CODE:-000}) — nouvel essai…"
+done
 if [[ "${HTTP_CODE}" == "200" ]]; then
   c_ok "L'application répond (HTTP ${HTTP_CODE})"
   # Seed des comptes de démonstration (idempotent)
   curl -s -X POST "http://127.0.0.1:${LISTEN_PORT}/api/seed" >/dev/null 2>&1 \
     && c_ok "Comptes de démonstration prêts (PIN : 1234)" || true
 else
-  c_warn "L'app répond avec HTTP ${HTTP_CODE} — vérifiez : journalctl -u socline-web -n 50"
+  c_warn "L'app répond avec HTTP ${HTTP_CODE:-000} — vérifiez : journalctl -u socline-web -n 50"
+fi
+
+# Vérification HTTPS du domaine (certificat restauré/conservé)
+if [[ "${NO_NGINX}" == "false" && -f "${CERT_DIR:-/etc/letsencrypt/live/socline.oquitogo.com}/fullchain.pem" ]]; then
+  HTTPS_CODE="$(curl -sk -o /dev/null -w "%{http_code}" --resolve socline.oquitogo.com:443:127.0.0.1 "https://socline.oquitogo.com/" || true)"
+  if [[ "${HTTPS_CODE}" == "200" ]]; then
+    c_ok "HTTPS opérationnel : https://socline.oquitogo.com"
+  else
+    c_warn "HTTPS répond ${HTTPS_CODE:-000} sur le domaine — vérifier : nginx -t && journalctl -u nginx -n 20"
+  fi
 fi
 
 IP_ADDR="$(curl -s --max-time 3 https://api.ipify.org 2>/dev/null || hostname -I | awk '{print $1}')"
