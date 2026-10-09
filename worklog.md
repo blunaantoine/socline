@@ -1063,3 +1063,26 @@ Work Log:
 Stage Summary:
 - Design system centralisé en place (plus de hex en dur dans les écrans Accueil), identité intacte (#FF9800 + logo), aucune fonctionnalité retirée, navigation et données inchangées.
 - Accueil conforme à la maquette (capture 390px validée). Prochaine étape : accord utilisateur puis refonte écran par écran dans l'ordre du prompt.
+
+---
+Task ID: 43 (session 32 — refonte écran Réserver, étape 3 du prompt de refonte)
+Agent: main (Z.ai Code)
+Task: Refonte visuelle du parcours Réserver (ClientOrderFlow) — règles strictes utilisateur : identité orange #FF9800 conservée, zéro logique métier, aucune fonctionnalité retirée, texte FR, montants au format « 2 500 F ».
+
+Work Log:
+- CONFORMITÉ RÈGLES vérifiée avant de coder : tokens globals.css confirment orange de marque intact (#FF9800 / #F57C00 / #E65100 / #FFF3E0), logo inchangé, navy = addition neutre (demandée par le prompt de refonte de l'utilisateur). Aucune route/API/state/handler modifié — la logique (states, fetch services/cars/wallet/subscription, promo, paiement wallet/espèces, presets station, carte Leaflet, géoloc, safe-areas, MediaCarousel) est copiée à l'identique.
+- DESIGN SYSTEM : token --danger (#DC2626) ajouté (erreurs/« Insuffisant »/« Supprimer » remplaçaient du red-500 en dur) ; ServiceArtCard étendu avec prop description? (1 ligne max, line-clamp-1 — conforme aux règles de rédaction du prompt) — non-breaking, l'Accueil reste inchangé.
+- ÉTAPE 1 : grille 2 colonnes de ServiceArtCard (mêmes cartes teintées bleu/vert/orange/violet que « Nos formules » de l'accueil = reconnaissance immédiate) + description 1 ligne + EmptyState si aucun service + skeletons de chargement (au lieu du spinner seul, demandé par le prompt).
+- HEADER : bouton retour rond bordé 40px (touch target 44px+), titre d'étape dynamique, sous-titre « {service} · 2 500 F » une fois le service choisi ; PROGRESSION : pastilles 8×8 (actif orange brand, passé vert success + check, futur gris line), connecteurs fins arrondis.
+- ÉTAPE 2 : options À domicile/En station avec icônes MapPin/Building2 (sélection bordure brand + fond brand-wash), pastille géoloc pill brand-soft, carte Leaflet enveloppée rounded-card overflow-hidden, stations de repli et sélection véhicule restylées (cartes fines, photo arrondie, badge plaque conservé).
+- ÉTAPE 3 : options Maintenant (Zap) / Planifier (Calendar) avec RadioDot custom à droite, inputs date/heure h-12 arrondis, aperçu rendez-vous en brand-soft.
+- ÉTAPE 4 : bandeau abonnement navy gradient (from-ink to-ink-2) + couronne text-star au lieu du gradient violet en dur, toggle conservé ; récapitulatif aéré (labels text-soft, valeurs ink, Total en text-brand), réduction/GRATUIT en success ; code promo et modes de paiement restylés (pastilles rondes brand/success, RadioDot) ; tous les montants passés à formatPrice() → « 2 500 F » (règle 4).
+- TESTS NAVIGATEUR RÉELS (390px + 1280px, compte démo) : étape 1 (4 cartes illustrées, capture validée) → Essentiel → étape 2 (domicile, adresse préremplie, carte, 2 véhicules Toyota/Renault) → Continuer → étape 3 (Maintenant) → étape 4 (récap correct, Portefeuille « Solde : 0 F / Insuffisant » correctement grisé, Espèces sélectionné) → « Confirmer 2 500 F » → commande créée + Suivi de commande affiché → annulation propre de la commande de test (pas de pollution admin). Aucune erreur console liée à la refonte (seul warning Google Maps InvalidKey préexistant).
+- INCIDENT ENVIRONNEMENT résolu au passage : erreurs « [PayDunya] expiration des dépôts abandonnés : PrismaClientValidationError » dans dev.log = drift DB locale vs schéma Task 40 (champs provider/paydunyaToken) — prisma db push : « database already in sync », sweep re-testé via GET /api/wallet → success sans erreur (les erreurs du log étaient antérieures au db:push Task 42).
+- Lint : 0 erreur / 0 warning.
+- NOTÉ POUR LA SUITE : l'écran Suivi (OrderTracking) affiche encore « 2,500 XOF » (format EN) — sera harmonisé « 2 500 F » lors de sa refonte (étape 4 du prompt), juste après Réserver.
+
+Stage Summary:
+- Parcours Réserver 100 % conforme au design system (aucun hex en dur dans l'écran, tokens + composants réutilisables), identité orange/logo intacte, montants au format « 2 500 F », zéro fonctionnalité retirée, zéro logique métier touchée — validé de bout en bout en navigateur (commande créée puis annulée proprement).
+- Branche feature/refonte-reserver, commit 0ec933d (✨), merge main, worklog en commit séparé.
+- Prochaine étape du prompt : refonte « Suivi du lavage » (OrderTracking) puis « Détail laveur/station », Abonnements, Portefeuille, Profil, Connexion/Inscription.
