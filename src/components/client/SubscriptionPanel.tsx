@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/select';
 import {
   Crown, Check, Zap, Gift, Clock,
-  CreditCard, ChevronRight, Loader2, RefreshCw, Droplets, Car
+  CreditCard, ChevronRight, Loader2, RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { parseJsonResponse } from '@/lib/json-helper';
@@ -77,13 +77,14 @@ interface SubscriptionPanelProps {
 }
 
 /**
- * Teinte de plan (design system) : icône carrée arrondie sur fond doux.
- * Essentiel = gris, intermédiaire = bleu, premium = violet (maquette).
+ * Image de voiture du plan (design system) : vignette sur teinte douce.
+ * Essentiel = orange (marque), intermédiaire = bleu, premium = violet.
+ * Remplace les icônes couronne / goutte / éclair.
  */
-function planTintFor(priority: number) {
-  if (priority >= 3) return { bg: 'bg-plan-purple', icon: 'text-plan-purple-icon', Icon: Crown };
-  if (priority === 2) return { bg: 'bg-plan-blue', icon: 'text-plan-blue-icon', Icon: Droplets };
-  return { bg: 'bg-app', icon: 'text-soft', Icon: Zap };
+function planCarFor(priority: number) {
+  if (priority >= 3) return '/voitures/formule-violette.png';
+  if (priority === 2) return '/voitures/formule-bleue.png';
+  return '/voitures/formule-orange.png';
 }
 
 export function SubscriptionPanel({ userId, walletBalance }: SubscriptionPanelProps) {
@@ -230,12 +231,17 @@ export function SubscriptionPanel({ userId, walletBalance }: SubscriptionPanelPr
     });
   };
 
-  // Icône du plan (liste, carte active, modale)
-  const renderPlanIcon = (priority: number, size = 'w-[52px] h-[52px] rounded-[17px]', iconSize = 'w-[26px] h-[26px]') => {
-    const tint = planTintFor(priority);
+  // Vignette voiture du plan (liste, carte active, modale)
+  const renderPlanIcon = (priority: number, size = 'w-[52px] h-[52px] rounded-[17px]') => {
     return (
-      <div className={`${size} ${tint.bg} grid place-items-center flex-shrink-0`}>
-        <tint.Icon className={`${iconSize} ${tint.icon}`} strokeWidth={2} />
+      <div className={`${size} overflow-hidden flex-shrink-0`}>
+        <img
+          src={planCarFor(priority)}
+          alt=""
+          aria-hidden="true"
+          className="w-full h-full object-cover"
+          loading="lazy"
+        />
       </div>
     );
   };
@@ -268,9 +274,12 @@ export function SubscriptionPanel({ userId, walletBalance }: SubscriptionPanelPr
 
       {/* Rappel de la différence entre les deux types de prestation */}
       <div className="flex items-start gap-2.5 rounded-card border border-line bg-surface p-3">
-        <div className="w-8 h-8 rounded-[10px] bg-brand-soft grid place-items-center flex-shrink-0">
-          <Car className="w-4 h-4 text-brand" />
-        </div>
+        <img
+          src="/voitures/formule-orange.png"
+          alt=""
+          aria-hidden="true"
+          className="w-8 h-8 rounded-[10px] object-cover flex-shrink-0"
+        />
         <div className="min-w-0">
           <p className="text-detail font-semibold text-ink">Quelle différence&nbsp;?</p>
           <p className="text-detail text-soft leading-relaxed">
@@ -414,7 +423,7 @@ export function SubscriptionPanel({ userId, walletBalance }: SubscriptionPanelPr
               {userSubscriptions.filter(s => s.id !== activeSubscription?.id).slice(0, 3).map((sub) => (
                 <div key={sub.id} className="flex items-center justify-between p-3">
                   <div className="flex items-center gap-2.5 min-w-0">
-                    {renderPlanIcon(sub.plan.priority, 'w-9 h-9 rounded-[11px]', 'w-[18px] h-[18px]')}
+                    {renderPlanIcon(sub.plan.priority, 'w-9 h-9 rounded-[11px]')}
                     <div className="min-w-0">
                       <p className="text-body font-semibold text-ink">{sub.plan.name}</p>
                       <p className="text-detail text-soft">
@@ -441,7 +450,7 @@ export function SubscriptionPanel({ userId, walletBalance }: SubscriptionPanelPr
             <DialogTitle className="flex items-center gap-2.5">
               {selectedPlan && (
                 <>
-                  {renderPlanIcon(selectedPlan.priority, 'w-8 h-8 rounded-[9px]', 'w-[17px] h-[17px]')}
+                  {renderPlanIcon(selectedPlan.priority, 'w-8 h-8 rounded-[9px]')}
                   {selectedPlan.displayName}
                 </>
               )}

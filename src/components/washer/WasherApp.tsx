@@ -1399,46 +1399,50 @@ function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat, acceptedOr
       {/* Client Info */}
       <Card className="border-0 shadow-sm">
         <CardContent className="p-4">
-          <div className="flex items-center gap-4">
-            <Avatar className="w-12 h-12">
+          {/* Identité */}
+          <div className="flex items-center gap-3">
+            <Avatar className="w-12 h-12 flex-shrink-0">
               <AvatarFallback className="bg-[#E3F2FD] text-[#2196F3]">
                 {order.client?.name?.charAt(0) || 'C'}
               </AvatarFallback>
             </Avatar>
-            <div className="flex-1">
-              <h3 className="font-semibold text-[#212121]">{order.client?.name || 'Client'}</h3>
-              <p className="text-sm text-[#757575]">{order.client?.phone || ''}</p>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold text-[#212121] truncate">{order.client?.name || 'Client'}</h3>
+              <p className="text-sm text-[#757575] truncate">{order.client?.phone || ''}</p>
             </div>
-            <div className="flex gap-2">
-              {/* Appel : ouvre le composeur avec le numéro du client */}
-              <Button size="icon" variant="outline" className="rounded-full"
-                aria-label="Appeler le client"
-                disabled={!order.client?.phone}
-                onClick={() => order.client?.phone && window.open(`tel:${order.client.phone}`, '_self')}
-              >
-                <Phone className="w-4 h-4" />
-              </Button>
-              {/* WhatsApp : discussion pré-remplie avec le client */}
-              <Button size="icon" variant="outline"
-                className="rounded-full border-[#25D366] text-[#25D366] hover:bg-[#25D366] hover:text-white"
-                aria-label="Contacter le client sur WhatsApp"
-                disabled={!order.client?.phone}
-                onClick={() => openWhatsApp(
-                  order.client?.phone,
-                  `Bonjour, je suis votre laveur Socline pour la commande ${order.orderNumber}.`
-                )}
-              >
-                <MessageSquare className="w-4 h-4" />
-              </Button>
-              <Button 
-                size="icon" 
-                variant="outline" 
-                className="rounded-full bg-[#4CAF50] text-white hover:bg-[#43A047]"
-                onClick={() => order && onOpenChat(order)}
-              >
-                <MessageCircle className="w-4 h-4" />
-              </Button>
-            </div>
+          </div>
+          {/* Actions de contact — grille pleine largeur (aucun débordement) */}
+          <div className="grid grid-cols-3 gap-2 mt-3">
+            {/* Appel : ouvre le composeur avec le numéro du client */}
+            <Button variant="outline" className="h-10 text-xs font-semibold gap-1.5 px-2"
+              aria-label="Appeler le client"
+              disabled={!order.client?.phone}
+              onClick={() => order.client?.phone && window.open(`tel:${order.client.phone}`, '_self')}
+            >
+              <Phone className="w-4 h-4 flex-shrink-0" />
+              Appeler
+            </Button>
+            {/* WhatsApp : discussion pré-remplie avec le client */}
+            <Button variant="outline"
+              className="h-10 text-xs font-semibold gap-1.5 px-2 border-[#25D366] text-[#25D366] hover:bg-[#25D366] hover:text-white"
+              aria-label="Contacter le client sur WhatsApp"
+              disabled={!order.client?.phone}
+              onClick={() => openWhatsApp(
+                order.client?.phone,
+                `Bonjour, je suis votre laveur Socline pour la commande ${order.orderNumber}.`
+              )}
+            >
+              <MessageSquare className="w-4 h-4 flex-shrink-0" />
+              WhatsApp
+            </Button>
+            <Button
+              variant="outline"
+              className="h-10 text-xs font-semibold gap-1.5 px-2 border-[#4CAF50] text-[#2E7D32] hover:bg-[#4CAF50] hover:text-white"
+              onClick={() => order && onOpenChat(order)}
+            >
+              <MessageCircle className="w-4 h-4 flex-shrink-0" />
+              Message
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -2104,13 +2108,14 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, onRefreshWallet, isRe
             </div>
           )}
 
-          <div className="flex gap-2 mt-3">
+          {/* Empilés : les deux libellés longs déborderaient côte à côte sur mobile */}
+          <div className="flex flex-col gap-2 mt-3">
             {numbers.length < 3 && (
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => setShowAddNumber(true)}
-                className="flex-1 border-[#4CAF50] text-[#4CAF50] hover:bg-[#E8F5E9]"
+                className="w-full border-[#4CAF50] text-[#4CAF50] hover:bg-[#E8F5E9]"
               >
                 + Ajouter un numéro
               </Button>
@@ -2119,7 +2124,7 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, onRefreshWallet, isRe
               size="sm"
               variant="outline"
               onClick={() => setShowChangeRequest(true)}
-              className="flex-1 border-gray-300 text-[#757575]"
+              className="w-full border-gray-300 text-[#757575]"
             >
               Demander une modification
             </Button>

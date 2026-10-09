@@ -2,8 +2,7 @@
 
 import { Armchair, Car, Clock } from 'lucide-react';
 import { getServiceCoverage } from '@/lib/service-coverage';
-import { planTint } from '@/lib/design-system';
-import { CarIllustration } from './CarIllustration';
+import { planCarImage } from '@/lib/design-system';
 
 export interface ServiceLike {
   id: string;
@@ -32,7 +31,6 @@ export function ServiceArtCard({
   /** Description courte facultative (1 ligne max, tronquée). */
   description?: string;
 }) {
-  const tint = planTint(index);
   const coverage = getServiceCoverage(service);
   const isFull = coverage === 'FULL';
 
@@ -41,20 +39,26 @@ export function ServiceArtCard({
       onClick={onClick}
       className="w-full bg-surface rounded-card border border-line shadow-card overflow-hidden text-left active:scale-[0.98] transition-transform"
     >
-      {/* Zone illustrée teintée */}
-      <div className={`relative h-[92px] grid place-items-center ${tint.bg}`}>
+      {/* Zone illustrée : vraie image de voiture, teinte selon la position */}
+      <div className="relative h-[92px]">
         {/* Pastilles : ce que le lavage inclut */}
         <div className="absolute top-2 left-2 flex gap-1">
           <span className="w-6 h-6 rounded-[8px] bg-white/90 grid place-items-center">
-            <Car className={`w-3.5 h-3.5 ${tint.icon}`} strokeWidth={2.4} />
+            <Car className="w-3.5 h-3.5 text-ink/70" strokeWidth={2.4} />
           </span>
           {isFull && (
             <span className="w-6 h-6 rounded-[8px] bg-white/90 grid place-items-center">
-              <Armchair className={`w-3.5 h-3.5 ${tint.icon}`} strokeWidth={2.4} />
+              <Armchair className="w-3.5 h-3.5 text-ink/70" strokeWidth={2.4} />
             </span>
           )}
         </div>
-        <CarIllustration className={`w-[112px] ${tint.icon}`} />
+        <img
+          src={planCarImage(index)}
+          alt=""
+          aria-hidden="true"
+          className="w-full h-[92px] object-cover"
+          loading="lazy"
+        />
       </div>
 
       {/* Infos : nom + description courte + prix / durée */}

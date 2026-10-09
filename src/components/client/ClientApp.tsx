@@ -42,7 +42,6 @@ import { Segmented } from '@/components/design/Segmented';
 import { ServiceArtCard } from '@/components/design/ServiceArtCard';
 import { WasherRow } from '@/components/design/WasherRow';
 import { EmptyState } from '@/components/design/EmptyState';
-import { CarIllustration } from '@/components/design/CarIllustration';
 import { CARD_CLASSES } from '@/lib/design-system';
 
 const navItems = [
@@ -793,7 +792,12 @@ function HomeContent({
                     </button>
                   </div>
                 </div>
-                <CarIllustration className="absolute -right-5 -bottom-1 w-[160px] text-brand" />
+                <img
+                  src="/voitures/voiture-transparente.png"
+                  alt=""
+                  aria-hidden="true"
+                  className="absolute -right-5 -bottom-1 w-[160px]"
+                />
               </div>
             )}
           </div>

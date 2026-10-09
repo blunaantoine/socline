@@ -18,6 +18,23 @@ export const PLAN_TINTS = [
   { bg: 'bg-plan-purple', icon: 'text-plan-purple-icon' },
 ] as const;
 
+/**
+ * Image de voiture par formule (même ordre que PLAN_TINTS) : remplace
+ * l'illustration vectorielle par une vraie image aux couleurs de la
+ * marque, fond recoloré dans la teinte de la formule (public/voitures).
+ */
+export const PLAN_CAR_IMAGES = [
+  '/voitures/formule-bleue.png',
+  '/voitures/formule-verte.png',
+  '/voitures/formule-orange.png',
+  '/voitures/formule-violette.png',
+] as const;
+
+/** Image de voiture d'une formule selon sa position dans la liste. */
+export function planCarImage(index: number) {
+  return PLAN_CAR_IMAGES[index % PLAN_CAR_IMAGES.length];
+}
+
 /** Teinte d'une formule selon sa position dans la liste (cycle des 4). */
 export function planTint(index: number) {
   return PLAN_TINTS[index % PLAN_TINTS.length];

@@ -512,61 +512,66 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
         {order.status !== 'PENDING' && washer && (
           <Card>
             <CardContent className="p-4">
-              <div className="flex items-center gap-4">
-                <Avatar className="w-14 h-14">
+              {/* Identité */}
+              <div className="flex items-center gap-3">
+                <Avatar className="w-12 h-12 flex-shrink-0">
                   <AvatarFallback className="bg-gradient-to-br from-blue-400 to-green-400 text-white text-lg">
                     {initials(washer.user?.name || 'Laveur')}
                   </AvatarFallback>
                 </Avatar>
-                <div className="flex-1">
-                  <h3 className="font-semibold">{washer.user?.name || 'Laveur Socline'}</h3>
-                  <div className="flex items-center gap-1">
-                    <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold truncate">{washer.user?.name || 'Laveur Socline'}</h3>
+                  <div className="flex items-center gap-1 min-w-0">
+                    <Star className="w-4 h-4 text-yellow-400 fill-yellow-400 flex-shrink-0" />
                     <span className="text-sm">{washer.rating != null ? washer.rating.toFixed(1) : '—'}</span>
                     <span className="text-gray-300 mx-1">•</span>
-                    <span className="text-sm text-gray-500">{washer.completedJobs ?? 0} lavages</span>
+                    <span className="text-sm text-gray-500 truncate">{washer.completedJobs ?? 0} lavages</span>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  {/* Appel : ouvre le composeur du téléphone avec le numéro du laveur */}
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    aria-label="Appeler le laveur"
-                    disabled={!washer.user?.phone}
-                    onClick={() => washer.user?.phone && window.open(`tel:${washer.user.phone}`, '_self')}
-                  >
-                    <Phone className="w-4 h-4" />
-                  </Button>
-                  {/* WhatsApp : ouvre une discussion WhatsApp pré-remplie avec le
-                      numéro du laveur (repli fiable si l'appel ne passe pas). */}
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    aria-label="Contacter le laveur sur WhatsApp"
-                    className="border-[#25D366] text-[#25D366] hover:bg-[#25D366] hover:text-white"
-                    disabled={!washer.user?.phone}
-                    onClick={() => openWhatsApp(
-                      washer.user?.phone,
-                      `Bonjour, je vous contacte au sujet de ma commande Socline ${order.orderNumber}.`
-                    )}
-                  >
-                    <MessageSquare className="w-4 h-4" />
-                  </Button>
-                  {/* Discussion : ouvre la conversation temps réel de la commande
-                      (la même que celle du laveur). */}
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    aria-label="Ouvrir la discussion"
-                    onClick={handleOpenChat}
-                    disabled={isOpeningChat}
-                  >
-                    {isOpeningChat
-                      ? <Loader2 className="w-4 h-4 animate-spin" />
-                      : <MessageCircle className="w-4 h-4" />}
-                  </Button>
-                </div>
+              </div>
+              {/* Actions de contact — grille pleine largeur : aucun débordement
+                  même sur petits écrans (le trio en rangée serrée débordait). */}
+              <div className="grid grid-cols-3 gap-2 mt-3">
+                {/* Appel : ouvre le composeur du téléphone avec le numéro du laveur */}
+                <Button
+                  variant="outline"
+                  className="h-10 text-xs font-semibold gap-1.5 px-2"
+                  aria-label="Appeler le laveur"
+                  disabled={!washer.user?.phone}
+                  onClick={() => washer.user?.phone && window.open(`tel:${washer.user.phone}`, '_self')}
+                >
+                  <Phone className="w-4 h-4 flex-shrink-0" />
+                  Appeler
+                </Button>
+                {/* WhatsApp : ouvre une discussion WhatsApp pré-remplie avec le
+                    numéro du laveur (repli fiable si l'appel ne passe pas). */}
+                <Button
+                  variant="outline"
+                  className="h-10 text-xs font-semibold gap-1.5 px-2 border-[#25D366] text-[#25D366] hover:bg-[#25D366] hover:text-white"
+                  aria-label="Contacter le laveur sur WhatsApp"
+                  disabled={!washer.user?.phone}
+                  onClick={() => openWhatsApp(
+                    washer.user?.phone,
+                    `Bonjour, je vous contacte au sujet de ma commande Socline ${order.orderNumber}.`
+                  )}
+                >
+                  <MessageSquare className="w-4 h-4 flex-shrink-0" />
+                  WhatsApp
+                </Button>
+                {/* Discussion : ouvre la conversation temps réel de la commande
+                    (la même que celle du laveur). */}
+                <Button
+                  variant="outline"
+                  className="h-10 text-xs font-semibold gap-1.5 px-2"
+                  aria-label="Ouvrir la discussion"
+                  onClick={handleOpenChat}
+                  disabled={isOpeningChat}
+                >
+                  {isOpeningChat
+                    ? <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
+                    : <MessageCircle className="w-4 h-4 flex-shrink-0" />}
+                  Message
+                </Button>
               </div>
             </CardContent>
           </Card>
