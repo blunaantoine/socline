@@ -1393,3 +1393,35 @@ Stage Summary:
 - L'abonnement est désormais cohérent de bout en bout : le client paie 8 000 F une fois, chaque lavage consomme une séance, le laveur reçoit SA part partenaire (60-80 % du prix du service selon niveau) comme pour une prestation normale, et personne ne peut sur-réserver ni contourner le décompte.
 - Restes connus hors périmètre : harmonisation « X XOF » → « X F » (visible sur les captures laveur, ~25 occurrences) ; l'ancien PATCH USE_WASH de /api/subscriptions/user (bonus wash) est mort-code — cleanup possible plus tard.
 - Déployer via cd /opt/socline && sudo bash deploy/deploy.sh --update (Task 55 + 56 partiront ensemble).
+
+---
+Task ID: 57 (session 45 — page « Mes activités » côté client)
+Agent: main (Z.ai Code)
+Task: « ajouter une page ou section où on peut voir les activités en cours, historique, réservation planifiée et les étapes ou séances d'un abonnement en cours ».
+
+Work Log:
+- DIAGNOSTIC : l'onglet 'activity' existait dans ClientApp (rendu OrderHistory) mais n'était atteignable nulle part (aucun setActiveTab('activity') dans le code) — code mort ; l'historique réel du profil passe par /api/user/activity (ActivityHistory) et les réservations planifiées (Task 55) n'avaient aucun écran de regroupement côté client.
+- src/components/client/ClientActivities.tsx (nouveau, ~670 l.) : hub client à 4 segments (Segmented dense) :
+  · « En cours » : commandes immédiates actives (PENDING→IN_PROGRESS sans scheduledAt) — badge statut coloré, laveur + note si assigné, spinner « Nous cherchons le laveur le plus proche… », montant formatPrice (« F »), bouton « Suivre en direct » → onTrack(order) = setCurrentOrder + setShowTracking (OrderTracking plein écran) ;
+  · « Planifiées » : commandes actives avec scheduledAt triées asc — badge jaune « En attente d'un laveur » → vert « Rendez-vous confirmé » après acceptation, bloc RDV orange « {Laveur} passera {formatScheduledLong} » + « Rappel automatique envoyé 2 h avant le rendez-vous », bouton « Voir le suivi » ;
+  · « Historique » : COMPLETED/CANCELLED triées par completedAt — carte cliquable (aria-label) → Dialog avec OrderDetails réexporté de OrderHistory (chronologie, paiement, avis, véhicule, montants) ; badge ScheduledBadge + note étoile ;
+  · « Abonnement » : carte formule active (image planPriorityImage, badge Actif, durée, montant payé, jours restants + date fin), progression séances (barre brand, X/Y utilisées, restantes), options gratuites, timeline verticale des usages (VALIDATED vert « Séance validée » / PENDING jaune « Réservée — validation en attente » / CANCELLED rouge, badge « Bonus », liste max-h-96 scrollable) + ligne « X séances à venir » ; EmptyState + CTA « Découvrir les formules » si aucune ; bouton « Voir les formules » → SubscriptionPanel complet dans le même segment avec bouton « Retour à mon abonnement » (l'achat reste possible sans l'onglet Abonnements).
+- Données : GET /api/orders?userId&role=CLIENT (session-scoped) + GET /api/subscriptions/user?includeHistory=true en Promise.all ; useAutoRefresh 20 s + refetch au focus ; écoute onSoclineNotification (type 'order') → refetch silencieux : les badges se mettent à jour seuls quand un laveur confirme.
+- Branchement ClientApp : navItems 5 → 6 onglets (« Activités », icône ClipboardList, entre Réserver et Abonnements) ; HEADER_TITLES activity='Mes activités' ; rendu ClientActivities avec onTrack/onBooking ; nav compactée (icônes 22 px, labels 10 px nowrap) — lisibilité vérifiée 360→390 px (aucun overflow).
+- Segmented.tsx : prop dense optionnelle (text-detail 12 px, whitespace-nowrap) pour les sélecteurs à 3-4 options — non-cassant pour les usages 2 options existants.
+- Dette harmonisée dans OrderHistory : « X XOF » → formatPrice (« X F ») partout (carte, détail, récap, promo) ; le bloc Véhicule utilisait order.vehiclePlate/vehicleColor (champs INEXISTANTS sur le modèle Order — 6 erreurs tsc) → migré sur la relation order.car (plateNumber/brand/color).
+- TESTS E2E navigateur (390 px puis 360 px, client démo 90123456 + laveur démo 90234567) :
+  * Connexion → onglet Activités → 4 segments rendus, header « Mes activités » ;
+  * En cours : commande immédiate créée (WG75188272) — badge « Recherche de laveur », 4 000 F, « Suivre en direct » → OrderTracking (carte Leaflet, stepper, annuler) ;
+  * Planifiées : commande H+90 min (WG75188295) — « Rendez-vous demandé aujourd'hui à 21:16 » + rappel 2 h ; acceptation laveur (PATCH) → auto-refresh → badge « Rendez-vous confirmé » + « Laveur Test passera aujourd'hui à 21:16 » (capture) ;
+  * Historique : 12 commandes, clic carte → Dialog détail (WG73661388, 👑 Abonnement, Réduction : -2 500 F) ;
+  * Abonnement : carte « Abonnement Essentiel / Actif / Mensuel · 8 000 F payés », 2/4 séances + barre, « Valable encore 30 jours (jusqu'au 8 novembre) », timeline séances (validée/annulée), « Voir les formules » → panneau complet + retour (captures) ;
+  * CTA états vides (« Réserver un lavage » → flux de réservation) ; nav 6 onglets sans débordement à 360 px ; 2 commandes de test annulées (nettoyage) ; lint 0/0 ; tsc 37 → 31 erreurs (toutes préexistantes ailleurs) ; dev.log propre.
+- 2 crashes découverts au test et corrigés avant commit : props onBooking/onUserId déclarées dans les types mais non déstructurées dans OngoingList/SubscriptionSection (ReferenceError au premier rendu).
+- Commit 📋 sur feature/mes-activites → merge main, push. Captures dans test-captures/ (non versionnées).
+
+Stage Summary:
+- Le client dispose d'un vrai hub « Mes activités » dans la barre de navigation : tout ce qui est en cours, planifié, terminé, et l'état exact de son abonnement (séances consommées / restantes, prochains rendez-vous) est visible et rafraîchi automatiquement — plus besoin de fouiller entre l'accueil, le profil et l'onglet Abonnements.
+- La boucle réservation planifiée (Task 55) devient lisible côté client : demande → confirmation du laveur → rappel H-2h, chaque état étant affiché avec la date complète du rendez-vous.
+- L'achat de formules reste accessible depuis le segment Abonnement (SubscriptionPanel intégré) ET depuis l'onglet Abonnements de la nav (conservé).
+- Déployer via cd /opt/socline && sudo bash deploy/deploy.sh --update (Task 55 + 56 + 57 partiront ensemble).
