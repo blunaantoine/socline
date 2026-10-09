@@ -1187,3 +1187,36 @@ Stage Summary:
 - Les véhicules affichent une vraie image de voiture (photo client sinon visuel de marque orange) partout : réservation, suivi, profil, côté laveur — et la fiche véhicule ne disparaît plus du suivi client (include car corrigé).
 - NOTE VPS : Tasks 39→47 en attente de livraison via `cd /opt/socline && sudo bash deploy/deploy.sh --update`.
 - Dettes restantes (non bloquantes, notées) : harmonisation « X XOF » → « X F » côté laveur (~25 occurrences, dédiée à la refonte écrans laveur) ; « 0,0 » rating → « — » quand rating=0.
+
+---
+Task ID: 48 (session 37 — images de voiture sur Accueil/Réserver/Abonnements + débordements corrigés)
+Agent: main (Z.ai Code)
+Task: Demandes utilisateur : ① remplacer les grands icônes de voiture par de vraies images sur l'accueil, la réservation et les abonnements (« si tu peux même changer tout le icône par des image comme dans Mes véhicules ») ; ② « le bouton demande de modification pour numéro déborde, également celui de WhatsApp chez le client ».
+
+Work Log:
+- IMAGES (même voiture que Mes véhicules, fonds recolorés) :
+  * Génération par RECOLORATION du fond de public/voiture-defaut.png (PIL, chroma-key + préservation de l'ombre par luminance) → 4 variantes aux teintes EXACTES du design system : formule-bleue #EAF4FB, formule-verte #EAF7F1, formule-orange #FFF1DC, formule-violette #EEEAF8 (public/voitures/). Une seule voiture = cohérence visuelle totale.
+  * Version fond TRANSPARENT (voiture-transparente.png, ombre retirée, contours lissés) pour le bandeau promo navy de l'accueil (test de rendu composé à taille réelle avant intégration).
+  * Design system : PLAN_CAR_IMAGES (ordre PLAN_TINTS) + planCarImage(index) — zéro hex en dur dans les écrans.
+  * ServiceArtCard (Accueil « Nos formules », aussi utilisé ailleurs) : zone h-92px pleine largeur = vraie image, pastilles couverture (carrosserie / intérieur) conservées par-dessus.
+  * ServiceRowCard (Réserver étape 1) : vignette 92×86 arrondie overflow-hidden = vraie image.
+  * SubscriptionPanel : renderPlanIcon → vignette image par priorité (Essentiel/Confort → orange, Premium → bleu, Prestige → violet) ; bandeau « Quelle différence ? » et modales avec mini vignettes ; planTintFor supprimé, imports nettoyés (Car, Droplets retirés).
+  * Bandeau promo accueil (ClientApp) : CarIllustration SVG → img voiture transparente ; import orphelin supprimé.
+- DÉBORDEMENTS (signalements) :
+  * « Demander une modification » (laveur, Numéros de retrait) : les 2 boutons flex-1 côte à côte dépassaient de la carte sur 390px → empilés (flex-col, w-full). Dialog vérifié ouvert/clean.
+  * WhatsApp chez le client (Suivi, carte laveur) : le trio de boutons icônes en rangée serrée rognait le texte et collait au bord → restructuré : rangée identité (avatar 48px + nom/note tronqués min-w-0) + grille grid-cols-3 pleine largeur de boutons libellés Appeler / WhatsApp / Message (h-10, text-xs).
+  * Même restructuration appliquée à la carte client côté laveur (le numéro complet redevient visible).
+- TESTS E2E RÉELS (390px + 1280px, 2 sessions, commande WG56141723 créée puis annulée proprement) :
+  * Accueil : bandeau promo avec voiture réelle transparente + 4 cartes formules avec images teintées (captures) ; espion imgs = voiture-transparente + 4 formules.
+  * Réserver : 4 rangées avec vignettes images (capture). Abonnements : vignettes plans orange/bleu/violet, badge Populaire intact, modale Confort → mini vignette + Total 14 000 F + Souscrire correctement désactivé (solde 0 F).
+  * Laveur accepte WG56141723 → carte client : grille Appeler/WhatsApp/Message pleine largeur (capture) ; carte laveur côté client : idem (capture) ; espion window.open → wa.me/22890234567?text=…WG56141723 ✓ (redirection intacte après restructuration).
+  * Revenus laveur : boutons empilés sans débordement (capture), dialog « Demander une modification » OK.
+  * Desktop 1280px : formules en rangée 4 colonnes avec images (capture).
+  * Incidents de test résolus (hors code) : proxy :3010 en double instance (EADDRINUSE, zombies tués) ; crash client transitoire pendant création de commande = artefact HMR (recompilation simultanée, aucune erreur dans dev.log, non reproductible après reload).
+  * Lint : 0 erreur / 0 warning.
+- Branche feature/images-voiture-formules, commit 🚗 puis worklog en commit séparé.
+
+Stage Summary:
+- Toutes les grandes zones « voiture » de l'app client montrent désormais de VRAIES images (Accueil formules + bandeau promo, Réserver, Abonnements, Mes véhicules, Suivi, côté laveur), déclinées aux 4 teintes de marque — la variété visuelle des cartes est conservée.
+- Les 2 débordements signalés sont corrigés structurellement (grilles pleine largeur / empilement), vérifiés en captures 390px.
+- NOTE VPS : Tasks 39→48 en attente de livraison via `cd /opt/socline && sudo bash deploy/deploy.sh --update`.
