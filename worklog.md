@@ -993,3 +993,20 @@ Stage Summary:
 - Le piège « script qui se remplace lui-même pendant son exécution » est neutralisé structurellement (copie stable + re-exec) — un --update applique désormais TOUJOURS la logique à jour, y compris lors du run qui l'apporte.
 - État VPS attendu après le restart manuel : code Task 37, port interne 3100 (stable, 3000 réellement occupé par une autre app), nginx 3100, HTTPS conservé.
 - Reste : config admin PayDunya (Mode Test + clés) → IPN chez PayDunya → dépôt sandbox → crédit automatique à « completed ».
+
+---
+Task ID: 39 (session 28 — carrousel images/vidéos Accueil + Réserver)
+Agent: main (Z.ai Code)
+Task: ajouter un carrousel d'images et vidéos juste après « Laveurs disponibles » sur la page d'accueil, et aussi sur la page Réserver.
+
+Work Log:
+- Généré 5 visuels de lavage auto via le skill image-generation (CLI z-ai, 1344x768, ~770 Ko au total) dans public/carousel/ : lavage mousse, haute pression, détail intérieur, laveur pro souriant (contexte local), résultat éclatant — uniformes orange cohérents avec la marque.
+- Nouveau composant src/components/client/MediaCarousel.tsx : images + vidéos (type: 'image' | 'video'), scroll-snap natif (swipe tactile), auto-défilement 5 s (pause 8 s après interaction et pendant la lecture vidéo), flèches desktop, points de navigation synchronisés, légende sur dégradé, bouton « Réserver maintenant → » optionnel (onReserve), hauteur plafonnée max-h-[420px] sur grand écran. Ajout d'une vidéo = déposer le mp4 dans /public/carousel/ + une ligne dans MEDIA_ITEMS.
+- Insertion 1 : ClientApp.tsx (HomeContent) — juste après la section « Laveurs disponibles », avec onReserve={onStartOrder} (navigue vers Réserver).
+- Insertion 2 : ClientOrderFlow.tsx — en bas de l'étape 1 « Choisir un service », sans CTA.
+- Vérification navigateur (agent-browser, login client démo) : 5 images dans le DOM sur les 2 pages, auto-défilement actif (diapositive avancée seul), flèches fonctionnelles (index + point actif synchronisés), CTA « Réserver maintenant » navigue bien vers l'onglet Réserver (clic programmatique validé ; le clic physique headless a un quirck d'automation, non lié à l'app), capture d'écran Accueil + Réserver conformes.
+- Lint OK (0 erreur, 0 warning). Branche feature/carrousel-media-accueil, commit 2e0c55a (✨), merge main + push. Worklog en commit séparé.
+
+Stage Summary:
+- Carrousel média en place sur Accueil (après « Laveurs disponibles », avec CTA Réserver) et sur Réserver (étape choix du service, sans CTA) — 5 visuels générés et commités, support vidéo intégré (il suffit d'ajouter un mp4 dans MEDIA_ITEMS).
+- Déploiement prod à faire (--update) pour livrer le carrousel + les correctifs Tasks 36-38.
