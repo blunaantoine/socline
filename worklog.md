@@ -1328,3 +1328,24 @@ Work Log:
 Stage Summary:
 - Projet Android complet et ouvertible dans Android Studio : l'utilisateur peut générer l'APK debug immédiatement (Build > Build APK(s) → app-debug.apk installable).
 - Site préparé pour l'indexation (Task 52) — les 2 tasks attendent le deploy VPS commun : cd /opt/socline && sudo bash deploy/deploy.sh --update (apportera sitemap.xml + robots.txt + canonical en prod).
+
+---
+Task ID: 54 (session 42 — indexation Search Console + protection duplicate content VPS)
+Agent: main (Z.ai Code)
+Task: Suite Task 52 — suivre la vérification Google Search Console, la soumission du sitemap, et corriger le duplicate content découvert (contenu Socline indexé sur maison-khan.com).
+
+Work Log:
+- Vérifié depuis le sandbox : TXT google-site-verification propagé sur la racine oquitogo.com (l'utilisateur a ajouté l'enregistrement chez LWS) ; /sitemap.xml en 200 sur la prod (deploy Task 52 effectué) ; robots.txt avec directive Sitemap en ligne.
+- Googlebot confirmé actif dans /var/log/nginx/access.log du VPS (GET /robots.txt 200 depuis IP Google 192.178.6.102).
+- DÉCOUVERTE : le résultat Google « Socline - Votre lavage auto... » indexé sur maison-khan.com. Diagnostic : maison-khan.com (apex, domaine de l'utilisateur, boutique sur shop.maison-khan.com:3000) pointe en DNS vers le VPS Socline SANS vhost dédié → nginx le servait via le bloc HTTPS Socline (premier conf.d chargé = default_server implicite) → contenu Socline dupliqué sous un second domaine.
+- Correctif fourni (commandes exécutées par l'utilisateur sur le VPS) :
+  * /etc/nginx/sites-available/maison-khan-apex : vhost apex (80 + 443) → return 301 https://shop.maison-khan.com$request_uri (l'apex redirige vers la boutique) ;
+  * sudo certbot --nginx -d maison-khan.com → certificat Let's Encrypt délivré (expire 2027-01-07, renouvellement auto) et déployé ;
+  * /etc/nginx/conf.d/catchall-https.conf : bloc 443 default_server explicite → tout domaine inconnu pointé sur l'IP redirige 301 vers socline.oquitogo.com (protection duplicate future) ; le bloc Socline HTTPS existant perd son rôle de default implicite.
+- Vérifications externes post-correctif (curl) : https://maison-khan.com → 301 shop.maison-khan.com (cert valide, chaîne complète → 200 en 1 redirection) ; http://maison-khan.com → 301 https apex → shop ; domaine fictif testé via --resolve → 301 socline ✓ ; socline.oquitogo.com 200 ✓ ; shop.maison-khan.com 200 ✓. Aucun contenu Socline n'est plus servi sous un autre domaine.
+- Aucun changement dans le repo (ops VPS uniquement). Statut Search Console sitemap « Impossible de récupérer » = fetch Google en attente (comportement normal, se met à jour seul).
+
+Stage Summary:
+- Socline est indexable proprement : sitemap + robots + canonical en prod, propriété vérifiée, Googlebot actif, et le duplicate content maison-khan.com est éliminé à la source (301 vers la boutique) avec protection catch-all contre tout futur domaine parasites.
+- Prochain jalons (aucune action dev requise) : statut sitemap « Succès » sous 24-48h, désindexation progressive de la version maison-khan (2-4 semaines), « Demander l'indexation » sur l'accueil pour accélérer.
+- Reste en attente : build APK par l'utilisateur dans Android Studio (projet complet livré Task 53).
