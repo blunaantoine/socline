@@ -1273,3 +1273,21 @@ Work Log:
 Stage Summary:
 - Toutes les personnes visibles dans les visuels de l'app (illustrations de formules/abonnements + carrousel photo de l'accueil) sont désormais des laveurs africains en tenue orange Socline — représentation fidèle au terrain (Lomé, Togo).
 - NOTE VPS : Tasks 39→50 en attente de livraison via `cd /opt/socline && sudo bash deploy/deploy.sh --update`.
+
+---
+Task ID: 51 (session 40 — livraison production Tasks 39→50)
+Agent: main (Z.ai Code)
+Task: Déploiement VPS effectué par l'utilisateur : `cd /opt/socline && sudo bash deploy/deploy.sh --update` (sortie collée dans la conversation).
+
+Work Log:
+- Déploiement réussi sur le VPS LWS (213.156.133.226) : code à jour sur f4e0074 (Task 50), bun install sans changement, schéma SQLite déjà en synchro, build Next.js 16.1.3/Turbopack OK (56 pages), services systemd actifs (socline-web 3100, socline-chat 3003, socline-washgo 3005), nginx 3002 + HTTPS certbot conservés.
+- Vérifications post-deploy depuis la session de dev (curl) :
+  * https://socline.oquitogo.com/ → 200, titre « Socline - Votre lavage auto, livré à votre porte » ;
+  * Nouveaux assets Tasks 49/50 tous en 200 : services/mousse, detailing, laveur-hydro, plans/premium, prestige, carousel/lavage-1, lavage-3, voiture-defaut ;
+  * Ancien asset supprimé formule-bleue.png → 404 (attendu) ;
+  * API /api/services?source=APP → 200.
+- Le NOTE VPS « en attente de livraison » des Tasks 39→50 est levé.
+
+Stage Summary:
+- La production https://socline.oquitogo.com sert désormais TOUTES les évolutions des Tasks 39 à 50 : design system + refontes (Accueil, Réserver, Portefeuille, Profil, Abonnements), différence Complet/Extérieur, appel + chat temps réel, redirection WhatsApp, vraies images de voiture variées (mousse, laveur, brillance, intérieur, detailing — laveurs africains) et corrections de débordements.
+- Reste (non bloquant) : checklist PayDunya prod — vérifier l'IPN joignable en HTTPS et passer le compte en Mode Live pour les paiements réels ; harmonisation « X XOF » → « X F » côté laveur (refonte écrans laveur à venir) ; « 0,0 » rating → « — ».
