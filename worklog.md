@@ -1104,3 +1104,25 @@ Work Log:
 Stage Summary:
 - 4 écrans refondus fidèlement à maquette-autres-ecrans : Portefeuille (carte solde navy + dernière recharge), Profil (avatar dégradé + stats + support), Abonnements (rangées + Populaire), Réserver (rangées horizontales + chips + modale info). Identité orange/logo intacte, montants « 2 500 F », zéro logique métier touchée, aucune fonctionnalité retirée (description service désormais au toucher via modale info).
 - Reste à refondre (ordre du prompt) : Suivi du lavage (OrderTracking — harmoniser « 2,500 XOF » → « 2 500 F »), Détail laveur/station (modales), Connexion/Inscription (AuthScreen), puis harmonisation finale (espacements, 360 px, mode sombre) et écrans laveur/admin.
+
+---
+Task ID: 45 (session 34 — Abonnements : la différence Complet / Extérieur désormais visible)
+Agent: main (Z.ai Code)
+Task: Demande utilisateur « LES ABONNEMENTS MET LA DIFFÉRENCE ENTRE COMPLET ET EXTÉRIEUR » — rendre visible dans l'écran Abonnements la couverture réelle de chaque formule (Essentiel = extérieur seul, Confort/Premium/Prestige = complet extérieur + intérieur). Règles strictes respectées : identité orange intacte, zéro logique métier, aucune fonctionnalité retirée, montants « 14 000 F ».
+
+Work Log:
+- DIAGNOSTIC : le champ `coverage` (EXTERIOR/FULL) existe sur Service depuis longtemps et est déjà utilisé partout ailleurs (Accueil, Réserver, détails), mais GET /api/subscriptions/plans le masquait (select limité id/name/price/duration) → l'écran Abonnements ne pouvait pas afficher la différence. Données réelles vérifiées en base : Essentiel→EXTERIOR (8 000 F), Confort→FULL (14 000 F), Premium→FULL (22 000 F), Prestige→FULL (34 000 F), tous 4 lavages/mois.
+- API (lecture seule, aucun comportement changé) : coverage + category ajoutés au select du service dans GET /api/subscriptions/plans. /api/subscriptions/user renvoyait déjà service complet (include).
+- UI SubscriptionPanel (réutilisation des composants partagés ServiceCoverage déjà en prod) :
+  * Bandeau « Quelle différence ? » en haut d'écran : Complet (orange brand) = extérieur + intérieur · Extérieur (vert) = carrosserie uniquement.
+  * Badge couverture CoverageBadge sur chaque carte de formule, à côté de « 4 lavages / mois » : Extérieur (vert, icône voiture) vs Complet (orange, voiture + siège).
+  * Modale de souscription : bloc « Ce que comprend le lavage » (CoverageDetails) sous la description — Extérieur toujours détaillé ; Intérieur « Inclus » (vert, détail selon category) ou « Non inclus » (gris, avec conseil de passer à Confort/Premium/Prestige).
+  * Badge couverture aussi sur la carte d'abonnement actif (à côté du pill « Actif »).
+- Interface TypeScript SubscriptionPlan.service étendue (coverage?/category? — optionnel, rétrocompatible).
+- TESTS NAVIGATEUR (390 px + 1280 px, compte démo 90123456) : bandeau présent ; Essentiel badge Extérieur, Confort/Premium/Prestige badge Complet, Populaire toujours sur Confort ; modale Essentiel → « Intérieur — Non inclus », modale Confort → « Intérieur — Inclus » + Total 14 000 F, solde 0 F → bouton Souscrire correctement désactivé (logique intacte). Lint : 0 erreur / 0 warning. Aucune erreur runtime nouvelle (seuls warnings a11y Dialog préexistants).
+- Branche feature/refonte-abonnements-couverture, commit ✨ puis worklog en commit séparé, merge main, push.
+
+Stage Summary:
+- La différence Complet / Extérieur est maintenant explicite à 3 niveaux : bandeau pédagogique permanent, badge sur chaque formule, détail inclus/non inclus dans la modale. Essentiel = extérieur seul (carrosserie), les 3 autres = complet avec intérieur de profondeur croissante.
+- Aucune logique métier modifiée (API = exposition lecture seule de champs existants), aucune fonctionnalité retirée, identité orange #FF9800 préservée.
+- Reste à refondre (ordre du prompt) : Suivi du lavage (OrderTracking — harmoniser « 2,500 XOF » → « 2 500 F »), Détail laveur/station (modales), Connexion/Inscription (AuthScreen), puis harmonisation finale et écrans laveur/admin.
