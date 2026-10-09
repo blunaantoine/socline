@@ -10,15 +10,16 @@
 
 const SOCKET_SERVICE_URL = 'http://127.0.0.1:3003/internal/emit';
 const EMIT_TIMEOUT_MS = 3000;
+// Valeur de repli IDENTIQUE à celle du chat-service (mini-services/chat-service).
+// Sans elle, tout .env sans INTERNAL_SOCKET_SECRET faisait rejeter chaque émission
+// serveur→service (403) : plus de suivi temps réel ni de notifications.
+const DEFAULT_INTERNAL_SOCKET_SECRET = 'socline-internal-socket-secret';
 
 export function emitRealtime(rooms: string[], event: string, data: unknown): void {
-  const secret = process.env.INTERNAL_SOCKET_SECRET;
+  const secret = process.env.INTERNAL_SOCKET_SECRET || DEFAULT_INTERNAL_SOCKET_SECRET;
 
-  if (!secret || rooms.length === 0 || !event) {
-    // Best-effort: misconfigured service or nothing to emit — stay silent-ish.
-    if (!secret) console.error('[Realtime] emit failed: INTERNAL_SOCKET_SECRET not set');
-    return;
-  }
+  // Best-effort: nothing to emit — stay silent-ish.
+  if (rooms.length === 0 || !event) return;
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), EMIT_TIMEOUT_MS);
