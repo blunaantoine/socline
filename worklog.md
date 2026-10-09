@@ -1045,3 +1045,21 @@ Work Log:
 Stage Summary:
 - L'ajustement par glissement des images de promotion fonctionne (desktop + tactile), cadrage fidèle entre l'aperçu admin et la bannière client, routes d'écriture promotions réservées à l'admin.
 - Carrousel : images remplaçables dans public/carousel/ (noms identiques) ou via MEDIA_ITEMS ; option gestion admin à demander.
+
+---
+Task ID: 42 (session 31 — refonte UI : audit + design system + Accueil selon maquette)
+Agent: main (Z.ai Code)
+Task: Refonte complète de l'interface (prompt-refonte-app.md + maquette-accueil.html) — identité conservée, zéro logique métier touchée.
+
+Work Log:
+- AUDIT : couleurs réelles comptées dans le code → orange #FF9800 (212 usages) + #F57C00/#E65100/#FFF3E0 ; texte #212121/#757575 ; verts #4CAF50 ; logo public/logo.svg (carré sombre + Z blanc animé) et favicon PNG. Incohérences : hex en dur partout, orange en aplat (header plein), rayons mélangés (lg/xl), ombres hétérogènes, blocs de texte explicatifs, pas de skeletons, échelle de texte ad-hoc (10/11/12.5px).
+- DESIGN SYSTEM (commit 2d6b24e) : tokens CSS dans globals.css (@theme inline) → bg-brand/text-ink/bg-surface/text-soft/border-line/bg-plan-*/rounded-btn(12)/rounded-card(20)/rounded-pill/shadow-card/shadow-pop/text-display/title/section/body/detail/micro ; src/lib/design-system.ts (teintes de formule cycliques, classes communes) ; composants src/components/design/ : CarIllustration (SVG voiture maquette), SectionHeader, Segmented, ServiceArtCard (zone teintée + pastilles carrosserie/intérieur + prix/durée), WasherRow (avatar+point en ligne+note+bouton navy), EmptyState.
+- ACCUEIL (commit 978a923) : en-tête clair « Bonjour · {adresse} » (puces tappable = géolocalisation conservée) + titre par onglet + cloche blanche badge orange (NotificationCenter) ; barre basse bordure fine sans ombre lourde, libellés micro ; hero promo navy (de/vers ink→ink-2) : pastille remise orange, titre, code dashed à copier, CTA blanc, voiture orange décorative ; mode IMAGE/VIDÉO conservé avec overlay restylé ; points de carrousel pastille allongée ; Segmented Indépendants/Stations ; « Nos formules » en ServiceArtCard (teintes bleu/vert/orange/violet, badges EXT/INT par coverage, prix « 2 500 F » format fr-FR) ; blocs explicatifs Extérieur/Complet SUPPRIMÉS (info déplacée en pastilles + modale) ; stations en cartes rounded-card ; « Laveurs disponibles » en WasherRow (bouton Réserver → onStartOrder) + skeletons + EmptyState ; modale service/station et MediaCarousel inchangés fonctionnellement.
+- FIXES en cours de route : titre tronqué à 390px (position déplacée en ligne Bonjour, mockup fidèle), voiture masquant le CTA (z-10 sur le contenu), statut laveur wrap (truncate imbriqué).
+- BASE LOCALE : db:push après le sync Git Task 29→41 (champ provider manquant → erreurs sweep PayDunya) ; DB non versionnée git (aucune perte) ; sweep OK ensuite.
+- TESTS navigateur réels : 360/390/1280 px — en-tête, hero, segmented, 4 teintes, rangée laveur, modale Essentiel complète (badges, coverage, produits), bouton Réserver laveur → parcours « Choisir un service », onglet Stations (liste + icon bâtiment), Portefeuille (titre d'en-tête dynamique), carrousel promo auto-défilement OK ; lint 0 erreur.
+- Branche refonte/ui-design-system, commits 2d6b24e + 978a923, worklog séparé. PAS ENCORE MERGÉ — validation utilisateur demandée avant de dérouler les écrans suivants (Réserver, Détail, Suivi, Abonnements, Portefeuille, Profil, Connexion/Inscription).
+
+Stage Summary:
+- Design system centralisé en place (plus de hex en dur dans les écrans Accueil), identité intacte (#FF9800 + logo), aucune fonctionnalité retirée, navigation et données inchangées.
+- Accueil conforme à la maquette (capture 390px validée). Prochaine étape : accord utilisateur puis refonte écran par écran dans l'ordre du prompt.
