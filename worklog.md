@@ -1442,3 +1442,20 @@ Stage Summary:
 - L'APK debug de Socline (v1.0, com.socline.app, 11 Mo) est généré, signé et téléchargeable à l'URL /apk/socline-v1.0-debug.apk (Preview → « Ouvrir dans un nouvel onglet »). Installation directe sur Android (« sources inconnues »).
 - L'app est un shell Capacitor qui charge https://socline.oquitogo.com : l'APK suit automatiquement les évolutions du site, aucun rebuild nécessaire.
 - Chaîne de build reproductible documentée dans public/apk/README.md ; prochain jalon optionnel : APK release signé (keystore dédiée, hors Git) pour une diffusion publique.
+
+---
+Task ID: 59 (session 47 — bouton « Installer l'application » dans l'app)
+Agent: main (Z.ai Code)
+Task: « je n'arrive pas à retrouver le fichier APK » — rendre le téléchargement évident depuis le Preview.
+
+Work Log:
+- DIAGNOSTIC : l'APK était bien en place (public/apk/socline-v1.0-debug.apk, 11 Mo) mais le serveur était éteint au moment de l'essai (contrainte sandbox : tout process lancé via le Bash tool est tué en fin de commande — serveur relancé uniquement quand le Preview est ouvert) et l'utilisateur n'avait pas d'entrée visuelle pour le télécharger.
+- src/components/shared/ApkDownloadButton.tsx (nouveau) : FAB orange (Smartphone + « Installer l'application », h-11/44px touch, pill, ombre, active:scale-95) positionné bottom calc(6rem + safe-area-inset) right-3 — au-dessus de la barre de nav 6 onglets, aucun chevauchement ; état loading (Loader2 4 s) au clic ; <a download> vers /apk/socline-v1.0-debug.apk.
+- AFFICHAGE CONDITIONNEL : ne rend rien sauf si NEXT_PUBLIC_SHOW_APK_DOWNLOAD=1 → variable ajoutée au .env du sandbox UNIQUEMENT (jamais commité) ; en prod le composant est invisible (et l'APK reste accessible en direct via /apk/…).
+- Branchement : page.tsx import + <ApkDownloadButton /> avant <Toaster /> — visible sur tous les écrans (auth, client, laveur, admin).
+- TESTS : lint 0/14 warnings préexistants ; serveur relancé + curl : APK HTTP 200 Accept-Ranges (le bouton n'apparaît pas dans le HTML brut car page.tsx rend l'écran de chargement côté serveur — attendu) ; agent-browser 390×844 : bouton flottant orange rendu au-dessus de la nav, capture test-captures/apk-bouton-390.png.
+- Commits 🤖 (composant) + 📝 (worklog), poussés.
+
+Stage Summary:
+- Dans le Preview, un bouton orange « Installer l'application » flotte au-dessus de la barre de navigation : un clic déclenche directement le téléchargement de l'APK — plus besoin de taper l'URL.
+- En production le bouton n'apparaît pas (flag .env sandbox) ; si un jour on veut l'offrir aux clients du site, il suffira d'ajouter NEXT_PUBLIC_SHOW_APK_DOWNLOAD=1 au .env du VPS + d'y copier public/apk/.
