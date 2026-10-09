@@ -1220,3 +1220,34 @@ Stage Summary:
 - Toutes les grandes zones « voiture » de l'app client montrent désormais de VRAIES images (Accueil formules + bandeau promo, Réserver, Abonnements, Mes véhicules, Suivi, côté laveur), déclinées aux 4 teintes de marque — la variété visuelle des cartes est conservée.
 - Les 2 débordements signalés sont corrigés structurellement (grilles pleine largeur / empilement), vérifiés en captures 390px.
 - NOTE VPS : Tasks 39→48 en attente de livraison via `cd /opt/socline && sudo bash deploy/deploy.sh --update`.
+
+---
+Task ID: 49 (session 38 — images variées et pro : voitures différentes, mousse, laveur)
+Agent: main (Z.ai Code)
+Task: Suite du signalement Task 48 — « ne mets pas la même image partout, change avec de différentes voitures, ajoute de la mousse sur certaines et d'autres avec laveur, il faut innover et faire un truc pro ». Remplacer les 4 recoloriages d'une même voiture par un vrai catalogue d'images variées.
+
+Work Log:
+- 9 NOUVELLES IMAGES IA (style unique : illustration 3D moderne, accents orange marque, fond crème #FFF3E0, génération séquentielle avec retry — taille 1344×768 services / 1024×1024 plans) :
+  * services/mousse.png — SUV turquoise couvert de mousse + éponge jaune (Extérieur) ;
+  * services/laveur-hydro.png — laveur en tenue orange au jet haute pression (Extérieur, en réserve pour le 2ᵉ service extérieur) ;
+  * services/brillance.png — berline bleu nuit miroir + gouttes (Complet) ;
+  * services/interieur.png — habitacle beige aspiré (Complet) ;
+  * services/detailing.png — laveur en gants orange lustrant un capot blanc (Complet) ;
+  * plans/essentiel.png (citadine menthe), plans/confort.png (berline à la mousse), plans/premium.png (SUV au jet avec laveur), plans/prestige.png (berline noire de luxe).
+  * Reprises après revue visuelle : confort (couture verticale de fond supprimée), prestige (emblème de marque retiré de la calandre).
+- CATALOGUE SÉMANTIQUE (src/lib/design-system.ts) :
+  * SERVICE_ART_IMAGES { EXTERIOR: [mousse, laveur-hydro], FULL: [brillance, interieur, detailing] } + serviceArtImage(coverage, index) — l'image dépend D'ABORD de la couverture (mousse/laveur pour l'extérieur, brillance/intérieur/detailing pour le complet), alternance selon la position. Une même prestation garde toujours la même image (reconnaissance visuelle identique Accueil ↔ Réserver).
+  * PLAN_PRIORITY_IMAGES (citadine → berline mousse → SUV laveur → prestige noire) + planPriorityImage(priority bornée 0→3) — une voiture différente par niveau d'abonnement.
+  * PLAN_CAR_IMAGES/planCarImage/PLAN_TINTS/planTint supprimés (recoloriages d'une même voiture abandonnés) ; les 4 png formule-*.png supprimés de public/voitures.
+- BRANCHEMENTS : ServiceArtCard (Accueil « Nos formules ») et ServiceRowCard (Réserver étape 1) → serviceArtImage(service.coverage, index) ; SubscriptionPanel → planCarFor délègue à planPriorityImage (vignettes listes, abonnement actif, historique, modale) ; bandeau « Quelle différence ? » → vignette interieur.png (illustre « Complet = extérieur + intérieur »).
+- TESTS RÉELS (390px + 1280px, session client 90123456) :
+  * Accueil : 4 cartes avec 4 scènes distinctes (captures) ; Réserver : mêmes 4 scènes en rangées, chips Extérieur/Complet et prix « 2 500 F » intacts (capture) ; Abonnements : citadine / berline mousse + badge Populaire / SUV laveur / prestige noire, prix « 8 000 F…34 000 F » (captures), modale Confort : mini vignette mousse, Total « 14 000 F », Souscrire désactivée solde 0 F (capture).
+  * Desktop 1280px : grille 4 colonnes, recadrages propres (capture).
+  * performance resources : les 9 images + voiture-transparente chargées, aucun 404 ; console et dev.log sans erreur nouvelle (seul l'warning Google Maps préexistant).
+  * Lint : 0 erreur / 0 warning.
+- Branche feature/images-variees-pro, commit 🎨 puis worklog en commit séparé.
+
+Stage Summary:
+- Chaque formule de lavage et chaque abonnement affiche désormais sa PROPRE scène illustrée (mousse, laveur au jet, brillance, intérieur, detailing, citadine, berline, SUV, prestige) — plus aucune répétition de la même voiture, dans un style d'illustration unique aux couleurs de la marque.
+- Le choix d'image est sémantique (couverture du service / priorité du plan) : il reste juste si l'admin ajoute de nouveaux services ou formules, et laveur-hydro.png est prêt pour le prochain service Extérieur.
+- NOTE VPS : Tasks 39→49 en attente de livraison via `cd /opt/socline && sudo bash deploy/deploy.sh --update`.
