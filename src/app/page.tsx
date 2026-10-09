@@ -6,6 +6,7 @@ import { ClientApp } from '@/components/client/ClientApp';
 import { WasherApp } from '@/components/washer/WasherApp';
 import { AdminPanel } from '@/components/admin/AdminPanel';
 import { AuthScreen } from '@/components/client/AuthScreen';
+import { ApkDownloadButton } from '@/components/shared/ApkDownloadButton';
 import { Toaster } from '@/components/ui/sonner';
 import { Loader2 } from 'lucide-react';
 
@@ -57,6 +58,7 @@ export default function SoclineApp() {
           {currentView === 'admin' && <AdminPanel />}
         </>
       )}
+      <ApkDownloadButton />
       <Toaster />
     </div>
   );
