@@ -16,7 +16,7 @@ import {
   MapPin, Search, Star, Clock, Car, Building, Armchair,
   CheckCircle, Phone, Loader2, Heart,
   Zap, Droplets, Sparkles, Crown, RefreshCw,
-  Home, Calendar, MessageCircle, User, Bell, Settings, LogOut, Wallet, Copy, Plus, ChevronRight, Headphones, MessageSquare
+  Home, Calendar, MessageCircle, User, Bell, Settings, LogOut, Wallet, Copy, Plus, ChevronRight, Headphones, MessageSquare, Pencil
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { onSoclineNotification } from '@/components/RealtimeNotifications';
@@ -43,6 +43,7 @@ import { ServiceArtCard } from '@/components/design/ServiceArtCard';
 import { WasherRow } from '@/components/design/WasherRow';
 import { EmptyState } from '@/components/design/EmptyState';
 import { CarIllustration } from '@/components/design/CarIllustration';
+import { CARD_CLASSES } from '@/lib/design-system';
 
 const navItems = [
   { id: 'home', icon: Home, label: 'Accueil' },
@@ -1233,77 +1234,93 @@ function ProfileContent({ user, onLogout }: { user: any; onLogout: () => void })
   }
 
   return (
-    <div className="p-4 space-y-3 pb-16">
-      {/* Profile Card - Android style */}
-      <div className="bg-white rounded-lg p-4 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-14 h-14 bg-[#FF9800] rounded-full flex items-center justify-center text-white text-xl font-bold">
+    <div className="p-4 space-y-4 pb-16 bg-app min-h-full">
+      {/* Carte profil : avatar dégradé orange + édition */}
+      <div className={`p-3.5 ${CARD_CLASSES}`}>
+        <div className="flex items-center gap-3.5">
+          <div className="w-[58px] h-[58px] rounded-[19px] bg-gradient-to-br from-brand to-brand-light grid place-items-center text-white text-title font-extrabold flex-shrink-0">
             {user?.name?.charAt(0) || 'U'}
           </div>
-          <div className="flex-1">
-            <h2 className="font-bold text-[#212121]">{user?.name || 'Utilisateur'}</h2>
-            <p className="text-sm text-[#757575]">+228 {user?.phone || '90 12 34 56'}</p>
+          <div className="flex-1 min-w-0">
+            <p className="text-body font-bold text-ink truncate">{user?.name || 'Utilisateur'}</p>
+            <p className="text-detail text-soft">+228 {user?.phone || '90 12 34 56'}</p>
           </div>
+          <button
+            onClick={() => setActiveSection('settings')}
+            aria-label="Modifier mon profil"
+            className="w-9 h-9 rounded-[11px] bg-surface border border-line grid place-items-center flex-shrink-0 active:scale-95 transition-transform"
+          >
+            <Pencil className="w-[17px] h-[17px] text-brand" />
+          </button>
         </div>
       </div>
 
-      {/* Cars Section - Multi-car support */}
+      {/* Véhicules — gestionnaire multi-cartes (inchangé) */}
       <CarsManager userId={user?.id} />
 
-      {/* Stats */}
-      <div className="bg-white rounded-lg p-4 shadow-sm">
-        <h3 className="font-semibold text-[#212121] mb-3">Statistiques</h3>
-        <div className="grid grid-cols-3 gap-4">
-          <div className="text-center">
-            <div className="text-xl font-bold text-[#FF9800]">
-              {profileStats ? profileStats.washes : <Loader2 className="w-5 h-5 animate-spin mx-auto text-[#FF9800]" />}
+      {/* Statistiques : 3 cartes teintées */}
+      <div>
+        <h3 className="text-section text-ink mb-2.5">Statistiques</h3>
+        <div className="grid grid-cols-3 gap-2.5">
+          <div className={`p-3.5 text-center ${CARD_CLASSES}`}>
+            <div className="w-9 h-9 rounded-[12px] bg-plan-blue grid place-items-center mx-auto mb-2">
+              <Droplets className="w-5 h-5 text-plan-blue-icon" strokeWidth={2} />
             </div>
-            <div className="text-xs text-[#757575]">Lavages</div>
+            <p className="text-[17px] font-bold text-ink leading-none">
+              {profileStats ? profileStats.washes : <Loader2 className="w-4 h-4 animate-spin mx-auto text-brand" />}
+            </p>
+            <p className="text-micro text-soft mt-1.5">Lavages</p>
           </div>
-          <div className="text-center">
-            <div className="text-xl font-bold text-[#4CAF50]">-</div>
-            <div className="text-xs text-[#757575]">Note</div>
-          </div>
-          <div className="text-center">
-            <div className="text-xl font-bold text-[#2196F3]">
-              {profileStats ? `${profileStats.spent.toLocaleString('fr-FR')} F` : <Loader2 className="w-5 h-5 animate-spin mx-auto text-[#2196F3]" />}
+          <div className={`p-3.5 text-center ${CARD_CLASSES}`}>
+            <div className="w-9 h-9 rounded-[12px] bg-star-soft grid place-items-center mx-auto mb-2">
+              <Star className="w-5 h-5 text-star" strokeWidth={2} />
             </div>
-            <div className="text-xs text-[#757575]">Dépensé</div>
+            <p className="text-[17px] font-bold text-ink leading-none">–</p>
+            <p className="text-micro text-soft mt-1.5">Note</p>
+          </div>
+          <div className={`p-3.5 text-center ${CARD_CLASSES}`}>
+            <div className="w-9 h-9 rounded-[12px] bg-plan-green grid place-items-center mx-auto mb-2">
+              <Wallet className="w-5 h-5 text-plan-green-icon" strokeWidth={2} />
+            </div>
+            <p className="text-[17px] font-bold text-ink leading-none">
+              {profileStats ? `${profileStats.spent.toLocaleString('fr-FR')} F` : <Loader2 className="w-4 h-4 animate-spin mx-auto text-brand" />}
+            </p>
+            <p className="text-micro text-soft mt-1.5">Dépensé</p>
           </div>
         </div>
       </div>
 
-      {/* Support Client */}
-      <div className="bg-gradient-to-r from-[#FF9800] to-[#F57C00] rounded-lg p-4 shadow-sm">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-            <Headphones className="w-5 h-5 text-white" />
+      {/* Bloc support navy : Appeler + WhatsApp */}
+      <div className="bg-gradient-to-br from-ink to-ink-2 rounded-card p-4 text-white">
+        <div className="flex items-center gap-3 mb-3.5">
+          <div className="w-[42px] h-[42px] rounded-[14px] bg-white/10 grid place-items-center flex-shrink-0">
+            <Headphones className="w-[22px] h-[22px] text-white" />
           </div>
           <div>
-            <h3 className="font-semibold text-white">Support Client</h3>
-            <p className="text-xs text-white/80">Nous sommes là pour vous aider</p>
+            <p className="text-body font-bold">Besoin d'aide ?</p>
+            <p className="text-detail text-white/60">Une réponse rapide, 7j/7</p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="grid grid-cols-2 gap-2.5">
           <button
             onClick={handleCallSupport}
-            className="flex-1 bg-white rounded-lg py-2 px-3 flex items-center justify-center gap-2 text-[#FF9800] font-medium text-sm"
+            className="bg-white text-ink rounded-btn py-2.5 px-3 flex items-center justify-center gap-2 text-detail font-bold min-h-[44px] active:scale-95 transition-transform"
           >
-            <Phone className="w-4 h-4" />
+            <Phone className="w-[17px] h-[17px]" />
             Appeler
           </button>
           <button
             onClick={handleWhatsAppSupport}
-            className="flex-1 bg-[#25D366] rounded-lg py-2 px-3 flex items-center justify-center gap-2 text-white font-medium text-sm"
+            className="bg-[#25D366] text-white rounded-btn py-2.5 px-3 flex items-center justify-center gap-2 text-detail font-bold min-h-[44px] active:scale-95 transition-transform"
           >
-            <MessageSquare className="w-4 h-4" />
+            <MessageSquare className="w-[17px] h-[17px]" />
             WhatsApp
           </button>
         </div>
       </div>
 
-      {/* Menu - Android List style */}
-      <div className="bg-white rounded-lg overflow-hidden shadow-sm">
+      {/* Menu : historique / adresses / paramètres */}
+      <div className={`${CARD_CLASSES} overflow-hidden`}>
         {[
           { icon: Clock, label: 'Historique', section: 'history', description: 'Toutes vos activités' },
           { icon: MapPin, label: 'Adresses', section: 'addresses', description: 'Gérez vos adresses' },
@@ -1312,24 +1329,24 @@ function ProfileContent({ user, onLogout }: { user: any; onLogout: () => void })
           <button
             key={index}
             onClick={() => setActiveSection(item.section)}
-            className="w-full flex items-center gap-3 p-4 hover:bg-[#F5F5F5] active:bg-[#EEEEEE] transition-colors border-b border-[#F5F5F5] last:border-0"
+            className="w-full flex items-center gap-3 p-3.5 active:bg-app transition-colors border-b border-line last:border-0"
           >
-            <div className="w-10 h-10 bg-[#FFF3E0] rounded-full flex items-center justify-center">
-              <item.icon className="w-5 h-5 text-[#FF9800]" />
+            <div className="w-10 h-10 bg-brand-soft rounded-[13px] grid place-items-center flex-shrink-0">
+              <item.icon className="w-5 h-5 text-brand" strokeWidth={2} />
             </div>
-            <div className="flex-1 text-left">
-              <span className="text-[#212121] text-sm font-medium">{item.label}</span>
-              <p className="text-xs text-[#9E9E9E]">{item.description}</p>
+            <div className="flex-1 text-left min-w-0">
+              <span className="text-ink text-body font-semibold">{item.label}</span>
+              <p className="text-micro text-soft">{item.description}</p>
             </div>
-            <ChevronRight className="w-5 h-5 text-[#BDBDBD]" />
+            <ChevronRight className="w-5 h-5 text-soft/60 flex-shrink-0" />
           </button>
         ))}
       </div>
 
-      {/* Logout Button - Android style */}
+      {/* Déconnexion */}
       <button
         onClick={onLogout}
-        className="w-full h-12 border border-[#E0E0E0] text-red-500 bg-white rounded-lg font-semibold text-sm active:bg-red-50 transition-colors"
+        className="w-full h-12 border border-line bg-surface text-danger rounded-btn font-semibold text-body active:bg-danger/5 transition-colors min-h-[44px]"
       >
         <LogOut className="w-4 h-4 inline mr-2" />
         Déconnexion

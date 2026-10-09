@@ -19,6 +19,7 @@
   --brand-deep: #E65100;   /* orange très foncé : accents */
   --brand-soft: #FFF3E0;   /* fond orange doux */
   --brand-wash: #FFF8F0;   /* fond orange très doux */
+  --brand-light: #FFB547;  /* orange clair : dégradés (avatar, accents) */
 
   /* — Neutre foncé (direction artistique) — */
   --ink: #0F1B2D;          /* navy : titres, boutons secondaires */
@@ -33,6 +34,7 @@
   /* — États — */
   --success: #1FA971;      /* en ligne / succès */
   --star: #F5B301;         /* étoiles de note */
+  --star-soft: #FFF6D6;    /* fond jaune doux (carte note) */
   --danger: #DC2626;       /* erreurs, actions destructives */
 
   /* — Teintes des formules (une par niveau) — */
@@ -71,6 +73,7 @@
   --color-brand-deep: var(--brand-deep);
   --color-brand-soft: var(--brand-soft);
   --color-brand-wash: var(--brand-wash);
+  --color-brand-light: var(--brand-light);
   --color-ink: var(--ink);
   --color-ink-2: var(--ink-2);
   --color-app: var(--app-bg);
@@ -79,6 +82,7 @@
   --color-line: var(--line);
   --color-success: var(--success);
   --color-star: var(--star);
+  --color-star-soft: var(--star-soft);
   --color-danger: var(--danger);
   --color-plan-blue: var(--plan-blue-bg);
   --color-plan-blue-icon: var(--plan-blue-icon);
