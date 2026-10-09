@@ -1158,3 +1158,32 @@ Stage Summary:
 - CAUSE RACINE du temps réel mort : secrets socket vides côté service → fallbacks alignés des deux côtés + auto-réparation des vieux .env au prochain deploy.sh. NOTE VPS : `cd /opt/socline && sudo bash deploy/deploy.sh --update` livrera Tasks 39→46 et réparera le temps réel en production.
 - Dettes observées non bloquantes : côté laveur « Vos gains 1,500 XOF » (format à harmoniser) et « Aucun véhicule enregistré » alors que la commande a une voiture (affichage véhicule laveur à vérifier) ; « 0,0 » rating affiché au lieu de « — » quand rating=0.
 - Reste à refondre (ordre du prompt) : Suivi (visuel, si souhaité au-dessus de ces correctifs), Détail laveur/station, Connexion/Inscription, puis harmonisation finale et écrans laveur/admin.
+
+---
+Task ID: 47 (session 36 — redirection WhatsApp + images de voiture)
+Agent: main (Z.ai Code)
+Task: Demandes utilisateur « AJOUTE LA REDIRECTION VERS WHATSAP » et « SI ON REMPLACAIT LES GRANDS ICÔNES DE VOITURE PAR DES IMAGES DE VOITURE ». Règles intactes : identité orange, zéro logique métier, aucune fonctionnalité retirée, montants FR.
+
+Work Log:
+- WHATSAPP (contexte Task 46 : appel/messagerie pendant commande) :
+  * src/lib/contact.ts (nouveau) : buildWhatsAppUrl / openWhatsApp — normalise les numéros togolais vers le format international sans « + » requis par wa.me (90234567, 09023456, 00228…, +228… → 228XXXXXXXX) + SOCLINE_SUPPORT_PHONE.
+  * OrderTracking (client) : 3ᵉ bouton vert #25D366 entre Appeler et Message — wa.me/228<numéro du laveur> avec message pré-rempli citant le n° de commande (ex. « Bonjour, je vous contacte au sujet de ma commande Socline WG52677122. »). Désactivé si le laveur n'a pas de téléphone.
+  * WasherApp (laveur) : carte client — le bouton Appeler était MORT (aucun onClick, même bug que Task 46 côté inverse) → branché tel: ; bouton WhatsApp ajouté (message « je suis votre laveur Socline pour la commande {orderNumber} ») ; bouton Message (chat interne) conservé.
+  * Profil support : WhatsApp existait déjà (Task 44) — inchangé.
+- IMAGES DE VOITURE (remplacement des grands icônes plats) :
+  * public/voiture-defaut.png (nouveau) : illustration voiture compacte orange #FF9800 sur fond crème #FFF3E0, générée IA, recadrée 512×512 — aux couleurs de la marque.
+  * src/components/shared/CarPhoto.tsx (nouveau) : <img> photo réelle du véhicule sinon image par défaut — remplace les 4 blocs icône Car : sélection véhicule (ClientOrderFlow, 48px), carte véhicule du suivi (OrderTracking, 56px), Mes véhicules (CarsManager, 48px + état vide w-16), Véhicule à reconnaître (WasherApp, 64px). Petites icônes décoratives (notifications, stats, rôle laveur) volontairement conservées.
+  * CORRECTIF API découvert au test : GET /api/orders/[id] n'incluait PAS car → dès le premier rafraîchissement (poll 15 s ou rechargement), order.car devenait undefined et la carte véhicule disparaissait du suivi client (le laveur la voyait via la liste qui inclut car). Ajout lecture seule de car:true à l'include.
+- TESTS E2E RÉELS (proxy :3010, 2 sessions navigateur, commande WG52677122 CASH « 2 500 F ») :
+  * Mes véhicules : 2 vignettes voiture-defaut.png (capture 390px). Réserver étape 2 : les 2 véhicules avec l'image (capture).
+  * Laveur accepte → carte client avec 3 boutons ; espion window.open : WhatsApp → https://wa.me/22890123456?text=…WG52677122 ✓ ; Appeler → tel:90123456 ✓.
+  * Client : carte véhicule visible après reload (correctif API vérifié), 3 boutons laveur ; espion : WhatsApp → https://wa.me/22890234567?text=…WG52677122 ✓.
+  * Vue laveur « Véhicule à reconnaître » : image voiture orange (capture). Commande de test annulée (statut CANCELLED vérifié en base).
+  * Lint : 0 erreur / 0 warning. Aucune erreur runtime nouvelle.
+- Branche feature/whatsapp-et-photos-voiture, commit 💬 puis worklog en commit séparé.
+
+Stage Summary:
+- Le client ET le laveur peuvent maintenant s'appeler (tel:), discuter en interne (chat temps réel Task 46) et s'écrire sur WhatsApp en un toucher, avec message pré-rempli citant la commande — la synchro entre les deux est complète sur les 3 canaux.
+- Les véhicules affichent une vraie image de voiture (photo client sinon visuel de marque orange) partout : réservation, suivi, profil, côté laveur — et la fiche véhicule ne disparaît plus du suivi client (include car corrigé).
+- NOTE VPS : Tasks 39→47 en attente de livraison via `cd /opt/socline && sudo bash deploy/deploy.sh --update`.
+- Dettes restantes (non bloquantes, notées) : harmonisation « X XOF » → « X F » côté laveur (~25 occurrences, dédiée à la refonte écrans laveur) ; « 0,0 » rating → « — » quand rating=0.
