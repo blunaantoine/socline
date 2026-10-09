@@ -91,9 +91,10 @@ const STATUS_LABELS: Record<string, string> = {
 
 // Les dépôts PayDunya ne dépendent PAS d'une validation admin :
 // le statut vient de PayDunya (webhook IPN + vérification automatique).
+// Libellé volontairement court pour ne pas déborder des badges sur mobile.
 const txStatusLabel = (tx: Transaction) =>
   tx.status === 'PENDING' && tx.paymentMethod === 'PayDunya'
-    ? 'Confirmation PayDunya…'
+    ? 'PayDunya en cours…'
     : STATUS_LABELS[tx.status] ?? tx.status;
 
 const STATUS_COLORS: Record<string, string> = {
@@ -300,7 +301,11 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
             return;
           }
           if (data?.status === 'FAILED') {
-            toast.error('Le paiement PayDunya n\'a pas abouti. Vous pouvez réessayer.');
+            toast.error(
+              data?.reason === 'timeout'
+                ? "Rechargement expiré : paiement non confirmé dans le délai (15 min). Vous pouvez réessayer."
+                : "Le paiement PayDunya n'a pas abouti. Vous pouvez réessayer."
+            );
             fetchWallet(true);
             return;
           }
@@ -606,12 +611,12 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
                         <Icon className={`w-5 h-5 ${TRANSACTION_COLORS[tx.type]}`} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-medium text-[#212121]">
                             {TRANSACTION_LABELS[tx.type]}
                           </p>
-                          <Badge variant="outline" className={`text-xs ${STATUS_COLORS[tx.status]}`}>
-                            {txStatusLabel(tx)}
+                          <Badge variant="outline" className={`text-xs max-w-full ${STATUS_COLORS[tx.status]}`}>
+                            <span className="truncate">{txStatusLabel(tx)}</span>
                           </Badge>
                         </div>
                         <p className="text-xs text-[#757575] truncate">
@@ -1075,8 +1080,8 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
                               <p className="font-medium text-[#212121]">
                                 {TRANSACTION_LABELS[tx.type]}
                               </p>
-                              <Badge variant="outline" className={`text-xs ${STATUS_COLORS[tx.status]}`}>
-                                {txStatusLabel(tx)}
+                              <Badge variant="outline" className={`text-xs max-w-full ${STATUS_COLORS[tx.status]}`}>
+                                <span className="truncate">{txStatusLabel(tx)}</span>
                               </Badge>
                             </div>
                             <p className="text-xs text-[#757575] mt-1">
