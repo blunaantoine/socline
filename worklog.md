@@ -1425,3 +1425,20 @@ Stage Summary:
 - La boucle réservation planifiée (Task 55) devient lisible côté client : demande → confirmation du laveur → rappel H-2h, chaque état étant affiché avec la date complète du rendez-vous.
 - L'achat de formules reste accessible depuis le segment Abonnement (SubscriptionPanel intégré) ET depuis l'onglet Abonnements de la nav (conservé).
 - Déployer via cd /opt/socline && sudo bash deploy/deploy.sh --update (Task 55 + 56 + 57 partiront ensemble).
+
+---
+Task ID: 58 (session 46 — build APK Android livré et téléchargeable)
+Agent: main (Z.ai Code)
+Task: « on continue dans Android Studio » — produire l'APK de Socline sans dépendre d'Android Studio côté utilisateur.
+
+Work Log:
+- ENVIRONNEMENT : sandbox sans SDK Android ni JDK complet — (1) Android cmdline-tools 12 installés dans ~/android-sdk (cmdline-tools/latest), licences acceptées, puis platform-tools + platforms;android-36 + build-tools;36.0.0 via sdkmanager ; (2) le `java` système était un JRE sans javac (« does not provide the required capabilities: [JAVA_COMPILER] ») et sans droits root pour apt → JDK Temurin 21.0.12.1+1 installé dans ~/jdk (tarball Adoptium) ; JAVA_HOME et ANDROID_HOME exportés à chaque commande (pas persistés).
+- BUILD : android/local.properties créé (sdk.dir, ignoré par Git) ; `./gradlew assembleDebug --no-daemon` → BUILD SUCCESSFUL en 3 min 28 s (338 tasks, Gradle 8.14.3, AGP 8.13.0). Premier échec = javac manquant, résolu par le JDK Temurin.
+- APK : android/app/build/outputs/apk/debug/app-debug.apk (11 Mo) → copié en public/apk/socline-v1.0-debug.apk (servi statiquement par Next) ; signature vérifiée via apksigner (certificat Android Debug, schéma v2) ; service HTTP testé : HTTP 200 + Accept-Ranges: bytes + magic bytes PK (ZIP/APK valide).
+- CONTRAINTE SANDBOX : tout process lancé via le Bash tool (nohup, setsid, disown, même un `sleep`) est tué à la fin de la commande — le dev server ne peut être maintenu que par l'infra (auto dev server / Preview). Tests de survie documentés ; la preuve de service de l'APK a donc été faite dans une seule commande (lancement serveur + curl HEAD + range GET).
+- VERSIONNING : .gitignore + /public/apk/*.apk (binaires ~11 Mo jamais en Git) ; public/apk/README.md versionné (mode d'emploi téléchargement, régénération gradle, note build release pour diffusion/Play Store). Lint 0 erreur.
+
+Stage Summary:
+- L'APK debug de Socline (v1.0, com.socline.app, 11 Mo) est généré, signé et téléchargeable à l'URL /apk/socline-v1.0-debug.apk (Preview → « Ouvrir dans un nouvel onglet »). Installation directe sur Android (« sources inconnues »).
+- L'app est un shell Capacitor qui charge https://socline.oquitogo.com : l'APK suit automatiquement les évolutions du site, aucun rebuild nécessaire.
+- Chaîne de build reproductible documentée dans public/apk/README.md ; prochain jalon optionnel : APK release signé (keystore dédiée, hors Git) pour une diffusion publique.
