@@ -2,24 +2,24 @@
 
 import { useState, useEffect } from 'react';
 import { useServicesStore, useOrdersStore, useAppStore, useAuthStore } from '@/store';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   ArrowLeft, MapPin, Clock, CreditCard, Wallet,
-  CheckCircle, Star, AlertCircle, Loader2,
-  Zap, Droplets, Sparkles, Crown, Calendar, Car
+  CheckCircle, AlertCircle, Loader2,
+  Zap, Crown, Calendar, Car, Building2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { MediaCarousel } from './MediaCarousel';
 import type { Service, Order, Car as CarType } from '@/types';
 import { parseJsonResponse } from '@/lib/json-helper';
 import { DynamicLeafletMap } from '@/components/map/DynamicLeafletMap';
-import { ServiceIcon, CoverageBadge } from '@/components/shared/ServiceCoverage';
-import { formatPrice, COVERAGE_LONG_LABEL, getServiceCoverage } from '@/lib/service-coverage';
+import { COVERAGE_LONG_LABEL, getServiceCoverage, formatPrice } from '@/lib/service-coverage';
+import { ServiceArtCard } from '@/components/design/ServiceArtCard';
+import { EmptyState } from '@/components/design/EmptyState';
+import { BTN_PRIMARY_CLASSES, CARD_CLASSES } from '@/lib/design-system';
 
 interface ClientOrderFlowProps {
   onBack: () => void;
@@ -31,6 +31,47 @@ interface ClientOrderFlowProps {
 }
 
 type StepType = 'service' | 'location' | 'schedule' | 'payment';
+
+/** Pastille radio réutilisable (cercle fin + point orange si coché). */
+function RadioDot({ checked }: { checked: boolean }) {
+  return (
+    <span
+      className={`w-5 h-5 rounded-full border-2 grid place-items-center flex-shrink-0 transition-colors ${
+        checked ? 'border-brand' : 'border-line'
+      }`}
+      aria-hidden="true"
+    >
+      {checked && <span className="w-2.5 h-2.5 rounded-full bg-brand" />}
+    </span>
+  );
+}
+
+/** Skeleton d'une carte formule (chargement étape Service). */
+function ServiceSkeleton() {
+  return (
+    <div className="bg-surface rounded-card border border-line overflow-hidden animate-pulse">
+      <div className="h-[92px] bg-line/60" />
+      <div className="px-3 pt-2.5 pb-3 space-y-2">
+        <div className="h-4 w-2/3 rounded bg-line" />
+        <div className="h-3 w-1/2 rounded bg-line/70" />
+      </div>
+    </div>
+  );
+}
+
+const STEPS: { id: StepType; label: string; stepNum: number }[] = [
+  { id: 'service', label: 'Service', stepNum: 1 },
+  { id: 'location', label: 'Adresse', stepNum: 2 },
+  { id: 'schedule', label: 'Planifier', stepNum: 3 },
+  { id: 'payment', label: 'Paiement', stepNum: 4 },
+];
+
+const STEP_TITLE: Record<StepType, string> = {
+  service: 'Choisir un service',
+  location: 'Adresse de service',
+  schedule: 'Planification',
+  payment: 'Paiement',
+};
 
 export function ClientOrderFlow({
   onBack,
@@ -383,69 +424,74 @@ export function ClientOrderFlow({
 
   if (isLoadingServices) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-white">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto text-[#FF9800]" />
-          <p className="mt-4 text-[#757575]">Chargement des services...</p>
+      <div className="flex-1 flex flex-col bg-app">
+        <div className="bg-surface border-b border-line px-4 py-3 pt-[calc(0.75rem+env(safe-area-inset-top))] flex-shrink-0">
+          <div className="h-5 w-44 rounded bg-line animate-pulse" />
+        </div>
+        <div className="flex-1 p-4">
+          <div className="grid grid-cols-2 gap-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <ServiceSkeleton key={i} />
+            ))}
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-white">
-      {/* Header */}
-      <div className="bg-white border-b border-[#E0E0E0] px-4 py-3 flex-shrink-0 sticky top-0 z-40 pt-[calc(0.75rem+env(safe-area-inset-top))]">
+    <div className="flex-1 flex flex-col bg-app">
+      {/* Header : retour + titre de l'étape + service choisi */}
+      <div className="bg-surface border-b border-line px-4 py-3 flex-shrink-0 sticky top-0 z-40 pt-[calc(0.75rem+env(safe-area-inset-top))]">
         <div className="flex items-center gap-3">
-          <button onClick={goBack} className="p-1 -ml-1">
-            <ArrowLeft className="w-5 h-5 text-[#212121]" />
+          <button
+            onClick={goBack}
+            aria-label="Retour"
+            className="w-10 h-10 rounded-btn border border-line grid place-items-center flex-shrink-0 active:scale-95 transition-transform"
+          >
+            <ArrowLeft className="w-5 h-5 text-ink" strokeWidth={2.2} />
           </button>
-          <div>
-            <h1 className="font-semibold text-[#212121]">
-              {step === 'service' && 'Choisir un service'}
-              {step === 'location' && 'Adresse de service'}
-              {step === 'schedule' && 'Planification'}
-              {step === 'payment' && 'Paiement'}
-            </h1>
+          <div className="min-w-0">
+            <h1 className="text-section text-ink leading-tight">{STEP_TITLE[step]}</h1>
+            {selectedService && step !== 'service' && (
+              <p className="text-detail text-soft truncate">
+                {selectedService.name} · {formatPrice(selectedService.price)}
+              </p>
+            )}
           </div>
         </div>
       </div>
 
       {/* Progress Steps */}
-      <div className="bg-white px-4 py-3 border-b border-[#E0E0E0] flex-shrink-0 sticky top-[calc(3rem+env(safe-area-inset-top))] z-30">
+      <div className="bg-surface px-4 py-2.5 border-b border-line flex-shrink-0 sticky top-[calc(4rem+env(safe-area-inset-top))] z-30">
         <div className="flex items-center justify-between">
-          {[
-            { id: 'service' as StepType, label: 'Service', stepNum: 1 },
-            { id: 'location' as StepType, label: 'Adresse', stepNum: 2 },
-            { id: 'schedule' as StepType, label: 'Planifier', stepNum: 3 },
-            { id: 'payment' as StepType, label: 'Paiement', stepNum: 4 },
-          ].map((item, index, arr) => {
+          {STEPS.map((item, index) => {
             const isActive = step === item.id;
-            const stepIndex = arr.findIndex(s => s.id === step);
+            const stepIndex = STEPS.findIndex(s => s.id === step);
             const isPast = index < stepIndex;
             
             return (
               <div key={item.id} className="flex items-center flex-1">
                 <div className="flex flex-col items-center">
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${
+                    className={`w-8 h-8 rounded-full grid place-items-center text-detail font-bold transition-colors ${
                       isActive
-                        ? 'bg-[#FF9800] text-white shadow-lg'
+                        ? 'bg-brand text-white'
                         : isPast
-                        ? 'bg-[#4CAF50] text-white'
-                        : 'bg-[#E0E0E0] text-[#9E9E9E]'
+                        ? 'bg-success text-white'
+                        : 'bg-line text-soft'
                     }`}
                   >
                     {isPast ? <CheckCircle className="w-4 h-4" /> : item.stepNum}
                   </div>
-                  <span className={`text-[10px] mt-1 font-medium ${
-                    isActive ? 'text-[#FF9800]' : isPast ? 'text-[#4CAF50]' : 'text-[#9E9E9E]'
+                  <span className={`text-micro mt-1 ${
+                    isActive ? 'text-brand' : isPast ? 'text-success' : 'text-soft'
                   }`}>
                     {item.label}
                   </span>
                 </div>
-                {index < 3 && (
-                  <div className={`flex-1 h-0.5 mx-1 ${isPast ? 'bg-[#4CAF50]' : 'bg-[#E0E0E0]'}`} />
+                {index < STEPS.length - 1 && (
+                  <div className={`flex-1 h-0.5 mx-1 rounded-full ${isPast ? 'bg-success' : 'bg-line'}`} />
                 )}
               </div>
             );
@@ -454,47 +500,24 @@ export function ClientOrderFlow({
       </div>
 
       {/* Content - Only render current step */}
-      <div className="flex-1 overflow-y-auto p-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] bg-[#FAFAFA]">
-        {/* Step 1: Service Selection */}
+      <div className="flex-1 overflow-y-auto p-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+        {/* Étape 1 : choisir une formule */}
         {step === 'service' && (
           <div className="space-y-4">
             {services.length === 0 ? (
-              <div className="text-center py-12 bg-white rounded-lg">
-                <AlertCircle className="w-12 h-12 mx-auto text-gray-400" />
-                <p className="mt-4 text-gray-500">Aucun service disponible</p>
-              </div>
+              <EmptyState icon={AlertCircle} message="Aucun service disponible pour le moment" />
             ) : (
-              services.map((service) => (
-                <div 
-                  key={service.id}
-                  className="bg-white rounded-lg border-2 border-transparent hover:border-[#FF9800] shadow-sm cursor-pointer transition-all active:scale-[0.98]"
-                  onClick={() => handleServiceSelect(service)}
-                >
-                  <div className="p-4">
-                    <div className="flex items-start gap-4">
-                      <div className="w-16 h-16 bg-[#FFF3E0] rounded-lg flex items-center justify-center flex-shrink-0">
-                        <ServiceIcon service={service} className="w-7 h-7 text-[#FF9800]" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-start gap-2">
-                          <h3 className="font-semibold text-[#212121]">{service.name}</h3>
-                          <Badge variant="secondary" className="bg-[#FFF3E0] text-[#FF9800] flex-shrink-0">{service.duration} min</Badge>
-                        </div>
-                        <div className="mt-1.5">
-                          <CoverageBadge service={service} />
-                        </div>
-                        <p className="text-sm text-[#757575] mt-1.5 line-clamp-2">{service.description}</p>
-                        <div className="flex justify-between items-center mt-3">
-                          <span className="text-xl font-bold text-[#FF9800]">
-                            {formatPrice(service.price)}
-                          </span>
-                          <span className="text-sm text-[#FF9800] font-medium">Choisir →</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))
+              <div className="grid grid-cols-2 gap-3">
+                {services.map((service, index) => (
+                  <ServiceArtCard
+                    key={service.id}
+                    service={service}
+                    index={index}
+                    description={service.description}
+                    onClick={() => handleServiceSelect(service)}
+                  />
+                ))}
+              </div>
             )}
 
             {/* Carrousel média (images + vidéos) en bas de l'étape de choix du service */}
@@ -502,37 +525,37 @@ export function ClientOrderFlow({
           </div>
         )}
 
-        {/* Step 2: Location */}
+        {/* Étape 2 : adresse / station / véhicule */}
         {step === 'location' && selectedService && (
           <div className="space-y-4">
-            <div className="bg-white rounded-lg p-4">
-              <Label className="text-base font-medium mb-3 block">Type de service</Label>
-              <div className="flex gap-3">
+            <div className={`p-4 ${CARD_CLASSES}`}>
+              <Label className="text-section text-ink mb-3 block">Type de service</Label>
+              <div className="grid grid-cols-2 gap-3">
                 <button
-                  className={`flex-1 p-4 rounded-lg border-2 text-center transition-all ${
-                    isHomeService ? 'border-[#FF9800] bg-[#FFF8F0]' : 'border-gray-200 bg-white'
+                  className={`p-4 rounded-btn border text-center transition-all active:scale-[0.98] ${
+                    isHomeService ? 'border-brand bg-brand-wash' : 'border-line bg-surface'
                   } ${stationId ? 'opacity-50 cursor-not-allowed' : ''}`}
                   onClick={() => !stationId && setIsHomeService(true)}
                 >
-                  <MapPin className="w-6 h-6 mx-auto mb-2 text-[#FF9800]" />
-                  <span className="font-medium text-[#212121]">À domicile</span>
-                  <p className="text-xs text-gray-500 mt-1">Le laveur vient chez vous</p>
+                  <MapPin className={`w-6 h-6 mx-auto mb-2 ${isHomeService ? 'text-brand' : 'text-soft'}`} strokeWidth={2} />
+                  <span className="text-body font-bold text-ink block">À domicile</span>
+                  <span className="text-detail text-soft mt-0.5 block">Le laveur vient chez vous</span>
                 </button>
                 <button
-                  className={`flex-1 p-4 rounded-lg border-2 text-center transition-all ${
-                    !isHomeService ? 'border-[#FF9800] bg-[#FFF8F0]' : 'border-gray-200 bg-white'
+                  className={`p-4 rounded-btn border text-center transition-all active:scale-[0.98] ${
+                    !isHomeService ? 'border-brand bg-brand-wash' : 'border-line bg-surface'
                   } ${stationId ? 'opacity-50 cursor-not-allowed' : ''}`}
                   onClick={() => !stationId && setIsHomeService(false)}
                 >
-                  <CheckCircle className="w-6 h-6 mx-auto mb-2 text-[#FF9800]" />
-                  <span className="font-medium text-[#212121]">En station</span>
-                  <p className="text-xs text-gray-500 mt-1">Vous allez à la station</p>
+                  <Building2 className={`w-6 h-6 mx-auto mb-2 ${!isHomeService ? 'text-brand' : 'text-soft'}`} strokeWidth={2} />
+                  <span className="text-body font-bold text-ink block">En station</span>
+                  <span className="text-detail text-soft mt-0.5 block">Vous allez à la station</span>
                 </button>
               </div>
             </div>
 
-            <div className="bg-white rounded-lg p-4">
-              <Label className="text-base font-medium mb-3 block">
+            <div className={`p-4 ${CARD_CLASSES}`}>
+              <Label className="text-section text-ink mb-3 block">
                 {isHomeService ? 'Adresse de service' : 'Station de lavage'}
               </Label>
               {isHomeService ? (
@@ -541,13 +564,13 @@ export function ClientOrderFlow({
                     placeholder="Entrez votre adresse"
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    className="border-2 focus:border-[#FF9800] h-12"
+                    className="h-12 rounded-btn border-line focus-visible:border-brand focus-visible:ring-brand/30"
                   />
                   <button
                     type="button"
                     onClick={handleUseCurrentLocation}
                     disabled={isGettingLocation}
-                    className="flex items-center gap-2 text-sm text-[#FF9800] font-medium disabled:opacity-60"
+                    className="inline-flex items-center gap-2 text-detail font-semibold text-brand bg-brand-soft rounded-pill px-3 py-2 disabled:opacity-60 active:scale-95 transition-transform"
                   >
                     {isGettingLocation ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -567,22 +590,24 @@ export function ClientOrderFlow({
 
                   {/* Map picker — tap to drop/adjust the service pin. Guarantees
                       GPS coordinates even when the text address is typed manually. */}
-                  <DynamicLeafletMap
-                    center={coords ? [coords.latitude, coords.longitude] : [6.1725, 1.2314]}
-                    zoom={coords ? 15 : 13}
-                    height="220px"
-                    onMapClick={(lat, lng) => {
-                      setCoords({ latitude: lat, longitude: lng });
-                      setAddress((prev) =>
-                        prev && prev !== 'Position actuelle' && prev !== 'Position sur la carte'
-                          ? prev
-                          : 'Position sur la carte'
-                      );
-                    }}
-                    selectedPosition={coords ? [coords.latitude, coords.longitude] : null}
-                  />
-                  <p className="text-xs text-gray-500 flex items-center gap-1">
-                    <MapPin className="w-3 h-3 flex-shrink-0 text-[#FF9800]" />
+                  <div className="rounded-card overflow-hidden border border-line">
+                    <DynamicLeafletMap
+                      center={coords ? [coords.latitude, coords.longitude] : [6.1725, 1.2314]}
+                      zoom={coords ? 15 : 13}
+                      height="220px"
+                      onMapClick={(lat, lng) => {
+                        setCoords({ latitude: lat, longitude: lng });
+                        setAddress((prev) =>
+                          prev && prev !== 'Position actuelle' && prev !== 'Position sur la carte'
+                            ? prev
+                            : 'Position sur la carte'
+                        );
+                      }}
+                      selectedPosition={coords ? [coords.latitude, coords.longitude] : null}
+                    />
+                  </div>
+                  <p className="text-detail text-soft flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 flex-shrink-0 text-brand" />
                     {coords
                       ? 'Position enregistrée — touchez la carte pour l\u2019ajuster'
                       : 'Touchez la carte pour définir votre position exacte'}
@@ -591,13 +616,13 @@ export function ClientOrderFlow({
               ) : (
                 <div className="space-y-3">
                   {stationId && presetAddress ? (
-                    <div className="w-full p-3 rounded-lg border-2 text-left border-[#FF9800] bg-[#FFF8F0]">
-                      <div className="font-medium text-[#212121] flex items-center gap-2">
-                        <MapPin className="w-4 h-4 text-[#FF9800]" />
+                    <div className="w-full p-3.5 rounded-btn border border-brand bg-brand-wash text-left">
+                      <div className="text-body font-bold text-ink flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-brand" />
                         Station sélectionnée
                       </div>
-                      <div className="text-sm text-gray-500 mt-1">{presetAddress}</div>
-                      <div className="text-xs text-[#FF9800] mt-1">Station prédéfinie lors de la sélection du service</div>
+                      <div className="text-body text-soft mt-1">{presetAddress}</div>
+                      <div className="text-detail text-brand mt-1">Station prédéfinie lors de la sélection du service</div>
                     </div>
                   ) : (
                     [
@@ -606,14 +631,14 @@ export function ClientOrderFlow({
                     ].map((station, i) => (
                       <button
                         key={i}
-                        className={`w-full p-3 rounded-lg border-2 text-left transition-all ${
-                          address === station.addr ? 'border-[#FF9800] bg-[#FFF8F0]' : 'border-gray-200'
+                        className={`w-full p-3.5 rounded-btn border text-left transition-all active:scale-[0.99] ${
+                          address === station.addr ? 'border-brand bg-brand-wash' : 'border-line bg-surface'
                         }`}
                         onClick={() => setAddress(station.addr)}
                       >
-                        <div className="font-medium text-[#212121]">{station.name}</div>
-                        <div className="text-sm text-gray-500">{station.addr}</div>
-                        <div className="text-xs text-[#FF9800]">{station.distance}</div>
+                        <div className="text-body font-bold text-ink">{station.name}</div>
+                        <div className="text-detail text-soft">{station.addr}</div>
+                        <div className="text-detail text-brand font-semibold">{station.distance}</div>
                       </button>
                     ))
                   )}
@@ -623,8 +648,8 @@ export function ClientOrderFlow({
 
             {/* Vehicle selection — the washer will use it to recognize the car */}
             {cars.length > 0 && (
-              <div className="bg-white rounded-lg p-4">
-                <Label className="text-base font-medium mb-3 block">
+              <div className={`p-4 ${CARD_CLASSES}`}>
+                <Label className="text-section text-ink mb-3 block">
                   Quel véhicule laver ?
                 </Label>
                 <div className="space-y-2">
@@ -635,47 +660,47 @@ export function ClientOrderFlow({
                         key={car.id}
                         type="button"
                         onClick={() => setSelectedCarId(car.id)}
-                        className={`w-full p-3 rounded-lg border-2 text-left transition-all flex items-center gap-3 ${
-                          isSelected ? 'border-[#FF9800] bg-[#FFF8F0]' : 'border-gray-200 bg-white'
+                        className={`w-full p-3 rounded-btn border text-left transition-all flex items-center gap-3 ${
+                          isSelected ? 'border-brand bg-brand-wash' : 'border-line bg-surface'
                         }`}
                       >
                         {car.photo ? (
                           <img
                             src={car.photo}
                             alt={`Voiture ${car.plateNumber}`}
-                            className="w-12 h-12 rounded-lg object-cover border flex-shrink-0"
+                            className="w-12 h-12 rounded-btn object-cover border border-line flex-shrink-0"
                           />
                         ) : (
-                          <div className={`w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 ${isSelected ? 'bg-[#FF9800]/10' : 'bg-gray-100'}`}>
-                            <Car className={`w-6 h-6 ${isSelected ? 'text-[#FF9800]' : 'text-gray-400'}`} />
+                          <div className={`w-12 h-12 rounded-btn grid place-items-center flex-shrink-0 ${isSelected ? 'bg-brand-soft' : 'bg-app'}`}>
+                            <Car className={`w-6 h-6 ${isSelected ? 'text-brand' : 'text-soft'}`} />
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
-                          <div className="font-medium text-[#212121] text-sm">
+                          <div className="text-body font-bold text-ink">
                             {[car.brand, car.model].filter(Boolean).join(' ') || 'Véhicule'}
-                            {car.nickname ? <span className="text-xs font-normal text-gray-500"> — {car.nickname}</span> : null}
+                            {car.nickname ? <span className="text-detail font-normal text-soft"> — {car.nickname}</span> : null}
                           </div>
-                          <div className="text-xs text-gray-500">
+                          <div className="text-detail text-soft">
                             {car.color}{car.year ? ` • ${car.year}` : ''}
                           </div>
-                          <Badge variant="outline" className="mt-0.5 font-mono text-[10px]">
+                          <Badge variant="outline" className="mt-0.5 font-mono text-micro border-line text-soft">
                             {car.plateNumber}
                           </Badge>
                         </div>
-                        {isSelected && <CheckCircle className="w-5 h-5 text-[#FF9800] flex-shrink-0" />}
+                        {isSelected && <CheckCircle className="w-5 h-5 text-brand flex-shrink-0" />}
                       </button>
                     );
                   })}
                 </div>
-                <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
-                  <Car className="w-3 h-3 flex-shrink-0 text-[#FF9800]" />
+                <p className="text-detail text-soft mt-2.5 flex items-center gap-1.5">
+                  <Car className="w-3.5 h-3.5 flex-shrink-0 text-brand" />
                   Le laveur verra cette fiche pour reconnaître votre voiture (photo, plaque, couleur).
                 </p>
               </div>
             )}
 
             <Button 
-              className="w-full h-12 bg-[#FF9800] hover:bg-[#F57C00]"
+              className={`w-full h-12 ${BTN_PRIMARY_CLASSES} font-bold`}
               onClick={handleLocationSubmit}
               disabled={!address}
             >
@@ -684,46 +709,44 @@ export function ClientOrderFlow({
           </div>
         )}
 
-        {/* Step 3: Schedule */}
+        {/* Étape 3 : planification */}
         {step === 'schedule' && selectedService && (
           <div className="space-y-4">
-            <div className="bg-white rounded-lg p-4">
-              <Label className="text-base font-medium mb-3 block">Quand voulez-vous le lavage ?</Label>
+            <div className={`p-4 ${CARD_CLASSES}`}>
+              <Label className="text-section text-ink mb-3 block">Quand voulez-vous le lavage ?</Label>
               <div className="space-y-3">
                 <button
-                  className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
-                    scheduledTime === 'now' ? 'border-[#FF9800] bg-[#FFF8F0]' : 'border-gray-200'
+                  className={`w-full p-4 rounded-btn border text-left transition-all active:scale-[0.99] ${
+                    scheduledTime === 'now' ? 'border-brand bg-brand-wash' : 'border-line bg-surface'
                   }`}
                   onClick={() => setScheduledTime('now')}
                 >
                   <div className="flex items-center gap-3">
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                      scheduledTime === 'now' ? 'border-[#FF9800]' : 'border-gray-300'
-                    }`}>
-                      {scheduledTime === 'now' && <div className="w-3 h-3 bg-[#FF9800] rounded-full" />}
+                    <div className={`w-10 h-10 rounded-btn grid place-items-center flex-shrink-0 ${scheduledTime === 'now' ? 'bg-brand-soft' : 'bg-app'}`}>
+                      <Zap className={`w-5 h-5 ${scheduledTime === 'now' ? 'text-brand' : 'text-soft'}`} strokeWidth={2.2} />
                     </div>
-                    <div>
-                      <span className="font-medium text-[#212121]">Maintenant</span>
-                      <p className="text-sm text-gray-500">Un laveur sera disponible dans ~15 min</p>
+                    <div className="flex-1">
+                      <span className="text-body font-bold text-ink">Maintenant</span>
+                      <p className="text-detail text-soft">Un laveur sera disponible dans ~15 min</p>
                     </div>
+                    <RadioDot checked={scheduledTime === 'now'} />
                   </div>
                 </button>
                 <button
-                  className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
-                    scheduledTime === 'later' ? 'border-[#FF9800] bg-[#FFF8F0]' : 'border-gray-200'
+                  className={`w-full p-4 rounded-btn border text-left transition-all active:scale-[0.99] ${
+                    scheduledTime === 'later' ? 'border-brand bg-brand-wash' : 'border-line bg-surface'
                   }`}
                   onClick={() => setScheduledTime('later')}
                 >
                   <div className="flex items-center gap-3">
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                      scheduledTime === 'later' ? 'border-[#FF9800]' : 'border-gray-300'
-                    }`}>
-                      {scheduledTime === 'later' && <div className="w-3 h-3 bg-[#FF9800] rounded-full" />}
+                    <div className={`w-10 h-10 rounded-btn grid place-items-center flex-shrink-0 ${scheduledTime === 'later' ? 'bg-brand-soft' : 'bg-app'}`}>
+                      <Calendar className={`w-5 h-5 ${scheduledTime === 'later' ? 'text-brand' : 'text-soft'}`} strokeWidth={2.2} />
                     </div>
-                    <div>
-                      <span className="font-medium text-[#212121]">Planifier</span>
-                      <p className="text-sm text-gray-500">Choisissez une date et heure</p>
+                    <div className="flex-1">
+                      <span className="text-body font-bold text-ink">Planifier</span>
+                      <p className="text-detail text-soft">Choisissez une date et heure</p>
                     </div>
+                    <RadioDot checked={scheduledTime === 'later'} />
                   </div>
                 </button>
               </div>
@@ -732,8 +755,8 @@ export function ClientOrderFlow({
                 <div className="mt-4 space-y-4">
                   {/* Date picker */}
                   <div className="space-y-1.5">
-                    <Label className="text-sm font-medium text-[#212121] flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-[#FF9800]" />
+                    <Label className="text-body font-bold text-ink flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-brand" />
                       Date
                     </Label>
                     <Input
@@ -746,14 +769,14 @@ export function ClientOrderFlow({
                         const time = timePart ? timePart : '10:00:00';
                         setScheduledDate(`${datePart}T${time}`);
                       }}
-                      className="border-2 focus:border-[#FF9800] h-12"
+                      className="h-12 rounded-btn border-line focus-visible:border-brand focus-visible:ring-brand/30"
                     />
                   </div>
 
                   {/* Time picker */}
                   <div className="space-y-1.5">
-                    <Label className="text-sm font-medium text-[#212121] flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-[#FF9800]" />
+                    <Label className="text-body font-bold text-ink flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-brand" />
                       Heure
                     </Label>
                     <Input
@@ -766,20 +789,20 @@ export function ClientOrderFlow({
                         const safeDate = datePart || new Date().toISOString().split('T')[0];
                         setScheduledDate(`${safeDate}T${e.target.value}:00`);
                       }}
-                      className="border-2 focus:border-[#FF9800] h-12"
+                      className="h-12 rounded-btn border-line focus-visible:border-brand focus-visible:ring-brand/30"
                     />
-                    <p className="text-xs text-gray-400">Heures d'ouverture : 07h00 - 20h00</p>
+                    <p className="text-detail text-soft">Heures d'ouverture : 07h00 - 20h00</p>
                   </div>
 
                   {/* Selected date/time preview */}
                   {scheduledDate && scheduledDate.split('T')[0] && scheduledDate.split('T')[1] && (
-                    <div className="bg-[#FFF8F0] border border-[#FF9800]/30 rounded-lg p-3 flex items-center gap-3">
-                      <div className="w-10 h-10 bg-[#FF9800]/10 rounded-full flex items-center justify-center">
-                        <Calendar className="w-5 h-5 text-[#FF9800]" />
+                    <div className="bg-brand-soft border border-brand/30 rounded-btn p-3 flex items-center gap-3">
+                      <div className="w-10 h-10 bg-surface rounded-full grid place-items-center flex-shrink-0">
+                        <Calendar className="w-5 h-5 text-brand" />
                       </div>
                       <div>
-                        <p className="text-xs text-gray-500">Rendez-vous prévu</p>
-                        <p className="text-sm font-semibold text-[#212121]">
+                        <p className="text-detail text-soft">Rendez-vous prévu</p>
+                        <p className="text-body font-bold text-ink">
                           {new Date(scheduledDate).toLocaleDateString('fr-FR', {
                             weekday: 'long',
                             day: 'numeric',
@@ -799,7 +822,7 @@ export function ClientOrderFlow({
             </div>
 
             <Button
-              className="w-full h-12 bg-[#FF9800] hover:bg-[#F57C00]"
+              className={`w-full h-12 ${BTN_PRIMARY_CLASSES} font-bold`}
               disabled={scheduledTime === 'later' && (!scheduledDate || !scheduledDate.split('T')[0] || !scheduledDate.split('T')[1])}
               onClick={handleScheduleSubmit}
             >
@@ -808,36 +831,37 @@ export function ClientOrderFlow({
           </div>
         )}
 
-        {/* Step 4: Payment */}
+        {/* Étape 4 : paiement */}
         {step === 'payment' && selectedService && (
           <div className="space-y-4">
-            {/* Active Subscription Banner */}
+            {/* Abonnement actif : bandeau navy + couronne */}
             {activeSubscription && (
-              <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-4 text-white">
+              <div className="bg-gradient-to-br from-ink to-ink-2 rounded-card p-4 text-white">
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                    <Crown className="w-5 h-5" />
+                  <div className="w-10 h-10 bg-white/10 rounded-full grid place-items-center flex-shrink-0">
+                    <Crown className="w-5 h-5 text-star" />
                   </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold">{activeSubscription.plan?.displayName || 'Abonnement'}</h3>
-                      <Badge className="bg-white/20 text-white text-xs">Actif</Badge>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-body font-bold">{activeSubscription.plan?.displayName || 'Abonnement'}</h3>
+                      <span className="text-micro bg-white/15 text-white rounded-pill px-2 py-0.5">Actif</span>
                     </div>
-                    <p className="text-sm text-white/80 mt-1">
+                    <p className="text-detail text-white/70 mt-0.5">
                       {activeSubscription.remainingWashes} séance{activeSubscription.remainingWashes > 1 ? 's' : ''} restante{activeSubscription.remainingWashes > 1 ? 's' : ''}
                     </p>
-                    <div className="mt-3 flex items-center gap-2">
+                    <div className="mt-3 flex items-center gap-2.5">
                       <button
                         onClick={() => setUseSubscription(!useSubscription)}
-                        className={`relative w-12 h-6 rounded-full transition-colors ${
-                          useSubscription ? 'bg-white' : 'bg-white/30'
+                        aria-label={useSubscription ? 'Utiliser mon abonnement' : 'Payer normalement'}
+                        className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
+                          useSubscription ? 'bg-brand' : 'bg-white/25'
                         }`}
                       >
                         <div className={`absolute top-1 w-4 h-4 rounded-full transition-all ${
-                          useSubscription ? 'left-7 bg-purple-500' : 'left-1 bg-white'
+                          useSubscription ? 'left-7 bg-white' : 'left-1 bg-white'
                         }`} />
                       </button>
-                      <span className="text-sm">
+                      <span className="text-detail font-semibold">
                         {useSubscription ? 'Utiliser mon abonnement' : 'Payer normalement'}
                       </span>
                     </div>
@@ -846,81 +870,87 @@ export function ClientOrderFlow({
               </div>
             )}
 
-            {/* Order Summary */}
-            <div className="bg-white rounded-lg p-4">
-              <h3 className="font-semibold text-[#212121] mb-3">Récapitulatif</h3>
+            {/* Récapitulatif */}
+            <div className={`p-4 ${CARD_CLASSES}`}>
+              <h3 className="text-section text-ink mb-3">Récapitulatif</h3>
               <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Service</span>
-                  <span className="font-medium text-right">{selectedService.name}</span>
+                <div className="flex justify-between text-body">
+                  <span className="text-soft">Service</span>
+                  <span className="font-semibold text-ink text-right">{selectedService.name}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Prestation</span>
-                  <span className="text-right">
+                <div className="flex justify-between text-body">
+                  <span className="text-soft">Prestation</span>
+                  <span className="text-right text-ink">
                     {COVERAGE_LONG_LABEL[getServiceCoverage(selectedService)]}
                   </span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Type</span>
-                  <span>{isHomeService ? 'À domicile' : 'En station'}</span>
+                <div className="flex justify-between text-body">
+                  <span className="text-soft">Type</span>
+                  <span className="text-ink flex items-center gap-1.5">
+                    {isHomeService ? (
+                      <><MapPin className="w-3.5 h-3.5 text-brand" /> À domicile</>
+                    ) : (
+                      <><Building2 className="w-3.5 h-3.5 text-brand" /> En station</>
+                    )}
+                  </span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Adresse</span>
-                  <span className="text-right max-w-[150px] truncate">{address}</span>
+                <div className="flex justify-between text-body">
+                  <span className="text-soft">Adresse</span>
+                  <span className="text-right text-ink max-w-[150px] truncate">{address}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Quand</span>
-                  <span>{scheduledTime === 'now' ? 'Maintenant' : new Date(scheduledDate).toLocaleString('fr-FR')}</span>
+                <div className="flex justify-between text-body">
+                  <span className="text-soft">Quand</span>
+                  <span className="text-ink">{scheduledTime === 'now' ? 'Maintenant' : new Date(scheduledDate).toLocaleString('fr-FR')}</span>
                 </div>
-                <hr className="my-2" />
+                <div className="h-px bg-line my-2" />
                 
                 {useSubscription && activeSubscription ? (
                   <>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Prix de base</span>
-                      <span className="line-through text-gray-400">{selectedService.price.toLocaleString()} XOF</span>
+                    <div className="flex justify-between text-body">
+                      <span className="text-soft">Prix de base</span>
+                      <span className="text-soft line-through">{formatPrice(selectedService.price)}</span>
                     </div>
-                    <div className="flex justify-between text-sm text-purple-600">
+                    <div className="flex justify-between text-body font-semibold text-success">
                       <span>Abonnement</span>
                       <span>1 séance déduite</span>
                     </div>
-                    <div className="flex justify-between text-lg font-bold pt-2">
+                    <div className="flex justify-between text-title text-ink pt-1.5 items-baseline">
                       <span>Total</span>
-                      <span className="text-purple-600">GRATUIT</span>
+                      <span className="text-success font-extrabold">GRATUIT</span>
                     </div>
                   </>
                 ) : (
                   <>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Prix de base</span>
-                      <span>{selectedService.price.toLocaleString()} XOF</span>
+                    <div className="flex justify-between text-body">
+                      <span className="text-soft">Prix de base</span>
+                      <span className="text-ink">{formatPrice(selectedService.price)}</span>
                     </div>
                     {appliedPromo && (
-                      <div className="flex justify-between text-sm text-green-600">
+                      <div className="flex justify-between text-body font-semibold text-success">
                         <span>Réduction</span>
-                        <span>-{appliedPromo.discountAmount.toLocaleString()} XOF</span>
+                        <span>-{formatPrice(appliedPromo.discountAmount)}</span>
                       </div>
                     )}
-                    <div className="flex justify-between text-lg font-bold pt-2">
+                    <div className="flex justify-between text-title text-ink pt-1.5 items-baseline">
                       <span>Total</span>
-                      <span className="text-[#FF9800]">{getFinalPrice().toLocaleString()} XOF</span>
+                      <span className="text-brand font-extrabold">{formatPrice(getFinalPrice())}</span>
                     </div>
                   </>
                 )}
               </div>
             </div>
 
-            {/* Promo Code - only show if not using subscription */}
+            {/* Code promo — masqué si abonnement utilisé */}
             {!useSubscription && (
-              <div className="bg-white rounded-lg p-4">
-                <Label className="font-medium mb-3 block">Code promo</Label>
+              <div className={`p-4 ${CARD_CLASSES}`}>
+                <Label className="text-section text-ink mb-3 block">Code promo</Label>
                 {appliedPromo ? (
-                  <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg p-3">
+                  <div className="flex items-center justify-between bg-success/10 border border-success/30 rounded-btn p-3">
                     <div className="flex items-center gap-2">
-                      <CheckCircle className="w-5 h-5 text-green-600" />
-                      <span className="font-bold text-green-700">{appliedPromo.code}</span>
+                      <CheckCircle className="w-5 h-5 text-success" />
+                      <span className="font-bold text-success">{appliedPromo.code}</span>
                     </div>
-                    <button onClick={handleRemovePromo} className="text-red-500 text-sm font-medium">
+                    <button onClick={handleRemovePromo} className="text-danger text-body font-semibold">
                       Supprimer
                     </button>
                   </div>
@@ -930,11 +960,11 @@ export function ClientOrderFlow({
                       placeholder="Entrez votre code"
                       value={promoCode}
                       onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                      className="border-2 focus:border-[#FF9800] h-10"
+                      className="h-11 rounded-btn border-line focus-visible:border-brand focus-visible:ring-brand/30"
                     />
                     <Button
                       variant="outline"
-                      className="border-[#FF9800] text-[#FF9800]"
+                      className="border-brand text-brand rounded-btn font-semibold hover:bg-brand-soft"
                       onClick={handleApplyPromo}
                       disabled={!promoCode || isValidatingPromo}
                     >
@@ -942,60 +972,58 @@ export function ClientOrderFlow({
                     </Button>
                   </div>
                 )}
-                {promoError && <p className="text-sm text-red-500 mt-2">{promoError}</p>}
+                {promoError && <p className="text-detail text-danger mt-2">{promoError}</p>}
               </div>
             )}
 
-            {/* Payment Method - only show if not using subscription */}
+            {/* Mode de paiement — masqué si abonnement utilisé */}
             {!useSubscription && (
-              <div className="bg-white rounded-lg p-4">
-                <Label className="font-medium mb-3 block">Mode de paiement</Label>
+              <div className={`p-4 ${CARD_CLASSES}`}>
+                <Label className="text-section text-ink mb-3 block">Mode de paiement</Label>
                 <div className="space-y-3">
-                {/* Wallet */}
+                {/* Portefeuille */}
                 <button
-                  className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
-                    paymentMethod === 'wallet' ? 'border-[#FF9800] bg-[#FFF8F0]' : 'border-gray-200'
+                  className={`w-full p-4 rounded-btn border text-left transition-all ${
+                    paymentMethod === 'wallet' ? 'border-brand bg-brand-wash' : 'border-line bg-surface'
                   } ${walletBalance < getFinalPrice() ? 'opacity-60' : ''}`}
                   onClick={() => walletBalance >= getFinalPrice() && setPaymentMethod('wallet')}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-[#FF9800] rounded-full flex items-center justify-center">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-full bg-brand grid place-items-center flex-shrink-0">
                         <Wallet className="w-5 h-5 text-white" />
                       </div>
-                      <div>
-                        <span className="font-medium text-[#212121]">Portefeuille</span>
-                        <p className="text-sm text-gray-500">Solde: {walletBalance.toLocaleString()} XOF</p>
+                      <div className="min-w-0">
+                        <span className="text-body font-bold text-ink block">Portefeuille</span>
+                        <p className="text-detail text-soft truncate">Solde : {formatPrice(walletBalance)}</p>
                       </div>
                     </div>
                     {walletBalance >= getFinalPrice() ? (
-                      <div className="w-5 h-5 border-2 border-[#FF9800] rounded-full flex items-center justify-center">
-                        {paymentMethod === 'wallet' && <div className="w-3 h-3 bg-[#FF9800] rounded-full" />}
-                      </div>
+                      <RadioDot checked={paymentMethod === 'wallet'} />
                     ) : (
-                      <span className="text-xs text-red-500">Insuffisant</span>
+                      <span className="text-micro text-danger font-semibold">Insuffisant</span>
                     )}
                   </div>
                 </button>
 
-                {/* Cash */}
+                {/* Espèces */}
                 <button
-                  className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
-                    paymentMethod === 'cash' ? 'border-[#FF9800] bg-[#FFF8F0]' : 'border-gray-200'
+                  className={`w-full p-4 rounded-btn border text-left transition-all ${
+                    paymentMethod === 'cash' ? 'border-brand bg-brand-wash' : 'border-line bg-surface'
                   }`}
                   onClick={() => setPaymentMethod('cash')}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <CreditCard className="w-10 h-10 p-2 bg-green-100 rounded-full text-green-600" />
-                      <div>
-                        <span className="font-medium text-[#212121]">Espèces</span>
-                        <p className="text-sm text-gray-500">Payer au laveur</p>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-full bg-success/15 grid place-items-center flex-shrink-0">
+                        <CreditCard className="w-5 h-5 text-success" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-body font-bold text-ink block">Espèces</span>
+                        <p className="text-detail text-soft">Payer au laveur</p>
                       </div>
                     </div>
-                    <div className="w-5 h-5 border-2 border-[#FF9800] rounded-full flex items-center justify-center">
-                      {paymentMethod === 'cash' && <div className="w-3 h-3 bg-[#FF9800] rounded-full" />}
-                    </div>
+                    <RadioDot checked={paymentMethod === 'cash'} />
                   </div>
                 </button>
               </div>
@@ -1003,7 +1031,7 @@ export function ClientOrderFlow({
             )}
 
             <Button 
-              className="w-full h-14 bg-[#FF9800] hover:bg-[#F57C00] text-white text-lg rounded-xl font-semibold"
+              className={`w-full h-14 ${BTN_PRIMARY_CLASSES} text-base font-bold`}
               onClick={handlePaymentSubmit}
               disabled={isProcessing}
             >
@@ -1012,7 +1040,7 @@ export function ClientOrderFlow({
               ) : useSubscription && activeSubscription ? (
                 'Confirmer avec mon abonnement'
               ) : (
-                `Confirmer ${getFinalPrice().toLocaleString()} XOF`
+                `Confirmer ${formatPrice(getFinalPrice())}`
               )}
             </Button>
           </div>

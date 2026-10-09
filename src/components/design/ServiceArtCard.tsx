@@ -23,11 +23,14 @@ export function ServiceArtCard({
   service,
   index,
   onClick,
+  description,
 }: {
   service: ServiceLike;
   /** Position dans la liste → teinte (bleu, vert, orange, violet). */
   index: number;
   onClick: () => void;
+  /** Description courte facultative (1 ligne max, tronquée). */
+  description?: string;
 }) {
   const tint = planTint(index);
   const coverage = getServiceCoverage(service);
@@ -54,9 +57,12 @@ export function ServiceArtCard({
         <CarIllustration className={`w-[112px] ${tint.icon}`} />
       </div>
 
-      {/* Infos : nom + prix / durée */}
+      {/* Infos : nom + description courte + prix / durée */}
       <div className="px-3 pt-2.5 pb-3">
-        <p className="text-body font-semibold text-ink mb-1.5 truncate">{service.name}</p>
+        <p className="text-body font-semibold text-ink mb-0.5 truncate">{service.name}</p>
+        {description && (
+          <p className="text-detail text-soft line-clamp-1 mb-1">{description}</p>
+        )}
         <div className="flex justify-between items-center">
           <span className="font-extrabold text-base text-ink">
             {service.price.toLocaleString('fr-FR')}

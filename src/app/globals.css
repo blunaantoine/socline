@@ -33,6 +33,7 @@
   /* — États — */
   --success: #1FA971;      /* en ligne / succès */
   --star: #F5B301;         /* étoiles de note */
+  --danger: #DC2626;       /* erreurs, actions destructives */
 
   /* — Teintes des formules (une par niveau) — */
   --plan-blue-bg: #EAF4FB;   --plan-blue-icon: #2B7BB9;
@@ -78,6 +79,7 @@
   --color-line: var(--line);
   --color-success: var(--success);
   --color-star: var(--star);
+  --color-danger: var(--danger);
   --color-plan-blue: var(--plan-blue-bg);
   --color-plan-blue-icon: var(--plan-blue-icon);
   --color-plan-green: var(--plan-green-bg);
