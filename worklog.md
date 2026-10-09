@@ -1010,3 +1010,21 @@ Work Log:
 Stage Summary:
 - Carrousel média en place sur Accueil (après « Laveurs disponibles », avec CTA Réserver) et sur Réserver (étape choix du service, sans CTA) — 5 visuels générés et commités, support vidéo intégré (il suffit d'ajouter un mp4 dans MEDIA_ITEMS).
 - Déploiement prod à faire (--update) pour livrer le carrousel + les correctifs Tasks 36-38.
+
+---
+Task ID: 40 (session 29 — badge PayDunya qui déborde + expiration des recharges jamais abouties)
+Agent: main (Z.ai Code)
+Task: « Confirmation PayDunya… DEBORDE » + les recharges qui n'ont pas eu de statut doivent rester « En attente » puis passer « Échoué » si le client n'a pas abouti ou s'est arrêté en chemin.
+
+Work Log:
+- UI (WalletScreen) : badge trop long débordait de la carte sur mobile → libellé raccourci « PayDunya en cours… », conteneur flex-wrap (le badge passe sous le titre au lieu de sortir) + max-w-full + truncate aux 2 emplacements (liste récente + historique).
+- Expiration (paydunya-actions.ts) : PAYDUNYA_PENDING_TIMEOUT_MS = 15 min — un dépôt toujours PENDING passé ce délai est basculé FAILED (« Délai de paiement dépassé (15 min) — non abouti ») par settle, avec notification in-app + SMS.
+- Sweep expireStalePaydunyaDeposits() branché sur GET /api/wallet : rattrape les dépôts abandonnés quand le client a quitté l'app pendant le paiement (une requête indexée, quasi gratuit quand rien à expirer). Chaque dépôt est RECONFIRMÉ auprès de PayDunya avant d'être marqué échoué.
+- Anti-perte : settle sur une tx FAILED/CANCELLED reconfirme PayDunya — si le paiement est arrivé après coup (IPN tardif), crédit en rattrapage (flip conditionnel status IN [FAILED, CANCELLED, PENDING] → zéro double-crédit possible).
+- Statut API : reason='timeout' propagée → toast client « Rechargement expiré : paiement non confirmé dans le délai (15 min) ».
+- TESTS RÉELS (sandbox PayDunya) : facture 1000 XOF créée → backdate 20 min → GET /api/wallet → sweep → 4 dépôts PENDING passés FAILED (le nôtre + 3 vieux tests des sessions précédentes), solde INCHANGÉ 5000 XOF ; statut API → FAILED (idempotent) ; dépôt frais PENDING → badge « PayDunya en cours… » wrap propre (375/360 px, ellipsis en 320 px) ; backdate à chaud → poller 6 s bascule l'affichage en « Échoué » + refresh automatique. Aucune erreur console/serveur. Lint OK.
+- Branche fix/paydunya-badge-expiration, commit 4488a53 (⏳), merge main + push. Worklog en commit séparé.
+
+Stage Summary:
+- Cycle de vie complet d'une recharge PayDunya : En cours (badge court sans débordement) → crédit auto si PayDunya confirme → ÉCHOUÉ auto après 15 min si le client n'a pas abouti (avec rattrapage de crédit si PayDunya confirme plus tard). Aucune intervention admin, aucune perte possible.
+- En attente : déploiement prod (--update embarque désormais le deploy.sh autoréparant Task 38) puis checklist PayDunya prod (clés admin + IPN + test sandbox complet).
