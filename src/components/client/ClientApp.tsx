@@ -16,14 +16,14 @@ import {
   MapPin, Search, Star, Clock, Car, Building, Armchair,
   CheckCircle, Phone, Loader2, Heart,
   Zap, Droplets, Sparkles, Crown, RefreshCw,
-  Home, Calendar, MessageCircle, User, Bell, Settings, LogOut, Wallet, Copy, Plus, ChevronRight, Headphones, MessageSquare, Pencil
+  Home, Calendar, MessageCircle, User, Bell, Settings, LogOut, Wallet, Copy, Plus, ChevronRight, Headphones, MessageSquare, Pencil, ClipboardList
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { onSoclineNotification } from '@/components/RealtimeNotifications';
 import { useAutoRefresh } from '@/hooks/useAutoRefresh';
 import { ClientOrderFlow } from './ClientOrderFlow';
 import { OrderTracking } from './OrderTracking';
-import { OrderHistory } from './OrderHistory';
+import { ClientActivities } from './ClientActivities';
 import { GoogleMap } from '@/components/map/GoogleMap';
 // Google Places supprimé - utiliser uniquement les stations de l'app
 import { AuthScreen } from './AuthScreen';
@@ -47,6 +47,7 @@ import { CARD_CLASSES } from '@/lib/design-system';
 const navItems = [
   { id: 'home', icon: Home, label: 'Accueil' },
   { id: 'booking', icon: Calendar, label: 'Réserver' },
+  { id: 'activity', icon: ClipboardList, label: 'Activités' },
   { id: 'subscriptions', icon: Crown, label: 'Abonnements' },
   { id: 'wallet', icon: Wallet, label: 'Portefeuille' },
   { id: 'profile', icon: User, label: 'Profil' },
@@ -55,10 +56,10 @@ const navItems = [
 // Titre de l'en-tête selon l'onglet actif — libellés courts (design system)
 const HEADER_TITLES: Record<string, string> = {
   home: "Quel lavage aujourd'hui ?",
+  activity: 'Mes activités',
   subscriptions: 'Abonnements',
   wallet: 'Portefeuille',
   profile: 'Profil',
-  activity: 'Activité',
 };
 
 const CAR_COLORS: Record<string, string> = {
@@ -471,7 +472,23 @@ export function ClientApp() {
             </div>
           )}
           {activeTab === 'wallet' && <WalletScreen />}
-          {activeTab === 'activity' && <OrderHistory />}
+          {activeTab === 'activity' && (
+            <ClientActivities
+              userId={user?.id || ''}
+              walletBalance={walletBalance}
+              onTrack={(order) => {
+                setCurrentOrder(order);
+                setShowTracking(true);
+              }}
+              onBooking={() => {
+                selectService(null);
+                setPresetIsHomeService(true);
+                setPresetStationId(null);
+                setPresetAddress('');
+                setActiveTab('booking');
+              }}
+            />
+          )}
           {activeTab === 'chat' && <ChatList onBack={() => setActiveTab('home')} />}
           {activeTab === 'profile' && <ProfileContent user={user} onLogout={logout} />}
         </div>
@@ -488,12 +505,12 @@ export function ClientApp() {
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
                 aria-current={isActive ? 'page' : undefined}
-                className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-1 px-1 transition-all active:scale-95 ${
+                className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-1 px-0.5 transition-all active:scale-95 ${
                   isActive ? 'text-brand' : 'text-soft'
                 }`}
               >
-                <item.icon className={`w-6 h-6 ${isActive ? 'fill-current' : ''}`} />
-                <span className="text-micro">{item.label}</span>
+                <item.icon className={`w-[22px] h-[22px] ${isActive ? 'fill-current' : ''}`} />
+                <span className="text-[10px] leading-tight whitespace-nowrap">{item.label}</span>
               </button>
             );
           })}

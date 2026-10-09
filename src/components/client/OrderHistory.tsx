@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import type { Order, OrderStatus } from '@/types';
 import { formatScheduledShort } from '@/lib/scheduled';
+import { formatPrice } from '@/lib/service-coverage';
 import { toast } from 'sonner';
 import { parseJsonResponse } from '@/lib/json-helper';
 
@@ -224,12 +225,12 @@ function OrderCard({ order, onViewDetails }: { order: Order; onViewDetails: () =
               </div>
             ) : (
               <div className="font-bold text-[#FF9800]">
-                {order.totalPrice.toLocaleString()} XOF
+                {formatPrice(order.totalPrice)}
               </div>
             )}
             {order.discount > 0 && (
               <div className="text-xs text-green-600">
-                -{order.discount.toLocaleString()} XOF
+                -{formatPrice(order.discount)}
               </div>
             )}
           </div>
@@ -250,7 +251,7 @@ function OrderCard({ order, onViewDetails }: { order: Order; onViewDetails: () =
   );
 }
 
-function OrderDetails({ order, onClose }: { order: Order; onClose: () => void }) {
+export function OrderDetails({ order, onClose }: { order: Order; onClose: () => void }) {
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('fr-FR', {
       weekday: 'long',
@@ -310,12 +311,12 @@ function OrderDetails({ order, onClose }: { order: Order; onClose: () => void })
                 </div>
               ) : (
                 <div className="font-bold text-[#FF9800] text-lg">
-                  {order.totalPrice.toLocaleString()} XOF
+                  {formatPrice(order.totalPrice)}
                 </div>
               )}
               {order.discount > 0 && (
                 <div className="text-xs text-green-600">
-                  Réduction: -{order.discount.toLocaleString()} XOF
+                  Réduction : -{formatPrice(order.discount)}
                 </div>
               )}
             </div>
@@ -384,8 +385,8 @@ function OrderDetails({ order, onClose }: { order: Order; onClose: () => void })
           </div>
         )}
 
-        {/* Vehicle */}
-        {(order.vehiclePlate || order.vehicleColor) && (
+        {/* Vehicle — la commande référence la voiture du client (relation Car) */}
+        {order.car && (
           <div className="bg-white border border-[#E0E0E0] rounded-lg p-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-[#FCE4EC] rounded-full flex items-center justify-center flex-shrink-0">
@@ -394,11 +395,14 @@ function OrderDetails({ order, onClose }: { order: Order; onClose: () => void })
               <div className="flex-1">
                 <p className="text-sm text-[#757575]">Véhicule</p>
                 <div className="flex items-center gap-2">
-                  {order.vehiclePlate && (
-                    <span className="font-medium text-[#212121]">{order.vehiclePlate}</span>
+                  {order.car.plateNumber && (
+                    <span className="font-medium text-[#212121]">{order.car.plateNumber}</span>
                   )}
-                  {order.vehicleColor && (
-                    <span className="text-sm text-[#757575]">• {order.vehicleColor}</span>
+                  {order.car.brand && (
+                    <span className="text-sm text-[#757575]">• {order.car.brand}</span>
+                  )}
+                  {order.car.color && (
+                    <span className="text-sm text-[#757575]">• {order.car.color}</span>
                   )}
                 </div>
               </div>
@@ -441,7 +445,7 @@ function OrderDetails({ order, onClose }: { order: Order; onClose: () => void })
                 <p className="font-bold text-green-700">{order.promoCode}</p>
               </div>
               <span className="text-green-600 font-medium">
-                -{order.discount.toLocaleString()} XOF
+                -{formatPrice(order.discount)}
               </span>
             </div>
           </div>
@@ -522,12 +526,12 @@ function OrderDetails({ order, onClose }: { order: Order; onClose: () => void })
         <div className="bg-[#FAFAFA] rounded-lg p-4 space-y-2">
           <div className="flex justify-between text-sm">
             <span className="text-[#757575]">Sous-total</span>
-            <span className="text-[#212121]">{order.basePrice.toLocaleString()} XOF</span>
+            <span className="text-[#212121]">{formatPrice(order.basePrice)}</span>
           </div>
           {order.discount > 0 && (
             <div className="flex justify-between text-sm">
               <span className="text-green-600">Réduction</span>
-              <span className="text-green-600">-{order.discount.toLocaleString()} XOF</span>
+              <span className="text-green-600">-{formatPrice(order.discount)}</span>
             </div>
           )}
           <div className="flex justify-between font-bold pt-2 border-t border-[#E0E0E0]">
@@ -535,7 +539,7 @@ function OrderDetails({ order, onClose }: { order: Order; onClose: () => void })
             {order.isSubscriptionOrder ? (
               <span className="text-purple-700">👑 Séance abonnement</span>
             ) : (
-              <span className="text-[#FF9800]">{order.totalPrice.toLocaleString()} XOF</span>
+              <span className="text-[#FF9800]">{formatPrice(order.totalPrice)}</span>
             )}
           </div>
         </div>
