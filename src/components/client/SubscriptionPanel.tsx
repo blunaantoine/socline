@@ -20,11 +20,12 @@ import {
 } from '@/components/ui/select';
 import {
   Crown, Check, Zap, Gift, Clock,
-  CreditCard, ChevronRight, Loader2, RefreshCw, Droplets
+  CreditCard, ChevronRight, Loader2, RefreshCw, Droplets, Car
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { parseJsonResponse } from '@/lib/json-helper';
 import { BTN_PRIMARY_CLASSES } from '@/lib/design-system';
+import { CoverageBadge, CoverageDetails } from '@/components/shared/ServiceCoverage';
 
 interface SubscriptionPlan {
   id: string;
@@ -46,6 +47,8 @@ interface SubscriptionPlan {
     name: string;
     price: number;
     duration: number;
+    coverage?: string | null;
+    category?: string | null;
   };
 }
 
@@ -263,6 +266,20 @@ export function SubscriptionPanel({ userId, walletBalance }: SubscriptionPanelPr
       </div>
       <p className="text-body text-soft">Lavez plus, payez moins.</p>
 
+      {/* Rappel de la différence entre les deux types de prestation */}
+      <div className="flex items-start gap-2.5 rounded-card border border-line bg-surface p-3">
+        <div className="w-8 h-8 rounded-[10px] bg-brand-soft grid place-items-center flex-shrink-0">
+          <Car className="w-4 h-4 text-brand" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-detail font-semibold text-ink">Quelle différence&nbsp;?</p>
+          <p className="text-detail text-soft leading-relaxed">
+            <span className="font-semibold text-brand">Complet</span> = extérieur + intérieur ·{' '}
+            <span className="font-semibold text-[#2E7D32]">Extérieur</span> = carrosserie uniquement.
+          </p>
+        </div>
+      </div>
+
       {/* Abonnement actif */}
       {activeSubscription && (
         <Card className={`border border-line shadow-card rounded-card overflow-hidden`}>
@@ -274,6 +291,7 @@ export function SubscriptionPanel({ userId, walletBalance }: SubscriptionPanelPr
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="text-body font-bold text-ink">{activeSubscription.plan.displayName}</h3>
                     <span className="text-micro bg-success/10 text-success border border-success/20 rounded-pill px-2 py-0.5">Actif</span>
+                    <CoverageBadge service={activeSubscription.plan.service} short />
                   </div>
                   <p className="text-detail text-soft mt-0.5">
                     Expire le {formatDate(activeSubscription.endDate)}
@@ -360,7 +378,10 @@ export function SubscriptionPanel({ userId, walletBalance }: SubscriptionPanelPr
                   {renderPlanIcon(plan.priority)}
                   <div className="flex-1 min-w-0">
                     <h3 className="text-body font-bold text-ink">{plan.displayName}</h3>
-                    <p className="text-detail text-soft">{plan.washCount} lavages / mois</p>
+                    <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                      <CoverageBadge service={plan.service} short />
+                      <span className="text-detail text-soft">{plan.washCount} lavages / mois</span>
+                    </div>
                     {plan.features[0] && (
                       <div className="flex items-center gap-1.5 text-detail mt-1.5 text-soft">
                         <Check className="w-[15px] h-[15px] text-success flex-shrink-0" strokeWidth={2.4} />
@@ -430,6 +451,10 @@ export function SubscriptionPanel({ userId, walletBalance }: SubscriptionPanelPr
           {selectedPlan && (
             <div className="space-y-4 py-1">
               <p className="text-body text-soft">{selectedPlan.description}</p>
+
+              {/* Ce que comprend la prestation : extérieur toujours inclus,
+                  intérieur inclus ou non selon la couverture (Complet vs Extérieur) */}
+              <CoverageDetails service={selectedPlan.service} />
 
               {/* Durée */}
               <div className="space-y-2">

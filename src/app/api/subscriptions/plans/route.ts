@@ -16,6 +16,10 @@ export async function GET(request: NextRequest) {
             name: true,
             price: true,
             duration: true,
+            // Exposed so the client can show the difference between
+            // "Extérieur seul" and "Complet (extérieur + intérieur)" plans.
+            coverage: true,
+            category: true,
           },
         },
       },
