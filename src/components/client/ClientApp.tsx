@@ -35,6 +35,7 @@ import { SubscriptionPanel } from './SubscriptionPanel';
 import { ActivityHistory, AddressesManager, AccountSettings } from './ClientSettings';
 import { ServiceIcon, CoverageBadge, CoverageDetails } from '@/components/shared/ServiceCoverage';
 import { formatPrice, getServiceCoverage } from '@/lib/service-coverage';
+import { MediaCarousel } from './MediaCarousel';
 
 const navItems = [
   { id: 'home', icon: Home, label: 'Accueil' },
@@ -1186,6 +1187,9 @@ function HomeContent({
           </div>
         )}
       </section>
+
+      {/* Carrousel média (images + vidéos) — juste après « Laveurs disponibles » */}
+      <MediaCarousel onReserve={onStartOrder} />
     </div>
   );
 }
