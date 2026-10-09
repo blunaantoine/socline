@@ -1028,3 +1028,20 @@ Work Log:
 Stage Summary:
 - Cycle de vie complet d'une recharge PayDunya : En cours (badge court sans débordement) → crédit auto si PayDunya confirme → ÉCHOUÉ auto après 15 min si le client n'a pas abouti (avec rattrapage de crédit si PayDunya confirme plus tard). Aucune intervention admin, aucune perte possible.
 - En attente : déploiement prod (--update embarque désormais le deploy.sh autoréparant Task 38) puis checklist PayDunya prod (clés admin + IPN + test sandbox complet).
+
+---
+Task ID: 41 (session 30 — ajustement des images de Promotions réparé + où changer les images du carrousel)
+Agent: main (Z.ai Code)
+Task: « Où changer les images du carrousel ? » + « Pourquoi l'ajustement des images dans Promotion ne fonctionne pas ? »
+
+Work Log:
+- Diagnostic de l'éditeur ImagePositionEditor (AdminPanel) : 4 défauts — ① axes INVERSÉS (position stockée « Y% X% » alors que CSS object-position attend « X% Y% » → glisser à droite bougeait l'image en haut) ; ② drag tactile inopérant sur mobile (pas de touch-action:none → la page défilait au lieu de déplacer l'image) ; ③ le sélecteur de fichier se rouvrait à chaque clic/fin de drag (aperçu dans un label avec l'input file) ; ④ listeners globaux réabonnés à chaque pixel (onPositionChange recréé à chaque rendu).
+- FIX : convention CSS « X% Y% » partout (parse, émission, réticule) ; touch-none + preventDefault touchmove ({passive:false}) ; swallowClick sur l'aperçu (le changement d'image passe par le bouton remove) ; ref+useEffect pour onPositionChange et setFormData fonctionnel côté parent. ESLint react-hooks/refs respecté (maj du ref dans useEffect).
+- Trou de sécurité fermé au passage : POST/PUT/DELETE /api/promotions étaient SANS vérification admin → requireAdmin ajouté (POST sans cookie → 401 testé ; GET laissé public pour la bannière client → 200 testé).
+- TESTS RÉELS navigateur : promo « Test Ajustement » créée avec image uploadée → drag simulé vers 20 % vertical → formData « 50% 20% » → persisté en DB → bannière client (session client démo) applique objectPosition 50% 20% (capture : le haut de l'image est affiché) → réédition : réticule à left 50% / top 20%. Promo de test supprimée ensuite.
+- Réponse donnée à l'utilisateur pour le carrousel : fichiers dans /public/carousel/ + liste MEDIA_ITEMS dans src/components/client/MediaCarousel.tsx (remplacer les fichiers en gardant les noms lavage-1..5.png = zéro code ; proposer une gestion admin si souhaité).
+- Branche fix/promo-image-adjust, commit 59e6f2a (🖼️), merge main + push. Worklog en commit séparé.
+
+Stage Summary:
+- L'ajustement par glissement des images de promotion fonctionne (desktop + tactile), cadrage fidèle entre l'aperçu admin et la bannière client, routes d'écriture promotions réservées à l'admin.
+- Carrousel : images remplaçables dans public/carousel/ (noms identiques) ou via MEDIA_ITEMS ; option gestion admin à demander.
