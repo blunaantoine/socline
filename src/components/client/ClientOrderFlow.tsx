@@ -14,6 +14,7 @@ import {
   Zap, Droplets, Sparkles, Crown, Calendar, Car
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { MediaCarousel } from './MediaCarousel';
 import type { Service, Order, Car as CarType } from '@/types';
 import { parseJsonResponse } from '@/lib/json-helper';
 import { DynamicLeafletMap } from '@/components/map/DynamicLeafletMap';
@@ -495,6 +496,9 @@ export function ClientOrderFlow({
                 </div>
               ))
             )}
+
+            {/* Carrousel média (images + vidéos) en bas de l'étape de choix du service */}
+            <MediaCarousel />
           </div>
         )}
 
