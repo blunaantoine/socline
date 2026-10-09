@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
   Power, MapPin, Clock, Star, DollarSign, CheckCircle, 
-  Navigation, Phone, MessageCircle, Car, AlertCircle,
+  Navigation, Phone, MessageCircle, MessageSquare, Car, AlertCircle,
   Wallet, TrendingUp, Calendar, LogOut, Settings, Home,
   RefreshCw, Loader2, ArrowLeft, Crown, Edit, Bell, Banknote,
   Camera
@@ -26,7 +26,9 @@ import { StationDashboard } from '@/components/washer/StationDashboard';
 import { onSoclineNotification } from '@/components/RealtimeNotifications';
 import { isRealtimeEnabled } from '@/lib/realtime-flag';
 import { CoverageBadge } from '@/components/shared/ServiceCoverage';
+import { CarPhoto } from '@/components/shared/CarPhoto';
 import { getServiceCoverage } from '@/lib/service-coverage';
+import { openWhatsApp } from '@/lib/contact';
 import { DynamicLeafletMap } from '@/components/map/DynamicLeafletMap';
 
 // Washer stats type
@@ -1408,8 +1410,25 @@ function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat, acceptedOr
               <p className="text-sm text-[#757575]">{order.client?.phone || ''}</p>
             </div>
             <div className="flex gap-2">
-              <Button size="icon" variant="outline" className="rounded-full">
+              {/* Appel : ouvre le composeur avec le numéro du client */}
+              <Button size="icon" variant="outline" className="rounded-full"
+                aria-label="Appeler le client"
+                disabled={!order.client?.phone}
+                onClick={() => order.client?.phone && window.open(`tel:${order.client.phone}`, '_self')}
+              >
                 <Phone className="w-4 h-4" />
+              </Button>
+              {/* WhatsApp : discussion pré-remplie avec le client */}
+              <Button size="icon" variant="outline"
+                className="rounded-full border-[#25D366] text-[#25D366] hover:bg-[#25D366] hover:text-white"
+                aria-label="Contacter le client sur WhatsApp"
+                disabled={!order.client?.phone}
+                onClick={() => openWhatsApp(
+                  order.client?.phone,
+                  `Bonjour, je suis votre laveur Socline pour la commande ${order.orderNumber}.`
+                )}
+              >
+                <MessageSquare className="w-4 h-4" />
               </Button>
               <Button 
                 size="icon" 
@@ -1467,9 +1486,10 @@ function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat, acceptedOr
                   className="w-16 h-16 rounded-xl object-cover border border-[#E0E0E0] flex-shrink-0"
                 />
               ) : (
-                <div className="w-16 h-16 rounded-xl bg-[#E3F2FD] flex items-center justify-center flex-shrink-0">
-                  <Car className="w-8 h-8 text-[#2196F3]" />
-                </div>
+                <CarPhoto
+                  alt={`Photo du véhicule du client ${order.car.plateNumber}`}
+                  className="w-16 h-16 rounded-xl border border-[#E0E0E0]"
+                />
               )}
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-[#212121]">

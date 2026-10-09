@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { MediaCarousel } from './MediaCarousel';
+import { CarPhoto } from '@/components/shared/CarPhoto';
 import type { Service, Order, Car as CarType } from '@/types';
 import { parseJsonResponse } from '@/lib/json-helper';
 import { DynamicLeafletMap } from '@/components/map/DynamicLeafletMap';
@@ -718,9 +719,10 @@ export function ClientOrderFlow({
                             className="w-12 h-12 rounded-btn object-cover border border-line flex-shrink-0"
                           />
                         ) : (
-                          <div className={`w-12 h-12 rounded-btn grid place-items-center flex-shrink-0 ${isSelected ? 'bg-brand-soft' : 'bg-app'}`}>
-                            <Car className={`w-6 h-6 ${isSelected ? 'text-brand' : 'text-soft'}`} />
-                          </div>
+                          <CarPhoto
+                            alt={`Photo du véhicule ${car.plateNumber}`}
+                            className="w-12 h-12 rounded-btn border border-line"
+                          />
                         )}
                         <div className="flex-1 min-w-0">
                           <div className="text-body font-bold text-ink">

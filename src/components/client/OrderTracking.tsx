@@ -8,10 +8,12 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DynamicLeafletMap } from '@/components/map/DynamicLeafletMap';
 import { ChatView } from '@/components/chat/ChatView';
+import { CarPhoto } from '@/components/shared/CarPhoto';
 import { formatPrice } from '@/lib/service-coverage';
+import { openWhatsApp } from '@/lib/contact';
 import {
-  MapPin, Phone, MessageCircle, Clock, Star, Heart,
-  CheckCircle, Navigation, AlertCircle, X, ArrowLeft, Home, Loader2, Car, Camera
+  MapPin, Phone, MessageCircle, MessageSquare, Clock, Star, Heart,
+  CheckCircle, Navigation, AlertCircle, X, ArrowLeft, Home, Loader2, Camera
 } from 'lucide-react';
 import type { Order, OrderStatus, TrackingEvent, Conversation } from '@/types';
 import { isRealtimeEnabled } from '@/lib/realtime-flag';
@@ -489,9 +491,10 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
                     className="w-14 h-14 rounded-xl object-cover border flex-shrink-0"
                   />
                 ) : (
-                  <div className="w-14 h-14 rounded-xl bg-[#E3F2FD] flex items-center justify-center flex-shrink-0">
-                    <Car className="w-7 h-7 text-[#2196F3]" />
-                  </div>
+                  <CarPhoto
+                    alt={`Photo du véhicule ${order.car.plateNumber}`}
+                    className="w-14 h-14 rounded-xl border"
+                  />
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-[#212121]">
@@ -534,6 +537,21 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
                     onClick={() => washer.user?.phone && window.open(`tel:${washer.user.phone}`, '_self')}
                   >
                     <Phone className="w-4 h-4" />
+                  </Button>
+                  {/* WhatsApp : ouvre une discussion WhatsApp pré-remplie avec le
+                      numéro du laveur (repli fiable si l'appel ne passe pas). */}
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    aria-label="Contacter le laveur sur WhatsApp"
+                    className="border-[#25D366] text-[#25D366] hover:bg-[#25D366] hover:text-white"
+                    disabled={!washer.user?.phone}
+                    onClick={() => openWhatsApp(
+                      washer.user?.phone,
+                      `Bonjour, je vous contacte au sujet de ma commande Socline ${order.orderNumber}.`
+                    )}
+                  >
+                    <MessageSquare className="w-4 h-4" />
                   </Button>
                   {/* Discussion : ouvre la conversation temps réel de la commande
                       (la même que celle du laveur). */}

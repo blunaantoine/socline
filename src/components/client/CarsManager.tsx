@@ -19,11 +19,12 @@ import {
 } from '@/components/ui/select';
 import { VisuallyHidden } from '@/components/ui/visually-hidden';
 import {
-  Car, Plus, Star, Trash2, CheckCircle, Loader2,
+  Plus, Star, Trash2, CheckCircle, Loader2,
   Edit, ChevronRight, Camera
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { parseJsonResponse } from '@/lib/json-helper';
+import { CarPhoto } from '@/components/shared/CarPhoto';
 
 // Downscale a camera/gallery image to a ≤ 900px JPEG data URL so it fits
 // comfortably in the DB and over the wire (same helper as the washer app).
@@ -386,7 +387,12 @@ export function CarsManager({ userId }: CarsManagerProps) {
       {/* Cars List */}
       {cars.length === 0 ? (
         <div className="bg-white rounded-lg p-6 text-center shadow-sm">
-          <Car className="w-12 h-12 text-[#BDBDBD] mx-auto mb-3" />
+          <img
+            src="/voiture-defaut.png"
+            alt=""
+            aria-hidden="true"
+            className="w-16 h-16 mx-auto mb-3 rounded-xl opacity-80"
+          />
           <p className="text-[#757575]">Aucun véhicule enregistré</p>
           <p className="text-sm text-[#9E9E9E] mt-1">Ajoutez votre premier véhicule</p>
           <Button
@@ -407,18 +413,12 @@ export function CarsManager({ userId }: CarsManagerProps) {
               }`}
             >
               <div className="flex items-start gap-3">
-                {/* Car photo (or icon fallback) */}
-                {car.photo ? (
-                  <img
-                    src={car.photo}
-                    alt={`Photo du véhicule ${car.plateNumber}`}
-                    className="w-12 h-12 rounded-lg object-cover border flex-shrink-0"
-                  />
-                ) : (
-                  <div className="w-12 h-12 bg-[#FFF3E0] rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Car className="w-6 h-6 text-[#FF9800]" />
-                  </div>
-                )}
+                {/* Car photo (ou image de voiture par défaut) */}
+                <CarPhoto
+                  src={car.photo}
+                  alt={`Photo du véhicule ${car.plateNumber}`}
+                  className="w-12 h-12 rounded-lg border"
+                />
 
                 {/* Car Info */}
                 <div className="flex-1 min-w-0">

@@ -24,6 +24,9 @@ export async function GET(
           },
         },
         service: true,
+        // Véhicule concerné — le suivi côté client affiche la même fiche
+        // véhicule que le côté laveur (photo/marque/couleur/plaque).
+        car: true,
         station: true,
         payment: true,
         review: true,
