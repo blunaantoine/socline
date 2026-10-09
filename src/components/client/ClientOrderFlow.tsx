@@ -7,9 +7,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   ArrowLeft, MapPin, Clock, CreditCard, Wallet,
   CheckCircle, AlertCircle, Loader2,
-  Zap, Crown, Calendar, Car, Building2
+  Zap, Crown, Calendar, Car, Building2, Droplets
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { MediaCarousel } from './MediaCarousel';
@@ -17,7 +23,7 @@ import type { Service, Order, Car as CarType } from '@/types';
 import { parseJsonResponse } from '@/lib/json-helper';
 import { DynamicLeafletMap } from '@/components/map/DynamicLeafletMap';
 import { COVERAGE_LONG_LABEL, getServiceCoverage, formatPrice } from '@/lib/service-coverage';
-import { ServiceArtCard } from '@/components/design/ServiceArtCard';
+import { ServiceRowCard } from '@/components/design/ServiceRowCard';
 import { EmptyState } from '@/components/design/EmptyState';
 import { BTN_PRIMARY_CLASSES, CARD_CLASSES } from '@/lib/design-system';
 
@@ -59,11 +65,11 @@ function ServiceSkeleton() {
   );
 }
 
-const STEPS: { id: StepType; label: string; stepNum: number }[] = [
-  { id: 'service', label: 'Service', stepNum: 1 },
-  { id: 'location', label: 'Adresse', stepNum: 2 },
-  { id: 'schedule', label: 'Planifier', stepNum: 3 },
-  { id: 'payment', label: 'Paiement', stepNum: 4 },
+const STEPS: { id: StepType; label: string; icon: typeof Droplets }[] = [
+  { id: 'service', label: 'Service', icon: Droplets },
+  { id: 'location', label: 'Adresse', icon: MapPin },
+  { id: 'schedule', label: 'Planifier', icon: Clock },
+  { id: 'payment', label: 'Paiement', icon: Wallet },
 ];
 
 const STEP_TITLE: Record<StepType, string> = {
@@ -109,6 +115,8 @@ export function ClientOrderFlow({
   // recognize the car. Defaults to the client's default car.
   const [cars, setCars] = useState<CarType[]>([]);
   const [selectedCarId, setSelectedCarId] = useState<string | null>(null);
+  // Détail d'un service (pastille info de l'étape 1) — affichage pur
+  const [infoService, setInfoService] = useState<Service | null>(null);
 
   // Fetch services on mount
   useEffect(() => {
@@ -474,7 +482,7 @@ export function ClientOrderFlow({
               <div key={item.id} className="flex items-center flex-1">
                 <div className="flex flex-col items-center">
                   <div
-                    className={`w-8 h-8 rounded-full grid place-items-center text-detail font-bold transition-colors ${
+                    className={`w-8 h-8 rounded-full grid place-items-center transition-colors ${
                       isActive
                         ? 'bg-brand text-white'
                         : isPast
@@ -482,7 +490,11 @@ export function ClientOrderFlow({
                         : 'bg-line text-soft'
                     }`}
                   >
-                    {isPast ? <CheckCircle className="w-4 h-4" /> : item.stepNum}
+                    {isPast ? (
+                      <CheckCircle className="w-4 h-4" />
+                    ) : (
+                      <item.icon className="w-4 h-4" strokeWidth={2.2} />
+                    )}
                   </div>
                   <span className={`text-micro mt-1 ${
                     isActive ? 'text-brand' : isPast ? 'text-success' : 'text-soft'
@@ -501,20 +513,20 @@ export function ClientOrderFlow({
 
       {/* Content - Only render current step */}
       <div className="flex-1 overflow-y-auto p-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
-        {/* Étape 1 : choisir une formule */}
+        {/* Étape 1 : choisir une formule — rangées horizontales (maquette) */}
         {step === 'service' && (
           <div className="space-y-4">
             {services.length === 0 ? (
               <EmptyState icon={AlertCircle} message="Aucun service disponible pour le moment" />
             ) : (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-3">
                 {services.map((service, index) => (
-                  <ServiceArtCard
+                  <ServiceRowCard
                     key={service.id}
                     service={service}
                     index={index}
-                    description={service.description}
                     onClick={() => handleServiceSelect(service)}
+                    onInfo={() => setInfoService(service)}
                   />
                 ))}
               </div>
@@ -522,6 +534,41 @@ export function ClientOrderFlow({
 
             {/* Carrousel média (images + vidéos) en bas de l'étape de choix du service */}
             <MediaCarousel />
+
+            {/* Modale info : description complète du service (au toucher) */}
+            <Dialog open={!!infoService} onOpenChange={(open) => !open && setInfoService(null)}>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="text-title text-ink">{infoService?.name}</DialogTitle>
+                </DialogHeader>
+                {infoService && (
+                  <div className="space-y-4">
+                    <p className="text-body text-soft leading-relaxed">{infoService.description}</p>
+                    <div className="flex flex-wrap gap-2">
+                      <span className="text-micro font-semibold rounded-pill bg-brand-soft text-brand-deep px-2.5 py-1">
+                        {infoService.duration} min
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-baseline bg-brand-wash rounded-btn p-3.5">
+                      <span className="text-body text-soft">Prix</span>
+                      <span className="font-extrabold text-lg text-ink">
+                        {infoService.price.toLocaleString('fr-FR')} <span className="text-brand text-sm">F</span>
+                      </span>
+                    </div>
+                    <Button
+                      className={`w-full h-12 ${BTN_PRIMARY_CLASSES} font-bold`}
+                      onClick={() => {
+                        const s = infoService;
+                        setInfoService(null);
+                        if (s) handleServiceSelect(s);
+                      }}
+                    >
+                      Choisir ce service
+                    </Button>
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
           </div>
         )}
 

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/store';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +21,7 @@ import { HideableBalanceDark } from '@/components/ui/hideable-balance';
 import { toast } from 'sonner';
 import { parseJsonResponse } from '@/lib/json-helper';
 import { onSoclineNotification } from '@/components/RealtimeNotifications';
+import { BTN_PRIMARY_CLASSES, BTN_SECONDARY_CLASSES, CARD_CLASSES } from '@/lib/design-system';
 
 interface WalletData {
   id: string;
@@ -67,11 +67,11 @@ const TRANSACTION_LABELS: Record<string, string> = {
 };
 
 const TRANSACTION_COLORS: Record<string, string> = {
-  DEPOSIT: 'text-green-600',
-  WITHDRAWAL: 'text-red-600',
-  PAYMENT: 'text-orange-600',
-  REFUND: 'text-blue-600',
-  BONUS: 'text-purple-600',
+  DEPOSIT: 'text-success',
+  WITHDRAWAL: 'text-danger',
+  PAYMENT: 'text-brand',
+  REFUND: 'text-success',
+  BONUS: 'text-plan-purple-icon',
 };
 
 const TRANSACTION_ICONS: Record<string, any> = {
@@ -98,19 +98,19 @@ const txStatusLabel = (tx: Transaction) =>
     : STATUS_LABELS[tx.status] ?? tx.status;
 
 const STATUS_COLORS: Record<string, string> = {
-  PENDING: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  COMPLETED: 'bg-green-100 text-green-800 border-green-200',
-  FAILED: 'bg-red-100 text-red-800 border-red-200',
-  CANCELLED: 'bg-gray-100 text-gray-800 border-gray-200',
+  PENDING: 'bg-brand-soft text-brand-deep border-brand/20',
+  COMPLETED: 'bg-success/10 text-success border-success/20',
+  FAILED: 'bg-danger/10 text-danger border-danger/20',
+  CANCELLED: 'bg-app text-soft border-line',
 };
 
 const AMOUNT_OPTIONS = [
-  { value: 1000, label: '1 000 XOF' },
-  { value: 2000, label: '2 000 XOF' },
-  { value: 5000, label: '5 000 XOF' },
-  { value: 10000, label: '10 000 XOF' },
-  { value: 20000, label: '20 000 XOF' },
-  { value: 50000, label: '50 000 XOF' },
+  { value: 1000, label: '1 000 F' },
+  { value: 2000, label: '2 000 F' },
+  { value: 5000, label: '5 000 F' },
+  { value: 10000, label: '10 000 F' },
+  { value: 20000, label: '20 000 F' },
+  { value: 50000, label: '50 000 F' },
 ];
 
 type DepositStep = 'amount' | 'operator' | 'phone' | 'ussd' | 'confirm' | 'paydunya';
@@ -131,6 +131,66 @@ interface DepositState {
   ussdCode: string;
   ussdLink: string;
   recipientNumber: string;
+}
+
+/** Ligne de transaction — utilisée par « Transactions récentes » et l'historique. */
+function TxRow({
+  tx,
+  formatDate,
+  formatDateFull,
+  detailed,
+}: {
+  tx: Transaction;
+  formatDate: (d: string) => string;
+  formatDateFull: (d: string) => string;
+  detailed?: boolean;
+}) {
+  const Icon = TRANSACTION_ICONS[tx.type] || CreditCard;
+  const isCredit = tx.type === 'DEPOSIT' || tx.type === 'REFUND' || tx.type === 'BONUS';
+  return (
+    <div className={`p-4 ${CARD_CLASSES}`}>
+      <div className={detailed ? 'flex items-start gap-3' : 'flex items-center gap-3'}>
+        <div
+          className={`w-10 h-10 rounded-full grid place-items-center flex-shrink-0 ${
+            isCredit ? 'bg-success/10' : 'bg-danger/10'
+          }`}
+        >
+          <Icon className={`w-5 h-5 ${TRANSACTION_COLORS[tx.type]}`} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-body font-semibold text-ink">{TRANSACTION_LABELS[tx.type]}</p>
+            <Badge variant="outline" className={`text-micro max-w-full rounded-pill ${STATUS_COLORS[tx.status]}`}>
+              <span className="truncate">{txStatusLabel(tx)}</span>
+            </Badge>
+          </div>
+          {detailed ? (
+            <>
+              <p className="text-detail text-soft mt-1">{formatDateFull(tx.createdAt)}</p>
+              {tx.paymentMethod && <p className="text-detail text-soft mt-0.5">Via {tx.paymentMethod}</p>}
+              {tx.description && <p className="text-detail text-soft mt-0.5">{tx.description}</p>}
+              {tx.ussdConfirmedAt && (
+                <p className="text-detail text-success mt-0.5">✓ Payé le {formatDate(tx.ussdConfirmedAt)}</p>
+              )}
+            </>
+          ) : (
+            <p className="text-detail text-soft truncate">
+              {tx.description || formatDate(tx.createdAt)}
+              {tx.paymentMethod ? ` · Via ${tx.paymentMethod}` : ''}
+            </p>
+          )}
+        </div>
+        <div className="text-right flex-shrink-0">
+          <p className={`font-bold text-body ${isCredit ? 'text-success' : 'text-danger'}`}>
+            {isCredit ? '+' : '-'}{tx.amount.toLocaleString('fr-FR')} F
+          </p>
+          {tx.status === 'COMPLETED' && (
+            <p className="text-micro text-soft">Solde : {tx.balanceAfter.toLocaleString('fr-FR')} F</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function WalletScreen({ onBack }: { onBack?: () => void }) {
@@ -254,7 +314,7 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
         if (!tx) return;
 
         if (tx.status === 'COMPLETED') {
-          toast.success(`Rechargement de ${deposit.amount.toLocaleString('fr-FR')} XOF validé ✅`);
+          toast.success(`Rechargement de ${deposit.amount.toLocaleString('fr-FR')} F validé ✅`);
           setShowDeposit(false);
           resetDeposit();
           fetchWallet(true);
@@ -296,7 +356,7 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
           const data = await res.json();
 
           if (data?.status === 'COMPLETED') {
-            toast.success(`Rechargement de ${tx.amount.toLocaleString('fr-FR')} XOF confirmé ✅`);
+            toast.success(`Rechargement de ${tx.amount.toLocaleString('fr-FR')} F confirmé ✅`);
             fetchWallet(true);
             return;
           }
@@ -494,160 +554,127 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
     });
   };
 
+  // Dernière recharge réussie (affichée sur la carte solde)
+  const lastDeposit = (wallet?.transactions ?? []).find(
+    (t) => t.type === 'DEPOSIT' && t.status === 'COMPLETED'
+  );
+
   if (isLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-[#FAFAFA]">
-        <Loader2 className="w-8 h-8 animate-spin text-[#FF9800]" />
+      <div className="flex-1 p-4 space-y-4 bg-app">
+        <div className="h-7 w-40 rounded bg-line animate-pulse" />
+        <div className="h-[170px] rounded-card bg-ink/90 animate-pulse" />
+        <div className="grid grid-cols-2 gap-3">
+          <div className="h-12 rounded-btn bg-line animate-pulse" />
+          <div className="h-12 rounded-btn bg-line animate-pulse" />
+        </div>
+        <div className="h-[76px] rounded-card bg-surface border border-line animate-pulse" />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#FAFAFA]">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-[#FF9800] to-[#F57C00] p-4 text-white flex-shrink-0">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            {onBack && (
-              <button onClick={onBack} className="p-2 hover:bg-white/20 rounded-lg">
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-            )}
-            <h1 className="text-xl font-bold">Mon Portefeuille</h1>
-          </div>
-          <button 
-            onClick={() => fetchWallet(true)} 
-            disabled={isRefreshing}
-            className="p-2 hover:bg-white/20 rounded-lg transition-all"
-          >
-            <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
+    <div className="flex flex-col h-full bg-app">
+      {/* Header clair : actualisation (le titre est dans l'en-tête global de l'app) */}
+      <div className="bg-app px-4 pt-1 pb-2 flex items-center justify-end flex-shrink-0">
+        <button
+          onClick={() => fetchWallet(true)}
+          disabled={isRefreshing}
+          aria-label="Actualiser le solde"
+          className="w-9 h-9 rounded-btn bg-surface border border-line grid place-items-center active:scale-95 transition-transform"
+        >
+          <RefreshCw className={`w-[18px] h-[18px] text-brand ${isRefreshing ? 'animate-spin' : ''}`} />
+        </button>
+      </div>
 
-        {/* Balance Card */}
-        <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4">
-          <p className="text-white/80 text-sm mb-1">Solde disponible</p>
-          <HideableBalanceDark
-            balance={wallet?.balance || 0}
-            currency="XOF"
-            size="xl"
-            storageKey="hide-client-wallet-balance"
-          />
-
-          <div className="flex gap-4 mt-4 pt-4 border-t border-white/20">
-            <div className="flex-1">
-              <p className="text-xs text-white/60">Total rechargé</p>
-              <p className="font-semibold">{wallet?.totalDeposited?.toLocaleString() || 0} F</p>
+      <div className="flex-1 overflow-y-auto px-4 pb-28 space-y-4">
+        {/* Carte solde navy */}
+        <div className="bg-gradient-to-br from-ink to-ink-2 rounded-card p-5 text-white relative overflow-hidden">
+          {/* Rond orange décoratif (identité, même style que le hero promo) */}
+          <div className="absolute -right-10 -top-10 w-[150px] h-[150px] rounded-full bg-brand/20" aria-hidden="true" />
+          <div className="relative">
+            <p className="text-detail text-white/60">Solde disponible</p>
+            <div className="mt-1.5 mb-4">
+              <HideableBalanceDark
+                balance={wallet?.balance || 0}
+                currency="F"
+                size="xl"
+                storageKey="hide-client-wallet-balance"
+              />
             </div>
-            <div className="flex-1">
-              <button 
-                onClick={() => setShowHistory(true)}
-                className="w-full text-left hover:bg-white/10 rounded-lg p-1 -m-1 transition-all"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-white/60">Historique</p>
-                    <p className="font-semibold flex items-center gap-1">
-                      <History className="w-3 h-3" />
-                      Voir tout
-                    </p>
-                  </div>
-                  <ChevronRight className="w-4 h-4" />
-                </div>
-              </button>
+
+            <div className="flex justify-between border-t border-white/15 pt-3">
+              <div>
+                <p className="text-micro text-white/60">Total rechargé</p>
+                <p className="text-body font-bold mt-0.5">
+                  {(wallet?.totalDeposited || 0).toLocaleString('fr-FR')} F
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-micro text-white/60">Dernière recharge</p>
+                <p className="text-body font-bold mt-0.5">
+                  {lastDeposit ? formatDate(lastDeposit.createdAt) : '–'}
+                </p>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="flex gap-3 mt-4">
+        {/* Actions : Recharger + Historique */}
+        <div className="grid grid-cols-2 gap-3">
           <Button
             onClick={() => {
               resetDeposit();
               setShowDeposit(true);
             }}
-            className="flex-1 bg-white text-[#FF9800] hover:bg-white/90"
+            className={`h-12 ${BTN_PRIMARY_CLASSES} font-bold`}
           >
             <Plus className="w-4 h-4 mr-2" />
             Recharger
           </Button>
-        </div>
-      </div>
-
-      {/* Transactions */}
-      <div className="flex-1 overflow-y-auto p-4 pb-28">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-semibold text-[#212121]">Transactions récentes</h2>
-          <Button 
-            variant="ghost" 
-            size="sm" 
+          <Button
             onClick={() => setShowHistory(true)}
-            className="text-[#FF9800]"
+            className="h-12 bg-surface hover:bg-app text-ink border border-line rounded-btn font-bold"
           >
-            Voir tout
-            <ChevronRight className="w-4 h-4 ml-1" />
+            <History className="w-4 h-4 mr-2" />
+            Historique
           </Button>
         </div>
 
+        {/* Transactions récentes */}
+        <div className="flex items-center justify-between pt-1">
+          <h2 className="text-section text-ink">Transactions récentes</h2>
+          <button
+            onClick={() => setShowHistory(true)}
+            className="text-detail text-brand font-semibold active:opacity-70 transition-opacity"
+          >
+            Voir tout
+          </button>
+        </div>
+
         {!wallet?.transactions || wallet.transactions.length === 0 ? (
-          <div className="text-center py-12">
-            <Clock className="w-12 h-12 text-[#BDBDBD] mx-auto mb-3" />
-            <p className="text-[#757575]">Aucune transaction</p>
-            <p className="text-sm text-[#9E9E9E] mt-1">Rechargez votre portefeuille pour commencer</p>
+          <div className={`py-8 px-4 ${CARD_CLASSES} flex flex-col items-center text-center`}>
+            <div className="w-[84px] h-[84px] rounded-[26px] bg-brand-soft grid place-items-center mb-3">
+              <Wallet className="w-11 h-11 text-brand" strokeWidth={1.6} />
+            </div>
+            <p className="text-body font-bold text-ink">Aucune transaction</p>
+            <p className="text-detail text-soft mt-1 mb-4">Rechargez pour payer vos lavages en un geste.</p>
+            <button
+              onClick={() => {
+                resetDeposit();
+                setShowDeposit(true);
+              }}
+              className={`px-4 py-2.5 ${BTN_SECONDARY_CLASSES} text-detail font-bold active:scale-95 transition-transform min-h-[44px]`}
+            >
+              <Plus className="w-4 h-4 inline mr-1.5" />
+              Recharger
+            </button>
           </div>
         ) : (
-          <div className="space-y-2">
-            {wallet.transactions.slice(0, 5).map((tx) => {
-              const Icon = TRANSACTION_ICONS[tx.type] || CreditCard;
-              return (
-                <Card key={tx.id} className="shadow-sm border-0">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                        tx.type === 'DEPOSIT' || tx.type === 'REFUND' || tx.type === 'BONUS'
-                          ? 'bg-green-100'
-                          : 'bg-red-100'
-                      }`}>
-                        <Icon className={`w-5 h-5 ${TRANSACTION_COLORS[tx.type]}`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-medium text-[#212121]">
-                            {TRANSACTION_LABELS[tx.type]}
-                          </p>
-                          <Badge variant="outline" className={`text-xs max-w-full ${STATUS_COLORS[tx.status]}`}>
-                            <span className="truncate">{txStatusLabel(tx)}</span>
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-[#757575] truncate">
-                          {tx.description || formatDate(tx.createdAt)}
-                        </p>
-                        {tx.paymentMethod && (
-                          <p className="text-xs text-[#9E9E9E]">
-                            Via {tx.paymentMethod}
-                          </p>
-                        )}
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className={`font-bold ${
-                          tx.type === 'DEPOSIT' || tx.type === 'REFUND' || tx.type === 'BONUS'
-                            ? 'text-green-600'
-                            : 'text-red-600'
-                        }`}>
-                          {tx.type === 'DEPOSIT' || tx.type === 'REFUND' || tx.type === 'BONUS' ? '+' : '-'}
-                          {tx.amount.toLocaleString()} XOF
-                        </p>
-                        {tx.status === 'COMPLETED' && (
-                          <p className="text-xs text-[#9E9E9E]">
-                            Solde: {tx.balanceAfter.toLocaleString()} XOF
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+          <div className="space-y-2.5">
+            {wallet.transactions.slice(0, 5).map((tx) => (
+              <TxRow key={tx.id} tx={tx} formatDate={formatDate} formatDateFull={formatFullDate} />
+            ))}
           </div>
         )}
       </div>
@@ -658,22 +685,22 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
         if (!open) resetDeposit();
       }}>
         <DialogContent className="max-w-md p-0">
-          <div className="p-4 border-b border-[#E0E0E0]">
+          <div className="p-4 border-b border-line">
             <DialogHeader>
-              <DialogTitle className="text-xl font-bold text-[#212121] flex items-center gap-2">
+              <DialogTitle className="text-title text-ink flex items-center gap-2">
                 {deposit.step === 'paydunya' ? (
                   <>
-                    <CreditCard className="w-5 h-5 text-[#FF9800]" />
+                    <CreditCard className="w-5 h-5 text-brand" />
                     Paiement en ligne
                   </>
                 ) : deposit.step === 'ussd' || deposit.step === 'confirm' ? (
                   <>
-                    <Phone className="w-5 h-5 text-[#FF9800]" />
+                    <Phone className="w-5 h-5 text-brand" />
                     Paiement USSD
                   </>
                 ) : (
                   <>
-                    <Plus className="w-5 h-5 text-[#FF9800]" />
+                    <Plus className="w-5 h-5 text-brand" />
                     Recharger le portefeuille
                   </>
                 )}
@@ -687,18 +714,18 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
               <div className="flex items-center justify-center gap-2 mb-4">
                 {['amount', 'paydunya'].map((step, index) => (
                   <div key={step} className="flex items-center">
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
+                    <div className={`w-6 h-6 rounded-full grid place-items-center text-micro font-semibold ${
                       ['amount', 'paydunya'].indexOf(deposit.step) >= index
-                        ? 'bg-[#FF9800] text-white'
-                        : 'bg-[#E0E0E0] text-[#757575]'
+                        ? 'bg-brand text-white'
+                        : 'bg-line text-soft'
                     }`}>
                       {index + 1}
                     </div>
                     {index < 1 && (
                       <div className={`w-6 h-0.5 ${
                         ['amount', 'paydunya'].indexOf(deposit.step) > index
-                          ? 'bg-[#FF9800]'
-                          : 'bg-[#E0E0E0]'
+                          ? 'bg-brand'
+                          : 'bg-line'
                       }`} />
                     )}
                   </div>
@@ -708,18 +735,18 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
               <div className="flex items-center justify-center gap-2 mb-4">
                 {['amount', 'operator', 'phone', 'ussd'].map((step, index) => (
                   <div key={step} className="flex items-center">
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
+                    <div className={`w-6 h-6 rounded-full grid place-items-center text-micro font-semibold ${
                       ['amount', 'operator', 'phone', 'ussd', 'confirm'].indexOf(deposit.step) >= index
-                        ? 'bg-[#FF9800] text-white'
-                        : 'bg-[#E0E0E0] text-[#757575]'
+                        ? 'bg-brand text-white'
+                        : 'bg-line text-soft'
                     }`}>
                       {index + 1}
                     </div>
                     {index < 3 && (
                       <div className={`w-6 h-0.5 ${
                         ['amount', 'operator', 'phone', 'ussd', 'confirm'].indexOf(deposit.step) > index
-                          ? 'bg-[#FF9800]'
-                          : 'bg-[#E0E0E0]'
+                          ? 'bg-brand'
+                          : 'bg-line'
                       }`} />
                     )}
                   </div>
@@ -730,16 +757,16 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
             {/* Step: Amount */}
             {deposit.step === 'amount' && (
               <div className="space-y-4">
-                <p className="text-sm text-[#757575]">Choisissez un montant à recharger</p>
+                <p className="text-body text-soft">Choisissez un montant à recharger</p>
                 <div className="grid grid-cols-3 gap-2">
                   {AMOUNT_OPTIONS.map((opt) => (
                     <button
                       key={opt.value}
                       onClick={() => setDeposit(prev => ({ ...prev, amount: opt.value }))}
-                      className={`p-3 rounded-lg text-sm font-medium transition-all ${
+                      className={`p-3 rounded-btn text-body font-semibold transition-all ${
                         deposit.amount === opt.value
-                          ? 'bg-[#FF9800] text-white'
-                          : 'bg-[#F5F5F5] text-[#757575] hover:bg-[#E0E0E0]'
+                          ? 'bg-brand text-white'
+                          : 'bg-app text-soft hover:bg-line'
                       }`}
                     >
                       {opt.label}
@@ -751,6 +778,7 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
                   placeholder="Ou entrez un montant personnalisé"
                   value={deposit.amount || ''}
                   onChange={(e) => setDeposit(prev => ({ ...prev, amount: parseInt(e.target.value) || 0 }))}
+                  className="h-12 rounded-btn border-line focus-visible:border-brand focus-visible:ring-brand/30"
                 />
               </div>
             )}
@@ -758,37 +786,37 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
             {/* Step: Operator */}
             {deposit.step === 'operator' && (
               <div className="space-y-3">
-                <p className="text-sm text-[#757575]">Sélectionnez votre opérateur Mobile Money</p>
+                <p className="text-body text-soft">Sélectionnez votre opérateur Mobile Money</p>
                 {operators.length === 0 ? (
                   <div className="text-center py-8">
-                    <AlertCircle className="w-10 h-10 text-[#BDBDBD] mx-auto mb-2" />
-                    <p className="text-[#757575]">Aucun opérateur disponible</p>
+                    <AlertCircle className="w-10 h-10 text-soft mx-auto mb-2" />
+                    <p className="text-body text-soft">Aucun opérateur disponible</p>
                   </div>
                 ) : (
                   operators.map((op) => (
                     <button
                       key={op.id}
                       onClick={() => setDeposit(prev => ({ ...prev, operatorId: op.id }))}
-                      className={`w-full p-4 rounded-xl flex items-center gap-3 transition-all ${
+                      className={`w-full p-4 rounded-btn flex items-center gap-3 transition-all ${
                         deposit.operatorId === op.id
-                          ? 'ring-2 ring-[#FF9800] bg-[#FFF8F0]'
-                          : 'bg-[#F5F5F5] hover:bg-[#E0E0E0]'
+                          ? 'border-2 border-brand bg-brand-wash'
+                          : 'border border-line bg-surface'
                       }`}
                     >
                       <div 
-                        className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold"
+                        className="w-12 h-12 rounded-full grid place-items-center text-white font-bold flex-shrink-0"
                         style={{ backgroundColor: op.color }}
                       >
                         {op.name.charAt(0)}
                       </div>
-                      <div className="text-left flex-1">
-                        <p className="font-semibold text-[#212121]">{op.displayName}</p>
-                        <p className="text-xs text-[#757575]">
-                          Min: {op.minAmount.toLocaleString()} XOF | Max: {op.maxAmount.toLocaleString()} XOF
+                      <div className="text-left flex-1 min-w-0">
+                        <p className="text-body font-semibold text-ink">{op.displayName}</p>
+                        <p className="text-detail text-soft">
+                          Min : {op.minAmount.toLocaleString('fr-FR')} F · Max : {op.maxAmount.toLocaleString('fr-FR')} F
                         </p>
                       </div>
                       {deposit.operatorId === op.id && (
-                        <Check className="w-5 h-5 text-[#FF9800]" />
+                        <Check className="w-5 h-5 text-brand flex-shrink-0" />
                       )}
                     </button>
                   ))
@@ -799,21 +827,21 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
             {/* Step: Phone */}
             {deposit.step === 'phone' && (
               <div className="space-y-4">
-                <p className="text-sm text-[#757575]">
+                <p className="text-body text-soft">
                   Entrez votre numéro {selectedOperator?.displayName}
                 </p>
-                <div className="bg-[#FFF8F0] rounded-lg p-4 mb-4">
+                <div className="bg-brand-wash rounded-btn p-4 mb-1">
                   <div className="flex justify-between items-center">
-                    <span className="text-[#757575]">Montant à recharger</span>
-                    <span className="font-bold text-[#FF9800] text-xl">
-                      {deposit.amount.toLocaleString()} XOF
+                    <span className="text-body text-soft">Montant à recharger</span>
+                    <span className="font-extrabold text-brand text-lg">
+                      {deposit.amount.toLocaleString('fr-FR')} F
                     </span>
                   </div>
                 </div>
                 <div>
-                  <label className="text-sm text-[#757575] mb-2 block">Numéro de téléphone</label>
+                  <label className="text-body text-soft mb-2 block">Numéro de téléphone</label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#757575] font-medium">+228</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-soft font-semibold">+228</span>
                     <Input
                       type="tel"
                       placeholder="90 12 34 56"
@@ -822,10 +850,10 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
                         ...prev, 
                         phoneNumber: e.target.value.replace(/\D/g, '').slice(0, 8) 
                       }))}
-                      className="pl-14 h-12 text-lg"
+                      className="pl-14 h-12 rounded-btn border-line focus-visible:border-brand focus-visible:ring-brand/30 text-lg"
                     />
                   </div>
-                  <p className="text-xs text-[#9E9E9E] mt-2">
+                  <p className="text-detail text-soft mt-2">
                     Ce numéro sera utilisé pour vérifier votre paiement
                   </p>
                 </div>
@@ -836,12 +864,12 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
             {deposit.step === 'ussd' && (
               <div className="space-y-3">
                 {/* Instructions */}
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <div className="bg-brand-soft border border-brand/20 rounded-btn p-3">
                   <div className="flex gap-2">
-                    <AlertCircle className="w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5" />
+                    <AlertCircle className="w-4 h-4 text-brand-deep flex-shrink-0 mt-0.5" />
                     <div>
-                      <p className="font-medium text-yellow-800 text-sm">Instructions</p>
-                      <p className="text-xs text-yellow-700 mt-1">
+                      <p className="font-semibold text-brand-deep text-body">Instructions</p>
+                      <p className="text-detail text-brand-deep/80 mt-1">
                         1. Appuyez sur « Payer » : le code s'affiche dans votre composeur<br/>
                         2. Validez l'appel et entrez votre PIN Mobile Money<br/>
                         3. Revenez ici et appuyez « J'ai payé »
@@ -854,12 +882,12 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
                 <Button
                   onClick={handleLaunchUssd}
                   disabled={!deposit.ussdLink}
-                  className="w-full h-14 bg-[#4CAF50] hover:bg-[#43A047] text-white rounded-xl font-bold text-base shadow-lg"
+                  className={`w-full h-14 ${BTN_PRIMARY_CLASSES} font-bold text-base`}
                 >
                   <PhoneCall className="w-5 h-5 mr-2" />
-                  Payer {deposit.amount.toLocaleString('fr-FR')} F CFA
+                  Payer {deposit.amount.toLocaleString('fr-FR')} F
                 </Button>
-                <p className="text-xs text-center text-[#9E9E9E] px-2">
+                <p className="text-detail text-center text-soft px-2">
                   Le code de paiement est composé automatiquement : vous n'avez rien à recopier.
                 </p>
               </div>
@@ -868,22 +896,22 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
             {/* Step: PayDunya — paiement en ligne (redirection checkout) */}
             {deposit.step === 'paydunya' && (
               <div className="space-y-3">
-                <div className="bg-[#FFF8F0] rounded-lg p-4">
+                <div className="bg-brand-wash rounded-btn p-4">
                   <div className="flex justify-between items-center">
-                    <span className="text-[#757575]">Montant à recharger</span>
-                    <span className="font-bold text-[#FF9800] text-xl">
-                      {deposit.amount.toLocaleString('fr-FR')} XOF
+                    <span className="text-body text-soft">Montant à recharger</span>
+                    <span className="font-extrabold text-brand text-lg">
+                      {deposit.amount.toLocaleString('fr-FR')} F
                     </span>
                   </div>
                 </div>
 
                 {/* Instructions */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="bg-app border border-line rounded-btn p-3">
                   <div className="flex gap-2">
-                    <CreditCard className="w-4 h-4 text-[#00838F] flex-shrink-0 mt-0.5" />
+                    <CreditCard className="w-4 h-4 text-brand flex-shrink-0 mt-0.5" />
                     <div>
-                      <p className="font-medium text-[#00695C] text-sm">Paiement sécurisé PayDunya</p>
-                      <p className="text-xs text-[#00838F] mt-1">
+                      <p className="font-semibold text-ink text-body">Paiement sécurisé PayDunya</p>
+                      <p className="text-detail text-soft mt-1">
                         1. Appuyez sur « Payer » : vous êtes redirigé vers la page de paiement PayDunya<br/>
                         2. Choisissez votre moyen de paiement (T-Money, Moov Money, Wave…)<br/>
                         3. Votre solde est crédité automatiquement dès la confirmation
@@ -896,16 +924,16 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
                 <Button
                   onClick={handlePaydunyaPayment}
                   disabled={isProcessing}
-                  className="w-full h-14 bg-[#4CAF50] hover:bg-[#43A047] text-white rounded-xl font-bold text-base shadow-lg"
+                  className={`w-full h-14 ${BTN_PRIMARY_CLASSES} font-bold text-base`}
                 >
                   {isProcessing ? (
                     <Loader2 className="w-5 h-5 animate-spin mr-2" />
                   ) : (
                     <CreditCard className="w-5 h-5 mr-2" />
                   )}
-                  Payer {deposit.amount.toLocaleString('fr-FR')} F CFA
+                  Payer {deposit.amount.toLocaleString('fr-FR')} F
                 </Button>
-                <p className="text-xs text-center text-[#9E9E9E] px-2">
+                <p className="text-detail text-center text-soft px-2">
                   Aucun code à recopier : tout se passe en ligne, votre solde est crédité automatiquement.
                 </p>
               </div>
@@ -915,27 +943,27 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
             {deposit.step === 'confirm' && (
               <div className="space-y-3">
                 <div className="text-center py-2">
-                  <div className="w-14 h-14 bg-[#FFF8F0] rounded-full flex items-center justify-center mx-auto mb-3">
-                    <CheckCircle className="w-7 h-7 text-[#FF9800]" />
+                  <div className="w-14 h-14 bg-brand-soft rounded-full grid place-items-center mx-auto mb-3">
+                    <CheckCircle className="w-7 h-7 text-brand" />
                   </div>
-                  <p className="font-semibold text-[#212121]">Avez-vous validé le paiement ?</p>
-                  <p className="text-xs text-[#757575] mt-1.5">
+                  <p className="font-semibold text-ink">Avez-vous validé le paiement ?</p>
+                  <p className="text-detail text-soft mt-1.5">
                     Confirmez si vous avez entré votre code PIN
                   </p>
                 </div>
 
-                <div className="bg-[#F5F5F5] rounded-lg p-3 space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-[#757575]">Montant</span>
-                    <span className="font-semibold">{deposit.amount.toLocaleString()} XOF</span>
+                <div className="bg-app rounded-btn p-3 space-y-2">
+                  <div className="flex justify-between text-body">
+                    <span className="text-soft">Montant</span>
+                    <span className="font-semibold text-ink">{deposit.amount.toLocaleString('fr-FR')} F</span>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-[#757575]">Opérateur</span>
-                    <span className="font-semibold">{selectedOperator?.name}</span>
+                  <div className="flex justify-between text-body">
+                    <span className="text-soft">Opérateur</span>
+                    <span className="font-semibold text-ink">{selectedOperator?.name}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-[#757575]">Numéro</span>
-                    <span className="font-semibold">+228 {deposit.phoneNumber}</span>
+                  <div className="flex justify-between text-body">
+                    <span className="text-soft">Numéro</span>
+                    <span className="font-semibold text-ink">+228 {deposit.phoneNumber}</span>
                   </div>
                 </div>
               </div>
@@ -943,13 +971,13 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
           </div>
 
           {/* Actions */}
-          <div className="p-4 border-t border-[#E0E0E0] space-y-2">
+          <div className="p-4 border-t border-line space-y-2">
             {/* Step-specific actions */}
             {deposit.step === 'amount' && (
               <Button
                 onClick={handleNextStep}
                 disabled={deposit.amount <= 0}
-                className="w-full bg-[#FF9800] hover:bg-[#F57C00] h-12"
+                className={`w-full h-12 ${BTN_PRIMARY_CLASSES} font-bold`}
               >
                 Continuer
                 <ChevronRight className="w-4 h-4 ml-2" />
@@ -961,12 +989,12 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
                 <Button
                   onClick={handleNextStep}
                   disabled={!deposit.operatorId}
-                  className="w-full bg-[#FF9800] hover:bg-[#F57C00] h-12"
+                  className={`w-full h-12 ${BTN_PRIMARY_CLASSES} font-bold`}
                 >
                   Continuer
                   <ChevronRight className="w-4 h-4 ml-2" />
                 </Button>
-                <Button variant="outline" onClick={handlePrevStep} className="w-full">
+                <Button variant="outline" onClick={handlePrevStep} className="w-full h-11 rounded-btn">
                   Retour
                 </Button>
               </>
@@ -977,7 +1005,7 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
                 <Button
                   onClick={handleCreateTransaction}
                   disabled={isProcessing || deposit.phoneNumber.length < 8}
-                  className="w-full bg-[#FF9800] hover:bg-[#F57C00] h-12"
+                  className={`w-full h-12 ${BTN_PRIMARY_CLASSES} font-bold`}
                 >
                   {isProcessing ? (
                     <Loader2 className="w-5 h-5 animate-spin mr-2" />
@@ -988,14 +1016,14 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
                     </>
                   )}
                 </Button>
-                <Button variant="outline" onClick={handlePrevStep} className="w-full">
+                <Button variant="outline" onClick={handlePrevStep} className="w-full h-11 rounded-btn">
                   Retour
                 </Button>
               </>
             )}
 
             {deposit.step === 'paydunya' && (
-              <Button variant="outline" onClick={handlePrevStep} className="w-full">
+              <Button variant="outline" onClick={handlePrevStep} className="w-full h-11 rounded-btn">
                 Retour
               </Button>
             )}
@@ -1004,12 +1032,12 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
               <>
                 <Button
                   onClick={handleNextStep}
-                  className="w-full bg-[#FF9800] hover:bg-[#F57C00] h-12"
+                  className={`w-full h-12 ${BTN_PRIMARY_CLASSES} font-bold`}
                 >
                   J'ai payé
                   <CheckCircle className="w-4 h-4 ml-2" />
                 </Button>
-                <Button variant="outline" onClick={() => setDeposit(prev => ({ ...prev, step: 'phone' }))} className="w-full">
+                <Button variant="outline" onClick={() => setDeposit(prev => ({ ...prev, step: 'phone' }))} className="w-full h-11 rounded-btn">
                   Modifier le numéro
                 </Button>
               </>
@@ -1020,7 +1048,7 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
                 <Button
                   onClick={handleConfirmPayment}
                   disabled={isProcessing}
-                  className="w-full bg-green-600 hover:bg-green-700 h-12"
+                  className="w-full h-12 bg-success hover:bg-success/90 text-white rounded-btn font-bold"
                 >
                   {isProcessing ? (
                     <Loader2 className="w-5 h-5 animate-spin mr-2" />
@@ -1032,7 +1060,7 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
                 <Button 
                   variant="outline" 
                   onClick={() => setDeposit(prev => ({ ...prev, step: 'ussd' }))} 
-                  className="w-full"
+                  className="w-full h-11 rounded-btn"
                 >
                   Non, revenir au code USSD
                 </Button>
@@ -1045,10 +1073,10 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
       {/* History Modal */}
       <Dialog open={showHistory} onOpenChange={setShowHistory}>
         <DialogContent className="max-w-md max-h-[80vh] p-0 flex flex-col">
-          <div className="p-4 border-b border-[#E0E0E0] flex-shrink-0">
+          <div className="p-4 border-b border-line flex-shrink-0">
             <DialogHeader>
-              <DialogTitle className="text-xl font-bold text-[#212121] flex items-center gap-2">
-                <History className="w-5 h-5 text-[#FF9800]" />
+              <DialogTitle className="text-title text-ink flex items-center gap-2">
+                <History className="w-5 h-5 text-brand" />
                 Historique des transactions
               </DialogTitle>
             </DialogHeader>
@@ -1057,81 +1085,23 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
           <div className="flex-1 overflow-y-auto p-4">
             {!wallet?.transactions || wallet.transactions.length === 0 ? (
               <div className="text-center py-12">
-                <Clock className="w-12 h-12 text-[#BDBDBD] mx-auto mb-3" />
-                <p className="text-[#757575]">Aucune transaction</p>
+                <Clock className="w-12 h-12 text-soft mx-auto mb-3" />
+                <p className="text-body text-soft">Aucune transaction</p>
               </div>
             ) : (
               <div className="space-y-3">
-                {wallet.transactions.map((tx) => {
-                  const Icon = TRANSACTION_ICONS[tx.type] || CreditCard;
-                  return (
-                    <Card key={tx.id} className="shadow-sm border-0">
-                      <CardContent className="p-4">
-                        <div className="flex items-start gap-3">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                            tx.type === 'DEPOSIT' || tx.type === 'REFUND' || tx.type === 'BONUS'
-                              ? 'bg-green-100'
-                              : 'bg-red-100'
-                          }`}>
-                            <Icon className={`w-5 h-5 ${TRANSACTION_COLORS[tx.type]}`} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <p className="font-medium text-[#212121]">
-                                {TRANSACTION_LABELS[tx.type]}
-                              </p>
-                              <Badge variant="outline" className={`text-xs max-w-full ${STATUS_COLORS[tx.status]}`}>
-                                <span className="truncate">{txStatusLabel(tx)}</span>
-                              </Badge>
-                            </div>
-                            <p className="text-xs text-[#757575] mt-1">
-                              {formatFullDate(tx.createdAt)}
-                            </p>
-                            {tx.paymentMethod && (
-                              <p className="text-xs text-[#9E9E9E] mt-1">
-                                Via {tx.paymentMethod}
-                              </p>
-                            )}
-                            {tx.description && (
-                              <p className="text-xs text-[#757575] mt-1">
-                                {tx.description}
-                              </p>
-                            )}
-                            {tx.ussdConfirmedAt && (
-                              <p className="text-xs text-green-600 mt-1">
-                                ✓ Payé le {formatDate(tx.ussdConfirmedAt)}
-                              </p>
-                            )}
-                          </div>
-                          <div className="text-right flex-shrink-0">
-                            <p className={`font-bold text-lg ${
-                              tx.type === 'DEPOSIT' || tx.type === 'REFUND' || tx.type === 'BONUS'
-                                ? 'text-green-600'
-                                : 'text-red-600'
-                            }`}>
-                              {tx.type === 'DEPOSIT' || tx.type === 'REFUND' || tx.type === 'BONUS' ? '+' : '-'}
-                              {tx.amount.toLocaleString()} XOF
-                            </p>
-                            {tx.status === 'COMPLETED' && (
-                              <p className="text-xs text-[#9E9E9E]">
-                                Solde: {tx.balanceAfter.toLocaleString()} XOF
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
+                {wallet.transactions.map((tx) => (
+                  <TxRow key={tx.id} tx={tx} formatDate={formatDate} formatDateFull={formatFullDate} detailed />
+                ))}
               </div>
             )}
           </div>
 
-          <div className="p-4 border-t border-[#E0E0E0] flex-shrink-0">
+          <div className="p-4 border-t border-line flex-shrink-0">
             <Button
               variant="outline"
               onClick={() => setShowHistory(false)}
-              className="w-full"
+              className="w-full h-11 rounded-btn"
             >
               Fermer
             </Button>

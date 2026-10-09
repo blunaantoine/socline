@@ -19,11 +19,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  Crown, Check, Sparkles, Star, Zap, Gift, Clock,
-  Calendar, CreditCard, ChevronRight, Loader2, RefreshCw
+  Crown, Check, Zap, Gift, Clock,
+  CreditCard, ChevronRight, Loader2, RefreshCw, Droplets
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { parseJsonResponse } from '@/lib/json-helper';
+import { BTN_PRIMARY_CLASSES } from '@/lib/design-system';
 
 interface SubscriptionPlan {
   id: string;
@@ -70,6 +71,16 @@ interface UserSubscription {
 interface SubscriptionPanelProps {
   userId: string;
   walletBalance: number;
+}
+
+/**
+ * Teinte de plan (design system) : icône carrée arrondie sur fond doux.
+ * Essentiel = gris, intermédiaire = bleu, premium = violet (maquette).
+ */
+function planTintFor(priority: number) {
+  if (priority >= 3) return { bg: 'bg-plan-purple', icon: 'text-plan-purple-icon', Icon: Crown };
+  if (priority === 2) return { bg: 'bg-plan-blue', icon: 'text-plan-blue-icon', Icon: Droplets };
+  return { bg: 'bg-app', icon: 'text-soft', Icon: Zap };
 }
 
 export function SubscriptionPanel({ userId, walletBalance }: SubscriptionPanelProps) {
@@ -199,34 +210,6 @@ export function SubscriptionPanel({ userId, walletBalance }: SubscriptionPanelPr
     }
   };
 
-  // Get plan icon
-  const getPlanIcon = (priority: number) => {
-    switch (priority) {
-      case 3:
-        return <Crown className="w-5 h-5 text-yellow-500" />;
-      case 2:
-        return <Sparkles className="w-5 h-5 text-purple-500" />;
-      case 1:
-        return <Star className="w-5 h-5 text-blue-500" />;
-      default:
-        return <Zap className="w-5 h-5 text-gray-500" />;
-    }
-  };
-
-  // Get plan color
-  const getPlanColor = (priority: number) => {
-    switch (priority) {
-      case 3:
-        return 'from-yellow-400 to-orange-500';
-      case 2:
-        return 'from-purple-400 to-purple-600';
-      case 1:
-        return 'from-blue-400 to-blue-600';
-      default:
-        return 'from-gray-400 to-gray-600';
-    }
-  };
-
   // Calculate days remaining
   const getDaysRemaining = (endDate: string) => {
     const end = new Date(endDate);
@@ -244,89 +227,104 @@ export function SubscriptionPanel({ userId, walletBalance }: SubscriptionPanelPr
     });
   };
 
+  // Icône du plan (liste, carte active, modale)
+  const renderPlanIcon = (priority: number, size = 'w-[52px] h-[52px] rounded-[17px]', iconSize = 'w-[26px] h-[26px]') => {
+    const tint = planTintFor(priority);
+    return (
+      <div className={`${size} ${tint.bg} grid place-items-center flex-shrink-0`}>
+        <tint.Icon className={`${iconSize} ${tint.icon}`} strokeWidth={2} />
+      </div>
+    );
+  };
+
   if (isLoading) {
     return (
-      <div className="flex justify-center py-8">
-        <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+      <div className="space-y-3 p-4">
+        <div className="h-7 w-44 rounded bg-line animate-pulse" />
+        <div className="h-[96px] rounded-card bg-surface border border-line animate-pulse" />
+        <div className="h-[96px] rounded-card bg-surface border border-line animate-pulse" />
+        <div className="h-[96px] rounded-card bg-surface border border-line animate-pulse" />
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="font-semibold text-lg text-[#212121]">Abonnements</h2>
-        <button onClick={fetchData} disabled={isLoading} className="text-[#FF9800]">
-          <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+      {/* Header : actualisation à droite (le titre « Abonnements » est dans l'en-tête global) */}
+      <div className="flex items-center justify-end">
+        <button
+          onClick={fetchData}
+          disabled={isLoading}
+          aria-label="Actualiser les abonnements"
+          className="w-9 h-9 rounded-btn bg-surface border border-line grid place-items-center active:scale-95 transition-transform disabled:opacity-60"
+        >
+          <RefreshCw className={`w-[18px] h-[18px] text-brand ${isLoading ? 'animate-spin' : ''}`} />
         </button>
       </div>
+      <p className="text-body text-soft">Lavez plus, payez moins.</p>
 
-      {/* Active Subscription */}
+      {/* Abonnement actif */}
       {activeSubscription && (
-        <Card className="border-0 shadow-sm overflow-hidden">
-          <div className={`h-2 bg-gradient-to-r ${getPlanColor(activeSubscription.plan.priority)}`} />
+        <Card className={`border border-line shadow-card rounded-card overflow-hidden`}>
           <CardContent className="p-4">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <div className={`w-12 h-12 rounded-full bg-gradient-to-r ${getPlanColor(activeSubscription.plan.priority)} flex items-center justify-center text-white`}>
-                  {getPlanIcon(activeSubscription.plan.priority)}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-[#212121]">{activeSubscription.plan.displayName}</h3>
-                    <Badge className="bg-green-100 text-green-800">Actif</Badge>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                {renderPlanIcon(activeSubscription.plan.priority)}
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-body font-bold text-ink">{activeSubscription.plan.displayName}</h3>
+                    <span className="text-micro bg-success/10 text-success border border-success/20 rounded-pill px-2 py-0.5">Actif</span>
                   </div>
-                  <p className="text-xs text-[#757575] mt-1">
+                  <p className="text-detail text-soft mt-0.5">
                     Expire le {formatDate(activeSubscription.endDate)}
                   </p>
                 </div>
               </div>
-              <div className="text-right">
-                <div className="text-2xl font-bold text-[#FF9800]">
+              <div className="text-right flex-shrink-0">
+                <div className="text-title font-extrabold text-brand">
                   {activeSubscription.remainingWashes}
                 </div>
-                <div className="text-xs text-[#757575]">lavages restants</div>
+                <div className="text-micro text-soft">lavages restants</div>
               </div>
             </div>
 
-            {/* Progress bar */}
+            {/* Progression */}
             <div className="mt-4">
-              <div className="flex justify-between text-xs text-[#757575] mb-1">
+              <div className="flex justify-between text-micro text-soft mb-1">
                 <span>{activeSubscription.usedWashes} utilisés</span>
                 <span>{activeSubscription.totalWashes} total</span>
               </div>
-              <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div className="h-2 bg-app rounded-full overflow-hidden">
                 <div 
-                  className={`h-full bg-gradient-to-r ${getPlanColor(activeSubscription.plan.priority)} transition-all`}
+                  className="h-full bg-brand rounded-full transition-all"
                   style={{ width: `${(activeSubscription.usedWashes / activeSubscription.totalWashes) * 100}%` }}
                 />
               </div>
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-[#F5F5F5]">
+            <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-line">
               <div className="text-center">
-                <div className="flex items-center justify-center gap-1 text-[#FF9800]">
+                <div className="flex items-center justify-center gap-1 text-brand">
                   <Clock className="w-4 h-4" />
-                  <span className="font-bold">{getDaysRemaining(activeSubscription.endDate)}</span>
+                  <span className="font-bold text-body">{getDaysRemaining(activeSubscription.endDate)}</span>
                 </div>
-                <div className="text-xs text-[#757575]">jours restants</div>
+                <div className="text-micro text-soft">jours restants</div>
               </div>
               {activeSubscription.freeOptionsTotal > 0 && (
                 <div className="text-center">
-                  <div className="flex items-center justify-center gap-1 text-purple-500">
+                  <div className="flex items-center justify-center gap-1 text-plan-purple-icon">
                     <Gift className="w-4 h-4" />
-                    <span className="font-bold">
+                    <span className="font-bold text-body">
                       {activeSubscription.freeOptionsTotal - activeSubscription.freeOptionsUsed}
                     </span>
                   </div>
-                  <div className="text-xs text-[#757575]">options gratuites</div>
+                  <div className="text-micro text-soft">options gratuites</div>
                 </div>
               )}
               {activeSubscription.bonusWashEarned && (
                 <div className="text-center">
-                  <Badge className="bg-yellow-100 text-yellow-800">
+                  <Badge className="bg-star-soft text-star border-0">
                     <Gift className="w-3 h-3 mr-1" />
                     Bonus gagné !
                   </Badge>
@@ -337,87 +335,75 @@ export function SubscriptionPanel({ userId, walletBalance }: SubscriptionPanelPr
         </Card>
       )}
 
-      {/* Available Plans */}
+      {/* Formules disponibles */}
       {!activeSubscription && (
-        <>
-          <p className="text-sm text-[#757575]">
-            Choisissez un abonnement pour profiter de lavages à prix réduit !
-          </p>
-
-          <div className="space-y-3">
-            {plans.map((plan) => (
+        <div className="space-y-3">
+          {plans.map((plan, index) => {
+            const isPopular = plans.length >= 2 && index === 1;
+            return (
               <Card 
                 key={plan.id} 
-                className={`border-0 shadow-sm overflow-hidden cursor-pointer transition-all hover:shadow-md`}
+                className={`relative rounded-card shadow-card cursor-pointer transition-all ${
+                  isPopular ? 'border-[1.5px] border-brand' : 'border border-line'
+                }`}
                 onClick={() => {
                   setSelectedPlan(plan);
                   setShowSubscribeModal(true);
                 }}
               >
-                <div className={`h-1 bg-gradient-to-r ${getPlanColor(plan.priority)}`} />
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-full bg-gradient-to-r ${getPlanColor(plan.priority)} flex items-center justify-center text-white`}>
-                        {getPlanIcon(plan.priority)}
+                {isPopular && (
+                  <span className="absolute -top-2.5 right-4 bg-brand text-white text-micro font-bold rounded-pill px-2.5 py-0.5">
+                    Populaire
+                  </span>
+                )}
+                <CardContent className="p-3.5 flex items-center gap-3.5">
+                  {renderPlanIcon(plan.priority)}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-body font-bold text-ink">{plan.displayName}</h3>
+                    <p className="text-detail text-soft">{plan.washCount} lavages / mois</p>
+                    {plan.features[0] && (
+                      <div className="flex items-center gap-1.5 text-detail mt-1.5 text-soft">
+                        <Check className="w-[15px] h-[15px] text-success flex-shrink-0" strokeWidth={2.4} />
+                        <span className="truncate">{plan.features[0]}</span>
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-[#212121]">{plan.displayName}</h3>
-                        <p className="text-xs text-[#757575]">{plan.washCount} lavages/mois</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-bold text-lg text-[#FF9800]">
-                        {plan.price.toLocaleString()} XOF
-                      </div>
-                      <div className="text-xs text-[#757575]">/mois</div>
-                    </div>
-                  </div>
-
-                  {/* Features preview */}
-                  <div className="mt-3 flex flex-wrap gap-1">
-                    {plan.features.slice(0, 2).map((feature, i) => (
-                      <Badge key={i} variant="outline" className="text-xs">
-                        {feature}
-                      </Badge>
-                    ))}
-                    {plan.features.length > 2 && (
-                      <Badge variant="outline" className="text-xs">
-                        +{plan.features.length - 2}
-                      </Badge>
                     )}
                   </div>
-
-                  <div className="flex justify-end mt-2">
-                    <ChevronRight className="w-5 h-5 text-[#9E9E9E]" />
+                  <div className="text-right flex-shrink-0">
+                    <div className="text-body font-extrabold text-ink">
+                      {plan.price.toLocaleString('fr-FR')} F
+                    </div>
+                    <div className="text-micro text-soft">/mois</div>
                   </div>
+                  <ChevronRight className="w-[18px] h-[18px] text-soft/60 flex-shrink-0" />
                 </CardContent>
               </Card>
-            ))}
-          </div>
-        </>
+            );
+          })}
+        </div>
       )}
 
-      {/* Subscription History */}
+      {/* Historique des abonnements */}
       {userSubscriptions.length > 1 && (
-        <Card className="border-0 shadow-sm">
+        <Card className="border border-line shadow-card rounded-card">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Historique des abonnements</CardTitle>
+            <CardTitle className="text-section text-ink">Historique des abonnements</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="divide-y divide-[#F5F5F5]">
+            <div className="divide-y divide-line">
               {userSubscriptions.filter(s => s.id !== activeSubscription?.id).slice(0, 3).map((sub) => (
                 <div key={sub.id} className="flex items-center justify-between p-3">
-                  <div className="flex items-center gap-2">
-                    {getPlanIcon(sub.plan.priority)}
-                    <div>
-                      <p className="text-sm font-medium">{sub.plan.name}</p>
-                      <p className="text-xs text-[#757575]">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    {renderPlanIcon(sub.plan.priority, 'w-9 h-9 rounded-[11px]', 'w-[18px] h-[18px]')}
+                    <div className="min-w-0">
+                      <p className="text-body font-semibold text-ink">{sub.plan.name}</p>
+                      <p className="text-detail text-soft">
                         {formatDate(sub.startDate)} - {formatDate(sub.endDate)}
                       </p>
                     </div>
                   </div>
-                  <Badge className={sub.isExpired ? 'bg-gray-100 text-gray-800' : 'bg-green-100 text-green-800'}>
+                  <Badge className={sub.isExpired
+                    ? 'bg-app text-soft border border-line rounded-pill'
+                    : 'bg-success/10 text-success border border-success/20 rounded-pill'}>
                     {sub.isExpired ? 'Expiré' : 'Actif'}
                   </Badge>
                 </div>
@@ -427,16 +413,14 @@ export function SubscriptionPanel({ userId, walletBalance }: SubscriptionPanelPr
         </Card>
       )}
 
-      {/* Subscribe Modal */}
+      {/* Modale de souscription */}
       <Dialog open={showSubscribeModal} onOpenChange={setShowSubscribeModal}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2.5">
               {selectedPlan && (
                 <>
-                  <div className={`w-8 h-8 rounded-full bg-gradient-to-r ${getPlanColor(selectedPlan.priority)} flex items-center justify-center text-white`}>
-                    {getPlanIcon(selectedPlan.priority)}
-                  </div>
+                  {renderPlanIcon(selectedPlan.priority, 'w-8 h-8 rounded-[9px]', 'w-[17px] h-[17px]')}
                   {selectedPlan.displayName}
                 </>
               )}
@@ -444,29 +428,29 @@ export function SubscriptionPanel({ userId, walletBalance }: SubscriptionPanelPr
           </DialogHeader>
 
           {selectedPlan && (
-            <div className="space-y-4 py-4">
-              <p className="text-sm text-[#757575]">{selectedPlan.description}</p>
+            <div className="space-y-4 py-1">
+              <p className="text-body text-soft">{selectedPlan.description}</p>
 
-              {/* Duration Selection */}
+              {/* Durée */}
               <div className="space-y-2">
-                <label className="text-sm font-medium">Durée</label>
+                <label className="text-body font-bold text-ink">Durée</label>
                 <Select value={selectedDuration} onValueChange={(v: any) => setSelectedDuration(v)}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-12 rounded-btn border-line">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="MONTHLY">
                       <div className="flex justify-between w-full">
                         <span>1 mois</span>
-                        <span className="ml-4 font-medium">{selectedPlan.price.toLocaleString()} XOF</span>
+                        <span className="ml-4 font-semibold">{selectedPlan.price.toLocaleString('fr-FR')} F</span>
                       </div>
                     </SelectItem>
                     <SelectItem value="QUARTERLY">
                       <div className="flex justify-between w-full">
                         <span>3 mois</span>
                         <div className="ml-4 flex items-center gap-2">
-                          <Badge className="bg-green-100 text-green-800 text-xs">-{getDiscount(selectedPlan, 'QUARTERLY')}%</Badge>
-                          <span className="font-medium">{getPrice(selectedPlan, 'QUARTERLY').toLocaleString()} XOF</span>
+                          <Badge className="bg-success/10 text-success border border-success/20 text-micro">-{getDiscount(selectedPlan, 'QUARTERLY')}%</Badge>
+                          <span className="font-semibold">{getPrice(selectedPlan, 'QUARTERLY').toLocaleString('fr-FR')} F</span>
                         </div>
                       </div>
                     </SelectItem>
@@ -474,8 +458,8 @@ export function SubscriptionPanel({ userId, walletBalance }: SubscriptionPanelPr
                       <div className="flex justify-between w-full">
                         <span>1 an</span>
                         <div className="ml-4 flex items-center gap-2">
-                          <Badge className="bg-green-100 text-green-800 text-xs">-{getDiscount(selectedPlan, 'YEARLY')}%</Badge>
-                          <span className="font-medium">{getPrice(selectedPlan, 'YEARLY').toLocaleString()} XOF</span>
+                          <Badge className="bg-success/10 text-success border border-success/20 text-micro">-{getDiscount(selectedPlan, 'YEARLY')}%</Badge>
+                          <span className="font-semibold">{getPrice(selectedPlan, 'YEARLY').toLocaleString('fr-FR')} F</span>
                         </div>
                       </div>
                     </SelectItem>
@@ -483,49 +467,49 @@ export function SubscriptionPanel({ userId, walletBalance }: SubscriptionPanelPr
                 </Select>
               </div>
 
-              {/* Summary */}
-              <div className="bg-[#FFF3E0] rounded-lg p-4 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-[#757575]">Lavages inclus</span>
-                  <span className="font-medium">{getTotalWashes(selectedPlan, selectedDuration)}</span>
+              {/* Résumé */}
+              <div className="bg-brand-soft rounded-btn p-4 space-y-2">
+                <div className="flex justify-between text-body">
+                  <span className="text-soft">Lavages inclus</span>
+                  <span className="font-semibold text-ink">{getTotalWashes(selectedPlan, selectedDuration)}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-[#757575]">Durée</span>
-                  <span className="font-medium">{getDurationLabel(selectedDuration)}</span>
+                <div className="flex justify-between text-body">
+                  <span className="text-soft">Durée</span>
+                  <span className="font-semibold text-ink">{getDurationLabel(selectedDuration)}</span>
                 </div>
-                <div className="flex justify-between text-sm font-bold pt-2 border-t border-[#FFE0B2]">
-                  <span>Total</span>
-                  <span className="text-[#FF9800]">{getPrice(selectedPlan, selectedDuration).toLocaleString()} XOF</span>
+                <div className="flex justify-between text-body font-bold pt-2 border-t border-brand/20">
+                  <span className="text-ink">Total</span>
+                  <span className="text-brand">{getPrice(selectedPlan, selectedDuration).toLocaleString('fr-FR')} F</span>
                 </div>
               </div>
 
-              {/* Wallet balance */}
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-[#757575]">Votre solde</span>
-                <span className={`font-medium ${walletBalance >= getPrice(selectedPlan, selectedDuration) ? 'text-green-600' : 'text-red-500'}`}>
-                  {walletBalance.toLocaleString()} XOF
+              {/* Solde */}
+              <div className="flex items-center justify-between text-body">
+                <span className="text-soft">Votre solde</span>
+                <span className={`font-semibold ${walletBalance >= getPrice(selectedPlan, selectedDuration) ? 'text-success' : 'text-danger'}`}>
+                  {walletBalance.toLocaleString('fr-FR')} F
                 </span>
               </div>
 
-              {/* Features */}
+              {/* Avantages */}
               <div className="space-y-2">
-                <label className="text-sm font-medium">Avantages inclus</label>
-                <div className="space-y-1">
+                <label className="text-body font-bold text-ink">Avantages inclus</label>
+                <div className="space-y-1.5">
                   {selectedPlan.features.map((feature, i) => (
-                    <div key={i} className="flex items-center gap-2 text-sm">
-                      <Check className="w-4 h-4 text-green-500" />
+                    <div key={i} className="flex items-center gap-2 text-body text-ink">
+                      <Check className="w-4 h-4 text-success flex-shrink-0" strokeWidth={2.4} />
                       <span>{feature}</span>
                     </div>
                   ))}
                   {selectedPlan.includesExpress && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <Zap className="w-4 h-4 text-yellow-500" />
+                    <div className="flex items-center gap-2 text-body text-ink">
+                      <Zap className="w-4 h-4 text-star flex-shrink-0" />
                       <span>Service express inclus</span>
                     </div>
                   )}
                   {selectedPlan.includesVip && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <Crown className="w-4 h-4 text-yellow-500" />
+                    <div className="flex items-center gap-2 text-body text-ink">
+                      <Crown className="w-4 h-4 text-star flex-shrink-0" />
                       <span>Accès VIP</span>
                     </div>
                   )}
@@ -535,11 +519,11 @@ export function SubscriptionPanel({ userId, walletBalance }: SubscriptionPanelPr
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowSubscribeModal(false)} disabled={isSubscribing}>
+            <Button variant="outline" onClick={() => setShowSubscribeModal(false)} disabled={isSubscribing} className="h-11 rounded-btn">
               Annuler
             </Button>
             <Button 
-              className="bg-[#FF9800] hover:bg-[#F57C00]"
+              className={`h-11 ${BTN_PRIMARY_CLASSES} font-bold`}
               onClick={handleSubscribe}
               disabled={isSubscribing || !selectedPlan || (selectedPlan && walletBalance < getPrice(selectedPlan, selectedDuration))}
             >
