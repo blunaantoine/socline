@@ -1251,3 +1251,25 @@ Stage Summary:
 - Chaque formule de lavage et chaque abonnement affiche désormais sa PROPRE scène illustrée (mousse, laveur au jet, brillance, intérieur, detailing, citadine, berline, SUV, prestige) — plus aucune répétition de la même voiture, dans un style d'illustration unique aux couleurs de la marque.
 - Le choix d'image est sémantique (couverture du service / priorité du plan) : il reste juste si l'admin ajoute de nouveaux services ou formules, et laveur-hydro.png est prêt pour le prochain service Extérieur.
 - NOTE VPS : Tasks 39→49 en attente de livraison via `cd /opt/socline && sudo bash deploy/deploy.sh --update`.
+
+---
+Task ID: 50 (session 39 — laveurs africains dans les visuels)
+Agent: main (Z.ai Code)
+Task: « change les images avec un laveur blanc par ceux de laveur noire » — les personnes illustrées/photo de l'app doivent ressembler aux laveurs togolais.
+
+Work Log:
+- 3 ILLUSTRATIONS régénérées (mêmes scènes, même style marque, même taille de fichier conservée) :
+  * services/laveur-hydro.png — laveur africain souriant en tenue + casquette orange, jet haute pression sur berline grise ;
+  * services/detailing.png — laveur africain en salopette orange + gants orange, lustrage du capot blanc ;
+  * plans/premium.png — laveur africain en combinaison orange au jet sur le SUV blanc.
+- 2 PHOTOS DU CARROUSEL ACCUEIL régénérées (style photoréaliste assorti aux 3 photos conservées) :
+  * carousel/lavage-1.png — laveur africain en combinaison orange, mousse + pistolet à pression (remplace le laveur asiatique) ;
+  * carousel/lavage-3.png — gros plan mains gantées orange essuyant un siège (peau noire ; remplace les avant-bras clairs).
+  * lavage-2 (mousse), lavage-4 (déjà laveur africain) et lavage-5 (voiture seule) conservés.
+- Aucun code modifié (mêmes chemins de fichiers) — changement d'assets uniquement.
+- TESTS : captures 390px accueil — carte Premium avec laveur africain ✓, carrousel diapo 1 avec le nouveau visuel ✓ ; aucune erreur console/dev.log ; lint 0/0.
+- Commit 🧑🏾‍🔧 sur main + worklog en commit séparé.
+
+Stage Summary:
+- Toutes les personnes visibles dans les visuels de l'app (illustrations de formules/abonnements + carrousel photo de l'accueil) sont désormais des laveurs africains en tenue orange Socline — représentation fidèle au terrain (Lomé, Togo).
+- NOTE VPS : Tasks 39→50 en attente de livraison via `cd /opt/socline && sudo bash deploy/deploy.sh --update`.
