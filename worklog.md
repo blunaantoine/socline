@@ -1291,3 +1291,40 @@ Work Log:
 Stage Summary:
 - La production https://socline.oquitogo.com sert désormais TOUTES les évolutions des Tasks 39 à 50 : design system + refontes (Accueil, Réserver, Portefeuille, Profil, Abonnements), différence Complet/Extérieur, appel + chat temps réel, redirection WhatsApp, vraies images de voiture variées (mousse, laveur, brillance, intérieur, detailing — laveurs africains) et corrections de débordements.
 - Reste (non bloquant) : checklist PayDunya prod — vérifier l'IPN joignable en HTTPS et passer le compte en Mode Live pour les paiements réels ; harmonisation « X XOF » → « X F » côté laveur (refonte écrans laveur à venir) ; « 0,0 » rating → « — ».
+
+---
+Task ID: 52 (session 41 — indexation SEO du site)
+Agent: main (Z.ai Code)
+Task: « on va proceder a l indexation » — préparer le site pour Google Search Console (sitemap, robots, metadata canonique).
+
+Work Log:
+- src/lib/site.ts (nouveau) : SITE_URL (env NEXT_PUBLIC_SITE_URL sinon https://socline.oquitogo.com), SITE_NAME, SITE_DESCRIPTION, SITE_OG_IMAGE — une seule source pour tout le SEO ; bascule future vers socline.tg = une variable d'env, zéro code.
+- src/app/sitemap.ts (nouveau) : sitemap mono-URL (SPA) avec lastmod/changefreq daily/priority 1 → /sitemap.xml (404 avant).
+- src/app/robots.ts (nouveau) : Allow / + Disallow /api/ + directive Sitemap → remplace public/robots.txt statique (supprimé, qui n'avait ni Sitemap ni Disallow /api/).
+- layout.tsx : metadataBase ajoutée (fini le warning Next), alternates.canonical = / , OG url corrigée (socline.tg → domaine réel), og:locale fr_TG, image de partage 1344×768 (carousel/lavage-1.png, laveur africain) pour OG + Twitter card, keywords élargis (lavage voiture Lomé, lavage à domicile…).
+- Vérifié en dev : /robots.txt et /sitemap.xml servis avec les bonnes URLs absolues ; canonical + og:image + og:locale présents dans le HTML. Lint 0/0.
+- Commit 🌐 sur main (b11a7e0) et poussé. EN ATTENTE DE DEPLOY VPS pour être visible en prod.
+
+Stage Summary:
+- Le site est techniquement indexable : sitemap.xml + robots.txt (avec Sitemap) + canonical + Open Graph fr_TG avec image de partage. Reste côté utilisateur : déployer sur le VPS, puis déclarer le domaine dans Google Search Console et soumettre le sitemap (guide fourni dans la conversation).
+
+---
+Task ID: 53 (session 41 — APK Android Capacitor complète)
+Agent: main (Z.ai Code)
+Task: « on va continue la version apk quon fesait jai deja instaler android studio » — livrer un projet Android prêt à compiler.
+
+Work Log:
+- État initial : android/ n'était qu'un squelette partiel (12 fichiers vestiges Cordova, AUCUN gradle/gradlew/MainActivity) — projet incapable de s'ouvrir dans Android Studio.
+- Assets natifs générés avec sharp depuis l'identité existante : assets/icon.png (monogramme SC fond noir, 1024²) et assets/splash.png (2732², SC centré sur fond orange #FF9800).
+- android/ et ios/ vestiges supprimés (git rm), PUIS npx cap add android → projet complet régénéré (gradlew, settings.gradle, variables SDK 36/min 24, MainActivity, applicationId com.socline.app, versionCode 1 / versionName 1.0, permission INTERNET).
+- npx @capacitor/assets generate --android → 87 ressources (26 mipmap launcher + splash land/port toutes densités), icône launcher = SC sur fond noir vérifiée visuellement.
+- ARCHITECTURE RETENUE : shell natif qui charge https://socline.oquitogo.com (server.url) au lieu de l'export statique (incompatible avec les ~60 API routes et les fetch relatifs/socket → app morte). Avantages : app toujours à jour sans rebuild APK, WebSocket/Maps/paiements fonctionnels d'emblée, même origine que le site.
+- capacitor.config.ts réécrit : webDir app-shell, server.url prod (variante dev 10.0.2.2:3000 documentée), allowMixedContent retiré, splash/status bar/push conservés.
+- app-shell/index.html (nouveau) : écran de secours de marque (logo SC, fond orange) qui redirige vers la plateforme.
+- MOBILE.md réécrit : architecture, étapes Android Studio (sync → open → Build APK), installation téléphone, dev local, régénération icônes, checklist Play Store, roadmap (offline, FCM, deep linking, iOS).
+- npx cap sync android OK (app-shell embarqué) ; android/.gitignore Capacitor actif (build/, local.properties, assets copiés…). 76 fichiers Android versionnés.
+- Commit 📱 (8ad0806), merge main, push (main + feature/apk-android). Non compilable dans le sandbox (pas de SDK Android) — build à faire par l'utilisateur dans Android Studio (guide fourni).
+
+Stage Summary:
+- Projet Android complet et ouvertible dans Android Studio : l'utilisateur peut générer l'APK debug immédiatement (Build > Build APK(s) → app-debug.apk installable).
+- Site préparé pour l'indexation (Task 52) — les 2 tasks attendent le deploy VPS commun : cd /opt/socline && sudo bash deploy/deploy.sh --update (apportera sitemap.xml + robots.txt + canonical en prod).
