@@ -1126,3 +1126,35 @@ Stage Summary:
 - La différence Complet / Extérieur est maintenant explicite à 3 niveaux : bandeau pédagogique permanent, badge sur chaque formule, détail inclus/non inclus dans la modale. Essentiel = extérieur seul (carrosserie), les 3 autres = complet avec intérieur de profondeur croissante.
 - Aucune logique métier modifiée (API = exposition lecture seule de champs existants), aucune fonctionnalité retirée, identité orange #FF9800 préservée.
 - Reste à refondre (ordre du prompt) : Suivi du lavage (OrderTracking — harmoniser « 2,500 XOF » → « 2 500 F »), Détail laveur/station (modales), Connexion/Inscription (AuthScreen), puis harmonisation finale et écrans laveur/admin.
+
+---
+Task ID: 46 (session 35 — appel + messagerie + carte du suivi client réparés, synchro temps réel validée)
+Agent: main (Z.ai Code)
+Task: Signalement utilisateur « le système d'appel et de messagerie pendant une commande ne fonctionne pas chez le client, la carte se superpose, vérifie et corrige, veille à ce que ça se synchronise bien entre les deux ». Règles intactes : zéro logique métier changée (branchement d'UI sur les API existantes uniquement), identité visuelle inchangée.
+
+Work Log:
+- DIAGNOSTIC 1 (appel + messagerie) : dans OrderTracking.tsx, les boutons Appeler et Message du laveur étaient des BOUTONS MORTS (aucun onClick) — côté laveur tout existait déjà (WasherApp → fetchConversation + ChatView).
+- DIAGNOSTIC 2 (temps réel) : le chat-service rejetait CHAQUE handshake (« unauthorized ») car JWT_SECRET = '' (le .env — sandbox ET possiblement VPS si ancien — ne contient pas la clé) alors que l'app web signe ses tokens avec un fallback par défaut. Symétriquement INTERNAL_SOCKET_SECRET vide → émissions serveur→service 403. Conséquence : messagerie HS, suivi et position laveur sans push (seul le poll 15 s survivait).
+- CORRECTIFS :
+  * OrderTracking : Appeler → window.open('tel:'+phone,'_self') ; Message → GET /api/conversations?orderId= (crée la conversation si absente — les DEUX côtés tombent sur la même) puis ChatView plein écran dans un overlay z-[1100] (au-dessus des panneaux z-900 et des couches Leaflet) ; root passe en relative.
+  * mini-services/chat-service/index.ts : fallbacks JWT_SECRET + INTERNAL_SOCKET_SECRET identiques à l'app web.
+  * src/lib/realtime.ts : même fallback INTERNAL_SOCKET_SECRET (+ garde-fou rooms/event conservé).
+  * deploy/deploy.sh : si le .env existant manque de JWT_SECRET / INTERNAL_SOCKET_SECRET → clés aléatoires AJOUTÉES au prochain déploiement (bash -n OK, existant jamais modifié).
+  * Carte : les 3 panneaux (attente position / distance / ETA) qui se chevauchaient (bottom-4 vs bottom-20 absolus indépendants) sont regroupés dans UN conteneur flex-col gap-2 pointer-events-none — chevauchement structurellement impossible.
+  * Montants : « 2,500 XOF » résiduel du suivi → formatPrice() (« 2 500 F ») — dette notée depuis la Task 43 réglée.
+- OUTIL DE TEST (hors repo, /home/z/dev-proxy) : proxy Bun :3010 reproduisant le routage nginx de prod (app 3000 + XTransformPort + upgrade websocket) — indispensable car le sandbox n'a aucune origine avec app+WS simultanés. Pièges corrigés au passage : Bun fetch décompresse (supprimer content-encoding/length en sortie) et corps de requête à bufferiser.
+- TESTS E2E RÉELS (2 sessions navigateur sur :3010, commande WG50420389) :
+  * Client crée une commande CASH « 2 500 F » → suivi affiché.
+  * Laveur accepte → statut « Acceptée » reçu côté client EN TEMPS RÉEL (socket).
+  * Client : boutons Appeler/Message actifs ; discussion « En ligne » ; message envoyé affiché immédiatement (écho socket) ; laveur le reçoit dans SA copie du chat ; il répond ; le client reçoit la réponse EN TEMPS RÉEL sans recharger (4 bulles).
+  * Appeler : window.open('tel:90234567','_self') vérifié par espion (pas de navigation en test).
+  * Carte : laveur « Démarrer le trajet » → EN_ROUTE temps réel côté client ; POST /api/orders/{id}/location (session laveur) → « Le laveur est à 580 m de vous / Mise à jour à 13:10 » + « Arrivée estimée ~1 min » reçus en push ; bounding boxes mesurées : chevauchement=false, 8 px d'écart ; capture 390 px OK (2 marqueurs, stepper vert/orange).
+  * Nettoyage : commande de test annulée (API 403 en EN_ROUTE = règle métier respectée ; statut corrigé en base CANCELLED + conversation clôturée).
+  * Lint : 0 erreur / 0 warning. Aucune erreur runtime nouvelle.
+- Branche fix/appel-messagerie-carte-sync, commit 🔧 puis worklog en commit séparé, merge main, push.
+
+Stage Summary:
+- Le client peut enfin APPELER (tel:) et DISCUTER (chat temps réel partagé) avec son laveur pendant une commande ; la carte n'a plus de panneaux superposés ; la synchro client↔laveur est prouvée dans les 2 sens (statut, messages, position GPS).
+- CAUSE RACINE du temps réel mort : secrets socket vides côté service → fallbacks alignés des deux côtés + auto-réparation des vieux .env au prochain deploy.sh. NOTE VPS : `cd /opt/socline && sudo bash deploy/deploy.sh --update` livrera Tasks 39→46 et réparera le temps réel en production.
+- Dettes observées non bloquantes : côté laveur « Vos gains 1,500 XOF » (format à harmoniser) et « Aucun véhicule enregistré » alors que la commande a une voiture (affichage véhicule laveur à vérifier) ; « 0,0 » rating affiché au lieu de « — » quand rating=0.
+- Reste à refondre (ordre du prompt) : Suivi (visuel, si souhaité au-dessus de ces correctifs), Détail laveur/station, Connexion/Inscription, puis harmonisation finale et écrans laveur/admin.
