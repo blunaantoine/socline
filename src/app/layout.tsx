@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { ApiAuthProvider } from "@/components/ApiAuthProvider";
 import { RealtimeNotifications } from "@/components/RealtimeNotifications";
+import { SITE_URL, SITE_NAME, SITE_DESCRIPTION, SITE_OG_IMAGE } from "@/lib/site";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,10 +28,16 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  // Base canonique : toutes les URLs de partage (OG/Twitter) en découlent.
+  metadataBase: new URL(SITE_URL),
   title: "Socline - Votre lavage auto, livré à votre porte",
-  description: "Réservez un lavage professionnel en quelques clics. Nos laveurs certifiés viennent à vous, où que vous soyez.",
-  keywords: ["Socline", "lavage auto", "car wash", "Togo", "Lome", "mobile car wash"],
+  description: SITE_DESCRIPTION,
+  keywords: ["Socline", "lavage auto", "car wash", "Togo", "Lome", "lavage voiture Lomé", "mobile car wash", "lavage à domicile"],
   authors: [{ name: "Socline Team" }],
+  // URL canonique : protège contre le contenu dupliqué (www / non-www / http…).
+  alternates: {
+    canonical: "/",
+  },
   icons: {
     icon: [
       { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
@@ -53,15 +60,25 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "Socline - Lavage Auto Mobile",
-    description: "Votre lavage auto, livré à votre porte",
-    url: "https://socline.tg",
-    siteName: "Socline",
+    description: SITE_DESCRIPTION,
+    url: SITE_URL,
+    siteName: SITE_NAME,
+    locale: "fr_TG",
     type: "website",
+    images: [
+      {
+        url: SITE_OG_IMAGE,
+        width: 1344,
+        height: 768,
+        alt: "Laveur Socline en train de laver une voiture avec mousse à Lomé",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Socline - Lavage Auto Mobile",
-    description: "Votre lavage auto, livré à votre porte",
+    description: SITE_DESCRIPTION,
+    images: [SITE_OG_IMAGE],
   },
 };
 
