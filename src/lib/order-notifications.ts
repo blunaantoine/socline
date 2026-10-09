@@ -20,6 +20,9 @@ export interface OrderForNotification {
   // Rendez-vous planifié (« Plus tard ») : change le message d'acceptation
   // en confirmation ferme de rendez-vous (option C).
   scheduledAt?: string | Date | null;
+  // Commande payée via une séance d'abonnement (total à 0, séance décomptée
+  // à la complétion) — adapte les messages client et laveur.
+  isSubscriptionOrder?: boolean;
   service?: { name?: string } | null;
   client?: { id: string } | null;
   washer?: { userId?: string | null; user?: { id: string; name?: string } | null } | null;
@@ -38,6 +41,9 @@ interface NotifyOptions {
   paymentMethod?: 'CASH' | 'WALLET' | null;
   // Commission due to the platform on cash collections (same moment).
   commissionAmount?: number;
+  // The order consumes a subscription session (total 0 — washer is credited
+  // his partner share of the service price).
+  isSubscriptionOrder?: boolean;
 }
 
 const CLIENT_STATUS_NOTIFS: Record<
@@ -72,7 +78,10 @@ const CLIENT_STATUS_NOTIFS: Record<
   },
   COMPLETED: {
     title: 'Lavage terminé ✅',
-    message: (o) => `« ${o.service?.name || 'Votre lavage'} » est terminé. Merci de votre confiance !`,
+    message: (o) =>
+      o.isSubscriptionOrder
+        ? `« ${o.service?.name || 'Votre lavage'} » est terminé — 1 séance décomptée de votre abonnement. Merci de votre confiance !`
+        : `« ${o.service?.name || 'Votre lavage'} » est terminé. Merci de votre confiance !`,
   },
   CANCELLED: {
     title: 'Commande annulée ❌',
@@ -126,7 +135,18 @@ export async function notifyOrderStatusChange(
       if (order.status === 'ACCEPTED') {
         const method = (order as { payment?: { method?: string; amount?: number } | null }).payment?.method;
         const amount = (order as { payment?: { method?: string; amount?: number } | null }).payment?.amount;
-        if (method === 'CASH') {
+        // Séance abonnement : la prestation est déjà réglée via l'abonnement
+        // du client — le laveur n'a RIEN à encaisser, il sera crédité de sa
+        // part partenaire à la validation.
+        if (order.isSubscriptionOrder) {
+          await notify({
+            userId: washerUserId,
+            title: 'Séance abonnement 👑',
+            message: `Commande ${order.orderNumber} — prestation réglée via l'abonnement du client. Rien à encaisser : votre part vous sera créditée à la fin du lavage.`,
+            type: 'payment',
+            data: { orderId: order.id, orderNumber: order.orderNumber, method: 'SUBSCRIPTION', amount: 0 },
+          });
+        } else if (method === 'CASH') {
           await notify({
             userId: washerUserId,
             title: 'Paiement en espèces 💵',
@@ -147,6 +167,21 @@ export async function notifyOrderStatusChange(
       if (order.status === 'COMPLETED' && typeof options.washerAmount === 'number') {
         const fmt = (n: number) => n.toLocaleString('fr-FR');
         const isCash = options.paymentMethod === 'CASH';
+        if (options.isSubscriptionOrder) {
+          await notify({
+            userId: washerUserId,
+            title: 'Séance abonnement validée 💰',
+            message: `« ${serviceName} » terminée — séance d'abonnement validée, ${fmt(options.washerAmount)} F ajoutés à vos gains.`,
+            type: 'payment',
+            data: {
+              orderId: order.id,
+              orderNumber: order.orderNumber,
+              amount: options.washerAmount,
+              method: 'SUBSCRIPTION',
+            },
+          });
+          return;
+        }
         await notify({
           userId: washerUserId,
           title: 'Prestation validée 💰',

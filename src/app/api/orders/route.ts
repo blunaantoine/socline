@@ -236,6 +236,21 @@ export async function POST(request: NextRequest) {
           error: `Cet abonnement est valable pour le service "${subscription.plan.service?.name || 'Non spécifié'}", pas pour "${service.name}".` 
         }, { status: 400 });
       }
+
+      // Garde-fou surconsommation : les séances ne sont décomptées qu'à la
+      // validation (fin du lavage). Sans ce comptage des séances ENGAGÉES
+      // (commandes en attente/actives), un client pourrait réserver plus de
+      // lavages qu'il n'en reste sur son abonnement.
+      const pendingUsages = await db.subscriptionUsage.count({
+        where: { subscriptionId: subscription.id, status: 'PENDING' },
+      });
+      if (subscription.remainingWashes - pendingUsages <= 0) {
+        return NextResponse.json({
+          error: pendingUsages > 0
+            ? `Vous avez déjà ${pendingUsages} séance${pendingUsages > 1 ? 's' : ''} en attente sur votre abonnement. Terminez-la avant d'en réserver une nouvelle, ou payez normalement.`
+            : 'Plus de séances disponibles sur votre abonnement. Veuillez payer normalement.',
+        }, { status: 400 });
+      }
     }
 
     // -----------------------------------------------------------------
@@ -580,15 +595,30 @@ export async function PATCH(request: NextRequest) {
         rating: washerRecord?.rating ?? 0,
         cancellationRate,
       });
-      updateData.commission = commissionForLevel(partnerLevel, existingOrder.totalPrice ?? 0);
+      // Commande abonnement : le total à 0 n'est PAS la valeur de la
+      // prestation — le client l'a réglée en amont via son abonnement.
+      // La commission est calculée sur le prix du service (basePrice).
+      const commissionBase = existingOrder.isSubscriptionOrder
+        ? (existingOrder.basePrice ?? 0)
+        : (existingOrder.totalPrice ?? 0);
+      updateData.commission = commissionForLevel(partnerLevel, commissionBase);
     }
 
     // Credit the washer when the order transitions to COMPLETED
     // (only if its previous status was not already COMPLETED — anti double-credit)
     const isCompletion = status === 'COMPLETED' && existingOrder.status !== 'COMPLETED';
     const totalPrice = existingOrder.totalPrice ?? 0;
-    // Commission frozen at ACCEPTED (Contrat Article 5), clamped >= 0
-    // (e.g. subscription orders at 0).
+    // -----------------------------------------------------------------
+    // ABONNEMENT — la séance est validée ICI, dans la même transaction que
+    // la complétion (usage VALIDATED + décompte des séances). La valeur de
+    // la prestation est le prix du service (basePrice) : le laveur perçoit
+    // sa part partenaire sur cette valeur, jamais 0. La plateforme détient
+    // déjà l'argent de l'abonnement → jamais d'encaissement espèces.
+    // -----------------------------------------------------------------
+    const isSubscriptionOrder = existingOrder.isSubscriptionOrder ?? false;
+    const validateSession = isCompletion && isSubscriptionOrder && !existingOrder.subscriptionValidated;
+    const washValue = isSubscriptionOrder ? (existingOrder.basePrice ?? 0) : totalPrice;
+    // Commission frozen at ACCEPTED (Contrat Article 5), clamped >= 0.
     const commission = Math.max(0, existingOrder.commission ?? 0);
     // -----------------------------------------------------------------
     // ENCAISSEMENT ESPÈCES — le laveur détient PHYSIQUEMENT la totalité du
@@ -597,18 +627,24 @@ export async function PATCH(request: NextRequest) {
     // qu'il rembourse (portefeuille / recouvrement admin) — un garde-fou
     // bloque les retraits tant que la dette n'est pas soldée.
     // Paiement WALLET ou abonnement : la plateforme détient déjà l'argent,
-    // seule la part nette du partenaire est crédité (comportement initial).
+    // seule la part nette du partenaire est créditée.
     // -----------------------------------------------------------------
-    const isCash = (existingOrder.payment?.method ?? null) === 'CASH';
+    const isCash = !isSubscriptionOrder && (existingOrder.payment?.method ?? null) === 'CASH';
     const washerAmount = isCompletion
-      ? (isCash ? totalPrice : Math.max(0, totalPrice - commission))
+      ? (isCash ? washValue : Math.max(0, washValue - commission))
       : 0;
     const cashDebtIncrement = isCompletion && isCash ? commission : 0;
 
     const order = await db.$transaction(async (tx) => {
       const updatedOrder = await tx.order.update({
         where: { id: orderId },
-        data: updateData,
+        data: {
+          ...updateData,
+          // Séance abonnement : validée automatiquement à la complétion.
+          ...(validateSession
+            ? { subscriptionValidated: true, subscriptionValidatedAt: new Date() }
+            : {}),
+        },
         include: {
           client: { select: { id: true, name: true, phone: true } },
           service: true,
@@ -616,6 +652,52 @@ export async function PATCH(request: NextRequest) {
           washer: { include: { user: { select: { name: true, phone: true } } } },
         },
       });
+
+      // Validation de la séance abonnement — même transaction que la
+      // complétion (remplace l'ancien appel dédié /api/subscriptions/validate
+      // qui contournait crédit laveur, completedJobs, notification et realtime).
+      if (validateSession && updatedOrder.subscriptionId) {
+        const usage = await tx.subscriptionUsage.findFirst({
+          where: { orderId: updatedOrder.id },
+        });
+        if (usage && usage.status === 'PENDING') {
+          await tx.subscriptionUsage.update({
+            where: { id: usage.id },
+            data: {
+              status: 'VALIDATED',
+              validatedAt: new Date(),
+              validatedBy: updatedOrder.washerId,
+            },
+          });
+        }
+        const subscription = await tx.userSubscription.findUnique({
+          where: { id: updatedOrder.subscriptionId },
+        });
+        if (subscription && subscription.remainingWashes > 0) {
+          await tx.userSubscription.update({
+            where: { id: subscription.id },
+            data: {
+              usedWashes: { increment: 1 },
+              remainingWashes: { decrement: 1 },
+            },
+          });
+        }
+      }
+
+      // Commande annulée : la séance engagée n'est plus due — l'usage PENDING
+      // est annulé (sinon il pollue les « validations en attente » admin et
+      // compte à tort dans le garde-fou de surconsommation).
+      if (status === 'CANCELLED') {
+        const pendingUsage = await tx.subscriptionUsage.findFirst({
+          where: { orderId, status: 'PENDING' },
+        });
+        if (pendingUsage) {
+          await tx.subscriptionUsage.update({
+            where: { id: pendingUsage.id },
+            data: { status: 'CANCELLED', adminNotes: 'Commande annulée' },
+          });
+        }
+      }
 
       // Credit the washer: totalEarnings + completedJobs (no WalletTransaction:
       // washer earnings are tracked via totalEarnings only). For CASH orders
@@ -678,6 +760,7 @@ export async function PATCH(request: NextRequest) {
     // client cancels or the washer gets credited) — best-effort, never blocks.
     await notifyOrderStatusChange(order, {
       actorRole: session.role as 'WASHER' | 'CLIENT' | 'ADMIN',
+      isSubscriptionOrder,
       ...(isCompletion
         ? {
             washerAmount,

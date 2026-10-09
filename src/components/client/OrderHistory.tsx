@@ -218,9 +218,15 @@ function OrderCard({ order, onViewDetails }: { order: Order; onViewDetails: () =
 
           {/* Price */}
           <div className="text-right flex-shrink-0">
-            <div className="font-bold text-[#FF9800]">
-              {order.totalPrice.toLocaleString()} XOF
-            </div>
+            {order.isSubscriptionOrder ? (
+              <div className="text-xs font-bold text-purple-700 bg-purple-100 rounded-full px-2 py-0.5">
+                👑 Abonnement
+              </div>
+            ) : (
+              <div className="font-bold text-[#FF9800]">
+                {order.totalPrice.toLocaleString()} XOF
+              </div>
+            )}
             {order.discount > 0 && (
               <div className="text-xs text-green-600">
                 -{order.discount.toLocaleString()} XOF
@@ -298,9 +304,15 @@ function OrderDetails({ order, onClose }: { order: Order; onClose: () => void })
               <p className="text-sm text-[#757575]">{order.service.duration} min</p>
             </div>
             <div className="text-right">
-              <div className="font-bold text-[#FF9800] text-lg">
-                {order.totalPrice.toLocaleString()} XOF
-              </div>
+              {order.isSubscriptionOrder ? (
+                <div className="text-sm font-bold text-purple-700 bg-purple-100 rounded-full px-2.5 py-0.5">
+                  👑 Abonnement
+                </div>
+              ) : (
+                <div className="font-bold text-[#FF9800] text-lg">
+                  {order.totalPrice.toLocaleString()} XOF
+                </div>
+              )}
               {order.discount > 0 && (
                 <div className="text-xs text-green-600">
                   Réduction: -{order.discount.toLocaleString()} XOF
@@ -520,7 +532,11 @@ function OrderDetails({ order, onClose }: { order: Order; onClose: () => void })
           )}
           <div className="flex justify-between font-bold pt-2 border-t border-[#E0E0E0]">
             <span className="text-[#212121]">Total</span>
-            <span className="text-[#FF9800]">{order.totalPrice.toLocaleString()} XOF</span>
+            {order.isSubscriptionOrder ? (
+              <span className="text-purple-700">👑 Séance abonnement</span>
+            ) : (
+              <span className="text-[#FF9800]">{order.totalPrice.toLocaleString()} XOF</span>
+            )}
           </div>
         </div>
       </div>

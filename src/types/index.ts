@@ -137,6 +137,17 @@ export interface Order {
   // Distance washer↔order in km — computed server-side for the PENDING job
   // pool (sorted closest first). Not stored in the database.
   distanceKm?: number | null;
+  // Abonnement — la commande consomme une séance d'un abonnement client :
+  // totalPrice vaut 0, la valeur de la prestation reste basePrice, et la
+  // séance n'est décomptée qu'à la validation (fin du lavage).
+  isSubscriptionOrder?: boolean;
+  subscriptionValidated?: boolean;
+  subscriptionValidatedAt?: string;
+  subscriptionUsage?: {
+    id: string;
+    status: 'PENDING' | 'VALIDATED' | 'CANCELLED';
+    washType: string;
+  } | null;
   payment?: Payment;
   review?: Review;
   // Tracking history (WASHER_LOCATION points + status events) — returned by

@@ -370,7 +370,11 @@ export function ClientOrderFlow({
           body: JSON.stringify({
             userId: clientId,
             amount: finalPrice,
-            method: paymentMethod === 'wallet' ? 'WALLET' : 'CASH',
+            // Séance abonnement : rien à encaisser sur place — la prestation
+            // est déjà réglée via l'abonnement (la route force aussi WALLET).
+            method: useSubscription && activeSubscription
+              ? 'WALLET'
+              : paymentMethod === 'wallet' ? 'WALLET' : 'CASH',
           }),
         });
 

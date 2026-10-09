@@ -32,6 +32,19 @@ import { getServiceCoverage } from '@/lib/service-coverage';
 import { openWhatsApp } from '@/lib/contact';
 import { DynamicLeafletMap } from '@/components/map/DynamicLeafletMap';
 
+// ---------------------------------------------------------------------
+// Abonnement : une commande payée par séance d'abonnement affiche
+// totalPrice = 0 — la valeur de la prestation reste basePrice (le client
+// l'a réglée en amont). Helpers d'affichage pour le laveur.
+// ---------------------------------------------------------------------
+function orderDisplayAmount(order: Order): number {
+  return order.isSubscriptionOrder ? (order.basePrice ?? 0) : (order.totalPrice ?? 0);
+}
+function washerGainAmount(order: Order): number {
+  const value = orderDisplayAmount(order);
+  return Math.max(0, value - (order.commission || 0));
+}
+
 // Washer stats type
 interface WasherStats {
   name: string;
@@ -639,27 +652,9 @@ export function WasherApp() {
         return;
       }
 
-      // If this is a subscription order and completing, validate subscription first
-      if (order.isSubscriptionOrder && newStatus === 'COMPLETED') {
-        const res = await fetch('/api/subscriptions/validate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            orderId: order.id,
-            washerId: user?.id,
-            action: 'VALIDATE',
-          }),
-        });
-
-        const data = await parseJsonResponse<any>(res);
-        if (!data) return;
-
-        if (data.success) {
-          setCurrentOrder(null);
-          fetchMyOrders();
-          return;
-        }
-      }
+      // Séance abonnement : PAS d'appel dédié — le PATCH classique ci-dessous
+      // valide la séance, décompte l'abonnement et crédite la part partenaire
+      // du laveur dans la même transaction serveur.
 
       // Regular status update
       const res = await fetch('/api/orders', {
@@ -1096,7 +1091,10 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-[#4CAF50]">{order.totalPrice?.toLocaleString()} XOF</p>
+                      <p className="font-bold text-[#4CAF50]">{orderDisplayAmount(order).toLocaleString()} XOF</p>
+                      {order.isSubscriptionOrder && (
+                        <p className="text-[10px] font-semibold text-purple-700 bg-purple-100 rounded-full px-2 py-0.5 mt-0.5">Séance abonnement</p>
+                      )}
                       <p className="text-xs text-[#757575]">{order.address?.substring(0, 20)}...</p>
                     </div>
                   </div>
@@ -1140,7 +1138,12 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
                           </span>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-xl">{order.totalPrice?.toLocaleString()} XOF</p>
+                          <p className="font-bold text-xl">{orderDisplayAmount(order).toLocaleString()} XOF</p>
+                          {order.isSubscriptionOrder && (
+                            <span className="inline-block mt-0.5 bg-white/25 rounded-full px-2 py-0.5 text-[10px] font-semibold">
+                              👑 Séance abonnement
+                            </span>
+                          )}
                           <p className="text-sm opacity-80">{order.service?.duration || 30} min</p>
                         </div>
                       </div>
@@ -1290,7 +1293,10 @@ function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat, acceptedOr
                       <ScheduledBadge scheduledAt={o.scheduledAt} className="mt-1" />
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-[#4CAF50]">{o.totalPrice?.toLocaleString()} XOF</p>
+                      <p className="font-bold text-[#4CAF50]">{orderDisplayAmount(o).toLocaleString()} XOF</p>
+                      {o.isSubscriptionOrder && (
+                        <p className="text-[10px] font-semibold text-purple-700 bg-purple-100 rounded-full px-2 py-0.5 mt-0.5">Séance abonnement</p>
+                      )}
                     </div>
                   </div>
                 </CardContent>
@@ -1479,7 +1485,7 @@ function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat, acceptedOr
           <div className="flex justify-between pt-2 border-t border-[#F5F5F5]">
             <span className="text-[#757575]">Vos gains</span>
             <span className="font-bold text-[#4CAF50]">
-              {((order.totalPrice || 0) - (order.commission || 0)).toLocaleString()} XOF
+              {washerGainAmount(order).toLocaleString()} XOF
             </span>
           </div>
         </CardContent>
@@ -1544,10 +1550,21 @@ function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat, acceptedOr
           <div className="bg-[#E8F5E9] border border-[#C8E6C9] rounded-xl p-3 flex items-center gap-3">
             <Wallet className="w-6 h-6 text-[#2E7D32] flex-shrink-0" />
             <div>
-              <p className="text-sm font-semibold text-[#1B5E20]">
-                Déjà payé via portefeuille ✅
-              </p>
-              <p className="text-xs text-[#2E7D32]">Rien à encaisser auprès du client.</p>
+              {order.isSubscriptionOrder ? (
+                <>
+                  <p className="text-sm font-semibold text-[#1B5E20]">
+                    Séance abonnement 👑 — rien à encaisser
+                  </p>
+                  <p className="text-xs text-[#2E7D32]">Votre part partenaire sera créditée à la fin du lavage.</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-semibold text-[#1B5E20]">
+                    Déjà payé via portefeuille ✅
+                  </p>
+                  <p className="text-xs text-[#2E7D32]">Rien à encaisser auprès du client.</p>
+                </>
+              )}
             </div>
           </div>
         )
@@ -1599,10 +1616,10 @@ function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat, acceptedOr
         {order.status === 'IN_PROGRESS' && order.isSubscriptionOrder && !order.subscriptionValidated && (
           <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-2">
             <p className="text-sm text-purple-800 font-medium">
-              ⚠️ Cette commande utilise un abonnement
+              👑 Séance abonnement — rien à encaisser
             </p>
             <p className="text-xs text-purple-600">
-              Le client a une séance. Veuillez valider cette séance pour terminer le lavage.
+              La séance sera validée automatiquement à la fin du lavage et votre part partenaire créditée dans vos gains.
             </p>
           </div>
         )}
@@ -1678,8 +1695,11 @@ function WasherOrderHistory({ orders, onBack }: {
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-[#4CAF50]">
-                      {((order.totalPrice || 0) - (order.commission || 0)).toLocaleString()} XOF
+                      {washerGainAmount(order).toLocaleString()} XOF
                     </p>
+                    {order.isSubscriptionOrder && (
+                      <p className="text-[10px] font-semibold text-purple-700 bg-purple-100 rounded-full px-2 py-0.5 mt-0.5">Séance abonnement</p>
+                    )}
                   </div>
                 </div>
                 {order.review?.comment && (

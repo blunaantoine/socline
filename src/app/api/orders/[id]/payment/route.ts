@@ -49,8 +49,14 @@ export async function POST(
       });
     }
 
-    // Validate method: only CASH or WALLET are allowed (default CASH as today)
-    const validMethod = method === 'WALLET' ? 'WALLET' : 'CASH';
+    // Validate method: only CASH or WALLET are allowed (default CASH as today).
+    // Commande abonnement : la séance est déjà réglée via l'abonnement —
+    // JAMAIS d'encaissement espèces sur place (on force WALLET = déjà réglé).
+    const validMethod = order.isSubscriptionOrder
+      ? 'WALLET'
+      : method === 'WALLET'
+        ? 'WALLET'
+        : 'CASH';
 
     // Create payment record
     const payment = await db.payment.create({
@@ -66,8 +72,9 @@ export async function POST(
     });
 
     // The washer MUST know how he gets paid:
-    //   CASH   → he has to collect the money from the client on site.
-    //   WALLET → already settled, nothing to collect.
+    //   CASH          → he has to collect the money from the client on site.
+    //   WALLET        → already settled, nothing to collect.
+    //   ABONNEMENT    → séance déjà réglée, part partenaire créditée à la fin.
     if (order.washerId) {
       const washerRecord = await db.washer.findUnique({
         where: { id: order.washerId },
@@ -75,12 +82,20 @@ export async function POST(
       });
       if (washerRecord?.userId) {
         const amountLabel = `${amount.toLocaleString('fr-FR')} XOF`;
+        const title = order.isSubscriptionOrder
+          ? 'Séance abonnement 👑'
+          : validMethod === 'CASH'
+            ? 'Paiement en espèces 💵'
+            : 'Paiement par portefeuille ✅';
+        const message = order.isSubscriptionOrder
+          ? `Commande ${order.orderNumber} — prestation réglée via l'abonnement du client. Rien à encaisser : votre part vous sera créditée à la fin du lavage.`
+          : validMethod === 'CASH'
+            ? `Commande ${order.orderNumber} — encaissez ${amountLabel} en espèces auprès du client.`
+            : `Commande ${order.orderNumber} — ${amountLabel} déjà réglés via le portefeuille. Rien à encaisser.`;
         await notify({
           userId: washerRecord.userId,
-          title: validMethod === 'CASH' ? 'Paiement en espèces 💵' : 'Paiement par portefeuille ✅',
-          message: validMethod === 'CASH'
-            ? `Commande ${order.orderNumber} — encaissez ${amountLabel} en espèces auprès du client.`
-            : `Commande ${order.orderNumber} — ${amountLabel} déjà réglés via le portefeuille. Rien à encaisser.`,
+          title,
+          message,
           type: 'payment',
           data: { orderId: order.id, orderNumber: order.orderNumber, method: validMethod, amount },
         });

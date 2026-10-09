@@ -65,6 +65,8 @@ interface Activity {
   status: string;
   amount?: number;
   transactionType?: string;
+  // Commande payée via une séance d'abonnement (total 0 sur place).
+  isSubscription?: boolean;
   date: string;
   data?: any;
 }
@@ -207,7 +209,13 @@ export function ActivityHistory({ userId, onBack }: { userId: string; onBack: ()
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
                     <h3 className="font-medium text-[#212121] truncate">{activity.title}</h3>
-                    {activity.amount !== undefined && (
+                    {/* Séance abonnement : pas de montant sur place (réglée
+                        en amont) — on affiche la pastille dédiée. */}
+                    {activity.type === 'ORDER' && activity.isSubscription ? (
+                      <span className="font-semibold text-sm text-purple-700 bg-purple-100 rounded-full px-2 py-0.5">
+                        👑 Abonnement
+                      </span>
+                    ) : activity.amount !== undefined && (
                       <span className={`font-semibold text-sm ${
                         activity.type === 'TRANSACTION' &&
                         (activity.transactionType === 'DEPOSIT' || activity.transactionType === 'REFUND' || activity.transactionType === 'BONUS')

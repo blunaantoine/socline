@@ -33,13 +33,19 @@ export async function GET(request: NextRequest) {
       });
 
       orders.forEach(order => {
+        // Séance abonnement : le total vaut 0 (réglé en amont) — on l'explique
+        // au lieu d'afficher « 0 XOF ».
+        const isSubOrder = order.isSubscriptionOrder ?? false;
         activities.push({
           id: order.id,
           type: 'ORDER',
           title: `Commande #${order.orderNumber}`,
-          description: `${order.service.name} - ${order.totalPrice.toLocaleString()} XOF`,
+          description: isSubOrder
+            ? `${order.service.name} — Séance abonnement`
+            : `${order.service.name} - ${order.totalPrice.toLocaleString()} XOF`,
           status: order.status,
           amount: order.totalPrice,
+          isSubscription: isSubOrder,
           date: order.createdAt,
           data: order
         });

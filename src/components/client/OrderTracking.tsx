@@ -474,9 +474,15 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
                 <h3 className="font-semibold">{order.service.name}</h3>
                 <p className="text-sm text-gray-500">{order.address}</p>
               </div>
-              <span className="text-xl font-bold text-blue-600">
-                {formatPrice(order.totalPrice)}
-              </span>
+              {order.isSubscriptionOrder ? (
+                <span className="text-sm font-bold text-purple-700 bg-purple-100 rounded-full px-3 py-1">
+                  👑 Séance abonnement
+                </span>
+              ) : (
+                <span className="text-xl font-bold text-blue-600">
+                  {formatPrice(order.totalPrice)}
+                </span>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -778,11 +784,19 @@ function OrderCompleted({ order, onBack, onGoHome }: { order: Order; onBack?: ()
               </p>
               <div className="mt-3 p-3 bg-[#F5F5F5] rounded-xl">
                 <div className="text-xs text-[#757575]">
-                  {order.payment?.method === 'CASH' ? 'À payer en espèces' : 'Total payé'}
+                  {order.isSubscriptionOrder
+                    ? 'Prestation réglée via votre abonnement'
+                    : order.payment?.method === 'CASH' ? 'À payer en espèces' : 'Total payé'}
                 </div>
-                <div className="text-xl font-bold text-[#FF9800]">
-                  {formatPrice(order.totalPrice)}
-                </div>
+                {order.isSubscriptionOrder ? (
+                  <div className="text-lg font-bold text-purple-700">
+                    👑 Séance abonnement
+                  </div>
+                ) : (
+                  <div className="text-xl font-bold text-[#FF9800]">
+                    {formatPrice(order.totalPrice)}
+                  </div>
+                )}
                 {order.payment?.method === 'CASH' && (
                   <p className="text-xs text-[#E65100] mt-1">💵 Réglez ce montant au laveur.</p>
                 )}
