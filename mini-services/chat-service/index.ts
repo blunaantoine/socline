@@ -38,14 +38,15 @@ function loadRootEnv(): void {
 loadRootEnv();
 
 const PORT = 3003;
-const JWT_SECRET = process.env.JWT_SECRET ?? '';
-const INTERNAL_SOCKET_SECRET = process.env.INTERNAL_SOCKET_SECRET ?? '';
+// Secrets partagés avec l'application Next (src/lib/auth.ts, src/lib/realtime.ts).
+// MÊME valeur de repli que l'app web : sans cela, tout .env qui ne contient pas
+// ces clés (ex. .env anciens ou réduits) rejetait CHAQUE handshake socket
+// (« unauthorized ») → messagerie, suivi et position laveur morts côté client.
+const JWT_SECRET = process.env.JWT_SECRET || 'socline-jwt-secret-change-in-production';
+const INTERNAL_SOCKET_SECRET = process.env.INTERNAL_SOCKET_SECRET || 'socline-internal-socket-secret';
 
-if (!JWT_SECRET) {
-  console.log('[Chat] Warning: JWT_SECRET not set — every handshake will be rejected');
-}
-if (!INTERNAL_SOCKET_SECRET) {
-  console.log('[Chat] Warning: INTERNAL_SOCKET_SECRET not set — /internal/emit will reject every request');
+if (!process.env.JWT_SECRET || !process.env.INTERNAL_SOCKET_SECRET) {
+  console.log('[Chat] Warning: JWT_SECRET / INTERNAL_SOCKET_SECRET absents du .env — valeur de repli partagée avec l\'app web utilisée (déploiement : lancez deploy.sh pour générer des secrets aléatoires).');
 }
 
 // ---------------------------------------------------------------------------

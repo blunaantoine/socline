@@ -1,17 +1,19 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useOrdersStore, useAuthStore } from '@/store';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { DynamicLeafletMap } from '@/components/map/DynamicLeafletMap';
+import { ChatView } from '@/components/chat/ChatView';
+import { formatPrice } from '@/lib/service-coverage';
 import {
   MapPin, Phone, MessageCircle, Clock, Star, Heart,
   CheckCircle, Navigation, AlertCircle, X, ArrowLeft, Home, Loader2, Car, Camera
 } from 'lucide-react';
-import type { Order, OrderStatus, TrackingEvent } from '@/types';
+import type { Order, OrderStatus, TrackingEvent, Conversation } from '@/types';
 import { isRealtimeEnabled } from '@/lib/realtime-flag';
 import type { Socket } from 'socket.io-client';
 import { toast } from 'sonner';
@@ -81,6 +83,33 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
   const [washerLocation, setWasherLocation] = useState<{ lat: number; lng: number; at: string } | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
   const socketRef = useRef<Socket | null>(null);
+  // Discussion de la commande : même conversation partagée que le laveur
+  // (créée à la volée par GET /api/conversations?orderId pour les participants).
+  const [conversation, setConversation] = useState<Conversation | null>(null);
+  const [showChat, setShowChat] = useState(false);
+  const [isOpeningChat, setIsOpeningChat] = useState(false);
+
+  // Ouvre la discussion de la commande (identique au comportement laveur :
+  // GET /api/conversations?orderId= crée la conversation si elle n'existe
+  // pas encore — les deux côtés tombent donc sur la même conversation).
+  const handleOpenChat = useCallback(async () => {
+    if (isOpeningChat) return;
+    setIsOpeningChat(true);
+    try {
+      const res = await fetch(`/api/conversations?orderId=${order.id}`);
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.success && data.conversation) {
+        setConversation(data.conversation);
+        setShowChat(true);
+      } else {
+        toast.error(data?.error || 'Discussion indisponible pour cette commande');
+      }
+    } catch {
+      toast.error('Erreur réseau — discussion indisponible');
+    } finally {
+      setIsOpeningChat(false);
+    }
+  }, [order.id, isOpeningChat]);
 
   // ---------------------------------------------------------------------
   // Realtime: socket connected to the authenticated mini-service.
@@ -254,7 +283,7 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
   const washer = order.washer;
 
   return (
-    <div className="flex-1 flex flex-col bg-[#FAFAFA]">
+    <div className="flex-1 flex flex-col bg-[#FAFAFA] relative">
       {/* Android Status Bar */}
       <div className="h-6 bg-[#FF9800] hidden md:flex items-center justify-between px-4 flex-shrink-0 sticky top-0 z-50">
         <span className="text-white text-xs font-medium">9:41</span>
@@ -336,46 +365,50 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
           )}
         </div>
 
-        {/* Real washer position info */}
-        {order.status === 'EN_ROUTE' && !washerLocation && (
-          <div className="absolute bottom-4 left-4 right-4 z-[900] bg-white rounded-lg p-3 shadow-lg">
-            <div className="flex items-center gap-2">
-              <Loader2 className="w-4 h-4 text-blue-600 animate-spin flex-shrink-0" />
-              <span className="text-sm text-[#616161]">En attente de la position du laveur…</span>
-            </div>
-          </div>
-        )}
-
-        {washerLocation && (
-          <div className="absolute bottom-4 left-4 right-4 z-[900] bg-white rounded-lg p-3 shadow-lg">
-            <div className="flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-green-600 flex-shrink-0" />
-              <div className="text-sm">
-                <span className="font-medium text-[#212121]">
-                  {washerDistanceLabel
-                    ? `Le laveur est à ${washerDistanceLabel}${order.status === 'EN_ROUTE' ? ' de vous' : ''}`
-                    : 'Position du laveur reçue'}
-                </span>
-                <span className="block text-xs text-[#757575]">
-                  Mise à jour à {formatTime(washerLocation.at)}
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Estimated arrival from the real washer position */}
-        {order.status === 'EN_ROUTE' && etaMinutes !== null && (
-          <div className="absolute bottom-20 left-4 right-4 z-[900] bg-white rounded-lg p-3 shadow-lg border border-blue-100">
-            <div className="flex items-center justify-between">
+        {/* Panneaux d'information du laveur — empilés dans UN SEUL conteneur
+            (jamais de superposition : distance, ETA et attente se rangent
+            proprement les uns sous les autres). */}
+        <div className="absolute bottom-4 left-4 right-4 z-[900] flex flex-col gap-2 pointer-events-none">
+          {order.status === 'EN_ROUTE' && !washerLocation && (
+            <div className="bg-white rounded-lg p-3 shadow-lg">
               <div className="flex items-center gap-2">
-                <Clock className="w-5 h-5 text-blue-600" />
-                <span className="font-medium">Arrivée estimée</span>
+                <Loader2 className="w-4 h-4 text-blue-600 animate-spin flex-shrink-0" />
+                <span className="text-sm text-[#616161]">En attente de la position du laveur…</span>
               </div>
-              <span className="text-xl font-bold text-blue-600">~{etaMinutes} min</span>
             </div>
-          </div>
-        )}
+          )}
+
+          {washerLocation && (
+            <div className="bg-white rounded-lg p-3 shadow-lg">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-green-600 flex-shrink-0" />
+                <div className="text-sm">
+                  <span className="font-medium text-[#212121]">
+                    {washerDistanceLabel
+                      ? `Le laveur est à ${washerDistanceLabel}${order.status === 'EN_ROUTE' ? ' de vous' : ''}`
+                      : 'Position du laveur reçue'}
+                  </span>
+                  <span className="block text-xs text-[#757575]">
+                    Mise à jour à {formatTime(washerLocation.at)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Estimated arrival from the real washer position */}
+          {order.status === 'EN_ROUTE' && etaMinutes !== null && (
+            <div className="bg-white rounded-lg p-3 shadow-lg border border-blue-100">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-blue-600" />
+                  <span className="font-medium">Arrivée estimée</span>
+                </div>
+                <span className="text-xl font-bold text-blue-600">~{etaMinutes} min</span>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Progress Steps - Android Stepper Style */}
@@ -438,7 +471,7 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
                 <p className="text-sm text-gray-500">{order.address}</p>
               </div>
               <span className="text-xl font-bold text-blue-600">
-                {order.totalPrice.toLocaleString()} XOF
+                {formatPrice(order.totalPrice)}
               </span>
             </div>
           </CardContent>
@@ -492,11 +525,28 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button size="icon" variant="outline" aria-label="Appeler le laveur">
+                  {/* Appel : ouvre le composeur du téléphone avec le numéro du laveur */}
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    aria-label="Appeler le laveur"
+                    disabled={!washer.user?.phone}
+                    onClick={() => washer.user?.phone && window.open(`tel:${washer.user.phone}`, '_self')}
+                  >
                     <Phone className="w-4 h-4" />
                   </Button>
-                  <Button size="icon" variant="outline" aria-label="Ouvrir la discussion">
-                    <MessageCircle className="w-4 h-4" />
+                  {/* Discussion : ouvre la conversation temps réel de la commande
+                      (la même que celle du laveur). */}
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    aria-label="Ouvrir la discussion"
+                    onClick={handleOpenChat}
+                    disabled={isOpeningChat}
+                  >
+                    {isOpeningChat
+                      ? <Loader2 className="w-4 h-4 animate-spin" />
+                      : <MessageCircle className="w-4 h-4" />}
                   </Button>
                 </div>
               </div>
@@ -554,6 +604,18 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
             {isCancelling && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             {isCancelling ? 'Annulation...' : 'Annuler la commande'}
           </Button>
+        </div>
+      )}
+
+      {/* Discussion temps réel de la commande — plein écran par-dessus le suivi,
+          même conversation partagée que le côté laveur. z-index > 1000 : au-dessus
+          des panneaux de carte (z-900) et des couches Leaflet (z-200..1000). */}
+      {showChat && conversation && (
+        <div className="absolute inset-0 z-[1100] bg-[#FAFAFA] flex flex-col">
+          <ChatView
+            conversation={conversation}
+            onBack={() => setShowChat(false)}
+          />
         </div>
       )}
     </div>
@@ -677,7 +739,7 @@ function OrderCompleted({ order, onBack, onGoHome }: { order: Order; onBack?: ()
                   {order.payment?.method === 'CASH' ? 'À payer en espèces' : 'Total payé'}
                 </div>
                 <div className="text-xl font-bold text-[#FF9800]">
-                  {order.totalPrice.toLocaleString()} XOF
+                  {formatPrice(order.totalPrice)}
                 </div>
                 {order.payment?.method === 'CASH' && (
                   <p className="text-xs text-[#E65100] mt-1">💵 Réglez ce montant au laveur.</p>

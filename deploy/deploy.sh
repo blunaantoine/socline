@@ -134,6 +134,18 @@ c_ok "Code à jour dans ${APP_DIR}"
 c_info "4/8 — Configuration .env…"
 if [[ -f "${APP_DIR}/.env" ]]; then
   c_ok ".env existant conservé (secrets intacts)"
+  # Anciens .env (créés par les premières versions du script, ou réduits) :
+  # sans JWT_SECRET, le service chat rejetait CHAQUE handshake socket
+  # (messagerie + suivi temps réel morts chez le client). On AJOUTE les
+  # clés manquantes sans jamais modifier l'existant.
+  if ! grep -q '^JWT_SECRET=' "${APP_DIR}/.env"; then
+    echo "JWT_SECRET=\"$(openssl rand -hex 32)\"" >> "${APP_DIR}/.env"
+    c_warn "JWT_SECRET absent du .env → clé aléatoire AJOUTÉE (les sessions en cours seront déconnectées)"
+  fi
+  if ! grep -q '^INTERNAL_SOCKET_SECRET=' "${APP_DIR}/.env"; then
+    echo "INTERNAL_SOCKET_SECRET=\"$(openssl rand -hex 32)\"" >> "${APP_DIR}/.env"
+    c_warn "INTERNAL_SOCKET_SECRET absent du .env → clé aléatoire AJOUTÉE"
+  fi
 else
   JWT_SECRET="$(openssl rand -hex 32)"
   JWT_REFRESH_SECRET="$(openssl rand -hex 32)"
