@@ -147,10 +147,13 @@ export function NotificationCenter() {
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
-        <button className="relative w-10 h-10 bg-[#FFF3E0] rounded-full flex items-center justify-center">
-          <Bell className="w-5 h-5 text-[#FF9800]" />
+        <button
+          className="relative w-[42px] h-[42px] bg-surface border border-line rounded-btn flex items-center justify-center active:scale-95 transition-transform"
+          aria-label="Notifications"
+        >
+          <Bell className="w-5 h-5 text-ink" />
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+            <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 bg-brand text-white text-micro rounded-pill border-2 border-white flex items-center justify-center font-bold">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}

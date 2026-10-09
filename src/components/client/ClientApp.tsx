@@ -36,6 +36,13 @@ import { ActivityHistory, AddressesManager, AccountSettings } from './ClientSett
 import { ServiceIcon, CoverageBadge, CoverageDetails } from '@/components/shared/ServiceCoverage';
 import { formatPrice, getServiceCoverage } from '@/lib/service-coverage';
 import { MediaCarousel } from './MediaCarousel';
+// Design System — composants réutilisables (refonte UI)
+import { SectionHeader } from '@/components/design/SectionHeader';
+import { Segmented } from '@/components/design/Segmented';
+import { ServiceArtCard } from '@/components/design/ServiceArtCard';
+import { WasherRow } from '@/components/design/WasherRow';
+import { EmptyState } from '@/components/design/EmptyState';
+import { CarIllustration } from '@/components/design/CarIllustration';
 
 const navItems = [
   { id: 'home', icon: Home, label: 'Accueil' },
@@ -44,6 +51,15 @@ const navItems = [
   { id: 'wallet', icon: Wallet, label: 'Portefeuille' },
   { id: 'profile', icon: User, label: 'Profil' },
 ];
+
+// Titre de l'en-tête selon l'onglet actif — libellés courts (design system)
+const HEADER_TITLES: Record<string, string> = {
+  home: "Quel lavage aujourd'hui ?",
+  subscriptions: 'Abonnements',
+  wallet: 'Portefeuille',
+  profile: 'Profil',
+  activity: 'Activité',
+};
 
 const CAR_COLORS: Record<string, string> = {
   'Noir': 'bg-gray-900',
@@ -346,10 +362,10 @@ export function ClientApp() {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-[#FAFAFA] relative">
+    <div className="flex-1 flex flex-col bg-app relative">
       {/* Android Status Bar — aperçu desktop uniquement ; sur téléphone la
           vraie barre système existe déjà, on respecte la safe-area à la place */}
-      <div className="h-6 bg-[#FF9800] hidden md:flex items-center justify-between px-4 flex-shrink-0">
+      <div className="h-6 bg-ink hidden md:flex items-center justify-between px-4 flex-shrink-0">
         <span className="text-white text-xs font-medium">{new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
         <div className="flex items-center gap-1">
           {/* Signal Network Bars - de petite à grande */}
@@ -368,23 +384,26 @@ export function ClientApp() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* App Bar (not shown on chat tab) */}
+        {/* App Bar claire et aérée (masquée sur chat / parcours de réservation) */}
         {activeTab !== 'chat' && activeTab !== 'booking' && (
-          <header className="bg-[#FF9800] px-4 py-3 flex items-center justify-between flex-shrink-0 shadow-md max-md:pt-[calc(0.75rem+env(safe-area-inset-top))]">
-            <div className="flex items-center gap-3">
-              <button onClick={getUserLocation} className="flex items-center gap-2">
+          <header className="bg-app px-4 pt-4 pb-1 flex items-start justify-between gap-2 flex-shrink-0 max-md:pt-[calc(1rem+env(safe-area-inset-top))]">
+            <div className="min-w-0">
+              {/* Bonjour + position — puces tappable (même fonction : géolocalisation) */}
+              <button
+                onClick={getUserLocation}
+                className="flex items-center gap-1 text-detail text-soft max-w-[250px] active:opacity-70 transition-opacity"
+                aria-label={`Position : ${userLocation?.address || 'Lomé'}. Toucher pour actualiser`}
+              >
                 {isLoadingLocation ? (
-                  <Loader2 className="w-5 h-5 text-white animate-spin" />
+                  <Loader2 className="w-3.5 h-3.5 text-brand flex-shrink-0 animate-spin" />
                 ) : (
-                  <MapPin className="w-5 h-5 text-white" />
+                  <MapPin className="w-3.5 h-3.5 text-brand flex-shrink-0" />
                 )}
-                <div className="text-left">
-                  <p className="text-xs text-white/80">Position</p>
-                  <p className="text-sm font-medium text-white truncate max-w-[140px]">{userLocation?.address || 'Lomé'}</p>
-                </div>
+                <span className="truncate">Bonjour · {userLocation?.address || 'Lomé'}</span>
               </button>
+              <h1 className="text-title text-ink truncate">{HEADER_TITLES[activeTab] ?? 'Socline'}</h1>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center flex-shrink-0">
               <NotificationCenter />
             </div>
           </header>
@@ -458,21 +477,23 @@ export function ClientApp() {
         </div>
       </div>
 
-      {/* Android Bottom Navigation - FIXED at bottom (safe-area iOS incluse) */}
+      {/* Barre de navigation basse — icônes lisibles, onglet actif orange,
+          bordure fine au lieu d'une ombre lourde (design system) */}
       {activeTab !== 'chat' && (
-        <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E0E0E0] flex justify-around items-stretch h-[calc(3.5rem+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
+        <nav className="fixed bottom-0 left-0 right-0 bg-surface border-t border-line flex justify-around items-stretch h-[calc(3.5rem+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] z-50">
           {navItems.map((item) => {
             const isActive = activeTab === item.id;
             return (
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                className={`flex-1 flex flex-col items-center justify-center py-1 px-1 transition-all active:scale-95 active:bg-[#F5F5F5] ${
-                  isActive ? 'text-[#FF9800]' : 'text-[#757575]'
+                aria-current={isActive ? 'page' : undefined}
+                className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-1 px-1 transition-all active:scale-95 ${
+                  isActive ? 'text-brand' : 'text-soft'
                 }`}
               >
                 <item.icon className={`w-6 h-6 ${isActive ? 'fill-current' : ''}`} />
-                <span className="text-[10px] font-medium mt-0.5">{item.label}</span>
+                <span className="text-micro">{item.label}</span>
               </button>
             );
           })}
@@ -671,28 +692,29 @@ function HomeContent({
   };
 
   return (
-    <div className="p-4 space-y-4">
-      {/* Search - Android style */}
+    <div className="px-4 pt-2 pb-6 space-y-5">
+      {/* Recherche — champ blanc discret sur fond gris clair */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#757575]" />
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-soft pointer-events-none" />
         <Input
           placeholder="Rechercher un service..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10 h-12 bg-white border-0 rounded-lg text-sm shadow-sm"
+          className="pl-10 h-12 bg-surface border-line rounded-btn text-body shadow-card"
         />
       </div>
 
-      {/* Hero Banner - Promotions Carousel with auto-scroll */}
+      {/* Bandeau promo — carte visuelle navy : pastille remise, titre court,
+          code à copier, illustration voiture (design system) */}
       {promotions.length > 0 && currentPromo && (
-        <div className="relative overflow-hidden">
-          <div 
+        <div>
+          <div
             key={currentPromoIndex}
-            className="rounded-lg shadow-md animate-slide-in overflow-hidden"
+            className="rounded-card shadow-card animate-fade-in overflow-hidden"
           >
             {(currentPromo.displayType === 'VIDEO' && currentPromo.video) ||
              (currentPromo.displayType === 'IMAGE' && currentPromo.image) ? (
-              // Media mode (image ou vidéo) - code can be copied via button below
+              // Mode média (image ou vidéo) — remise + code + CTA en superposition
               <div className="relative">
                 {currentPromo.displayType === 'VIDEO' && currentPromo.video ? (
                   <video
@@ -701,93 +723,92 @@ function HomeContent({
                     muted
                     loop
                     playsInline
-                    className="w-full h-48 object-cover bg-black"
+                    className="w-full h-48 object-cover bg-ink"
                   />
                 ) : (
-                  <img 
-                    src={currentPromo.image} 
+                  <img
+                    src={currentPromo.image}
                     alt={currentPromo.name}
                     className="w-full h-48 object-cover"
                     style={{ objectPosition: currentPromo.imagePosition || 'center' }}
                   />
                 )}
-                <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/60 to-transparent">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-white font-bold text-sm">
-                        {currentPromo.discountType === 'PERCENTAGE' 
-                          ? `-${currentPromo.discountValue}%` 
-                          : `-${currentPromo.discountValue.toLocaleString()}F`}
-                      </span>
-                    </div>
-                    <div className="flex gap-2">
-                      {currentPromo.code && (
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(currentPromo.code!);
-                            toast.success('Code promo copié !');
-                          }}
-                          className="bg-white/20 backdrop-blur rounded px-2 py-1 inline-flex items-center gap-1 hover:bg-white/30 transition-colors active:scale-95"
-                        >
-                          <Copy className="w-3 h-3 text-white" />
-                          <span className="text-white text-xs">Copier le code</span>
-                        </button>
-                      )}
+                <div className="absolute bottom-0 left-0 right-0 p-3.5 bg-gradient-to-t from-black/70 to-transparent flex items-end justify-between gap-2">
+                  <span className="bg-brand text-white text-micro font-bold px-2.5 py-1 rounded-pill">
+                    {currentPromo.discountType === 'PERCENTAGE'
+                      ? `-${currentPromo.discountValue}%`
+                      : `-${currentPromo.discountValue.toLocaleString('fr-FR')}F`}
+                  </span>
+                  <div className="flex gap-2">
+                    {currentPromo.code && (
                       <button
-                        onClick={onStartOrder}
-                        className="bg-white text-[#FF9800] px-3 py-1 rounded text-xs font-semibold"
+                        onClick={() => {
+                          navigator.clipboard.writeText(currentPromo.code!);
+                          toast.success('Code promo copié !');
+                        }}
+                        className="bg-white/20 backdrop-blur rounded-btn px-2.5 py-1.5 inline-flex items-center gap-1 hover:bg-white/30 transition-colors active:scale-95"
                       >
-                        Réserver
+                        <Copy className="w-3 h-3 text-white" />
+                        <span className="text-white text-detail font-semibold">{currentPromo.code}</span>
                       </button>
-                    </div>
+                    )}
+                    <button
+                      onClick={onStartOrder}
+                      className="bg-white text-ink px-3 py-1.5 rounded-btn text-detail font-bold active:scale-95 transition-transform"
+                    >
+                      Réserver
+                    </button>
                   </div>
                 </div>
               </div>
             ) : (
-              // Text mode - show gradient background with all details
-              <div className="bg-gradient-to-r from-[#FF9800] to-[#F57C00] p-4">
-                <p className="text-white/90 text-xs font-medium mb-1">Offre spéciale</p>
-                <h2 className="text-white text-lg font-bold mb-2">
-                  {currentPromo.discountType === 'PERCENTAGE' 
-                    ? `-${currentPromo.discountValue}% ${currentPromo.name}`
-                    : `-${currentPromo.discountValue.toLocaleString()}F ${currentPromo.name}`}
-                </h2>
-                {currentPromo.description && (
-                  <p className="text-white/80 text-sm mb-2">{currentPromo.description}</p>
-                )}
-                {currentPromo.code && (
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(currentPromo.code!);
-                      toast.success('Code promo copié !');
-                    }}
-                    className="bg-white/20 rounded px-3 py-1.5 inline-flex items-center gap-2 mb-3 hover:bg-white/30 transition-colors active:scale-95"
-                  >
-                    <span className="text-white font-mono text-sm font-bold">{currentPromo.code}</span>
-                    <Copy className="w-4 h-4 text-white/80" />
-                  </button>
-                )}
-                <button
-                  onClick={onStartOrder}
-                  className="bg-white text-[#FF9800] px-4 py-2 rounded text-sm font-semibold"
-                >
-                  Réserver
-                </button>
+              // Mode texte — carte navy aérée avec illustration
+              <div className="relative bg-gradient-to-br from-ink to-ink-2 p-[18px] min-h-[150px] overflow-hidden text-white">
+                <div className="relative z-10">
+                  <span className="inline-block bg-brand text-white font-bold text-micro px-2.5 py-1 rounded-pill">
+                    {currentPromo.discountType === 'PERCENTAGE'
+                      ? `-${currentPromo.discountValue}%`
+                      : `-${currentPromo.discountValue.toLocaleString('fr-FR')}F`}
+                  </span>
+                  <h2 className="text-display mt-2.5 mb-3 max-w-[170px]">{currentPromo.name}</h2>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {currentPromo.code && (
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(currentPromo.code!);
+                          toast.success('Code promo copié !');
+                        }}
+                        className="inline-flex items-center gap-2 border border-dashed border-white/45 rounded-btn px-2.5 py-1.5 active:scale-95 transition-transform"
+                      >
+                        <span className="text-white font-mono text-detail font-bold tracking-wide">{currentPromo.code}</span>
+                        <Copy className="w-3.5 h-3.5 text-white/80" />
+                      </button>
+                    )}
+                    <button
+                      onClick={onStartOrder}
+                      className="bg-white text-ink rounded-btn px-3 py-1.5 text-detail font-bold active:scale-95 transition-transform"
+                    >
+                      Réserver
+                    </button>
+                  </div>
+                </div>
+                <CarIllustration className="absolute -right-5 -bottom-1 w-[160px] text-brand" />
               </div>
             )}
           </div>
-          
-          {/* Carousel Dots Indicator */}
+
+          {/* Points du carrousel — pastille allongée pour l'actif */}
           {promotions.length > 1 && (
-            <div className="flex justify-center gap-2 mt-3">
+            <div className="flex justify-center gap-1.5 mt-2.5">
               {promotions.map((_, index) => (
                 <button
                   key={index}
                   onClick={() => setCurrentPromoIndex(index)}
-                  className={`h-2 rounded-full transition-all duration-300 ${
-                    index === currentPromoIndex 
-                      ? 'w-6 bg-[#FF9800]' 
-                      : 'w-2 bg-[#BDBDBD]'
+                  aria-label={`Promotion ${index + 1}`}
+                  className={`h-1.5 rounded-pill transition-all duration-300 ${
+                    index === currentPromoIndex
+                      ? 'w-[18px] bg-brand'
+                      : 'w-1.5 bg-line'
                   }`}
                 />
               ))}
@@ -796,105 +817,54 @@ function HomeContent({
         </div>
       )}
 
-      {/* Services section with Independent / Station toggle */}
+      {/* Choix Indépendants / Stations — sélecteur segmenté */}
       <section>
-        <div className="flex justify-between items-center mb-3">
-          <h3 className="text-base font-bold text-[#212121]">
-            {serviceTab === 'independent' ? 'Laveurs Indépendants' : 'Stations de Lavage'}
-          </h3>
-        </div>
-        
-        {/* Tab toggle */}
-        <div className="bg-white rounded-lg p-1 flex gap-1 shadow-sm mb-3">
-          <button
-            onClick={() => setServiceTab('independent')}
-            className={`flex-1 py-2 rounded-md text-xs font-medium flex items-center justify-center gap-1.5 transition-colors ${
-              serviceTab === 'independent'
-                ? 'bg-[#FF9800] text-white shadow-sm'
-                : 'text-[#757575]'
-            }`}
-          >
-            <Car className="w-4 h-4" />
-            <span>Indépendants</span>
-          </button>
-          <button
-            onClick={() => setServiceTab('station')}
-            className={`flex-1 py-2 rounded-md text-xs font-medium flex items-center justify-center gap-1.5 transition-colors ${
-              serviceTab === 'station'
-                ? 'bg-[#FF9800] text-white shadow-sm'
-                : 'text-[#757575]'
-            }`}
-          >
-            <Building className="w-4 h-4" />
-            <span>Stations</span>
-          </button>
-        </div>
-        
-        {/* Independent washers - APP services grid (home service: washer comes to client) */}
+        <Segmented
+          options={[
+            { value: 'independent', label: 'Indépendants', icon: <User className="w-[18px] h-[18px]" /> },
+            { value: 'station', label: 'Stations', icon: <Building className="w-[18px] h-[18px]" /> },
+          ]}
+          value={serviceTab}
+          onChange={setServiceTab}
+        />
+
+        {/* Formules des laveurs indépendants — service à domicile (le laveur
+            se déplace chez vous) : cartes illustrées, icônes à la place du texte */}
         {serviceTab === 'independent' && (
           <>
-            <p className="text-xs text-[#757575] mb-2">Le laveur se déplace chez vous</p>
-
-            {/* Extérieur vs Complet — quick explainer so the difference is obvious */}
-            <div className="grid grid-cols-2 gap-2 mb-3">
-              <div className="bg-[#E8F5E9] rounded-lg p-2.5">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <Car className="w-3.5 h-3.5 text-[#2E7D32] flex-shrink-0" />
-                  <p className="text-[11px] font-bold text-[#2E7D32]">Lavage Extérieur</p>
-                </div>
-                <p className="text-[10px] text-[#33691E] leading-snug">Carrosserie, vitres et jantes uniquement — rapide et économique.</p>
-              </div>
-              <div className="bg-[#FFF3E0] rounded-lg p-2.5">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <Car className="w-3.5 h-3.5 text-[#E65100] flex-shrink-0" />
-                  <Armchair className="w-3.5 h-3.5 text-[#E65100] flex-shrink-0 -ml-1" />
-                  <p className="text-[11px] font-bold text-[#E65100]">Lavage Complet</p>
-                </div>
-                <p className="text-[10px] text-[#BF360C] leading-snug">Extérieur + intérieur nettoyé (aspiration, tableau de bord…).</p>
-              </div>
+            <div className="mt-4">
+              <SectionHeader title="Nos formules" />
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {services.length === 0 ? (
-                <div className="col-span-2 lg:col-span-4 bg-white rounded-lg p-4 text-center shadow-sm">
-                  <p className="text-sm text-[#757575]">Aucun service disponible</p>
+                <div className="col-span-2 lg:col-span-4">
+                  <EmptyState icon={Car} message="Aucune formule disponible pour le moment" />
                 </div>
-              ) : services.map((service) => (
-                <button
-                  key={service.id}
-                  onClick={() => setSelectedService(service)}
-                  className="bg-white rounded-lg p-3 text-left shadow-sm active:bg-[#F5F5F5] transition-colors flex flex-col"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="w-10 h-10 bg-[#FFF3E0] rounded-lg flex items-center justify-center flex-shrink-0">
-                      <ServiceIcon service={service} className="w-5 h-5 text-[#FF9800]" />
-                    </div>
-                    <CoverageBadge service={service} short />
-                  </div>
-                  <p className="text-sm font-semibold text-[#212121] truncate">{service.name}</p>
-                  <div className="flex items-center justify-between mt-1">
-                    <span className="text-sm text-[#FF9800] font-bold">{formatPrice(service.price)}</span>
-                    <span className="text-[10px] text-[#757575] flex items-center gap-0.5">
-                      <Clock className="w-3 h-3" />{service.duration} min
-                    </span>
-                  </div>
-                </button>
-              ))}
+              ) : (
+                services.map((service, index) => (
+                  <ServiceArtCard
+                    key={service.id}
+                    service={service}
+                    index={index}
+                    onClick={() => setSelectedService(service)}
+                  />
+                ))
+              )}
             </div>
           </>
         )}
         
-        {/* Stations list (station service: client goes to station) */}
+        {/* Stations — le client se rend à la station */}
         {serviceTab === 'station' && (
           <>
-            <p className="text-xs text-[#757575] mb-2">Vous vous rendez à la station</p>
+            <div className="mt-4">
+              <SectionHeader title="Stations" />
+            </div>
             {appStations.length === 0 ? (
-              <div className="bg-white rounded-lg p-6 text-center shadow-sm">
-                <Building className="w-8 h-8 text-[#9E9E9E] mx-auto mb-2" />
-                <p className="text-sm text-[#757575]">Aucune station disponible</p>
-              </div>
+              <EmptyState icon={Building} message="Aucune station disponible pour le moment" />
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 {appStations.map((station) => {
                   const image = getStationImage(station);
                   const serviceCount = Array.isArray(station.services) ? station.services.length : 0;
@@ -902,31 +872,31 @@ function HomeContent({
                     <button
                       key={station.id}
                       onClick={() => setSelectedStation(station)}
-                      className="w-full bg-white rounded-lg p-3 flex gap-3 shadow-sm active:bg-[#F5F5F5] transition-colors text-left"
+                      className="w-full bg-surface rounded-card border border-line shadow-card p-3 flex gap-3 items-center active:scale-[0.99] transition-transform text-left"
                     >
                       {image ? (
-                        <img src={image} alt={station.name} className="w-16 h-16 rounded-lg object-cover flex-shrink-0" />
+                        <img src={image} alt={station.name} className="w-16 h-16 rounded-btn object-cover flex-shrink-0" />
                       ) : (
-                        <div className="w-16 h-16 bg-[#FFF3E0] rounded-lg flex items-center justify-center flex-shrink-0">
-                          <Building className="w-7 h-7 text-[#FF9800]" />
+                        <div className="w-16 h-16 bg-brand-soft rounded-btn flex items-center justify-center flex-shrink-0">
+                          <Building className="w-7 h-7 text-brand" />
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-[#212121] text-sm truncate">{station.name}</p>
-                        <p className="text-xs text-[#757575] truncate">{station.address}</p>
+                        <p className="text-body font-semibold text-ink truncate">{station.name}</p>
+                        <p className="text-detail text-soft truncate">{station.address}</p>
                         <div className="flex items-center gap-2 mt-1">
                           {station.rating > 0 && (
                             <div className="flex items-center gap-0.5">
-                              <Star className="w-3 h-3 text-[#FFC107] fill-[#FFC107]" />
-                              <span className="text-xs text-[#757575]">{station.rating.toFixed(1)}</span>
+                              <Star className="w-3 h-3 text-star fill-star" />
+                              <span className="text-detail text-soft">{station.rating.toFixed(1)}</span>
                             </div>
                           )}
                           {serviceCount > 0 && (
-                            <span className="text-xs text-[#757575]">{serviceCount} service{serviceCount > 1 ? 's' : ''}</span>
+                            <span className="text-detail text-soft">{serviceCount} service{serviceCount > 1 ? 's' : ''}</span>
                           )}
                         </div>
                       </div>
-                      <ChevronRight className="w-5 h-5 text-[#BDBDBD] self-center flex-shrink-0" />
+                      <ChevronRight className="w-5 h-5 text-soft flex-shrink-0" />
                     </button>
                   );
                 })}
@@ -1148,40 +1118,53 @@ function HomeContent({
         </DialogContent>
       </Dialog>
 
-      {/* Available Washers */}
+      {/* Laveurs disponibles — rangées : avatar, note, statut en ligne, un bouton clair */}
       <section>
-        <div className="flex justify-between items-center mb-3">
-          <h3 className="text-base font-bold text-[#212121]">Laveurs disponibles</h3>
-          {!washersLoading && availableWashers.length > 4 && (
-            <button
-              onClick={() => setShowAllWashers(!showAllWashers)}
-              className="text-xs text-[#FF9800] font-medium"
-            >
-              {showAllWashers ? 'Réduire' : 'Voir tout'}
-            </button>
-          )}
-        </div>
+        <SectionHeader
+          title="Laveurs disponibles"
+          action={!washersLoading && availableWashers.length > 4 ? (showAllWashers ? 'Réduire' : 'Voir tout') : undefined}
+          onAction={() => setShowAllWashers(!showAllWashers)}
+        />
         {washersLoading ? (
+          /* Skeleton loaders (design system) */
           <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="flex-shrink-0 w-28 bg-white rounded-lg p-3 text-center shadow-sm animate-pulse">
-                <div className="w-12 h-12 mx-auto mb-2 bg-[#EEEEEE] rounded-full" />
-                <div className="h-3 bg-[#EEEEEE] rounded w-16 mx-auto" />
-                <div className="h-3 bg-[#EEEEEE] rounded w-10 mx-auto mt-1.5" />
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex-shrink-0 w-[290px] bg-surface rounded-card border border-line p-3 flex items-center gap-3 animate-pulse">
+                <div className="w-[54px] h-[54px] rounded-[18px] bg-line" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3.5 bg-line rounded-pill w-24" />
+                  <div className="h-3 bg-line rounded-pill w-32" />
+                </div>
+                <div className="h-9 w-[76px] bg-line rounded-btn" />
               </div>
             ))}
           </div>
+        ) : availableWashers.length === 0 ? (
+          <EmptyState icon={User} message="Aucun laveur en ligne pour le moment" />
         ) : showAllWashers ? (
-          <div className="grid grid-cols-4 gap-2">
+          <div className="space-y-2.5">
             {availableWashers.map((washer) => (
-              <WasherCard key={washer.id} washer={washer} />
+              <WasherRow
+                key={washer.id}
+                name={washer.user?.name || 'Laveur'}
+                rating={washer.rating ?? 0}
+                jobs={washer.completedJobs ?? 0}
+                avatar={washer.user?.avatar ?? null}
+                onAction={onStartOrder}
+              />
             ))}
           </div>
         ) : (
           <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4">
             {availableWashers.map((washer) => (
-              <div key={washer.id} className="flex-shrink-0 w-28">
-                <WasherCard washer={washer} />
+              <div key={washer.id} className="flex-shrink-0 w-[290px]">
+                <WasherRow
+                  name={washer.user?.name || 'Laveur'}
+                  rating={washer.rating ?? 0}
+                  jobs={washer.completedJobs ?? 0}
+                  avatar={washer.user?.avatar ?? null}
+                  onAction={onStartOrder}
+                />
               </div>
             ))}
           </div>
@@ -1194,33 +1177,7 @@ function HomeContent({
   );
 }
 
-// Washer card used in the "Laveurs disponibles" section (carousel + expanded grid)
-function WasherCard({ washer }: { washer: any }) {
-  const name = washer.user?.name || 'Laveur';
-  const jobs = washer.completedJobs ?? 0;
-  return (
-    <div className="w-full bg-white rounded-lg p-3 text-center shadow-sm">
-      <div className="relative w-12 h-12 mx-auto mb-2">
-        {washer.user?.avatar ? (
-          <img src={washer.user.avatar} alt={name} className="w-12 h-12 rounded-full object-cover" />
-        ) : (
-          <div className="w-12 h-12 bg-[#FF9800] rounded-full flex items-center justify-center text-white font-bold">
-            {name.charAt(0)}
-          </div>
-        )}
-        <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 rounded-full border-2 border-white" />
-      </div>
-      <p className="text-xs font-medium text-[#212121] truncate">{name}</p>
-      <div className="flex items-center justify-center gap-0.5 mt-1">
-        <Star className="w-3 h-3 text-[#FFC107] fill-[#FFC107]" />
-        <span className="text-xs text-[#757575]">{(washer.rating ?? 0).toFixed(1)}</span>
-      </div>
-      <p className="text-[10px] text-[#9E9E9E] mt-0.5">{jobs} lavage{jobs > 1 ? 's' : ''}</p>
-    </div>
-  );
-}
-
-// Profile Content - Android Material Design Style
+// Profil Content — design system (cartes blanches, accents orange)
 function ProfileContent({ user, onLogout }: { user: any; onLogout: () => void }) {
   const [activeSection, setActiveSection] = useState<string | null>(null);
   // Real profile stats (completed washes + total spent), computed from the client's orders
