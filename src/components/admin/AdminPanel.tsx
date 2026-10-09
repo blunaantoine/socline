@@ -45,6 +45,8 @@ import { useAutoRefresh, type RefreshSource } from '@/hooks/useAutoRefresh';
 import { AdminNotificationCenter } from '@/components/admin/AdminNotificationCenter';
 
 // Component to drag and position image
+// Convention de stockage : CSS object-position standard « X% Y% » (horizontal
+// d'abord) — identique côté aperçu admin ET bannière client.
 function ImagePositionEditor({ 
   imageSrc, 
   position, 
@@ -60,11 +62,19 @@ function ImagePositionEditor({
   const [isDragging, setIsDragging] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Parse position to get x,y percentages
+  // Dernière fonction onPositionChange (évite de réabonner les listeners
+  // globaux à chaque rendu du formulaire pendant le glissement)
+  const onPositionChangeRef = useRef(onPositionChange);
+  useEffect(() => {
+    onPositionChangeRef.current = onPositionChange;
+  }, [onPositionChange]);
+
+  // Parse position to get x,y percentages (x = horizontal, y = vertical)
   const parsePosition = (pos: string): { x: number; y: number } => {
     if (pos.includes('%')) {
-      const parts = pos.split(' ').map(p => parseInt(p.replace('%', '')));
-      return { y: parts[0] || 50, x: parts[1] || 50 };
+      // Format CSS « X% Y% » : horizontal d'abord
+      const parts = pos.split(' ').map(p => parseInt(p.replace('%', '')) || 0);
+      return { x: parts[0] ?? 50, y: parts[1] ?? 50 };
     }
     // Handle named positions
     const positions: Record<string, { x: number; y: number }> = {
@@ -90,6 +100,14 @@ function ImagePositionEditor({
     setIsDragging(true);
   };
 
+  // Un clic simple sur l'aperçu ne doit PAS rouvrir le sélecteur de fichier
+  // (l'aperçu vit dans un <label> qui contient l'input). Le changement
+  // d'image passe par le bouton de suppression.
+  const swallowClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
   useEffect(() => {
     if (!isDragging) return;
 
@@ -100,12 +118,14 @@ function ImagePositionEditor({
       const x = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
       const y = Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100));
       
-      onPositionChange(`${Math.round(y)}% ${Math.round(x)}%`);
+      // Format CSS « X% Y% » : horizontal d'abord
+      onPositionChangeRef.current(`${Math.round(x)}% ${Math.round(y)}%`);
     };
 
     const handleMouseMove = (e: MouseEvent) => handleMove(e.clientX, e.clientY);
     const handleTouchMove = (e: TouchEvent) => {
       if (e.touches.length === 1) {
+        e.preventDefault(); // le glissement déplace l'image, pas la page
         handleMove(e.touches[0].clientX, e.touches[0].clientY);
       }
     };
@@ -114,7 +134,7 @@ function ImagePositionEditor({
 
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleEnd);
-    window.addEventListener('touchmove', handleTouchMove);
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
     window.addEventListener('touchend', handleEnd);
 
     return () => {
@@ -123,14 +143,14 @@ function ImagePositionEditor({
       window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('touchend', handleEnd);
     };
-  }, [isDragging, onPositionChange]);
+  }, [isDragging]);
 
   const pos = parsePosition(position);
 
   return (
     <div className="relative w-full h-full">
       {/* Instructions */}
-      <div className="absolute top-2 left-2 z-10 bg-black/50 text-white text-[10px] px-2 py-1 rounded-full flex items-center gap-1">
+      <div className="absolute top-2 left-2 z-10 bg-black/50 text-white text-[10px] px-2 py-1 rounded-full flex items-center gap-1 pointer-events-none">
         <Move className="w-3 h-3" />
         Glissez pour ajuster
       </div>
@@ -151,9 +171,10 @@ function ImagePositionEditor({
       {/* Image container */}
       <div 
         ref={containerRef}
-        className="w-full h-full cursor-move overflow-hidden rounded-lg relative"
+        className="w-full h-full cursor-move overflow-hidden rounded-lg relative select-none touch-none"
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
+        onClick={swallowClick}
       >
         <img 
           src={imageSrc} 
@@ -3709,7 +3730,7 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
                         <ImagePositionEditor
                           imageSrc={imagePreview}
                           position={formData.imagePosition}
-                          onPositionChange={(pos) => setFormData({ ...formData, imagePosition: pos })}
+                          onPositionChange={(pos) => setFormData((prev) => ({ ...prev, imagePosition: pos }))}
                           onRemove={() => {
                             setImagePreview(null);
                             setFormData({ ...formData, image: '', imagePosition: 'center' });

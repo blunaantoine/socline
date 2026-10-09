@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireAdmin } from '@/lib/auth';
 
 // GET - Fetch all promotions or active promotions
 export async function GET(request: NextRequest) {
@@ -34,8 +35,11 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Create a new promotion
+// POST - Create a new promotion (admin uniquement)
 export async function POST(request: NextRequest) {
+  const { authorized, response } = await requireAdmin(request);
+  if (!authorized) return response;
+
   try {
     const body = await request.json();
     const {
@@ -99,8 +103,11 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PUT - Update a promotion
+// PUT - Update a promotion (admin uniquement)
 export async function PUT(request: NextRequest) {
+  const { authorized, response } = await requireAdmin(request);
+  if (!authorized) return response;
+
   try {
     const body = await request.json();
     const { id, ...data } = body;
@@ -154,8 +161,11 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// DELETE - Delete a promotion
+// DELETE - Delete a promotion (admin uniquement)
 export async function DELETE(request: NextRequest) {
+  const { authorized, response } = await requireAdmin(request);
+  if (!authorized) return response;
+
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
