@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maquette – Portefeuille, Profil, Abonnements, Réserver</title>
+<style>
+  :root{--navy:#0F1B2D;--navy2:#1B2C45;--orange:#F28C00;--bg:#F4F5F7;--card:#fff;--text:#0F1B2D;--muted:#6B7686;--line:#E7EAEF;--green:#1FA971}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:#D9DCE1;color:var(--text);padding:24px 16px}
+  .row{display:flex;gap:28px;overflow-x:auto;padding-bottom:12px;scroll-snap-type:x mandatory}
+  .wrap{flex:0 0 auto;scroll-snap-align:center}
+  .label{font-size:13px;font-weight:700;color:#4A5566;margin:0 0 8px 6px}
+  .phone{width:370px;height:780px;background:var(--bg);border-radius:34px;border:8px solid #111;overflow:hidden;display:flex;flex-direction:column}
+  .scroll{flex:1;overflow-y:auto;padding:16px 16px 20px;scrollbar-width:none}
+  .scroll::-webkit-scrollbar{display:none}
+  svg{flex:none}
+
+  .bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .loc{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+  .loc b{display:block;color:var(--text);font-size:14px}
+  .pin{width:34px;height:34px;border-radius:11px;background:#FFF1DC;display:grid;place-items:center}
+  .ib{width:40px;height:40px;border-radius:13px;background:#fff;border:1px solid var(--line);display:grid;place-items:center;position:relative}
+  .ib i{position:absolute;top:9px;right:10px;width:8px;height:8px;border-radius:50%;background:var(--orange);border:2px solid #fff}
+  h1{font-size:22px;letter-spacing:-.3px}
+  .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+  h3{font-size:16px}
+  .sec{display:flex;justify-content:space-between;align-items:center;margin:18px 0 10px}
+  .sec a{font-size:13px;font-weight:600;color:var(--orange)}
+
+  .card{background:#fff;border:1px solid var(--line);border-radius:20px}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:13px;padding:12px 16px;font-weight:700;font-size:14px}
+  .b-o{background:var(--orange);color:#fff}.b-n{background:var(--navy);color:#fff}.b-w{background:#fff;border:1px solid var(--line);color:var(--text)}.b-g{background:#25D366;color:#fff}
+
+  /* wallet */
+  .bal{background:linear-gradient(135deg,var(--navy),var(--navy2));border-radius:22px;padding:20px;color:#fff;position:relative;overflow:hidden}
+  .bal:after{content:"";position:absolute;right:-40px;top:-40px;width:150px;height:150px;border-radius:50%;background:var(--orange);opacity:.18}
+  .bal small{color:#AAB5C6;font-size:13px}
+  .bal .amt{font-size:34px;font-weight:800;margin:4px 0 16px;display:flex;align-items:center;gap:10px}
+  .bal .amt span{font-size:16px;font-weight:600;color:#AAB5C6}
+  .bal .st{display:flex;justify-content:space-between;border-top:1px solid rgba(255,255,255,.14);padding-top:12px;font-size:13px}
+  .bal .st b{display:block;font-size:15px;margin-top:2px}
+  .acts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+  .empty{text-align:center;padding:26px 20px}
+  .empty .ill{width:84px;height:84px;margin:0 auto 12px;border-radius:26px;background:#FFF1DC;display:grid;place-items:center}
+  .empty b{display:block;font-size:15px;margin-bottom:4px}
+  .empty p{font-size:13px;color:var(--muted);margin-bottom:14px}
+
+  /* profile */
+  .me{display:flex;align-items:center;gap:14px;padding:14px}
+  .av{width:58px;height:58px;border-radius:19px;background:linear-gradient(135deg,var(--orange),#FFB547);color:#fff;font-weight:800;font-size:24px;display:grid;place-items:center}
+  .me b{font-size:16px;display:block}.me span{font-size:13px;color:var(--muted)}
+  .me .ib{margin-left:auto;width:36px;height:36px;border-radius:11px}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .stat{padding:14px 8px;text-align:center}
+  .stat .ic{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;margin:0 auto 8px}
+  .stat b{font-size:17px;display:block}.stat span{font-size:12px;color:var(--muted)}
+  .support{background:linear-gradient(135deg,var(--navy),var(--navy2));border-radius:20px;padding:16px;color:#fff}
+  .support .t{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+  .support .t i{width:42px;height:42px;border-radius:14px;background:rgba(255,255,255,.1);display:grid;place-items:center}
+  .support .t b{display:block;font-size:15px}.support .t span{font-size:12.5px;color:#AAB5C6}
+  .support .g{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+  /* subscriptions */
+  .sub{padding:14px;display:flex;gap:14px;align-items:center;margin-bottom:12px;position:relative}
+  .sub .ic{width:52px;height:52px;border-radius:17px;display:grid;place-items:center}
+  .sub .m{flex:1}
+  .sub .m b{font-size:15.5px;display:block}
+  .sub .m span{font-size:12.5px;color:var(--muted)}
+  .sub .ck{display:flex;align-items:center;gap:6px;font-size:12.5px;margin-top:8px}
+  .sub .p{text-align:right}
+  .sub .p b{font-size:16px;font-weight:800;display:block}.sub .p small{font-size:11.5px;color:var(--muted)}
+  .pop{position:absolute;top:-10px;right:14px;background:var(--orange);color:#fff;font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:999px}
+
+  /* booking */
+  .top2{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+  .steps{display:flex;align-items:center;margin-bottom:6px}
+  .steps .s{width:30px;height:30px;border-radius:50%;background:#E2E6EC;display:grid;place-items:center;flex:none}
+  .steps .s.on{background:var(--orange)}
+  .steps .l{flex:1;height:3px;background:#E2E6EC;margin:0 4px;border-radius:2px}
+  .steps .l.on{background:var(--orange)}
+  .sl{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin-bottom:14px}
+  .sl .on{color:var(--orange);font-weight:700}
+  .opt{display:flex;gap:12px;padding:10px;margin-bottom:10px;align-items:center}
+  .opt .art{width:92px;height:86px;border-radius:15px;display:grid;place-items:center;flex:none}
+  .opt .art svg{width:76px}
+  .opt .m{flex:1}
+  .opt .m b{font-size:15px;display:flex;align-items:center;gap:6px}
+  .chips{display:flex;gap:5px;margin:6px 0 8px}
+  .chip{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:600;padding:3px 8px;border-radius:999px}
+  .opt .r{display:flex;justify-content:space-between;align-items:center}
+  .opt .r b{font-size:16px;font-weight:800}.opt .r b small{font-size:11px;color:var(--orange)}
+  .go{width:34px;height:34px;border-radius:11px;background:var(--orange);display:grid;place-items:center}
+
+  .nav{display:flex;justify-content:space-around;background:#fff;border-top:1px solid var(--line);padding:9px 0 12px}
+  .nav div{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10.5px;color:#8A94A3;font-weight:600}
+  .nav .on{color:var(--orange)}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute"><defs>
+  <symbol id="car" viewBox="0 0 120 56">
+    <path d="M6 40V31c0-4 3-6 7-7l17-3 10-11c2-2 4-3 7-3h31c4 0 7 1 9 4l9 10 10 3c5 1 8 4 8 8v8z" fill="currentColor"/>
+    <path d="M44 14h30c2 0 3 1 4 2l7 9H37z" fill="#fff" opacity=".85"/>
+    <circle cx="33" cy="42" r="9" fill="#0F1B2D"/><circle cx="33" cy="42" r="3.5" fill="#CBD1DA"/>
+    <circle cx="88" cy="42" r="9" fill="#0F1B2D"/><circle cx="88" cy="42" r="3.5" fill="#CBD1DA"/>
+  </symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3z" fill="currentColor"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></g></symbol>
+  <symbol id="i-crown" viewBox="0 0 24 24"><path d="M3 18l-1-10 5 4 5-7 5 7 5-4-1 10z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="i-crownf" viewBox="0 0 24 24"><path d="M3 18l-1-10 5 4 5-7 5 7 5-4-1 10z" fill="currentColor"/></symbol>
+  <symbol id="i-wallet" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="6" width="18" height="14" rx="3"/><path d="M16 13h2M5 6l11-3v3"/></g></symbol>
+  <symbol id="i-walletf" viewBox="0 0 24 24"><path d="M5 6l11-3v3h2a3 3 0 013 3v8a3 3 0 01-3 3H6a3 3 0 01-3-3V9a3 3 0 012-3zm11 7a1 1 0 100 2h2v-2z" fill="currentColor"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></g></symbol>
+  <symbol id="i-userf" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="currentColor"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6z" fill="currentColor"/></symbol>
+  <symbol id="i-calf" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3" fill="currentColor"/><path d="M8 3v4M16 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M3 10h18" stroke="#fff" stroke-width="2"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 1112 0c0 7 3 8 3 8H3s3-1 3-8M10 20a2 2 0 004 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s7-6 7-11a7 7 0 10-14 0c0 5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></g></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></g></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 00-14-4M4 4v4h4M4 13a8 8 0 0014 4M20 20v-4h-4"/></g></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></g></symbol>
+  <symbol id="i-hist" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 109-9 9 9 0 00-7 3M3 4v4h4M12 8v4l3 2"/></g></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="i-head" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 14v-2a8 8 0 0116 0v2"/><rect x="3" y="14" width="4" height="6" rx="1.5"/><rect x="17" y="14" width="4" height="6" rx="1.5"/></g></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 2l3 7 7 .7-5.3 4.8 1.6 7.5L12 18l-6.3 4 1.6-7.5L2 9.7 9 9z" fill="currentColor"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-seat" viewBox="0 0 24 24"><path d="M7 4v8M7 12h10l-1-8M7 12v5h12v-5M9 17v3M17 17v3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-body" viewBox="0 0 24 24"><path d="M3 15l2-6h14l2 6M5 15h14v4H5z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z" fill="currentColor"/></symbol>
+  <symbol id="i-drop" viewBox="0 0 24 24"><path d="M12 3s6 6 6 11a6 6 0 01-12 0c0-5 6-11 6-11z" fill="currentColor"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 2l2 6 6 2-6 2-2 6-2-6-6-2 6-2z" fill="currentColor"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></g></symbol>
+</defs></svg>
+
+<div class="row">
+
+<!-- ========== PORTEFEUILLE ========== -->
+<div class="wrap"><div class="label">1 · Portefeuille</div>
+<div class="phone"><div class="scroll">
+  <div class="bar">
+    <div class="loc"><div class="pin"><svg width="18" height="18" style="color:#F28C00"><use href="#i-pin"/></svg></div><div>Position<b>Ma position</b></div></div>
+    <div class="ib"><svg width="20" height="20"><use href="#i-bell"/></svg><i></i></div>
+  </div>
+  <div class="head"><h1>Portefeuille</h1><div class="ib" style="width:36px;height:36px"><svg width="18" height="18" style="color:#F28C00"><use href="#i-refresh"/></svg></div></div>
+
+  <div class="bal">
+    <small>Solde disponible</small>
+    <div class="amt">0 <span>XOF</span><svg width="20" height="20" style="color:#AAB5C6;margin-left:auto"><use href="#i-eye"/></svg></div>
+    <div class="st"><div><small>Total rechargé</small><b>0 F</b></div><div style="text-align:right"><small>Dernière recharge</small><b>–</b></div></div>
+  </div>
+  <div class="acts">
+    <div class="btn b-o"><svg width="18" height="18"><use href="#i-plus"/></svg>Recharger</div>
+    <div class="btn b-w"><svg width="18" height="18"><use href="#i-hist"/></svg>Historique</div>
+  </div>
+
+  <div class="sec"><h3>Transactions récentes</h3><a>Voir tout</a></div>
+  <div class="card empty">
+    <div class="ill"><svg width="44" height="44" style="color:#F28C00"><use href="#i-walletf"/></svg></div>
+    <b>Aucune transaction</b>
+    <p>Rechargez pour payer vos lavages en un geste.</p>
+    <div class="btn b-n"><svg width="16" height="16"><use href="#i-plus"/></svg>Recharger</div>
+  </div>
+</div>
+<div class="nav" data-on="3"></div></div></div>
+
+<!-- ========== PROFIL ========== -->
+<div class="wrap"><div class="label">2 · Profil</div>
+<div class="phone"><div class="scroll">
+  <div class="bar">
+    <div class="loc"><div class="pin"><svg width="18" height="18" style="color:#F28C00"><use href="#i-pin"/></svg></div><div>Position<b>Ma position</b></div></div>
+    <div class="ib"><svg width="20" height="20"><use href="#i-bell"/></svg><i></i></div>
+  </div>
+
+  <div class="card me">
+    <div class="av">C</div>
+    <div><b>Client Test</b><span>+228 90 12 34 56</span></div>
+    <div class="ib"><svg width="17" height="17"><use href="#i-edit"/></svg></div>
+  </div>
+
+  <div class="sec"><h3>Mes véhicules <span style="color:var(--muted);font-weight:600">0/10</span></h3><a>+ Ajouter</a></div>
+  <div class="card empty">
+    <div class="ill" style="background:#EAF4FB"><svg width="62" viewBox="0 0 120 56" style="color:#2B7BB9"><use href="#car"/></svg></div>
+    <b>Aucun véhicule</b>
+    <p>Ajoutez-le pour réserver plus vite.</p>
+    <div class="btn b-o"><svg width="16" height="16"><use href="#i-plus"/></svg>Ajouter un véhicule</div>
+  </div>
+
+  <div class="sec"><h3>Statistiques</h3></div>
+  <div class="stats">
+    <div class="card stat"><div class="ic" style="background:#EAF4FB;color:#2B7BB9"><svg width="20" height="20"><use href="#i-drop"/></svg></div><b>0</b><span>Lavages</span></div>
+    <div class="card stat"><div class="ic" style="background:#FFF6D6;color:#E0A100"><svg width="20" height="20"><use href="#i-star"/></svg></div><b>–</b><span>Note</span></div>
+    <div class="card stat"><div class="ic" style="background:#EAF7F1;color:#1FA971"><svg width="20" height="20"><use href="#i-wallet"/></svg></div><b>0 F</b><span>Dépensé</span></div>
+  </div>
+
+  <div class="support" style="margin-top:16px">
+    <div class="t"><i><svg width="22" height="22"><use href="#i-head"/></svg></i><div><b>Besoin d'aide ?</b><span>Une réponse rapide, 7j/7</span></div></div>
+    <div class="g">
+      <div class="btn" style="background:#fff;color:var(--navy)"><svg width="17" height="17"><use href="#i-phone"/></svg>Appeler</div>
+      <div class="btn b-g"><svg width="17" height="17"><use href="#i-chat"/></svg>WhatsApp</div>
+    </div>
+  </div>
+</div>
+<div class="nav" data-on="4"></div></div></div>
+
+<!-- ========== ABONNEMENTS ========== -->
+<div class="wrap"><div class="label">3 · Abonnements</div>
+<div class="phone"><div class="scroll">
+  <div class="bar">
+    <div class="loc"><div class="pin"><svg width="18" height="18" style="color:#F28C00"><use href="#i-pin"/></svg></div><div>Position<b>Ma position</b></div></div>
+    <div class="ib"><svg width="20" height="20"><use href="#i-bell"/></svg><i></i></div>
+  </div>
+  <div class="head"><h1>Abonnements</h1><div class="ib" style="width:36px;height:36px"><svg width="18" height="18" style="color:#F28C00"><use href="#i-refresh"/></svg></div></div>
+  <p style="font-size:13.5px;color:var(--muted);margin:-4px 0 18px">Lavez plus, payez moins.</p>
+
+  <div class="card sub">
+    <div class="ic" style="background:#EDF0F4;color:#5B6779"><svg width="26" height="26"><use href="#i-bolt"/></svg></div>
+    <div class="m"><b>Essentiel</b><span>4 lavages / mois</span>
+      <div class="ck"><svg width="15" height="15" style="color:#1FA971"><use href="#i-check"/></svg>Moins cher qu'à l'unité</div></div>
+    <div class="p"><b>8 000 F</b><small>/mois</small></div>
+    <svg width="18" height="18" style="color:#B3BBC8"><use href="#i-chev"/></svg>
+  </div>
+
+  <div class="card sub" style="border:1.5px solid var(--orange)">
+    <span class="pop">Populaire</span>
+    <div class="ic" style="background:#E8F0FF;color:#2F6BFF"><svg width="26" height="26"><use href="#i-drop"/></svg></div>
+    <div class="m"><b>Confort</b><span>4 lavages / mois</span>
+      <div class="ck"><svg width="15" height="15" style="color:#1FA971"><use href="#i-check"/></svg>Priorité sur les réservations</div></div>
+    <div class="p"><b>14 000 F</b><small>/mois</small></div>
+    <svg width="18" height="18" style="color:#B3BBC8"><use href="#i-chev"/></svg>
+  </div>
+
+  <div class="card sub">
+    <div class="ic" style="background:#F1E9FF;color:#8A3FFC"><svg width="26" height="26"><use href="#i-crownf"/></svg></div>
+    <div class="m"><b>Premium</b><span>Lavages illimités</span>
+      <div class="ck"><svg width="15" height="15" style="color:#1FA971"><use href="#i-check"/></svg>Service prioritaire</div></div>
+    <div class="p"><b>25 000 F</b><small>/mois</small></div>
+    <svg width="18" height="18" style="color:#B3BBC8"><use href="#i-chev"/></svg>
+  </div>
+</div>
+<div class="nav" data-on="2"></div></div></div>
+
+<!-- ========== RESERVER ========== -->
+<div class="wrap"><div class="label">4 · Réserver · étape 1</div>
+<div class="phone"><div class="scroll">
+  <div class="top2"><div class="ib" style="width:38px;height:38px"><svg width="18" height="18"><use href="#i-back"/></svg></div><h1 style="font-size:19px">Choisir un service</h1></div>
+
+  <div class="steps">
+    <div class="s on"><svg width="15" height="15" style="color:#fff"><use href="#i-drop"/></svg></div><div class="l"></div>
+    <div class="s"><svg width="15" height="15" style="color:#8A94A3"><use href="#i-pin"/></svg></div><div class="l"></div>
+    <div class="s"><svg width="15" height="15" style="color:#8A94A3"><use href="#i-clock"/></svg></div><div class="l"></div>
+    <div class="s"><svg width="15" height="15" style="color:#8A94A3"><use href="#i-wallet"/></svg></div>
+  </div>
+  <div class="sl"><span class="on">Service</span><span>Adresse</span><span>Heure</span><span>Paiement</span></div>
+
+  <div class="card opt">
+    <div class="art" style="background:#EAF4FB"><svg viewBox="0 0 120 56" style="color:#2B7BB9"><use href="#car"/></svg></div>
+    <div class="m"><b>Essentiel <svg width="15" height="15" style="color:#B3BBC8"><use href="#i-info"/></svg></b>
+      <div class="chips"><span class="chip" style="background:#EAF7F1;color:#1B8A5E"><svg width="12" height="12"><use href="#i-body"/></svg>Extérieur</span><span class="chip" style="background:#F1F3F6;color:var(--muted)"><svg width="12" height="12"><use href="#i-clock"/></svg>20 min</span></div>
+      <div class="r"><b>2 500 <small>F</small></b><div class="go"><svg width="16" height="16" style="color:#fff"><use href="#i-chev"/></svg></div></div></div>
+  </div>
+
+  <div class="card opt">
+    <div class="art" style="background:#EAF7F1"><svg viewBox="0 0 120 56" style="color:#1FA971"><use href="#car"/></svg></div>
+    <div class="m"><b>Confort <svg width="15" height="15" style="color:#B3BBC8"><use href="#i-info"/></svg></b>
+      <div class="chips"><span class="chip" style="background:#FFF1DC;color:#C26A00"><svg width="12" height="12"><use href="#i-body"/></svg><svg width="12" height="12"><use href="#i-seat"/></svg>Complet</span><span class="chip" style="background:#F1F3F6;color:var(--muted)"><svg width="12" height="12"><use href="#i-clock"/></svg>35 min</span></div>
+      <div class="r"><b>4 000 <small>F</small></b><div class="go"><svg width="16" height="16" style="color:#fff"><use href="#i-chev"/></svg></div></div></div>
+  </div>
+
+  <div class="card opt">
+    <div class="art" style="background:#FFF1DC"><svg viewBox="0 0 120 56" style="color:#F28C00"><use href="#car"/></svg></div>
+    <div class="m"><b>Premium <svg width="15" height="15" style="color:#B3BBC8"><use href="#i-info"/></svg></b>
+      <div class="chips"><span class="chip" style="background:#FFF1DC;color:#C26A00"><svg width="12" height="12"><use href="#i-body"/></svg><svg width="12" height="12"><use href="#i-seat"/></svg>Complet</span><span class="chip" style="background:#F1F3F6;color:var(--muted)"><svg width="12" height="12"><use href="#i-clock"/></svg>50 min</span></div>
+      <div class="r"><b>6 500 <small>F</small></b><div class="go"><svg width="16" height="16" style="color:#fff"><use href="#i-chev"/></svg></div></div></div>
+  </div>
+
+  <div class="card opt" style="border-color:#D9D1F0">
+    <div class="art" style="background:#EEEAF8"><svg viewBox="0 0 120 56" style="color:#6C4FC0"><use href="#car"/></svg></div>
+    <div class="m"><b>Prestige <svg width="15" height="15" style="color:#B3BBC8"><use href="#i-info"/></svg></b>
+      <div class="chips"><span class="chip" style="background:#FFF1DC;color:#C26A00"><svg width="12" height="12"><use href="#i-body"/></svg><svg width="12" height="12"><use href="#i-seat"/></svg>Complet</span><span class="chip" style="background:#F1F3F6;color:var(--muted)"><svg width="12" height="12"><use href="#i-clock"/></svg>75 min</span></div>
+      <div class="r"><b>10 000 <small>F</small></b><div class="go"><svg width="16" height="16" style="color:#fff"><use href="#i-chev"/></svg></div></div></div>
+  </div>
+</div>
+<div class="nav" data-on="1"></div></div></div>
+
+</div>
+
+<script>
+  const items=[["home","Accueil"],["cal","Réserver"],["crown","Abonnements"],["wallet","Portefeuille"],["user","Profil"]];
+  document.querySelectorAll('.nav').forEach(n=>{
+    const on=+n.dataset.on;
+    n.innerHTML=items.map((it,i)=>`<div class="${i===on?'on':''}"><svg width="23" height="23"><use href="#i-${it[0]}${i===on&&it[0]!=='crown'?'f':''}"/></svg>${it[1]}</div>`).join('');
+  });
+</script>
+</body>
+</html>
