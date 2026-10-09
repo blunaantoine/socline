@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       status: result.settled,
+      reason: result.reason,
       balance: result.wallet?.balance,
     });
   } catch (error) {

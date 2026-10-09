@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
+import { expireStalePaydunyaDeposits } from '@/lib/paydunya-actions';
 
 // Helper function to build USSD code
 function buildUssdCode(pattern: string, montant: number, numero: string): string {
@@ -24,6 +25,15 @@ export async function GET(request: NextRequest) {
   const userId = auth.user!.id;
 
   try {
+    // Recharges PayDunya jamais abouties (client parti pendant le paiement,
+    // page de checkout fermée…) → passées automatiquement en ÉCHOUÉ dès le
+    // chargement du portefeuille. Quasi gratuit quand il n'y a rien à
+    // expirer (une seule requête indexée) ; chaque dépôt concerné est
+    // reconfirmé auprès de PayDunya avant d'être marqué échoué.
+    await expireStalePaydunyaDeposits().catch((e) =>
+      console.warn('[PayDunya] expiration des dépôts abandonnés :', e)
+    );
+
     // Get or create wallet
     let wallet = await db.wallet.findUnique({
       where: { userId },
