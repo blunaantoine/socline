@@ -9,6 +9,7 @@
 // keeps a trace of every step.
 
 import { notify } from '@/lib/notify';
+import { formatScheduledLong } from '@/lib/scheduled';
 
 export interface OrderForNotification {
   id: string;
@@ -16,6 +17,9 @@ export interface OrderForNotification {
   status: string;
   address?: string | null;
   cancelReason?: string | null;
+  // Rendez-vous planifié (« Plus tard ») : change le message d'acceptation
+  // en confirmation ferme de rendez-vous (option C).
+  scheduledAt?: string | Date | null;
   service?: { name?: string } | null;
   client?: { id: string } | null;
   washer?: { userId?: string | null; user?: { id: string; name?: string } | null } | null;
@@ -42,8 +46,15 @@ const CLIENT_STATUS_NOTIFS: Record<
 > = {
   ACCEPTED: {
     title: 'Commande acceptée ✅',
-    message: (o) =>
-      `${o.washer?.user?.name || 'Votre laveur'} a accepté votre commande « ${o.service?.name || ''} ».`,
+    message: (o) => {
+      const base = `${o.washer?.user?.name || 'Votre laveur'} a accepté votre commande « ${o.service?.name || ''} ».`;
+      // Commande planifiée : l'acceptation devient une confirmation ferme de rendez-vous.
+      if (o.scheduledAt) {
+        const when = formatScheduledLong(o.scheduledAt);
+        if (when) return `${base} Rendez-vous confirmé ${when}.`;
+      }
+      return base;
+    },
   },
   EN_ROUTE: {
     title: 'Le laveur est en route 🚗',

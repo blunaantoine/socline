@@ -18,6 +18,7 @@ import {
   Loader2, ArrowLeft, Copy, ExternalLink
 } from 'lucide-react';
 import type { Order, OrderStatus } from '@/types';
+import { formatScheduledShort } from '@/lib/scheduled';
 import { toast } from 'sonner';
 import { parseJsonResponse } from '@/lib/json-helper';
 
@@ -192,7 +193,7 @@ function OrderCard({ order, onViewDetails }: { order: Order; onViewDetails: () =
               </Badge>
             </div>
             <p className="text-sm text-[#757575] truncate">{order.address}</p>
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
               <span className="text-xs text-[#9E9E9E]">
                 {new Date(order.createdAt).toLocaleDateString('fr-FR', {
                   day: 'numeric',
@@ -201,6 +202,11 @@ function OrderCard({ order, onViewDetails }: { order: Order; onViewDetails: () =
                   minute: '2-digit',
                 })}
               </span>
+              {order.scheduledAt && (
+                <span className="text-[11px] font-semibold text-[#E65100] bg-[#FFF3E0] px-1.5 py-0.5 rounded">
+                  Planifié : {formatScheduledShort(order.scheduledAt)}
+                </span>
+              )}
               {order.status === 'COMPLETED' && order.review && (
                 <div className="flex items-center gap-1">
                   <Star className="w-3 h-3 text-[#FFC107] fill-[#FFC107]" />

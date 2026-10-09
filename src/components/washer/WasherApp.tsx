@@ -27,6 +27,7 @@ import { onSoclineNotification } from '@/components/RealtimeNotifications';
 import { isRealtimeEnabled } from '@/lib/realtime-flag';
 import { CoverageBadge } from '@/components/shared/ServiceCoverage';
 import { CarPhoto } from '@/components/shared/CarPhoto';
+import { ScheduledBadge } from '@/components/shared/ScheduledBadge';
 import { getServiceCoverage } from '@/lib/service-coverage';
 import { openWhatsApp } from '@/lib/contact';
 import { DynamicLeafletMap } from '@/components/map/DynamicLeafletMap';
@@ -1091,6 +1092,7 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
                           {order.status === 'ARRIVED' && 'Arrivé'}
                           {order.status === 'IN_PROGRESS' && 'En cours'}
                         </span>
+                        <ScheduledBadge scheduledAt={order.scheduledAt} />
                       </div>
                     </div>
                     <div className="text-right">
@@ -1156,6 +1158,9 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-[#757575]">Client: {order.client?.name || 'N/A'}</span>
                       </div>
+                      {/* Rendez-vous planifié par le client (« Plus tard ») : le laveur
+                          doit savoir QUAND le lavage est attendu avant d'accepter. */}
+                      {order.scheduledAt && <ScheduledBadge scheduledAt={order.scheduledAt} />}
                       {/* Vehicle + payment hint on the job card itself */}
                       {order.car && (
                         <div className="flex items-center gap-2 text-sm text-[#616161]">
@@ -1282,6 +1287,7 @@ function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat, acceptedOr
                         {o.status === 'ARRIVED' && 'Arrivé'}
                         {o.status === 'IN_PROGRESS' && 'En cours'}
                       </span>
+                      <ScheduledBadge scheduledAt={o.scheduledAt} className="mt-1" />
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-[#4CAF50]">{o.totalPrice?.toLocaleString()} XOF</p>
@@ -1321,6 +1327,12 @@ function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat, acceptedOr
 
       {/* Progress Steps - Android Stepper Style */}
       <div className="bg-white px-4 py-4 border-b border-[#E0E0E0]">
+        {/* Rendez-vous planifié : rappel permanent pendant le déroulement. */}
+        {order.scheduledAt && (
+          <div className="flex justify-center mb-3">
+            <ScheduledBadge scheduledAt={order.scheduledAt} className="text-[13px] py-1 px-3" />
+          </div>
+        )}
         <div className="flex items-center justify-between">
           {steps.map((step, index) => {
             const isActive = index === currentStepIndex;

@@ -43,6 +43,7 @@ import {
 import { toast } from 'sonner';
 import { DynamicLeafletMap } from '@/components/map/DynamicLeafletMap';
 import { parseJsonResponse } from '@/lib/json-helper';
+import { formatScheduledShort } from '@/lib/scheduled';
 
 // Types
 interface Address {
@@ -226,9 +227,17 @@ export function ActivityHistory({ userId, onBack }: { userId: string; onBack: ()
                     )}
                   </div>
                   <p className="text-sm text-[#757575] mt-1">{activity.description}</p>
-                  <div className="flex items-center justify-between mt-2">
+                  <div className="flex items-center justify-between mt-2 flex-wrap gap-1.5">
                     <span className="text-xs text-[#9E9E9E]">{formatDate(activity.date)}</span>
-                    {getStatusBadge(activity.status)}
+                    <div className="flex items-center gap-1.5">
+                      {/* Rendez-vous planifié par le client (« Plus tard »). */}
+                      {activity.type === 'ORDER' && activity.data?.scheduledAt && (
+                        <span className="text-[11px] font-semibold text-[#E65100] bg-[#FFF3E0] px-1.5 py-0.5 rounded">
+                          Planifié : {formatScheduledShort(activity.data.scheduledAt)}
+                        </span>
+                      )}
+                      {getStatusBadge(activity.status)}
+                    </div>
                   </div>
                 </div>
               </div>

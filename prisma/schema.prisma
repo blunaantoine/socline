@@ -376,6 +376,7 @@ model Order {
   
   // Scheduling
   scheduledAt     DateTime?    // For scheduled orders
+  reminderSentAt  DateTime?    // H-2h reminder already sent (client + washer)
   estimatedArrival DateTime?   // Estimated arrival time
   
   // Timestamps
