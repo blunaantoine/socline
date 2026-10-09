@@ -1349,3 +1349,27 @@ Stage Summary:
 - Socline est indexable proprement : sitemap + robots + canonical en prod, propriété vérifiée, Googlebot actif, et le duplicate content maison-khan.com est éliminé à la source (301 vers la boutique) avec protection catch-all contre tout futur domaine parasites.
 - Prochain jalons (aucune action dev requise) : statut sitemap « Succès » sous 24-48h, désindexation progressive de la version maison-khan (2-4 semaines), « Demander l'indexation » sur l'accueil pour accélérer.
 - Reste en attente : build APK par l'utilisateur dans Android Studio (projet complet livré Task 53).
+
+---
+Task ID: 55 (session 43 — réservations planifiées : visibilité + confirmation + rappels H-2h)
+Agent: main (Z.ai Code)
+Task: « pourquoi pour une réservation planifiée pour un autre jour le client attend encore un laveur ? » — diagnostic puis implémentation des options A+C validées par l'utilisateur (A : date planifiée visible partout ; C : confirmation ferme + rappels automatiques).
+
+Work Log:
+- DIAGNOSTIC : scheduledAt était stocké en base mais AFFICHÉ NULLE PART (ni côté laveur, ni suivi client, ni historique) — une réservation pour samedi était traitée exactement comme un lavage immédiat, et le laveur acceptait sans savoir quand le RDV était attendu.
+- src/lib/scheduled.ts (nouveau) : formatScheduledShort (« aujourd'hui · 21:10 », « demain · 10:00 », « sam. 14 juin · 10:00 ») et formatScheduledLong (« aujourd'hui à 21:00 », « samedi 14 juin à 10:00 ») — date-fns fr, une seule source pour tout.
+- src/components/shared/ScheduledBadge.tsx (nouveau) : badge orange marque (CalendarClock + « Planifié : … »), invisible pour les commandes immédiates.
+- OPTION A — BRANCHEMENTS : WasherApp ×4 (carte du job pool avant le bouton Accepter, liste « Commandes en cours », onglet « Commandes actives », et badge centré au-dessus du stepper de la vue détail) ; OrderTracking (bandeau jaune PENDING « Rendez-vous planifié — Rendez-vous demandé pour le … — en attente de confirmation d'un laveur » + nouveau bandeau vert ACCEPTED « Rendez-vous confirmé — {laveur} passera … ») ; historique RÉEL = ActivityHistory dans ClientSettings (le profil ouvre /api/user/activity, PAS OrderHistory — piège détecté au test : le badge a d'abord été ajouté à OrderHistory.tsx, composant non monté) ; OrderHistory.tsx badge ajouté aussi (cohérence si remonté un jour).
+- OPTION C — CONFIRMATION : order-notifications.ts ACCEPTED adapte le message client quand scheduledAt existe (« … a accepté votre commande « X ». Rendez-vous confirmé samedi 14 juin à 10:00. »).
+- OPTION C — RAPPELS H-2h : schema.prisma Order.reminderSentAt DateTime? (db:push OK) ; src/lib/reminder-scheduler.ts (nouveau) : tick toutes les 60 s, requête status=ACCEPTED + scheduledAt dans [now, now+2h] + reminderSentAt null → notify() client (« Rappel de votre rendez-vous 🔔 … {laveur} passera à : {adresse} ») + laveur (« Rappel : lavage planifié 🔔 … Préparez votre matériel ») → reminderSentAt=now (anti-doublon, jamais bloquant) ; src/instrumentation.ts (nouveau) démarre le scheduler au boot serveur Next (runtime node, garde globalThis anti-HMR, timer unref) — zéro infra nouvelle, survit aux redéploiements systemd.
+- TESTS E2E RÉELS (API + 2 sessions navigateur 390px) :
+  * Commande planifiée H+90min (WG71087738) : présente dans le pool laveur avec scheduledAt ✓ ; acceptation → notification client « … Rendez-vous confirmé aujourd'hui à 20:08 » ✓ ; après 1 tick : rappel client « Votre lavage « Lavage Essentiel » est prévu aujourd'hui à 20:08. Laveur Test passera à : … » ✓ + rappel laveur « … chez Client Test (…). Préparez votre matériel. » ✓ ; reminderSentAt marqué en base ✓ ; commande annulée (nettoyage) ✓.
+  * UI : commande planifiée H+150min (WG71229547, hors fenêtre rappel) — session client : bandeau jaune « Rendez-vous planifié / Rendez-vous demandé aujourd'hui à 21:10 — en attente de confirmation d'un laveur » (capture) ; session laveur : badge « Planifié : aujourd'hui · 21:10 » sur la carte du pool (capture) + au-dessus du stepper en vue détail (capture) ; après acceptation : bandeau vert « Rendez-vous confirmé — Laveur Test passera aujourd'hui à 21:10 à : … » côté client (capture) ; historique profil : badge « Planifié : aujourd'hui · 21:10 » sur les commandes planifiées, AUCUN badge sur les immédiates (capture). Commande annulée (nettoyage).
+  * Lint 0/0. Erreurs dev.log ECONNREFUSED:3003 = chat-service absent du sandbox (démarré depuis) ; en prod systemd l'assure. Notifications persistées en DB malgré le push temps réel absent (notify est best-effort par design).
+- Scripts de test jetables créés puis supprimés (test-planifie.mjs, create-scheduled.mjs). Captures dans test-captures/ (non versionnées).
+- Commit 📅 sur main (9337122), poussé. En attente de déploiement VPS pour la production.
+
+Stage Summary:
+- Les réservations « Plus tard » sont maintenant des VRAIS rendez-vous : le laveur voit la date avant et pendant (badge partout), le client est informé à chaque étape (demande → confirmation → rappel H-2h), et les rappels automatiques partent aux deux parties 2h avant le RDV (marqueur anti-doublon en base).
+- Déployer via cd /opt/socline && sudo bash deploy/deploy.sh --update pour livrer en production (schema reminderSentAt inclus dans la synchro Prisma du deploy).
+- Dettes notées : l'historique affiche encore « 2,500 XOF » (harmonisation format FR à faire avec la refonte écrans laveur/admin) ; nudge éventuel aux laveurs quand une commande planifiée reste PENDING à H-2h (évolution non demandée).
