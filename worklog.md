@@ -1373,3 +1373,23 @@ Stage Summary:
 - Les réservations « Plus tard » sont maintenant des VRAIS rendez-vous : le laveur voit la date avant et pendant (badge partout), le client est informé à chaque étape (demande → confirmation → rappel H-2h), et les rappels automatiques partent aux deux parties 2h avant le RDV (marqueur anti-doublon en base).
 - Déployer via cd /opt/socline && sudo bash deploy/deploy.sh --update pour livrer en production (schema reminderSentAt inclus dans la synchro Prisma du deploy).
 - Dettes notées : l'historique affiche encore « 2,500 XOF » (harmonisation format FR à faire avec la refonte écrans laveur/admin) ; nudge éventuel aux laveurs quand une commande planifiée reste PENDING à H-2h (évolution non demandée).
+
+---
+Task ID: 56 (session 44 — vérification du flux abonnement : 7 bugs corrigés)
+Agent: main (Z.ai Code)
+Task: « vérifie au même temps pour l'abonnement » — audit complet du système d'abonnement (souscription → commande séance → cycle laveur → décompte → rémunération), correction des bugs trouvés et tests E2E.
+
+Work Log:
+- AUDIT : souscription wallet OK (transaction atomique débit + WalletTransaction + UserSubscription, anti-doublon abonnement actif), mais le BOUT de chaîne était cassé : la fin de lavage d'une commande abonnement passait par /api/subscriptions/validate qui mettait COMPLETED SANS créditer le laveur (0 F), SANS completedJobs+1 (progression niveau bloquée), SANS notification ni realtime. Fallback PATCH = 0 F aussi (totalPrice 0). Pire : payment créé en CASH 0 F (sélecteur masqué si abonnement, défaut 'cash') → le laveur pouvait croire devoir encaisser.
+- 7 correctifs livrés : (1) PATCH COMPLETED = validation séance dans la même transaction (usage VALIDATED + décompte séance) + crédit laveur part partenaire sur basePrice ; (2) commission figée à ACCEPTED calculée sur basePrice pour les abonnements (avant : 40 % de 0 = 0) ; (3) PATCH CANCELLED annule l'usage PENDING ; (4) garde-fou surconsommation à la création (remainingWashes − usages PENDING > 0) ; (5) payment forcé WALLET pour abonnement + notif « Séance abonnement — rien à encaisser » ; (6) notifications dédiées (client « 1 séance décomptée », laveur « part partenaire créditée ») ; (7) UI : plus d'appel validate-first dans WasherApp, pastille « Séance abonnement » et montants sur basePrice partout (pool, actives, détail, historique laveur ; suivi, historique, activité client — fini les « 0 XOF »).
+- types/index.ts : Order complété avec isSubscriptionOrder/subscriptionValidated/subscriptionUsage (champs utilisés par WasherApp mais jamais déclarés).
+- La route /api/subscriptions/validate POST reste en place (compat API) mais n'est plus appelée par l'UI — le serveur EST la source de vérité via PATCH /api/orders.
+- TEST E2E API (script jetable, 28 assertions, toutes vertes) : souscription 8 000 F débitée → commande totalPrice 0/basePrice 2 500 → payment CASH envoyé mais forcé WALLET → 3 commandes simultanées OK puis 5e BLOQUÉE (« Vous avez déjà 4 séances en attente… ») → annulation passe l'usage en CANCELLED et libère le garde-fou → cycle laveur complet avec photos → séance 1/4 utilisée, laveur +1 500 F (60 % de 2 500), completedJobs +1, notifs client+laveur vérifiées en base.
+- TEST UI navigateur (390 px, sessions client 90123456 + laveur 90234567) : onglet Abonnements = carte active (1 utilisé/4, 3 restantes) ; flux commande = bandeau « Abonnement Essentiel · Actif · 3 séances restantes », récap « 1 séance déduite / Total GRATUIT », bouton « Confirmer avec mon abonnement » ; pool laveur = « 2,500 XOF 👑 Séance abonnement » ; détail = « Vos gains 1,500 XOF » ; bandeau violet IN_PROGRESS « rien à encaisser, séance validée automatiquement » ; complétion par l'UI (photos AVANT/APRÈS) → BDD : COMPLETED + validée + 2/4 + laveur 23 000 F. Captures dans test-captures/ (non versionnées).
+- Nettoyage : script et commande de test annulés ; l'abonnement actif (2/4 restantes) est laissé sur le compte démo client — sert de démo.
+- Lint 0/0. Erreurs dev.log = uniquement ECONNREFUSED:3003 connu (chat-service absent du sandbox).
+
+Stage Summary:
+- L'abonnement est désormais cohérent de bout en bout : le client paie 8 000 F une fois, chaque lavage consomme une séance, le laveur reçoit SA part partenaire (60-80 % du prix du service selon niveau) comme pour une prestation normale, et personne ne peut sur-réserver ni contourner le décompte.
+- Restes connus hors périmètre : harmonisation « X XOF » → « X F » (visible sur les captures laveur, ~25 occurrences) ; l'ancien PATCH USE_WASH de /api/subscriptions/user (bonus wash) est mort-code — cleanup possible plus tard.
+- Déployer via cd /opt/socline && sudo bash deploy/deploy.sh --update (Task 55 + 56 partiront ensemble).
