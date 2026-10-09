@@ -2,7 +2,7 @@
 
 import { Clock, Info } from 'lucide-react';
 import { getServiceCoverage } from '@/lib/service-coverage';
-import { planCarImage, CARD_CLASSES } from '@/lib/design-system';
+import { serviceArtImage, CARD_CLASSES } from '@/lib/design-system';
 
 /**
  * ServiceRowCard — carte de formule en rangée (maquette « Réserver · étape 1 ») :
@@ -38,10 +38,11 @@ export function ServiceRowCard({
       role="button"
       aria-label={`Choisir ${service.name}, ${service.price.toLocaleString('fr-FR')} F, ${service.duration} minutes`}
     >
-      {/* Zone illustrée : vraie image de voiture, teinte selon la position */}
+      {/* Zone illustrée : scène propre à la prestation (mousse, laveur,
+          brillance, intérieur…) selon sa couverture */}
       <div className="w-[92px] h-[86px] rounded-[15px] overflow-hidden flex-shrink-0">
         <img
-          src={planCarImage(index)}
+          src={serviceArtImage(service.coverage, index)}
           alt=""
           aria-hidden="true"
           className="w-full h-full object-cover"

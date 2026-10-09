@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { parseJsonResponse } from '@/lib/json-helper';
-import { BTN_PRIMARY_CLASSES } from '@/lib/design-system';
+import { BTN_PRIMARY_CLASSES, planPriorityImage } from '@/lib/design-system';
 import { CoverageBadge, CoverageDetails } from '@/components/shared/ServiceCoverage';
 
 interface SubscriptionPlan {
@@ -77,14 +77,13 @@ interface SubscriptionPanelProps {
 }
 
 /**
- * Image de voiture du plan (design system) : vignette sur teinte douce.
- * Essentiel = orange (marque), intermédiaire = bleu, premium = violet.
+ * Image du plan (design system) : une voiture DIFFÉRENTE par niveau —
+ * Essentiel = citadine, Confort = berline à la mousse, Premium = SUV au
+ * jet avec laveur, Prestige = berline noire de luxe.
  * Remplace les icônes couronne / goutte / éclair.
  */
 function planCarFor(priority: number) {
-  if (priority >= 3) return '/voitures/formule-violette.png';
-  if (priority === 2) return '/voitures/formule-bleue.png';
-  return '/voitures/formule-orange.png';
+  return planPriorityImage(priority);
 }
 
 export function SubscriptionPanel({ userId, walletBalance }: SubscriptionPanelProps) {
@@ -275,7 +274,7 @@ export function SubscriptionPanel({ userId, walletBalance }: SubscriptionPanelPr
       {/* Rappel de la différence entre les deux types de prestation */}
       <div className="flex items-start gap-2.5 rounded-card border border-line bg-surface p-3">
         <img
-          src="/voitures/formule-orange.png"
+          src="/voitures/services/interieur.png"
           alt=""
           aria-hidden="true"
           className="w-8 h-8 rounded-[10px] object-cover flex-shrink-0"

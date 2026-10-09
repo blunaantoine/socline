@@ -2,7 +2,7 @@
 
 import { Armchair, Car, Clock } from 'lucide-react';
 import { getServiceCoverage } from '@/lib/service-coverage';
-import { planCarImage } from '@/lib/design-system';
+import { serviceArtImage } from '@/lib/design-system';
 
 export interface ServiceLike {
   id: string;
@@ -39,7 +39,8 @@ export function ServiceArtCard({
       onClick={onClick}
       className="w-full bg-surface rounded-card border border-line shadow-card overflow-hidden text-left active:scale-[0.98] transition-transform"
     >
-      {/* Zone illustrée : vraie image de voiture, teinte selon la position */}
+      {/* Zone illustrée : scène propre à la prestation (mousse, laveur,
+          brillance, intérieur…) selon sa couverture */}
       <div className="relative h-[92px]">
         {/* Pastilles : ce que le lavage inclut */}
         <div className="absolute top-2 left-2 flex gap-1">
@@ -53,7 +54,7 @@ export function ServiceArtCard({
           )}
         </div>
         <img
-          src={planCarImage(index)}
+          src={serviceArtImage(service.coverage, index)}
           alt=""
           aria-hidden="true"
           className="w-full h-[92px] object-cover"

@@ -10,34 +10,50 @@
 
 import type { ServiceCoverage } from './service-coverage';
 
-/** Les 4 teintes de formule (bleu → vert → orange → violet). */
-export const PLAN_TINTS = [
-  { bg: 'bg-plan-blue', icon: 'text-plan-blue-icon' },
-  { bg: 'bg-plan-green', icon: 'text-plan-green-icon' },
-  { bg: 'bg-plan-orange', icon: 'text-plan-orange-icon' },
-  { bg: 'bg-plan-purple', icon: 'text-plan-purple-icon' },
-] as const;
-
 /**
- * Image de voiture par formule (même ordre que PLAN_TINTS) : remplace
- * l'illustration vectorielle par une vraie image aux couleurs de la
- * marque, fond recoloré dans la teinte de la formule (public/voitures).
+ * Scènes illustrées des formules de LAVAGE (Accueil « Nos formules » et
+ * Réserver) : chaque prestation affiche une image DIFFÉRENTE, choisie
+ * d'abord selon sa couverture puis alternée selon sa position —
+ *  · EXTÉRIEUR  → mousse et éponge, puis laveur au jet haute pression ;
+ *  · COMPLET → brillance miroir, puis aspiration intérieure, puis detailing.
+ * Une même prestation garde toujours la même image (reconnaissance
+ * visuelle identique entre l'accueil et la réservation).
  */
-export const PLAN_CAR_IMAGES = [
-  '/voitures/formule-bleue.png',
-  '/voitures/formule-verte.png',
-  '/voitures/formule-orange.png',
-  '/voitures/formule-violette.png',
-] as const;
+export const SERVICE_ART_IMAGES = {
+  EXTERIOR: [
+    '/voitures/services/mousse.png',
+    '/voitures/services/laveur-hydro.png',
+  ],
+  FULL: [
+    '/voitures/services/brillance.png',
+    '/voitures/services/interieur.png',
+    '/voitures/services/detailing.png',
+  ],
+} as const;
 
-/** Image de voiture d'une formule selon sa position dans la liste. */
-export function planCarImage(index: number) {
-  return PLAN_CAR_IMAGES[index % PLAN_CAR_IMAGES.length];
+/** Image d'illustration d'un service : scène adaptée à sa couverture. */
+export function serviceArtImage(coverage: string | null | undefined, index: number) {
+  const pool = coverage === 'FULL' ? SERVICE_ART_IMAGES.FULL : SERVICE_ART_IMAGES.EXTERIOR;
+  return pool[((index % pool.length) + pool.length) % pool.length];
 }
 
-/** Teinte d'une formule selon sa position dans la liste (cycle des 4). */
-export function planTint(index: number) {
-  return PLAN_TINTS[index % PLAN_TINTS.length];
+/**
+ * Images des FORMULES D'ABONNEMENT : une voiture différente par niveau —
+ * Essentiel = citadine étincelante, Confort = berline à la mousse,
+ * Premium = SUV passé au jet par un laveur, Prestige = berline noire
+ * de luxe finition detailing.
+ */
+export const PLAN_PRIORITY_IMAGES = [
+  '/voitures/plans/essentiel.png',
+  '/voitures/plans/confort.png',
+  '/voitures/plans/premium.png',
+  '/voitures/plans/prestige.png',
+] as const;
+
+/** Image d'une formule d'abonnement selon sa priorité (bornée 0 → 3). */
+export function planPriorityImage(priority: number) {
+  const i = Math.min(Math.max(priority, 0), PLAN_PRIORITY_IMAGES.length - 1);
+  return PLAN_PRIORITY_IMAGES[i];
 }
 
 /**
