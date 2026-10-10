@@ -1459,3 +1459,20 @@ Work Log:
 Stage Summary:
 - Dans le Preview, un bouton orange « Installer l'application » flotte au-dessus de la barre de navigation : un clic déclenche directement le téléchargement de l'APK — plus besoin de taper l'URL.
 - En production le bouton n'apparaît pas (flag .env sandbox) ; si un jour on veut l'offrir aux clients du site, il suffira d'ajouter NEXT_PUBLIC_SHOW_APK_DOWNLOAD=1 au .env du VPS + d'y copier public/apk/.
+
+---
+Task ID: 60 (session 48 — restauration sandbox + accompagnement build Android Studio utilisateur)
+Agent: main (Z.ai Code)
+Task: « la preview montre une ancienne version » — diagnostic, restauration complète du sandbox après réinitialisation infra, et régénération de l'APK.
+
+Work Log:
+- DIAGNOSTIC (utilisateur dans le vrai) : le preview du sandbox servait une ancienne version. Cause : le sandbox a été restauré d'une snapshot ancienne (Task 29) — HEAD git local revenu à ffc037a, ClientActivities.tsx + ApkDownloadButton.tsx + scheduled.ts + instrumentation.ts ABSENTS, APK public/apk/*.apk disparu, ~/android-sdk + ~/jdk supprimés, variable NEXT_PUBLIC_SHOW_APK_DOWNLOAD perdue du .env. GitHub intact (origin/main = 2fcddac, tout le travail Tasks 55-59 poussé à chaque étape).
+- RESTAURATION : git fetch + git reset --hard origin/main (aucun travail local à perdre, test-captures/ untracked conservé) → tous les fichiers sources de retour, HEAD = 2fcddac. .env : réajout NEXT_PUBLIC_SHOW_APK_DOWNLOAD=1 (jamais commité). BDD : custom.db intacte, schéma reminderSentAt présent, bun run db:push OK.
+- VÉRIFICATION E2E (agent-browser 1280px, session client démo 90123456 persistée) : accueil = nav 6 onglets dont « Activités » + bouton flottant « Installer l'application » ; onglet Activités = page « Mes activités » complète avec ses 4 segments (En cours / Planifiées / Historique / Abonnement), état vide + CTA « Réserver un lavage ». Captures test-captures/preview-restore-*.png.
+- RÉGÉNÉRATION APK (binaire non versionné, perdu avec la snapshot) : réinstallation JDK Temurin 21 + Android cmdline-tools + licences + platform-36 + build-tools 36.0.0 (~4 min) ; premier build ÉCHOUÉ (capacitor-cordova-android-plugins/cordova.variables.gradle absent — dossier généré par cap sync, ignoré de Git, perdu avec la snapshot) → npx cap sync android (8 plugins) → BUILD SUCCESSFUL en 3 min 20 s ; APK 11 Mo recopié en public/apk/socline-v1.0-debug.apk ; service vérifié : HTTP 200 + Accept-Ranges + magic bytes PK.
+- Parallèle : accompagnement pas-à-pas de l'utilisateur dans Android Studio sur SA machine (Windows, clone GitHub → npm install → npx cap sync android → ouverture dossier android/ → Build ▸ Generate App Bundles or APKs ▸ Generate APKs) — build réussi chez lui, avertissements « deprecated » et Upgrade Assistant AGP 9.x identifiés comme à ignorer.
+
+Stage Summary:
+- Le sandbox est restauré à l'identique de GitHub (Tasks 55-59 tous en place, vérifiés en navigateur) : le preview montre la version à jour (nav 6 onglets, Mes activités, bouton APK) et l'APK est de nouveau téléchargeable à /apk/socline-v1.0-debug.apk.
+- Enseignement : le sandbox peut être restauré d'une snapshot ancienne à tout moment — tout commit+push immédiat (pratique appliquée) est ce qui a rendu la restauration triviale. Les artefacts non versionnés (APK, SDK, node_modules, cap sync) se régénèrent avec la procédure documentée dans public/apk/README.md.
+- La prod (VPS) n'est PAS concernée par cet incident : elle reste en attente de déploiement (cd /opt/socline && sudo bash deploy/deploy.sh --update) pour livrer Tasks 55-59 aux clients.
