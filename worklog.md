@@ -1500,3 +1500,25 @@ Stage Summary:
 - Les notifications ne s'affichent plus en double (2 Toaster → 1) et arrivent en bas au centre, remontées au-dessus de la barre de navigation — plus de chevauchement du header/carte.
 - À faire valider par l'utilisateur sur son APK ; la capture de son écran « boutons retournés » reste souhaitée si des anomalies persistent autre part que les puces corrigées.
 - Déployer (VPS --update) pour livrer en prod avec Tasks 55-60.
+
+---
+Task ID: 62 (session 50 — encaissement espèces : fin du double versement)
+Agent: main (Z.ai Code)
+Task: « et aussi quand un laveur encaisse en espece la somme est encore verser sur son portefeuille ».
+
+Work Log:
+- DIAGNOSTIC (bug comptable confirmé par lecture des 2 routes PATCH + withdrawals) :
+  * À COMPLETED d'une commande CASH, `totalEarnings` était incrémenté du montant COMPLET (`isCash ? totalPrice : …`) alors que le laveur tient physiquement la totalité.
+  * Conséquence en chaîne : après règlement de la commission (cashDebt soldé depuis le portefeuille), le garde-fou de retrait (totalEarnings - cashDebt) laissait retirer le montant COMPLET → le laveur touchait la somme EN DOUBLE (espèces en main + retrait mobile money) et la plateforme perdait totalPrice par commande cash.
+- CORRECTIF (modèle comptable correct) :
+  * `src/app/api/orders/route.ts` + `src/app/api/orders/[id]/route.ts` : en CASH, `totalEarnings` n'est PLUS crédité (Δ=0) ; seuls `completedJobs` +1 et `cashDebt` += commission bougent. WALLET/abonnement inchangés (part nette créditée). Variable `notifiedAmount` ajoutée : la notification affiche la somme ENCAISSÉE (CASH) ou la part créditée (WALLET).
+  * `src/lib/order-notifications.ts` : message COMPLETED CASH clarifié — « 2 500 XOF encaissés en espèces (rien n'est ajouté à vos gains, vous avez l'argent en main). Commission Socline : 1 000 XOF à régler depuis votre portefeuille. »
+  * `WasherApp.tsx` : commentaire de code inversé corrigé (la commission est due PAR le laveur À la plateforme).
+- TEST E2E (script one-shot, serveur démarré dans la même commande) : login client/laveur/admin → commande CASH 2500 F (Lavage Essentiel) → paiement CASH → ACCEPTED (commission gelée 1000 F) → EN_ROUTE→ARRIVED→IN_PROGRESS→COMPLETED (admin) → vérifié : ΔtotalEarnings=0 ✅, ΔcashDebt=+1000 ✅, ΔcompletedJobs=+1 ✅. Notification générée avec le nouveau libellé ✅. Nettoyage : commande passée CANCELLED en BDD, payment/tracking supprimés, compteurs rétablis (20000/0/0).
+- Scripts de test supprimés après usage (rule : pas de code de test versionné). Lint 0 erreur (14 warnings préexistants). Commit 🛠️ ad6fbbe poussé sur main.
+
+Stage Summary:
+- Une commande payée EN ESPÈCES ne verse plus AUCUN montant dans les gains in-app du laveur : il tient l'argent, seule sa dette de commission (cashDebt) est enregistrée, remboursable depuis son portefeuille — le retrait reste bloqué tant que la dette n'est pas soldée.
+- WALLET/abonnement inchangés : la part nette (prix − commission) reste créditée à la complétion.
+- À valider par l'utilisateur (compléter une commande cash en test et constater que « Total des gains » ne bouge plus, seule la carte orange « Commission espèces à régler » apparaît).
+- Rappel déploiement : la prod VPS attend toujours `cd /opt/socline && sudo bash deploy/deploy.sh --update` (Tasks 55-62 cumulées).
