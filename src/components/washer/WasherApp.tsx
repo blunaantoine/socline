@@ -2045,7 +2045,8 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, onRefreshWallet, isRe
       </Card>
 
       {/* Commission espèces à régler — le laveur a encaissé le paiement en
-          espèces : la part SOCLINE doit lui être reversée avant tout retrait. */}
+          espèces : la part SOCLINE (commission) lui est due et doit être
+          reversée à la plateforme avant tout retrait. */}
       {stats.cashDebt > 0 && (
         <Card className="border-2 border-[#FF9800] bg-[#FFF8F0]">
           <CardContent className="p-4">

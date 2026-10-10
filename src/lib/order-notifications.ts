@@ -186,7 +186,7 @@ export async function notifyOrderStatusChange(
           userId: washerUserId,
           title: 'Prestation validée 💰',
           message: isCash
-            ? `« ${serviceName} » terminée — ${fmt(options.washerAmount)} XOF encaissés en espèces. Commission Socline : ${fmt(options.commissionAmount ?? 0)} XOF à régler depuis vos gains.`
+            ? `« ${serviceName} » terminée — ${fmt(options.washerAmount)} XOF encaissés en espèces (rien n'est ajouté à vos gains, vous avez l'argent en main). Commission Socline : ${fmt(options.commissionAmount ?? 0)} XOF à régler depuis votre portefeuille.`
             : `« ${serviceName} » terminée — ${fmt(options.washerAmount)} XOF ajoutés à vos gains.`,
           type: 'payment',
           data: {
