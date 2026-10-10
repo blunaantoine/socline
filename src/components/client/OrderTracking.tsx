@@ -656,10 +656,14 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
       )}
 
       {/* Discussion temps réel de la commande — plein écran par-dessus le suivi,
-          même conversation partagée que le côté laveur. z-index > 1000 : au-dessus
-          des panneaux de carte (z-900) et des couches Leaflet (z-200..1000). */}
+          même conversation partagée que le côté laveur. FIXED (et pas absolute) :
+          le conteneur de suivi dépasse la hauteur de l'écran et scrolle — un
+          overlay absolute suivait le scroll et laissait apparaître carte et
+          étapes « mélangées » au chat. Fixed couvre le viewport, le header et
+          l'input restent toujours visibles (même clavier Android ouvert).
+          z-index > 1000 : au-dessus des panneaux de carte (z-900) et Leaflet. */}
       {showChat && conversation && (
-        <div className="absolute inset-0 z-[1100] bg-[#FAFAFA] flex flex-col">
+        <div className="fixed inset-0 z-[1100] bg-[#FAFAFA] flex flex-col">
           <ChatView
             conversation={conversation}
             onBack={() => setShowChat(false)}

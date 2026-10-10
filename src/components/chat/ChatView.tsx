@@ -414,9 +414,11 @@ export function ChatView({ conversation, onBack }: ChatViewProps) {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Quick Messages */}
+      {/* Quick Messages — défilement horizontal SANS scrollbar visible :
+          sur mobile la scrollbar masquait le début des puces coupées
+          (« Petit retard » tronqué) et donnait l'impression de boutons cassés. */}
       <div className="bg-white border-t border-[#F5F5F5] p-2">
-        <div className="flex gap-2 overflow-x-auto pb-1">
+        <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {QUICK_MESSAGES.map((qm) => (
             <button
               key={qm.id}

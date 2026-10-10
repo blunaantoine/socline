@@ -102,7 +102,15 @@ export default function RootLayout({
         <ApiAuthProvider />
         <RealtimeNotifications />
         {children}
-        <Toaster />
+        {/* Toaster UNIQUE instance de l'app (page.tsx n'en monte pas) —
+            position bas-centre remontée au-dessus de la barre de navigation :
+            les notifications ne chevauchent plus le header/carte en haut
+            (safe-area iOS respectée). */}
+        <Toaster
+          position="bottom-center"
+          offset="calc(5rem + env(safe-area-inset-bottom, 0px))"
+          visibleToasts={3}
+        />
       </body>
     </html>
   );

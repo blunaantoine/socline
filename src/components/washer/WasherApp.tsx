@@ -867,9 +867,12 @@ export function WasherApp() {
         })}
       </nav>
 
-      {/* Chat Overlay */}
+      {/* Chat Overlay — FIXED plein écran (et pas absolute) : le tableau de bord
+          laveur scrolle, un overlay absolute suivait le scroll et laissait
+          apparaître le contenu derrière (mélange carte/étapes/chat). flex flex-col
+          pour que ChatView (flex-1) occupe toute la hauteur du viewport. */}
       {showChat && conversation && (
-        <div className="absolute inset-0 z-[60] bg-[#FAFAFA]">
+        <div className="fixed inset-0 z-[60] bg-[#FAFAFA] flex flex-col">
           <ChatView 
             conversation={conversation} 
             onBack={() => setShowChat(false)} 
