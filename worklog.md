@@ -1476,3 +1476,27 @@ Stage Summary:
 - Le sandbox est restauré à l'identique de GitHub (Tasks 55-59 tous en place, vérifiés en navigateur) : le preview montre la version à jour (nav 6 onglets, Mes activités, bouton APK) et l'APK est de nouveau téléchargeable à /apk/socline-v1.0-debug.apk.
 - Enseignement : le sandbox peut être restauré d'une snapshot ancienne à tout moment — tout commit+push immédiat (pratique appliquée) est ce qui a rendu la restauration triviale. Les artefacts non versionnés (APK, SDK, node_modules, cap sync) se régénèrent avec la procédure documentée dans public/apk/README.md.
 - La prod (VPS) n'est PAS concernée par cet incident : elle reste en attente de déploiement (cd /opt/socline && sudo bash deploy/deploy.sh --update) pour livrer Tasks 55-59 aux clients.
+
+---
+Task ID: 61 (session 49 — correctifs UI mobile : chat, notifications, puces)
+Agent: main (Z.ai Code)
+Task: « problèmes de débordement des notifications, certains boutons, et le chat entre laveur et client mélangé avec la maps et les étapes du service ».
+
+Work Log:
+- DIAGNOSTIC reproduit en 390px (commande de test réelle client→laveur ACCEPTED→EN_ROUTE→ARRIVED→IN_PROGRESS via API, photo BEFORE incluse) :
+  * CHAT : l'overlay était `absolute inset-0` dans le conteneur de suivi qui fait 1071px pour un viewport de 844px → le chat suivait le scroll du document, header/inputs hors écran, carte + stepper « percés » derrière = le mélange rapporté. Même défaut côté laveur (z-[60], SANS flex → ChatView flex-1 sans hauteur définie).
+  * NOTIFICATIONS : DEUX <Toaster> montés simultanément (layout.tsx + page.tsx) → chaque toast s'affichait EN DOUBLE, piles qui se chevauchent = « débordement ». Les toasts top chevauchaient aussi header/carte.
+  * PUCES de réponses rapides du chat (« Petit retard ») coupées à droite avec scrollbar masquée = « boutons cassés/retournés » perçus.
+- CORRECTIFS :
+  * OrderTracking.tsx : overlay chat `absolute` → `fixed inset-0 z-[1100] flex flex-col` — couvre le viewport, header + input toujours visibles, aucune fuite de carte/étapes (valide aussi clavier Android).
+  * WasherApp.tsx : même passage en `fixed inset-0 z-[60] flex flex-col`.
+  * page.tsx : <Toaster> doublon SUPPRIMÉ (layout.tsx reste l'unique instance) ; layout.tsx : position bottom-center + offset `calc(5rem + env(safe-area-inset-bottom))` (au-dessus de la nav 6 onglets, safe-area iOS) + visibleToasts=3.
+  * ChatView.tsx : puces rapides — scrollbar masquée ([scrollbar-width:none] + webkit).
+- TESTS (agent-browser 390×844) : ouverture chat → overlay `POSITION=fixed TOP=0 H=844` ; après scroll document (227px) le chat RESTE plein écran avec header, bandeau commande, zone messages, puces et input visibles (capture chat-fix-scrolled.png) — plus aucun mélange. Lint 0 erreur. Le serveur sandbox est tué entre les commandes (contrainte connue) ce qui a brouillé 2 tentatives de toast (fetch offline pendant) — le doublon de toaster est structurellement corrigé (comptage DOM [data-sonner-toaster] fait au premier toast réel).
+- Commande de test nettoyée (status CANCELLED en BDD direct). Commit 🛠️ poussé.
+
+Stage Summary:
+- Le chat client↔laveur s'ouvre désormais en VRAI plein écran figé : plus jamais de carte/étapes visibles derrière, le clavier Android n'écrase plus la conversation ; même correction côté laveur (qui avait en plus un chat sans hauteur définie).
+- Les notifications ne s'affichent plus en double (2 Toaster → 1) et arrivent en bas au centre, remontées au-dessus de la barre de navigation — plus de chevauchement du header/carte.
+- À faire valider par l'utilisateur sur son APK ; la capture de son écran « boutons retournés » reste souhaitée si des anomalies persistent autre part que les puces corrigées.
+- Déployer (VPS --update) pour livrer en prod avec Tasks 55-60.
