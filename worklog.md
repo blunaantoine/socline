@@ -1617,3 +1617,21 @@ Stage Summary:
 - origin/main = 2a5c43e : build VPS débloqué. Redéploiement utilisateur : cd /opt/socline && git reset --hard origin/main && sudo bash deploy/deploy.sh --update — l'étape 8/8 (nginx + auto-réparation SSL ajoutée en ece8ca2) s'exécutera après le build réussi.
 - La prod recevra en même temps la Task 65 (fusion Réserver/Abonnements) et la Task 66 (Soco + tickets admin).
 - Push FCM reste inactif tant que FIREBASE_SERVICE_ACCOUNT n'est pas ajouté au .env du VPS (optionnel, non bloquant).
+
+---
+Task ID: 68 (session 54 — bulle Soco uniquement dans Profil + analyse déploiement VPS)
+Agent: main (Z.ai Code)
+Task: « je veux le bouton de la chat uniquement dans profil » + rapport de déploiement VPS (build OK, certbot OK, mais nginx -t échoue à cause d'un AUTRE site du VPS : shop.maison-khan.com certificat absent).
+
+Work Log:
+- Bonne nouvelle confirmée par le log VPS : le fix firebase-admin (Task 67) a débloqué le build (✓ Compiled successfully, 61 pages) ; le certificat socline.oquitogo.com a été réémis (expire 2027-01-09) ; app démarrée sur 3100.
+- Blocage restant côté VPS (HORS repo) : nginx -t échoue sur un site tiers du même serveur — « cannot load certificate /etc/letsencrypt/live/shop.maison-khan.com/fullchain.pem » → nginx ne peut pas recharger/démarrer → HTTPS socline répond 000. Commandes de réparation fournies à l'utilisateur (identifier la config fautive, la déplacer vers /etc/nginx/sites-disabled OU réémettre son cert via certbot, puis nginx -t && systemctl restart nginx).
+- Bulle Soco profil-only : page.tsx retire le montage global (plus de bulle invité) ; ClientApp et WasherApp montent <SupportChatbot /> uniquement quand activeTab === 'profile' ; SupportChatbot simplifié (suppression supportChatHidden, branche invité et ternaire de position — FAB toujours au-dessus de la barre de nav) ; champ supportChatHidden + setter supprimés du store.
+- PIÈGE corrigé : premier essai cassé l'app client (écran « Application error » après login) — ClientApp appelait encore setSupportChatHidden dans un useEffect (masquage booking/chat), référence invisible car ma 1re grep était sensible à la casse (setSupportChatHidden ne contient pas « supportChatHidden »). Diagnostiqué via agent-browser errors --json (TypeError ligne 178), corrigé en supprimant le useEffect et la destructuration.
+- Vérifié E2E (agent-browser) : invité → bulle absente ; client 90123456 → bulle absente sur Accueil/Réserver/Activités/Portefeuille, PRÉSENTE sur Profil ; panneau s'ouvre (header Soco + message bienvenue) et se ferme (bulle revient) ; laveur 90234567 → absente dashboard, présente Profil ; desktop 1280px OK ; lint 0 erreur ; dev.log sans erreur.
+- Captures : test-captures/soco-profil-bulle.png, soco-profil-panneau.png, soco-laveur-profil.png, soco-desktop-profil.png.
+- Commit 🛠️ 8d09f5b (5 fichiers + 4 captures) + push.
+
+Stage Summary:
+- La bulle Soco n'apparaît plus que sur l'onglet Profil (client ET laveur) ; l'accès via « Profil ▸ Besoin d'aide ▸ Discuter avec l'assistant » (événement socline:open-support) toujours fonctionnel ; invités sans bulle (l'API /api/support/chat reste ouverte aux invités si utilisée ailleurs).
+- Redéploiement requis pour la prod : git reset --hard origin/main && sudo bash deploy/deploy.sh --update — APRÈS réparation nginx du site tiers shop.maison-khan.com (sinon nginx -t continuera d'échouer pour tout le serveur).
