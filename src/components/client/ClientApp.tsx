@@ -13,9 +13,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  MapPin, Search, Star, Clock, Car, Building, Armchair,
+  MapPin, Search, Star, Clock, Car, Building, Armchair, ArrowLeft,
   CheckCircle, Phone, Loader2, Heart,
-  Zap, Droplets, Sparkles, Crown, RefreshCw,
+  Zap, Droplets, Sparkles, RefreshCw,
   Home, Calendar, MessageCircle, User, Bell, Settings, LogOut, Wallet, Copy, Plus, ChevronRight, Headphones, MessageSquare, Pencil, ClipboardList
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -44,11 +44,12 @@ import { WasherRow } from '@/components/design/WasherRow';
 import { EmptyState } from '@/components/design/EmptyState';
 import { CARD_CLASSES } from '@/lib/design-system';
 
+// Abonnements fusionné dans l'onglet Réserver (vue secondaire) → 5 onglets,
+// cibles tactiles plus larges dans la barre de navigation.
 const navItems = [
   { id: 'home', icon: Home, label: 'Accueil' },
   { id: 'booking', icon: Calendar, label: 'Réserver' },
   { id: 'activity', icon: ClipboardList, label: 'Activités' },
-  { id: 'subscriptions', icon: Crown, label: 'Abonnements' },
   { id: 'wallet', icon: Wallet, label: 'Portefeuille' },
   { id: 'profile', icon: User, label: 'Profil' },
 ];
@@ -57,7 +58,6 @@ const navItems = [
 const HEADER_TITLES: Record<string, string> = {
   home: "Quel lavage aujourd'hui ?",
   activity: 'Mes activités',
-  subscriptions: 'Abonnements',
   wallet: 'Portefeuille',
   profile: 'Profil',
 };
@@ -104,6 +104,9 @@ export function ClientApp() {
   const [walletBalance, setWalletBalance] = useState(0);
   // Service tab toggle: independent washers (APP services) vs. stations (STATION services)
   const [serviceTab, setServiceTab] = useState<'independent' | 'station'>('independent');
+  // Onglet Réserver : vue principale = parcours de lavage, vue secondaire = Abonnements
+  // (les deux fonctionnalités sont fusionnées dans le même onglet)
+  const [bookingView, setBookingView] = useState<'wash' | 'subscriptions'>('wash');
   // Stations fetched from /api/stations (with embedded services)
   const [appStations, setAppStations] = useState<any[]>([]);
   // Order presets passed to ClientOrderFlow when navigating from a service/station click
@@ -424,6 +427,7 @@ export function ClientApp() {
                 setPresetIsHomeService(true);
                 setPresetStationId(null);
                 setPresetAddress('');
+                setBookingView('wash');
                 setActiveTab('booking');
               }}
               onStartOrderForService={(service, isHomeService, stationId, address) => {
@@ -432,6 +436,7 @@ export function ClientApp() {
                 setPresetIsHomeService(isHomeService);
                 setPresetStationId(stationId ?? null);
                 setPresetAddress(address || '');
+                setBookingView('wash');
                 setActiveTab('booking');
               }}
               searchQuery={searchQuery}
@@ -444,13 +449,14 @@ export function ClientApp() {
               appStations={appStations}
             />
           )}
-          {activeTab === 'booking' && (
+          {activeTab === 'booking' && bookingView === 'wash' && (
             <ClientOrderFlow 
               onBack={() => {
                 selectService(null);
                 setPresetIsHomeService(true);
                 setPresetStationId(null);
                 setPresetAddress('');
+                setBookingView('wash');
                 setActiveTab('home');
               }} 
               onOrderComplete={() => {
@@ -458,17 +464,37 @@ export function ClientApp() {
                 setPresetIsHomeService(true);
                 setPresetStationId(null);
                 setPresetAddress('');
+                setBookingView('wash');
                 setActiveTab('home');
                 setShowTracking(true);
               }}
+              onShowSubscriptions={() => setBookingView('subscriptions')}
               presetIsHomeService={presetIsHomeService}
               presetStationId={presetStationId}
               presetAddress={presetAddress}
             />
           )}
-          {activeTab === 'subscriptions' && (
-            <div className="p-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))]">
-              <SubscriptionPanel userId={user?.id || ''} walletBalance={walletBalance} />
+          {/* Abonnements — fusionné dans l'onglet Réserver (vue secondaire avec retour) */}
+          {activeTab === 'booking' && bookingView === 'subscriptions' && (
+            <div className="flex-1 flex flex-col bg-app">
+              <div className="bg-surface border-b border-line px-4 py-3 flex-shrink-0 sticky top-0 z-40 pt-[calc(0.75rem+env(safe-area-inset-top))]">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setBookingView('wash')}
+                    aria-label="Retour à la réservation"
+                    className="w-10 h-10 rounded-btn border border-line grid place-items-center flex-shrink-0 active:scale-95 transition-transform"
+                  >
+                    <ArrowLeft className="w-5 h-5 text-ink" strokeWidth={2.2} />
+                  </button>
+                  <div className="min-w-0">
+                    <h1 className="text-section text-ink leading-tight">Abonnements</h1>
+                    <p className="text-detail text-soft truncate">Lavez plus, payez moins</p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+                <SubscriptionPanel userId={user?.id || ''} walletBalance={walletBalance} />
+              </div>
             </div>
           )}
           {activeTab === 'wallet' && <WalletScreen />}
@@ -485,6 +511,7 @@ export function ClientApp() {
                 setPresetIsHomeService(true);
                 setPresetStationId(null);
                 setPresetAddress('');
+                setBookingView('wash');
                 setActiveTab('booking');
               }}
             />

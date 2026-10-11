@@ -13,7 +13,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  ArrowLeft, MapPin, Clock, CreditCard, Wallet,
+  ArrowLeft, MapPin, Clock, CreditCard, Wallet, ChevronRight,
   CheckCircle, AlertCircle, Loader2,
   Zap, Crown, Calendar, Car, Building2, Droplets
 } from 'lucide-react';
@@ -31,6 +31,9 @@ import { BTN_PRIMARY_CLASSES, CARD_CLASSES } from '@/lib/design-system';
 interface ClientOrderFlowProps {
   onBack: () => void;
   onOrderComplete?: () => void;
+  // Ouvre la vue Abonnements (fusionnée dans l'onglet Réserver) — si fournie,
+  // la bannière « Voir les abonnements » est affichée à l'étape Service.
+  onShowSubscriptions?: () => void;
   // Presets from ClientApp when the user clicks a specific service (e.g. a station service)
   presetIsHomeService?: boolean;
   presetStationId?: string | null;
@@ -83,6 +86,7 @@ const STEP_TITLE: Record<StepType, string> = {
 export function ClientOrderFlow({
   onBack,
   onOrderComplete,
+  onShowSubscriptions,
   presetIsHomeService = true,
   presetStationId = null,
   presetAddress = '',
@@ -521,6 +525,23 @@ export function ClientOrderFlow({
         {/* Étape 1 : choisir une formule — rangées horizontales (maquette) */}
         {step === 'service' && (
           <div className="space-y-4">
+            {/* Abonnements — fusion Réservation + Abonnements : entrée visible en haut
+                de l'étape Service, au-dessus de la liste des formules */}
+            {onShowSubscriptions && (
+              <button
+                onClick={onShowSubscriptions}
+                className="w-full flex items-center gap-3 p-3.5 rounded-card border border-brand/30 bg-brand-wash text-left active:scale-[0.99] transition-transform"
+              >
+                <span className="w-11 h-11 rounded-btn bg-brand grid place-items-center flex-shrink-0">
+                  <Crown className="w-5 h-5 text-white" strokeWidth={2.2} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="text-body font-bold text-ink block">Voir les abonnements</span>
+                  <span className="text-detail text-soft block">Lavez plus, payez moins — formules flexibles</span>
+                </span>
+                <ChevronRight className="w-5 h-5 text-brand flex-shrink-0" />
+              </button>
+            )}
             {services.length === 0 ? (
               <EmptyState icon={AlertCircle} message="Aucun service disponible pour le moment" />
             ) : (
