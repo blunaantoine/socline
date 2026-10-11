@@ -245,13 +245,16 @@ function WasherRegistrationInfo({ onBack, onContinue }: { onBack: () => void; on
             </div>
           </div>
 
-          {/* CTA — passage à l&apos;étape suivante : choix du type de laveur */}
+          {/* CTA — passage à l'étape suivante : choix du type de laveur.
+              whitespace-normal + h-auto : le libellé long ne doit JAMAIS être
+              rogné par le nowrap du Button sur petits écrans (débordement
+              signalé sur « Devenir partenaire »). */}
           <Button
             onClick={onContinue}
-            className="w-full h-14 bg-[#4CAF50] hover:bg-[#43A047] text-white rounded-2xl font-semibold text-base shadow-lg"
+            className="w-full min-h-14 h-auto py-3 whitespace-normal leading-snug bg-[#4CAF50] hover:bg-[#43A047] text-white rounded-2xl font-semibold text-base shadow-lg"
           >
-            Continuer — Choisir mon type de laveur
-            <ChevronRight className="w-5 h-5 ml-1" />
+            Continuer — Choisir mon type
+            <ChevronRight className="w-5 h-5 ml-1 flex-shrink-0" />
           </Button>
         </div>
       </div>
