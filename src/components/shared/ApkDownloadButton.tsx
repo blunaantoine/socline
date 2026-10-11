@@ -27,7 +27,7 @@ export function ApkDownloadButton() {
       }}
       aria-label="Télécharger l'application Android Socline (APK)"
       className="fixed bottom-24 right-3 z-50 flex h-11 items-center gap-2 rounded-full bg-[#FF9800] px-4 text-sm font-semibold text-white shadow-lg shadow-orange-500/30 hover:bg-orange-600 active:scale-95 transition-transform"
-      style={{ bottom: 'calc(6rem + env(safe-area-inset-bottom, 0px))' }}
+      style={{ bottom: 'calc(6rem + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))' }}
     >
       {loading ? (
         <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />

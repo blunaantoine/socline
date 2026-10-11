@@ -66,7 +66,7 @@ function DialogContent({
           // barre gestuelle iOS (safe-area).
           "inset-x-0 bottom-0 top-auto rounded-t-2xl rounded-b-none border-b-0 max-h-[88dvh] overflow-y-auto",
           "max-sm:data-[state=open]:slide-in-from-bottom max-sm:data-[state=closed]:slide-out-to-bottom",
-          "max-sm:pb-[calc(1.5rem+env(safe-area-inset-bottom))]",
+          "max-sm:pb-[calc(1.5rem+max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))]",
           // DESKTOP (sm+) : dialog centré classique.
           "sm:top-[50%] sm:left-[50%] sm:bottom-auto sm:right-auto sm:max-w-lg sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-lg sm:overflow-visible sm:data-[state=open]:zoom-in-95 sm:data-[state=closed]:zoom-out-95",
           className

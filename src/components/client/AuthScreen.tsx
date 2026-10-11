@@ -526,7 +526,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
     return (
       <div className="flex-1 flex flex-col bg-[#FFF8F0]">
         {/* Header */}
-        <div className="bg-[#FF9800] p-4 pt-[calc(2rem+env(safe-area-inset-top))] pb-12 rounded-b-3xl">
+        <div className="bg-[#FF9800] p-4 pt-[calc(2rem+max(env(safe-area-inset-top),var(--safe-area-inset-top,0px)))] pb-12 rounded-b-3xl">
           <button onClick={() => setMode('welcome')} className="text-white mb-4">
             <ArrowLeft className="w-6 h-6" />
           </button>
@@ -612,7 +612,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
     return (
       <div className="flex-1 flex flex-col bg-[#FFF8F0]">
         {/* Header */}
-        <div className="bg-[#FF9800] p-4 pt-[calc(2rem+env(safe-area-inset-top))] pb-12 rounded-b-3xl">
+        <div className="bg-[#FF9800] p-4 pt-[calc(2rem+max(env(safe-area-inset-top),var(--safe-area-inset-top,0px)))] pb-12 rounded-b-3xl">
           <button onClick={() => setMode('washer-type')} className="text-white mb-4">
             <ArrowLeft className="w-6 h-6" />
           </button>
@@ -893,7 +893,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
     return (
       <div className="flex-1 flex flex-col bg-[#FFF8F0]">
         {/* Header */}
-        <div className="bg-[#FF9800] p-4 pt-[calc(2rem+env(safe-area-inset-top))] pb-12 rounded-b-3xl">
+        <div className="bg-[#FF9800] p-4 pt-[calc(2rem+max(env(safe-area-inset-top),var(--safe-area-inset-top,0px)))] pb-12 rounded-b-3xl">
           <button onClick={() => setMode('welcome')} className="text-white mb-4">
             <ArrowLeft className="w-6 h-6" />
           </button>
@@ -990,7 +990,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
     return (
       <div className="flex-1 flex flex-col bg-[#FFF8F0]">
         {/* Header */}
-        <div className="bg-[#FF9800] p-4 pt-[calc(2rem+env(safe-area-inset-top))] pb-12 rounded-b-3xl">
+        <div className="bg-[#FF9800] p-4 pt-[calc(2rem+max(env(safe-area-inset-top),var(--safe-area-inset-top,0px)))] pb-12 rounded-b-3xl">
           <button onClick={() => setMode(getRegisterMode())} className="text-white mb-4">
             <ArrowLeft className="w-6 h-6" />
           </button>

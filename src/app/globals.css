@@ -277,15 +277,18 @@
   }
 }
 
-/* Utilitaires safe-area (encoches / barre gestuelle iOS) */
+/* Utilitaires safe-area (encoches / barre gestuelle iOS & Android WebView).
+   max(env(...), var(--safe-area-inset-*)) : les variables CSS --safe-area-inset-*
+   sont injectées par le plugin Capacitor SystemBars (Android, où env() vaut 0) ;
+   max() évite tout double comptage quand les deux sources sont renseignées. */
 .pt-safe {
-  padding-top: env(safe-area-inset-top);
+  padding-top: max(env(safe-area-inset-top), var(--safe-area-inset-top, 0px));
 }
 .pb-safe {
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: max(env(safe-area-inset-bottom), var(--safe-area-inset-bottom, 0px));
 }
 .mb-safe {
-  margin-bottom: env(safe-area-inset-bottom);
+  margin-bottom: max(env(safe-area-inset-bottom), var(--safe-area-inset-bottom, 0px));
 }
 
 /* Custom animations for carousel */

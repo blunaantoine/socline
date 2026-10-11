@@ -432,7 +432,7 @@ export function ChatView({ conversation, onBack }: ChatViewProps) {
       </div>
 
       {/* Input Area — safe-area basse pour la barre gestuelle iOS */}
-      <div className="bg-white px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] flex items-center gap-2 border-t border-[#F5F5F5]">
+      <div className="bg-white px-4 pt-3 pb-[calc(0.75rem+max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))] flex items-center gap-2 border-t border-[#F5F5F5]">
         <button
           onClick={handleShareLocation}
           className="w-11 h-11 flex items-center justify-center text-[#FF9800] hover:bg-[#FFF3E0] rounded-full active:scale-95 transition-transform"

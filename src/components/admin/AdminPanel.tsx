@@ -741,7 +741,7 @@ export function AdminPanel() {
       </div>
 
       {/* Header — sur mobile il colle au haut (pas de barre factice) + safe-area */}
-      <div className="bg-white border-b px-4 py-3 flex-shrink-0 sticky top-0 md:top-6 z-40 max-md:pt-[calc(0.75rem+env(safe-area-inset-top))]">
+      <div className="bg-white border-b px-4 py-3 flex-shrink-0 sticky top-0 md:top-6 z-40 max-md:pt-[calc(0.75rem+max(env(safe-area-inset-top),var(--safe-area-inset-top,0px)))]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-[#FF9800] to-[#F57C00] rounded-full flex items-center justify-center text-white text-lg font-bold">
@@ -762,7 +762,7 @@ export function AdminPanel() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto pb-[calc(4.5rem+env(safe-area-inset-bottom))]">
+      <div className="flex-1 overflow-y-auto pb-[calc(4.5rem+max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))]">
         {activeTab === 'dashboard' && (
           <AdminDashboard 
             stats={stats}
@@ -899,7 +899,7 @@ export function AdminPanel() {
       </div>
 
       {/* Android Bottom Navigation - FIXED at bottom (safe-area iOS incluse) */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E0E0E0] flex justify-around items-stretch h-[calc(3.5rem+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E0E0E0] flex justify-around items-stretch h-[calc(3.5rem+max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))] pb-[max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px))] z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
         {[
           { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
           { id: 'users', icon: Users, label: 'Utilis.' },

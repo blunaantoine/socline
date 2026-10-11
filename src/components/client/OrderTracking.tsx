@@ -305,7 +305,7 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
       </div>
 
       {/* Header with Back Button */}
-      <div className="bg-white border-b border-[#E0E0E0] px-4 py-3 flex items-center gap-3 flex-shrink-0 sticky top-0 md:top-6 z-40 max-md:pt-[calc(0.75rem+env(safe-area-inset-top))]">
+      <div className="bg-white border-b border-[#E0E0E0] px-4 py-3 flex items-center gap-3 flex-shrink-0 sticky top-0 md:top-6 z-40 max-md:pt-[calc(0.75rem+max(env(safe-area-inset-top),var(--safe-area-inset-top,0px)))]">
         <button onClick={onBack} className="p-1 -ml-1">
           <ArrowLeft className="w-5 h-5 text-[#212121]" />
         </button>
@@ -465,7 +465,7 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
       </div>
 
       {/* Order Details */}
-      <div className="flex-1 overflow-y-auto pb-[calc(7rem+env(safe-area-inset-bottom))] p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto pb-[calc(7rem+max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))] p-4 space-y-4">
         {/* Service Info */}
         <Card>
           <CardContent className="p-4">
@@ -642,7 +642,7 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
 
       {/* Cancel Button — works against PATCH /api/orders (client cancel) */}
       {['PENDING', 'ACCEPTED'].includes(order.status) && (
-        <div className="px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+        <div className="px-4 pb-[calc(1rem+max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))]">
           <Button
             variant="outline"
             className="w-full h-12 border-red-200 text-red-600 hover:bg-red-50"
@@ -766,7 +766,7 @@ function OrderCompleted({ order, onBack, onGoHome }: { order: Order; onBack?: ()
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto pb-[calc(7rem+env(safe-area-inset-bottom))] p-4">
+      <div className="flex-1 overflow-y-auto pb-[calc(7rem+max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))] p-4">
         <div className="max-w-md mx-auto space-y-4">
           {/* Back Button */}
           {onBack && (

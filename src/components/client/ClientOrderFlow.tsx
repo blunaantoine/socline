@@ -442,7 +442,7 @@ export function ClientOrderFlow({
   if (isLoadingServices) {
     return (
       <div className="flex-1 flex flex-col bg-app">
-        <div className="bg-surface border-b border-line px-4 py-3 pt-[calc(0.75rem+env(safe-area-inset-top))] flex-shrink-0">
+        <div className="bg-surface border-b border-line px-4 py-3 pt-[calc(0.75rem+max(env(safe-area-inset-top),var(--safe-area-inset-top,0px)))] flex-shrink-0">
           <div className="h-5 w-44 rounded bg-line animate-pulse" />
         </div>
         <div className="flex-1 p-4">
@@ -459,7 +459,7 @@ export function ClientOrderFlow({
   return (
     <div className="flex-1 flex flex-col bg-app">
       {/* Header : retour + titre de l'étape + service choisi */}
-      <div className="bg-surface border-b border-line px-4 py-3 flex-shrink-0 sticky top-0 z-40 pt-[calc(0.75rem+env(safe-area-inset-top))]">
+      <div className="bg-surface border-b border-line px-4 py-3 flex-shrink-0 sticky top-0 z-40 pt-[calc(0.75rem+max(env(safe-area-inset-top),var(--safe-area-inset-top,0px)))]">
         <div className="flex items-center gap-3">
           <button
             onClick={goBack}
@@ -480,7 +480,7 @@ export function ClientOrderFlow({
       </div>
 
       {/* Progress Steps */}
-      <div className="bg-surface px-4 py-2.5 border-b border-line flex-shrink-0 sticky top-[calc(4rem+env(safe-area-inset-top))] z-30">
+      <div className="bg-surface px-4 py-2.5 border-b border-line flex-shrink-0 sticky top-[calc(4rem+max(env(safe-area-inset-top),var(--safe-area-inset-top,0px)))] z-30">
         <div className="flex items-center justify-between">
           {STEPS.map((item, index) => {
             const isActive = step === item.id;
@@ -521,7 +521,7 @@ export function ClientOrderFlow({
       </div>
 
       {/* Content - Only render current step */}
-      <div className="flex-1 overflow-y-auto p-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+      <div className="flex-1 overflow-y-auto p-4 pb-[calc(1.5rem+max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))]">
         {/* Étape 1 : choisir une formule — rangées horizontales (maquette) */}
         {step === 'service' && (
           <div className="space-y-4">

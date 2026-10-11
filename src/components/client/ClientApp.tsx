@@ -394,7 +394,7 @@ export function ClientApp() {
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* App Bar claire et aérée (masquée sur chat / parcours de réservation) */}
         {activeTab !== 'chat' && activeTab !== 'booking' && (
-          <header className="bg-app px-4 pt-4 pb-1 flex items-start justify-between gap-2 flex-shrink-0 max-md:pt-[calc(1rem+env(safe-area-inset-top))]">
+          <header className="bg-app px-4 pt-4 pb-1 flex items-start justify-between gap-2 flex-shrink-0 max-md:pt-[calc(1rem+max(env(safe-area-inset-top),var(--safe-area-inset-top,0px)))]">
             <div className="min-w-0">
               {/* Bonjour + position — puces tappable (même fonction : géolocalisation) */}
               <button
@@ -418,7 +418,7 @@ export function ClientApp() {
         )}
 
         {/* Content - scrollable area */}
-        <div className={`flex-1 overflow-y-auto ${activeTab !== 'chat' ? 'pb-[calc(4.5rem+env(safe-area-inset-bottom))]' : 'pb-safe'}`}>
+        <div className={`flex-1 overflow-y-auto ${activeTab !== 'chat' ? 'pb-[calc(4.5rem+max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))]' : 'pb-safe'}`}>
           {activeTab === 'home' && (
             <HomeContent
               services={services}
@@ -481,7 +481,7 @@ export function ClientApp() {
           {/* Abonnements — fusionné dans l'onglet Réserver (vue secondaire avec retour) */}
           {activeTab === 'booking' && bookingView === 'subscriptions' && (
             <div className="flex-1 flex flex-col bg-app">
-              <div className="bg-surface border-b border-line px-4 py-3 flex-shrink-0 sticky top-0 z-40 pt-[calc(0.75rem+env(safe-area-inset-top))]">
+              <div className="bg-surface border-b border-line px-4 py-3 flex-shrink-0 sticky top-0 z-40 pt-[calc(0.75rem+max(env(safe-area-inset-top),var(--safe-area-inset-top,0px)))]">
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => setBookingView('wash')}
@@ -496,7 +496,7 @@ export function ClientApp() {
                   </div>
                 </div>
               </div>
-              <div className="flex-1 overflow-y-auto p-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+              <div className="flex-1 overflow-y-auto p-4 pb-[calc(1.5rem+max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))]">
                 <SubscriptionPanel userId={user?.id || ''} walletBalance={walletBalance} />
               </div>
             </div>
@@ -534,7 +534,7 @@ export function ClientApp() {
       {/* Barre de navigation basse — icônes lisibles, onglet actif orange,
           bordure fine au lieu d'une ombre lourde (design system) */}
       {activeTab !== 'chat' && (
-        <nav className="fixed bottom-0 left-0 right-0 bg-surface border-t border-line flex justify-around items-stretch h-[calc(3.5rem+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] z-50">
+        <nav className="fixed bottom-0 left-0 right-0 bg-surface border-t border-line flex justify-around items-stretch h-[calc(3.5rem+max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))] pb-[max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px))] z-50">
           {navItems.map((item) => {
             const isActive = activeTab === item.id;
             return (

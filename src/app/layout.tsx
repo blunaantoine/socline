@@ -108,7 +108,7 @@ export default function RootLayout({
             (safe-area iOS respectée). */}
         <Toaster
           position="bottom-center"
-          offset="calc(5rem + env(safe-area-inset-bottom, 0px))"
+          offset="calc(5rem + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))"
           visibleToasts={3}
         />
       </body>

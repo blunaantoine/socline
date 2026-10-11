@@ -165,7 +165,7 @@ export function SupportChatbot() {
         <button
           onClick={handleOpen}
           aria-label="Ouvrir l'assistant d'aide Soco"
-          className="fixed right-4 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-40 w-14 h-14 rounded-full bg-gradient-to-br from-brand to-brand-light shadow-lg shadow-brand/30 grid place-items-center active:scale-90 transition-transform"
+          className="fixed right-4 bottom-[calc(4.25rem+max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))] z-40 w-14 h-14 rounded-full bg-gradient-to-br from-brand to-brand-light shadow-lg shadow-brand/30 grid place-items-center active:scale-90 transition-transform"
         >
           <span className="absolute inset-0 rounded-full bg-brand/25 animate-ping [animation-duration:2.5s]" aria-hidden="true" />
           <Headphones className="w-6 h-6 text-white relative" strokeWidth={2.2} />
@@ -181,7 +181,7 @@ export function SupportChatbot() {
           aria-label="Assistant d'aide Soco"
         >
           {/* En-tête */}
-          <div className="bg-gradient-to-br from-ink to-ink-2 px-4 pt-[calc(0.9rem+env(safe-area-inset-top))] pb-3.5 flex items-center gap-3 flex-shrink-0">
+          <div className="bg-gradient-to-br from-ink to-ink-2 px-4 pt-[calc(0.9rem+max(env(safe-area-inset-top),var(--safe-area-inset-top,0px)))] pb-3.5 flex items-center gap-3 flex-shrink-0">
             <div className="relative flex-shrink-0">
               <div className="w-10 h-10 rounded-[14px] bg-gradient-to-br from-brand to-brand-light grid place-items-center">
                 <Sparkles className="w-5 h-5 text-white" />
@@ -299,7 +299,7 @@ export function SupportChatbot() {
               e.preventDefault();
               sendMessage(input);
             }}
-            className="p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] bg-surface border-t border-line flex items-center gap-2 flex-shrink-0"
+            className="p-3 pb-[calc(0.75rem+max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))] bg-surface border-t border-line flex items-center gap-2 flex-shrink-0"
           >
             <input
               ref={inputRef}
