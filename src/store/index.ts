@@ -51,10 +51,6 @@ interface AppState {
   setView: (view: AppView) => void;
   sidebarOpen: boolean;
   toggleSidebar: () => void;
-  // Bulle de l'assistant support (Soco) : masquée dans les flux plein écran
-  // (réservation, suivi, chat) pour ne pas gêner les boutons d'action.
-  supportChatHidden: boolean;
-  setSupportChatHidden: (hidden: boolean) => void;
   // Location
   userLocation: Location | null;
   setUserLocation: (location: Location) => void;
@@ -72,8 +68,6 @@ export const useAppStore = create<AppState>()((set) => ({
   setView: (view) => set({ currentView: view }),
   sidebarOpen: true,
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
-  supportChatHidden: false,
-  setSupportChatHidden: (hidden) => set({ supportChatHidden: hidden }),
   userLocation: null,
   setUserLocation: (location) => set({ userLocation: location }),
   markers: [],

@@ -43,6 +43,7 @@ import { ServiceArtCard } from '@/components/design/ServiceArtCard';
 import { WasherRow } from '@/components/design/WasherRow';
 import { EmptyState } from '@/components/design/EmptyState';
 import { CARD_CLASSES } from '@/lib/design-system';
+import { SupportChatbot } from '@/components/support/SupportChatbot';
 
 // Abonnements fusionné dans l'onglet Réserver (vue secondaire) → 5 onglets,
 // cibles tactiles plus larges dans la barre de navigation.
@@ -77,7 +78,7 @@ const CAR_COLORS: Record<string, string> = {
 
 export function ClientApp() {
   const { user, isAuthenticated, logout } = useAuthStore();
-  const { userLocation, setUserLocation, setSupportChatHidden } = useAppStore();
+  const { userLocation, setUserLocation } = useAppStore();
   const { services, setServices, selectService } = useServicesStore();
   const { currentOrder, setCurrentOrder } = useOrdersStore();
   const { nearbyWashers, setNearbyWashers } = useWashersStore();
@@ -116,11 +117,8 @@ export function ClientApp() {
   // Loading state for the Home "Laveurs disponibles" section
   const [isLoadingWashers, setIsLoadingWashers] = useState(true);
 
-  // Masque la bulle de l'assistant support dans les flux plein écran
-  // (réservation multi-étapes et liste de chat) pour ne pas gêner les CTA.
-  useEffect(() => {
-    setSupportChatHidden(activeTab === 'booking' || activeTab === 'chat');
-  }, [activeTab, setSupportChatHidden]);
+  // Bulle Soco : montée uniquement dans l'onglet Profil (voir render) —
+  // plus de logique de masquage par onglet.
 
   // Retour de la page de paiement PayDunya (return_url = /?paydunya=return) :
   // ouvrir directement l'onglet Portefeuille — son poller détecte le dépôt
@@ -523,7 +521,13 @@ export function ClientApp() {
             />
           )}
           {activeTab === 'chat' && <ChatList onBack={() => setActiveTab('home')} />}
-          {activeTab === 'profile' && <ProfileContent user={user} onLogout={logout} />}
+          {activeTab === 'profile' && (
+            <>
+              <ProfileContent user={user} onLogout={logout} />
+              {/* Soco — bulle + panneau de chat, uniquement sur l'onglet Profil */}
+              <SupportChatbot />
+            </>
+          )}
         </div>
       </div>
 

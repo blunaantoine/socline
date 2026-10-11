@@ -31,6 +31,7 @@ import { ScheduledBadge } from '@/components/shared/ScheduledBadge';
 import { getServiceCoverage } from '@/lib/service-coverage';
 import { openWhatsApp } from '@/lib/contact';
 import { DynamicLeafletMap } from '@/components/map/DynamicLeafletMap';
+import { SupportChatbot } from '@/components/support/SupportChatbot';
 
 // ---------------------------------------------------------------------
 // Abonnement : une commande payée par séance d'abonnement affiche
@@ -824,21 +825,25 @@ export function WasherApp() {
           />
         )}
         {activeTab === 'profile' && (
-          profileSection ? (
-            <WasherProfileSection 
-              section={profileSection} 
-              onBack={() => setProfileSection(null)}
-              user={user}
-            />
-          ) : (
-            <WasherProfile 
-              user={user} 
-              stats={washerStats} 
-              onLogout={logout} 
-              onBack={() => setActiveTab('dashboard')}
-              onNavigate={setProfileSection}
-            />
-          )
+          <>
+            {profileSection ? (
+              <WasherProfileSection 
+                section={profileSection} 
+                onBack={() => setProfileSection(null)}
+                user={user}
+              />
+            ) : (
+              <WasherProfile 
+                user={user} 
+                stats={washerStats} 
+                onLogout={logout} 
+                onBack={() => setActiveTab('dashboard')}
+                onNavigate={setProfileSection}
+              />
+            )}
+            {/* Soco — bulle + panneau de chat, uniquement sur l'onglet Profil */}
+            <SupportChatbot />
+          </>
         )}
       </div>
 

@@ -2,8 +2,9 @@
 
 // Soco — assistant support IA de Socline.
 //
-// Une bulle flottante disponible partout (invités sur l'écran de connexion,
-// clients et laveurs une fois connectés). Le panneau de chat appelle
+// Bulle flottante affichée UNIQUEMENT sur l'onglet « Profil » (client et
+// laveur) — le composant est monté conditionnellement par ClientApp et
+// WasherApp. Le panneau de chat appelle
 // POST /api/support/chat : le backend injecte la base de connaissances live
 // (formules, prix, abonnements, promos) + le contexte réel du compte
 // (solde, commande en cours, abonnement) puis répond via le LLM.
@@ -11,7 +12,7 @@
 // panneau affiche les contacts directs (appel + WhatsApp).
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useAuthStore, useAppStore } from '@/store';
+import { useAuthStore } from '@/store';
 import { Headphones, X, Send, Sparkles, Phone, MessageSquare, RefreshCw } from 'lucide-react';
 
 interface ChatMessage {
@@ -47,8 +48,6 @@ function loadStoredMessages(): ChatMessage[] {
 }
 
 export function SupportChatbot() {
-  const { user, isAuthenticated } = useAuthStore();
-  const { supportChatHidden } = useAppStore();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -56,9 +55,6 @@ export function SupportChatbot() {
   const [isWriting, setIsWriting] = useState(false); // délai naturel avant la réponse
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  const isAdmin = isAuthenticated && user?.role === 'ADMIN';
-  const showFab = !isAdmin && !supportChatHidden;
 
   // Restaure la conversation de la session au montage.
   useEffect(() => {
@@ -162,21 +158,14 @@ export function SupportChatbot() {
     setTimeout(() => inputRef.current?.focus(), 250);
   };
 
-  if (isAdmin) return null;
-
   return (
     <>
-      {/* Bulle flottante — au-dessus de la barre de navigation pour les
-          connectés, en bas à droite pour les invités */}
-      {showFab && !isOpen && (
+      {/* Bulle flottante — au-dessus de la barre de navigation (onglet Profil) */}
+      {!isOpen && (
         <button
           onClick={handleOpen}
           aria-label="Ouvrir l'assistant d'aide Soco"
-          className={`fixed right-4 z-40 w-14 h-14 rounded-full bg-gradient-to-br from-brand to-brand-light shadow-lg shadow-brand/30 grid place-items-center active:scale-90 transition-transform ${
-            isAuthenticated
-              ? 'bottom-[calc(4.25rem+env(safe-area-inset-bottom))]'
-              : 'bottom-[calc(1.25rem+env(safe-area-inset-bottom))]'
-          }`}
+          className="fixed right-4 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-40 w-14 h-14 rounded-full bg-gradient-to-br from-brand to-brand-light shadow-lg shadow-brand/30 grid place-items-center active:scale-90 transition-transform"
         >
           <span className="absolute inset-0 rounded-full bg-brand/25 animate-ping [animation-duration:2.5s]" aria-hidden="true" />
           <Headphones className="w-6 h-6 text-white relative" strokeWidth={2.2} />

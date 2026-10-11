@@ -7,7 +7,6 @@ import { WasherApp } from '@/components/washer/WasherApp';
 import { AdminPanel } from '@/components/admin/AdminPanel';
 import { AuthScreen } from '@/components/client/AuthScreen';
 import { ApkDownloadButton } from '@/components/shared/ApkDownloadButton';
-import { SupportChatbot } from '@/components/support/SupportChatbot';
 import { Loader2 } from 'lucide-react';
 
 // Custom hook for client-side hydration without useEffect setState
@@ -59,8 +58,8 @@ export default function SoclineApp() {
         </>
       )}
       <ApkDownloadButton />
-      {/* Soco — assistant support IA (invités, clients et laveurs ; masqué pour les admins) */}
-      <SupportChatbot />
+      {/* NOTE : Soco (assistant support) est monté dans l'onglet Profil de
+          ClientApp et WasherApp — bulle visible uniquement là (demande user). */}
       {/* NOTE : pas de <Toaster> ici — celui de layout.tsx suffit ; deux
           instances montaient DEUX files de toasts et chaque notification
           s'affichait en double (chevauchements perçus comme débordements). */}
