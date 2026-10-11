@@ -1539,3 +1539,20 @@ Stage Summary:
 - Le CTA « Continuer — Choisir mon type » de l'écran Devenir partenaire s'affiche désormais EN ENTIER sur tous les écrans (390px et 320px testés) et mène bien au choix du type de laveur.
 - Procédure de mise à jour transmise à l'utilisateur : VPS (deploy.sh --update) + machine locale (git pull, npm install si package.json changé, npx cap sync android, rebuild APK).
 - Attention pour les prochaines sessions : le working tree sandbox contient des expérimentations non commitées (firebase, ios/, images formule-*) à NE PAS embarquer dans des commits de correctifs — toujours git add <fichier> ciblé.
+
+---
+Task ID: 64 (session 52 — déploiement VPS réussi + script auto-réparation SSL)
+Agent: main (Z.ai Code)
+Task: retour utilisateur après le premier déploiement VPS (log collé) — vérifier la prod et traiter l'alerte SSL en fin de log.
+
+Work Log:
+- Le déploiement VPS de l'utilisateur a RÉUSSI : code 5f7fba9 déployé (Tasks 55-63), build Next 58 routes OK, 3 services systemd actifs (web 3100 / chat 3003 / washgo 3005), BDD en sync.
+- ALERTE dans le log : « cannot load certificate /etc/letsencrypt/live/socline.oquitogo.com/fullchain.pem … nginx: configuration file test failed » mais le script a quand même imprimé [OK].
+- Vérification EXTERNE de la prod depuis le sandbox : HTTPS 200 OK (nginx tourne avec l'ancienne conf EN MÉMOIRE), port 3002 muet (sans importance), titre correct, ET le libellé du CTA corrigé « Continuer — Choisir mon type » trouvé dans un chunk JS servi → NOUVELLE VERSION CONFIRMÉE EN LIGNE.
+- Diagnostic du défaut (deploy/deploy.sh) : la branche « restauration HTTPS » gère « certificat présent mais non référencé », pas « référencé mais fichier disparu » (le cas du VPS) ; et `nginx -t && systemctl reload` sans test honnête → faux [OK].
+- CORRECTIF deploy.sh : (1) bloc auto-réparation — si la conf référence le certificat mais que fullchain.pem est absent → réémission certbot standalone (stop nginx bref, --pre-hook/--post-hook enregistrés pour les renouvellements automatiques, message manuel en cas d'échec) ; (2) nginx -t évalué honnêtement : reload + [OK] seulement si le test passe, sinon avertissement explicite « ne pas redémarrer nginx ».
+- bash -n : syntaxe OK. Commit 🛠️ + push. L'utilisateur doit relancer le déploiement en 2 commandes SÛRES (git reset d'abord, PUIS le script mis à jour — jamais l'inverse, le script se réécrirait en pleine exécution).
+
+Stage Summary:
+- La prod socline.oquitogo.com sert la nouvelle version (vérifié par chunk JS) et fonctionne ; le risque latent (redémarrage nginx = panne HTTPS) est traité par le script auto-réparateur, à activer en relançant deploy.sh --update dans le bon ordre.
+- Rappel : le working tree sandbox contient des expérimentations non commitées (firebase/ios) — commits toujours ciblés (git add <fichier>).
