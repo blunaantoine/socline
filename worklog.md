@@ -1671,3 +1671,23 @@ Stage Summary:
 - PROD à jour : Task 68 (bulle Soco profil-only) déployée et vérifiée E2E sur https://socline.oquitogo.com — matrice complète 5 onglets + ouverture/fermeture panneau.
 - Session 55 livrée intégralement : (1) shop.maison-khan.com restauré en HTTPS valide (certs exp. 2027-01-09), (2) watchdog nginx auto-réparateur actif sur le VPS (cron 1 min), (3) Socline redeployée en 6e46951 avec Task 68.
 - Reste optionnel (non bloquant) : FIREBASE_SERVICE_ACCOUNT dans .env VPS (push FCM), etckeeper (/etc versionné), monitoring externe type UptimeRobot.
+
+---
+Task ID: ops-3 (session 55 — safe areas Android : barre statut + barre navigation)
+Agent: main (Z.ai Code)
+Task: « sur un téléphone, la barre où la batterie s'affiche et en bas les boutons retour — l'app ne devrait pas superposer mais être limitée au début des deux barres ».
+
+Work Log:
+- Cause racine identifiée : APK Capacitor ciblant SDK 36 (Android 15+ = edge-to-edge FORCÉ, pas d'opt-out) ; dans la WebView, env(safe-area-inset-*) vaut 0 → tout le CSS safe-area du site était inopérant dans l'APK → contenu sous les barres système.
+- Découverte clé (node_modules Capacitor 8.3.1, plugin SystemBars.java) : Cap 8 injecte les insets Android en variables CSS --safe-area-inset-* ; si WebView ≥ 140 + viewport-fit=cover il laisse passer env() natif, sinon il padde nativement la WebView entre les barres. L'APK v1.0 du téléphone ne bénéficiait d'aucun des deux (signé avant).
+- Blindage web (13 fichiers) : env(safe-area-inset-*) → max(env(...), var(--safe-area-inset-*, 0px)) partout (ClientApp, ClientOrderFlow, AuthScreen, OrderTracking, SupportChatbot ×2, WasherApp, StationDashboard, AdminPanel, ChatView, dialog.tsx, ApkDownloadButton, layout.tsx Toaster, globals.css pt-safe/pb-safe/mb-safe) — max() évite le double comptage (passthrough : env ET vars réels ; natif : vars 0 + padding natif). PIÈGE : la 1re grep head-30 tronquait la liste → re-grep exhaustif par fichier sans max( avant de croire le travail fini.
+- Build APK dans la sandbox (aucun JDK complet ni SDK au départ) : Temurin JDK 21 portable (198 Mo, api.adoptium.net) + commandlinetools 11076708 + sdkmanager platforms;android-36 + build-tools;36.0.0 + platform-tools (~350 Mo) + local.properties sdk.dir → ./gradlew assembleDebug : BUILD SUCCESSFUL 3m54s. Version bump 1.0→1.1 (versionCode 2).
+- APK v1.1 (11 Mo) vérifié par aapt2 dump badging (com.socline.app, targetSdk 36, minSdk 24) ; copié public/apk/socline-v1.1-debug.apk ; bouton ApkDownloadButton href v1.0→v1.1 ; README journal des versions.
+- FIX 404 : /apk/socline-v1.0-debug.apk répondait 404 en prod (binaire jamais commité, .gitignore /public/apk/*.apk) → git add -f du binaire v1.1 → le déploiement le servira.
+- Commits : 1d9df3f (blindage web, 13 fichiers) + 07c67b9 (APK v1.1 + bouton + README) + push. Lint exit 0.
+- SIGNATURE : ~/.android/debug.keystore générée à la volée pendant CE build (22:17) → clé ≠ celle de l'APK v1.0 du téléphone → DÉSINSTALLATION PRÉALABLE de l'ancienne version OBLIGATOIRE avant d'installer la v1.1.
+
+Stage Summary:
+- Livré : blindage safe-area web (bénéficie PWA/Chrome immédiatement après deploy) + APK v1.1 Capacitor 8.3.1 respectant les zones sûres + téléchargement /apk/ de nouveau fonctionnel après deploy.
+- Actions utilisateur : (1) redeploy VPS, (2) sur le téléphone : désinstaller Socline v1.0 PUIS installer https://socline.oquitogo.com/apk/socline-v1.1-debug.apk (signature debug différente), (3) PWA Chrome : simple rechargement.
+- Build tooling sandbox réutilisable : /home/z/build-tools/jdk-21.0.12.1+1 + /home/z/android-sdk + android/local.properties (non commité).
