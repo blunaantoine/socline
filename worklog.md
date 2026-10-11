@@ -1598,3 +1598,22 @@ Stage Summary:
 - « Soco » répond 7j/7 dans l'app (invités compris) avec les prix/formules/promos TOUJOURS à jour (lus en BDD à chaque message) et le contexte réel du compte connecté ; tout problème → ticket créé + contacts directs ; l'équipe gère les tickets dans Admin ▸ Plus d'options ▸ Support Clients.
 - Points d'entrée : bulle flottante partout (sauf réservation/chat/admin) + profil ▸ Besoin d'aide ▸ Discuter avec l'assistant.
 - Déploiement : nécessite git reset + deploy.sh --update ET la migration BDD est auto (db:push fait par deploy.sh). Relancer le serveur après migration (géré par le script).
+
+---
+Task ID: 67 (session 54 — correctif build VPS : firebase-admin manquant)
+Agent: main (Z.ai Code)
+Task: Déploiement VPS en échec — build Turbopack « Module not found: Can't resolve 'firebase-admin/app' » sur src/lib/firebase-admin.ts (rapporté par l'utilisateur avec la sortie console du VPS).
+
+Work Log:
+- Diagnostic : la session parallèle avait committé l'intégration push FCM (src/lib/firebase-admin.ts, src/app/api/notifications/register-token/route.ts, src/app/firebase-messaging-sw.js/route.ts, src/lib/firebase.ts) SANS déclarer firebase-admin dans package.json (absent même de node_modules local) → echec du build Turbopack sur le VPS (Next 16.1.3, standalone) dès l'étape 6/8 du deploy.sh.
+- Entre-temps, la session parallèle a poussé la Task 66 complète (Soco : /api/support/chat, SupportChatbot, AdminSupportTickets, SupportTicket Prisma) — rien à faire de plus sur le chatbot.
+- Scan exhaustif des imports du tree origin/main vs package.json (script node sur git archive) : SEUL firebase-admin manque (node:crypto = builtin Node, faux positif ; firebase.ts client n'utilise que des env vars).
+- Fix : bun add firebase-admin — v14.5.0 résolue d'abord, DÉGRADÉE en 13.10.0 car engines v14 = node >=22 alors que le VPS tourne Node v20.20.2 (13.x = node >=18, API cert/getApps/initializeApp/getMessaging identique, vérifiée par require).
+- next.config.ts : serverExternalPackages: ['firebase-admin'] — les requires dynamiques (google-auth-library, grpc-js) restent hors bundle Turbopack ; le package est tracé dans .next/standalone/node_modules.
+- Sans FIREBASE_SERVICE_ACCOUNT dans .env, firebase-admin.ts dégrade silencieusement (warn once, push off, notifications in-app + socket intactes) — comportement documenté dans le fichier.
+- Lint 0 erreur. Commit 🛠️ 2a5c43e ciblé (package.json, bun.lock, next.config.ts) + push (embarque aussi 76a72bc : 4 captures test Soco restées locales).
+
+Stage Summary:
+- origin/main = 2a5c43e : build VPS débloqué. Redéploiement utilisateur : cd /opt/socline && git reset --hard origin/main && sudo bash deploy/deploy.sh --update — l'étape 8/8 (nginx + auto-réparation SSL ajoutée en ece8ca2) s'exécutera après le build réussi.
+- La prod recevra en même temps la Task 65 (fusion Réserver/Abonnements) et la Task 66 (Soco + tickets admin).
+- Push FCM reste inactif tant que FIREBASE_SERVICE_ACCOUNT n'est pas ajouté au .env du VPS (optionnel, non bloquant).
