@@ -122,6 +122,7 @@ model User {
   subscriptions UserSubscription[] // User's subscriptions
   addresses     Address[] // User's saved addresses
   stations      Station[] @relation("StationOwner") // Stations owned by this user (if station owner)
+  supportTickets SupportTicket[] @relation("SupportTickets") // Demandes de support remontées via l'assistant IA
 
   @@map("users")
 }
@@ -889,4 +890,27 @@ model WasherWithdrawal {
   updatedAt       DateTime          @updatedAt
 
   @@map("washer_withdrawals")
+}
+
+// Support Ticket (demande remontée par l'assistant IA « Soco » quand un
+// utilisateur veut parler à un humain ou rencontre un problème non résolu)
+model SupportTicket {
+  id          String   @id @default(cuid())
+  userId      String?  // null = invité (non connecté)
+  user        User?    @relation("SupportTickets", fields: [userId], references: [id], onDelete: SetNull)
+
+  name        String?  // Nom du compte (ou null pour un invité)
+  phone       String?  // Numéro pour recontacter
+  role        String   @default("CLIENT") // CLIENT / WASHER / GUEST
+
+  subject     String   // Résumé court du problème (dernier message)
+  message     String   // Description + extrait de la conversation avec Soco
+
+  status      String   @default("OPEN") // OPEN / IN_PROGRESS / RESOLVED
+  adminNotes  String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("support_tickets")
 }

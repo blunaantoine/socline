@@ -77,7 +77,7 @@ const CAR_COLORS: Record<string, string> = {
 
 export function ClientApp() {
   const { user, isAuthenticated, logout } = useAuthStore();
-  const { userLocation, setUserLocation } = useAppStore();
+  const { userLocation, setUserLocation, setSupportChatHidden } = useAppStore();
   const { services, setServices, selectService } = useServicesStore();
   const { currentOrder, setCurrentOrder } = useOrdersStore();
   const { nearbyWashers, setNearbyWashers } = useWashersStore();
@@ -115,6 +115,12 @@ export function ClientApp() {
   const [presetAddress, setPresetAddress] = useState('');
   // Loading state for the Home "Laveurs disponibles" section
   const [isLoadingWashers, setIsLoadingWashers] = useState(true);
+
+  // Masque la bulle de l'assistant support dans les flux plein écran
+  // (réservation multi-étapes et liste de chat) pour ne pas gêner les CTA.
+  useEffect(() => {
+    setSupportChatHidden(activeTab === 'booking' || activeTab === 'chat');
+  }, [activeTab, setSupportChatHidden]);
 
   // Retour de la page de paiement PayDunya (return_url = /?paydunya=return) :
   // ouvrir directement l'onglet Portefeuille — son poller détecte le dépôt
@@ -1268,6 +1274,11 @@ function ProfileContent({ user, onLogout }: { user: any; onLogout: () => void })
     window.open(`https://wa.me/${supportWhatsApp.replace(/\+/g, '')}?text=${message}`, '_blank');
   };
 
+  // Ouvre l'assistant IA « Soco » (bulle SupportChatbot, événement global)
+  const handleOpenAssistant = () => {
+    window.dispatchEvent(new CustomEvent('socline:open-support'));
+  };
+
   // Render sub-sections if active
   if (activeSection === 'history') {
     return <ActivityHistory userId={user?.id} onBack={() => setActiveSection(null)} />;
@@ -1349,21 +1360,30 @@ function ProfileContent({ user, onLogout }: { user: any; onLogout: () => void })
             <p className="text-detail text-white/60">Une réponse rapide, 7j/7</p>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="space-y-2.5">
           <button
-            onClick={handleCallSupport}
-            className="bg-white text-ink rounded-btn py-2.5 px-3 flex items-center justify-center gap-2 text-detail font-bold min-h-[44px] active:scale-95 transition-transform"
+            onClick={handleOpenAssistant}
+            className="w-full bg-white text-ink rounded-btn py-3 px-3 flex items-center justify-center gap-2 text-body font-bold min-h-[48px] active:scale-[0.98] transition-transform"
           >
-            <Phone className="w-[17px] h-[17px]" />
-            Appeler
+            <Sparkles className="w-[18px] h-[18px] text-brand" />
+            Discuter avec l&apos;assistant
           </button>
-          <button
-            onClick={handleWhatsAppSupport}
-            className="bg-[#25D366] text-white rounded-btn py-2.5 px-3 flex items-center justify-center gap-2 text-detail font-bold min-h-[44px] active:scale-95 transition-transform"
-          >
-            <MessageSquare className="w-[17px] h-[17px]" />
-            WhatsApp
-          </button>
+          <div className="grid grid-cols-2 gap-2.5">
+            <button
+              onClick={handleCallSupport}
+              className="bg-white/10 border border-white/20 text-white rounded-btn py-2.5 px-3 flex items-center justify-center gap-2 text-detail font-bold min-h-[44px] active:scale-95 transition-transform"
+            >
+              <Phone className="w-[17px] h-[17px]" />
+              Appeler
+            </button>
+            <button
+              onClick={handleWhatsAppSupport}
+              className="bg-[#25D366] text-white rounded-btn py-2.5 px-3 flex items-center justify-center gap-2 text-detail font-bold min-h-[44px] active:scale-95 transition-transform"
+            >
+              <MessageSquare className="w-[17px] h-[17px]" />
+              WhatsApp
+            </button>
+          </div>
         </div>
       </div>
 

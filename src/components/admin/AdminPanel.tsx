@@ -36,8 +36,9 @@ import {
   TrendingUp, Clock, Star, Settings, Bell, Plus,
   CheckCircle, XCircle, AlertCircle, Search,
   ChevronDown, Download, Eye, Edit, Trash2, Tag,
-  RefreshCw, Loader2, ArrowLeft, LogOut, Percent, Wallet, Phone, Image as ImageIcon, Move, Banknote, Receipt, Video as VideoIcon, Film, Building2, CreditCard, Copy
+  RefreshCw, Loader2, ArrowLeft, LogOut, Percent, Wallet, Phone, Image as ImageIcon, Move, Banknote, Receipt, Video as VideoIcon, Film, Building2, CreditCard, Copy, Headphones
 } from 'lucide-react';
+import { AdminSupportTickets } from '@/components/admin/AdminSupportTickets';
 import { HideableBalanceLight } from '@/components/ui/hideable-balance';
 import { toast } from 'sonner';
 import { parseJsonResponse } from '@/lib/json-helper';
@@ -837,6 +838,7 @@ export function AdminPanel() {
                   {subTab === 'subscription-plans' && 'Forfaits Abonnements'}
                   {subTab === 'subscriptions' && 'Abonnements Clients'}
                   {subTab === 'promotions' && 'Promotions'}
+                  {subTab === 'support' && 'Support Clients (assistant Soco)'}
                   {subTab === 'services' && 'Services'}
                   {subTab === 'finances' && 'Finances'}
                   {subTab === 'operators' && 'Opérateurs Mobile Money'}
@@ -869,6 +871,7 @@ export function AdminPanel() {
                 />
               )}
               {subTab === 'transactions' && <AdminTransactions />}
+              {subTab === 'support' && <AdminSupportTickets />}
               {subTab === 'subscription-plans' && <AdminSubscriptionPlans />}
               {subTab === 'subscriptions' && <AdminSubscriptions />}
               {subTab === 'promotions' && (
@@ -2617,6 +2620,13 @@ function AdminPlusMenu({ depositsCount, withdrawalsCount, onSelect }: {
       label: 'Promotions',
       description: 'Gérer les codes promo et offres',
       color: '#FF5722',
+    },
+    {
+      id: 'support',
+      icon: Headphones,
+      label: 'Support Clients',
+      description: "Demandes remontées par l'assistant IA Soco — recontacter les utilisateurs",
+      color: '#F44336',
     },
     {
       id: 'services',
