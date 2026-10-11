@@ -18,6 +18,11 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   reactStrictMode: false,
+
+  // firebase-admin contient des requires dynamiques (google-auth-library,
+  // grpc-js) : on l'exclut du bundle Turbopack. Traçé dans le standalone
+  // via node_modules copiés par Next (output: 'standalone').
+  serverExternalPackages: ['firebase-admin'],
   
   // Headers pour CORS (API mobile)
   async headers() {
