@@ -1653,3 +1653,21 @@ Stage Summary:
 - Watchdog versionné dans le repo (deploy/nginx-watchdog.sh, commit eba9839) ; installation VPS fournie (curl raw → /usr/local/bin + /etc/cron.d/nginx-watchdog) — en attente de confirmation utilisateur.
 - Redéploiement Socline Task 68 toujours en attente (git reset --hard origin/main && sudo bash deploy/deploy.sh --update) — apportera aussi le watchdog dans /opt/socline/deploy/.
 - Leçon récurrente confirmée : commandes à ligne unique pour le terminal utilisateur ; les blocs d'exemple de résultat doivent être clairement non copiables.
+
+---
+Task ID: ops-2 (session 55 — déploiement Task 68 confirmé en prod + E2E production)
+Agent: main (Z.ai Code)
+Task: Confirmer le redéploiement Socline (Task 68) après restauration maison-khan + installation du watchdog, et vérifier la prod de bout en bout.
+
+Work Log:
+- Installation watchdog confirmée par l'utilisateur (curl raw GitHub → /usr/local/bin/nginx-watchdog.sh + /etc/cron.d/nginx-watchdog, test silencieux OK).
+- 1re tentative de redéploiement : collage soudé (texte résiduel « --update » + « cd » → « --updatecd ») → deploy.sh a refusé l'option (validation d'options efficace), mais git reset avait amené 229a4ab (tracking ref périmée : fetch manquant). Leçon : faire ENTRÉE avant collage pour vider la ligne du terminal.
+- 2e tentative avec `sudo git fetch origin` explicite : succès intégral (229a4ab..6e46951), build Turbopack ✓ 23.9s, 61/61 pages, 3 services systemd actifs, nginx -t OK, « ✅ Socline est installée » sans aucun blocage. Port interne 3100 conservé (3000 occupé par le shop).
+- Commit worklog automatique infra (message UUID 1df7d41) → amendé en « 📝 Worklog : ops-1 » (6e46951) + push.
+- E2E PRODUCTION (agent-browser sur https://socline.oquitogo.com) : invité sans bulle ; login client 90123456/PIN 1234 ; Accueil/Réserver/Activités/Portefeuille → bulle ABSENTE (false ×4, clics JS fiables) ; Profil → bulle PRÉSENTE (true) + bloc « Besoin d'aide » présent ; panneau s'ouvre ([role=dialog] true, header « Soco - Assistant Socline », message bienvenue, chips) et se ferme (bulle de retour true) ; 0 erreur JS. Captures : test-captures/prod-soco-profil-bulle.png, prod-soco-panneau.png (commitées).
+- PIÈGE refs agent-browser : après re-renders React, les refs (@eX) peuvent viser des nœuds périmés (page revenant sur l'accueil) → clics fiables via eval JS : find(button par textContent.trim() + closest('nav,[class*=bottom],[class*=fixed]')) puis .click().
+
+Stage Summary:
+- PROD à jour : Task 68 (bulle Soco profil-only) déployée et vérifiée E2E sur https://socline.oquitogo.com — matrice complète 5 onglets + ouverture/fermeture panneau.
+- Session 55 livrée intégralement : (1) shop.maison-khan.com restauré en HTTPS valide (certs exp. 2027-01-09), (2) watchdog nginx auto-réparateur actif sur le VPS (cron 1 min), (3) Socline redeployée en 6e46951 avec Task 68.
+- Reste optionnel (non bloquant) : FIREBASE_SERVICE_ACCOUNT dans .env VPS (push FCM), etckeeper (/etc versionné), monitoring externe type UptimeRobot.
