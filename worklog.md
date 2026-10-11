@@ -1522,3 +1522,20 @@ Stage Summary:
 - WALLET/abonnement inchangés : la part nette (prix − commission) reste créditée à la complétion.
 - À valider par l'utilisateur (compléter une commande cash en test et constater que « Total des gains » ne bouge plus, seule la carte orange « Commission espèces à régler » apparaît).
 - Rappel déploiement : la prod VPS attend toujours `cd /opt/socline && sudo bash deploy/deploy.sh --update` (Tasks 55-62 cumulées).
+
+---
+Task ID: 63 (session 51 — CTA « Choisir mon type » débordant dans Devenir partenaire)
+Agent: main (Z.ai Code)
+Task: « récupère la dernière version sur git ; il y a aussi "Continuer — Choisir mon type" qui déborde dans "Devenir partenaire" ; dis-moi comment faire la mise à jour ».
+
+Work Log:
+- git pull : déjà à jour (le remote ne contenait rien de neuf). Le working tree du sandbox contient beaucoup de modifications NON commitées (firebase/iOS/formule-*.png — travail expérimental d'une session parallèle) : NE PAS les committer, correctif commité en ciblant UNIQUEMENT AuthScreen.tsx.
+- REPRODUCTION (agent-browser 390×844) : sur l'écran « Devenir Laveur » (info partenariat), le CTA de bas de page était rogné des deux côtés (« …uer — Choisir mon type de laveu… »). Mesures : le Button shadcn impose white-space:nowrap ; libellé « Continuer — Choisir mon type de laveur » ≈ 330px à 16px pour 326px disponibles (390 − paddings) → clipping par le centrage flex. Pas de débordement vertical (docH 2140px, scroll page OK, CTA visible au scroll max) ni horizontal (docW=390).
+- CORRECTIF (AuthScreen.tsx, CTA WasherRegistrationInfo) : libellé raccourci « Continuer — Choisir mon type » + whitespace-normal / min-h-14 h-auto py-3 (retour à la ligne de secours sur très petits écrans) + chevron flex-shrink-0. Commentaire explicatif en code.
+- VÉRIFICATIONS : 390px → texte 297px ≤ 302px utiles, une ligne, CTA entier à bottom=796<844 ; 320px → texte 219px ≤ 232px, aucune coupure ; clic CTA → écran « Devenir Laveur » avec les 2 cartes (Laveur Indépendant / Station de Lavage) ✓. Lint 0 erreur. Commit 🛠️ cb446fc poussé.
+- Captures : test-captures/partenaire-before-cta.png (avant, rogné) / partenaire-after-390.png + partenaire-after-320.png (après).
+
+Stage Summary:
+- Le CTA « Continuer — Choisir mon type » de l'écran Devenir partenaire s'affiche désormais EN ENTIER sur tous les écrans (390px et 320px testés) et mène bien au choix du type de laveur.
+- Procédure de mise à jour transmise à l'utilisateur : VPS (deploy.sh --update) + machine locale (git pull, npm install si package.json changé, npx cap sync android, rebuild APK).
+- Attention pour les prochaines sessions : le working tree sandbox contient des expérimentations non commitées (firebase, ios/, images formule-*) à NE PAS embarquer dans des commits de correctifs — toujours git add <fichier> ciblé.
