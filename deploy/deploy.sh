@@ -374,12 +374,43 @@ NGINX_SSL
     c_ok "Bloc HTTPS restauré pour ${DOMAIN}"
   fi
 
+  # --- Auto-réparation : certificat référencé mais ABSENT du disque ---------
+  # Cas inverse de la restauration ci-dessus : la conf nginx pointe vers
+  # /etc/letsencrypt/live/<domaine>/ mais les fichiers ont disparu (VPS
+  # restauré, nettoyage…) → nginx -t ÉCHOUE et le PROCHAIN redémarrage de
+  # nginx casserait le HTTPS. On réémet le certificat (standalone : arrêt
+  # bref de nginx le temps de l'émission, hooks enregistrés pour les
+  # renouvellements automatiques futurs).
+  if grep -q "ssl_certificate" "${NGINX_CONF}" && [[ ! -f "${CERT_DIR}/fullchain.pem" ]]; then
+    c_warn "Certificat ${DOMAIN} référencé par nginx mais ABSENT du disque → réémission via certbot"
+    if ! command -v certbot &>/dev/null; then
+      apt-get install -y certbot
+    fi
+    systemctl stop nginx 2>/dev/null || true
+    if certbot certonly --standalone -d "${DOMAIN}" \
+         --non-interactive --agree-tos --register-unsafely-without-email \
+         --pre-hook "systemctl stop nginx" --post-hook "systemctl start nginx"; then
+      c_ok "Certificat ${DOMAIN} réémis (/etc/letsencrypt/live/${DOMAIN})"
+    else
+      c_warn "certbot n'a pas pu réémettre le certificat — à faire manuellement :"
+      c_warn "  systemctl stop nginx && certbot certonly --standalone -d ${DOMAIN} && systemctl start nginx"
+    fi
+    systemctl start nginx 2>/dev/null || true
+  fi
+
   # Supprimer le site par défaut s'il écoute aussi sur notre port
   if grep -q "listen ${PUBLIC_PORT}" /etc/nginx/sites-enabled/default 2>/dev/null; then
     rm -f /etc/nginx/sites-enabled/default
   fi
-  nginx -t && systemctl reload nginx
-  c_ok "nginx actif sur le port ${PUBLIC_PORT}"
+  # nginx -t honnête : en cas d'échec on ne prétend PAS que tout va bien —
+  # l'instance en cours continue de servir, mais un redémarrage échouerait.
+  if nginx -t; then
+    systemctl reload nginx
+    c_ok "nginx actif sur le port ${PUBLIC_PORT}"
+  else
+    c_warn "nginx -t ÉCHOUE (voir l'erreur ci-dessus) — l'instance en mémoire continue de servir,"
+    c_warn "mais NE REDÉMARREZ PAS nginx avant d'avoir corrigé la configuration."
+  fi
   LISTEN_PORT="${PUBLIC_PORT}"
 else
   c_warn "Mode sans nginx : accès direct http://IP:${PUBLIC_PORT} (temps réel en mode polling)"
