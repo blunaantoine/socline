@@ -1556,3 +1556,22 @@ Work Log:
 Stage Summary:
 - La prod socline.oquitogo.com sert la nouvelle version (vérifié par chunk JS) et fonctionne ; le risque latent (redémarrage nginx = panne HTTPS) est traité par le script auto-réparateur, à activer en relançant deploy.sh --update dans le bon ordre.
 - Rappel : le working tree sandbox contient des expérimentations non commitées (firebase/ios) — commits toujours ciblés (git add <fichier>).
+
+---
+Task ID: 65 (session 53 — fusion des onglets Réserver + Abonnements)
+Agent: main (Z.ai Code)
+Task: « tu peux réunir Réserver et Abonnement ensemble » — fusionner les deux onglets du bas en un seul.
+
+Work Log:
+- Constat initial : barre de navigation client à 6 onglets (Accueil, Réserver, Activités, Abonnements, Portefeuille, Profil) — « Abonnements » occupait un onglet complet pour une fonctionnalité secondaire.
+- Design retenu : fusion sémantique dans l'onglet « Réserver » — vue principale = parcours de lavage (ClientOrderFlow inchangé), vue secondaire = Abonnements (SubscriptionPanel) avec son propre header (bouton retour ArrowLeft + titre « Abonnements » + sous-titre « Lavez plus, payez moins »), recréé car l'ancien titre venait de l'en-tête global masqué sur cet onglet.
+- ClientApp.tsx : navItems 6 → 5 (suppression subscriptions, Crown retiré des imports, ArrowLeft ajouté) ; état bookingView 'wash' | 'subscriptions' ; render conditionnel activeTab==='booking' && bookingView ; les 3 points d'entrée avec preset (onStartOrder, onStartOrderForService, onBooking) forcent setBookingView('wash') ; onBack/onOrderComplete réinitialisent aussi la vue.
+- ClientOrderFlow.tsx : nouvelle prop optionnelle onShowSubscriptions → bannière « Voir les abonnements / Lavez plus, payez moins — formules flexibles » (pastille Crown orange + chevron, fond brand-wash, bordure brand/30) affichée en HAUT de l'étape Service, au-dessus de la liste des formules.
+- VÉRIFICATIONS navigateur (agent-browser, login client démo 90123456) : nav = 5 onglets exactement ; onglet Réserver → flux lavage + bannière ; clic bannière → vue Abonnements (titre, sous-titre, 4 formules Essentiel/Confort/Premium/Prestige chargées, refresh OK) ; scroll document → Prestige atteignable ; bouton retour → retour à « Choisir un service » avec bannière ; régressions OK (étape Adresse + carte, modale détail d'abonnement, entrée depuis accueil avec service présélectionné → vue lavage) ; desktop 1280px OK ; lint 0 erreur ; dev.log sans erreur runtime (seul un EADDRINUSE de mon double démarrage, sans impact).
+- Captures : test-captures/fusion-reserver-abo-wash.png (bannière), fusion-reserver-abo-view.png (vue abos), fusion-reserver-abo-bottom.png (bas de liste), fusion-wash-step.png (étape Service complète), fusion-desktop.png (1280px).
+- Commit 🛠️ 8524f86 ciblé sur les 2 fichiers (working tree toujours pollué par firebase/ios — rien d'autre embarqué), puis commit worklog + push.
+
+Stage Summary:
+- L'app client a désormais 5 onglets : Accueil, Réserver, Activités, Portefeuille, Profil. Les abonnements vivent dans « Réserver » : bannière en haut de l'étape Service → vue dédiée avec retour.
+- Aucune régression : parcours de réservation complet, modales, presets accueil et activités intacts.
+- L'utilisateur doit redéployer sur le VPS pour que la fusion apparaisse en prod : git reset + bash deploy/deploy.sh --update (ordre Task 64 : reset PUIS script).
