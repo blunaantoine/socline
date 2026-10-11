@@ -10,8 +10,22 @@ affichée suit donc automatiquement le site (aucun rebuild à chaque évolution)
 Fichier servi statiquement par Next.js :
 
 ```
-/apk/socline-v1.0-debug.apk   (≈ 11 Mo, build debug signé clé debug)
+/apk/socline-v1.1-debug.apk   (≈ 11 Mo, build debug signé clé debug)
 ```
+
+> Le binaire `.apk` est volontairement dans `.gitignore` mais **forcé au
+> commit** (`git add -f public/apk/socline-v1.1-debug.apk`) afin que le
+> déploiement le serve automatiquement.
+
+### Journal des versions
+
+- **v1.1** (versionCode 2) : Capacitor 8.3.1 — l'app est désormais **limitée
+  aux zones sûres** entre la barre de statut et la barre de navigation
+  (insets Android injectés en CSS par le plugin `SystemBars`, complément du
+  blindage web `max(env(), var(--safe-area-inset-*))`). Corrige la
+  superposition du contenu sous les barres système sur Android 15+.
+- v1.0 (versionCode 1) : shell initial (splash orange, icône SC, chargement
+  de la plateforme).
 
 Installation sur un téléphone Android : ouvrir le fichier → autoriser
 « Installer depuis des sources inconnues » → installer.

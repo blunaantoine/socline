@@ -8,7 +8,7 @@ import { useState } from 'react';
  *
  * Affiché UNIQUEMENT quand NEXT_PUBLIC_SHOW_APK_DOWNLOAD=1 (environnements
  * de démonstration/sandbox). En production ce composant ne rend rien :
- * le téléchargement y reste accessible via /apk/socline-v1.0-debug.apk.
+ * le téléchargement y reste accessible via /apk/socline-v1.1-debug.apk.
  */
 export function ApkDownloadButton() {
   const enabled = process.env.NEXT_PUBLIC_SHOW_APK_DOWNLOAD === '1';
@@ -18,7 +18,7 @@ export function ApkDownloadButton() {
 
   return (
     <a
-      href="/apk/socline-v1.0-debug.apk"
+      href="/apk/socline-v1.1-debug.apk"
       download
       onClick={() => {
         setLoading(true);
