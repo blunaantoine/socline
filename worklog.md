@@ -1635,3 +1635,21 @@ Work Log:
 Stage Summary:
 - La bulle Soco n'apparaît plus que sur l'onglet Profil (client ET laveur) ; l'accès via « Profil ▸ Besoin d'aide ▸ Discuter avec l'assistant » (événement socline:open-support) toujours fonctionnel ; invités sans bulle (l'API /api/support/chat reste ouverte aux invités si utilisée ailleurs).
 - Redéploiement requis pour la prod : git reset --hard origin/main && sudo bash deploy/deploy.sh --update — APRÈS réparation nginx du site tiers shop.maison-khan.com (sinon nginx -t continuera d'échouer pour tout le serveur).
+
+---
+Task ID: ops-1 (session 55 — restauration shop.maison-khan.com + watchdog nginx)
+Agent: main (Z.ai Code)
+Task: « mon seconde app qui est sur le serveur » → ERR_CERT_COMMON_NAME_INVALID sur shop.maison-khan.com (conséquence attendue de la désactivation maison-khan pendant la réparation nginx de la Task 68), puis « comment faire que les erreurs comme ça n'arrivent plus ou ne touchent plus les autres apps ».
+
+Work Log:
+- Diagnostic sandbox : socline 200 OK ; shop.maison-khan.com servait le certificat CN=socline.oquitogo.com (default server) → mismatch navigateur ; DNS shop + apex → 213.156.133.226 ; pas de client ssh dans la sandbox → guidage commande par commande (lignes uniques).
+- Diagnostic VPS (sortie utilisateur) : configs maison-khan + maison-khan-apex (symlink) intactes dans sites-disabled ; shop proxy 127.0.0.1:3000 où un bun tourne ✅ ; certbot ne possède PLUS les lineages shop.maison-khan.com ni maison-khan.com (seul socline) → cause racine = certificats disparus, configs saines.
+- Réparation en UNE ligne : printf config temporaire HTTP (port 80, les 2 domaines, ACME root /var/www/html) | tee → nginx -t → reload → certbot certonly --nginx ×2 (lineages exacts attendus par les configs) → mv configs retour sites-enabled → rm temp → nginx -t → reload → curl ×3. Premier essai utilisateur : collage du bloc « résultat attendu » au lieu de la commande (bash syntax errors, aucun dégât, état inchangé vérifié sandbox). Second essai : succès intégral du premier coup.
+- Certificats réémis (expirent 2027-01-09, renouvellement auto certbot.timer) ; vérification sandbox indépendante : CN=shop.maison-khan.com servi, shop 200, apex 301, socline 200.
+- Watchdog : deploy/nginx-watchdog.sh (cron 1 min ; nginx inactif → nginx -t : restart si valide, sinon mise en quarantaine du fichier fautif dans /etc/nginx/quarantine — gère le cas syntaxe (chemin cité) ET le cas certificat manquant (grep -rl du chemin /etc/letsencrypt/live/<name>/ dans sites-enabled) ; garde-fou : ne touche jamais nginx.conf ; pause via touch /etc/nginx/watchdog-pause ; log /var/log/nginx-watchdog.log). bash -n OK, chmod +x, commit eba9839 + push, servi via raw.githubusercontent.com (repo public, testé 200).
+
+Stage Summary:
+- shop.maison-khan.com + maison-khan.com de retour en HTTPS valide, Socline intacte — les 3 sites verts (shop 200, apex 301, socline 200).
+- Watchdog versionné dans le repo (deploy/nginx-watchdog.sh, commit eba9839) ; installation VPS fournie (curl raw → /usr/local/bin + /etc/cron.d/nginx-watchdog) — en attente de confirmation utilisateur.
+- Redéploiement Socline Task 68 toujours en attente (git reset --hard origin/main && sudo bash deploy/deploy.sh --update) — apportera aussi le watchdog dans /opt/socline/deploy/.
+- Leçon récurrente confirmée : commandes à ligne unique pour le terminal utilisateur ; les blocs d'exemple de résultat doivent être clairement non copiables.
