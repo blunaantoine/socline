@@ -1575,3 +1575,26 @@ Stage Summary:
 - L'app client a désormais 5 onglets : Accueil, Réserver, Activités, Portefeuille, Profil. Les abonnements vivent dans « Réserver » : bannière en haut de l'étape Service → vue dédiée avec retour.
 - Aucune régression : parcours de réservation complet, modales, presets accueil et activités intacts.
 - L'utilisateur doit redéployer sur le VPS pour que la fusion apparaisse en prod : git reset + bash deploy/deploy.sh --update (ordre Task 64 : reset PUIS script).
+
+---
+Task ID: 66 (session 53 — assistant support IA « Soco » + contact humain)
+Agent: main (Z.ai Code)
+Task: « intégrer un super chatbot qui maîtrise toutes les fonctions et le contenu de l'app, qui aide les clients et leur permet de nous contacter s'il y a un problème ».
+
+Work Log:
+- Constat : bloc support profil existant (Appeler + WhatsApp +22871998155) — le user a cité son exact copy « Besoin d'aide ? Une réponse rapide, 7j/7 ».
+- BDD : nouveau modèle Prisma SupportTicket (userId nullable pour invités, name/phone/role, subject/message avec digest de conversation, status OPEN/IN_PROGRESS/RESOLVED) + relation User.supportTickets ; db:push OK. ⚠️ Après db:push, le serveur dev doit être relancé pour charger le nouveau client Prisma (sinon « Cannot read properties of undefined (reading 'create') » sur db.supportTicket).
+- src/lib/support-kb.ts (serveur) : buildKnowledgeBase() lit la BDD en live (services APP+prix+durées+couverture, plans d'abonnement+prix+features JSON, promos actives+codes, nb stations) → le bot reste exact quand l'admin change les prix, zéro maintenance ; buildSystemPrompt() : identité « Soco », règles (français, ≤120 mots, pas de markdown, ne JAMAIS demander le PIN, jamais inventer de prix), règles d'escalade explicites (humain demandé, litige, paiement, bug bloquant → balise [ESCALADE]), contact direct.
+- API POST /api/support/chat : auth SOUPLE via getSessionFromRequest (invités acceptés), profil guest/client/washer, contexte compte réel injecté (solde wallet, commande en cours n°+statut avec libellés FR, abonnement actif+lavages restants), historique borné à 12 messages ×1500 car., rate-limit mémoire 20 msg/5min par user/IP, appel LLM z-ai-web-dev-sdk (thinking disabled), nettoyage markdown des réponses (gras/italique/titres), escalade → création ticket + retour {reply, escalated, ticketId, supportPhone}.
+- API GET/PATCH /api/admin/support-tickets (requireAdmin) : liste filtrable par statut + pagination + openCount ; PATCH statut/adminNotes.
+- src/components/support/SupportChatbot.tsx : bulle flottante (ping subtil, au-dessus de la barre pour connectés, bas d'écran pour invités, masquée ADMIN) + panneau plein écran z-70 (header navy « Soco · Assistant Socline / Besoin d'aide ? Une réponse rapide, 7j/7 » + point en ligne + reset + close), bulles de chat (user orange / bot blanc / erreur rouge), indicateur de frappe 3 points, chips de suggestions (visibles tant que messages ≤2), carte verte d'escalade (Appeler + WhatsApp), persistance sessionStorage (restaure la conversation de la session), écoute de l'événement global socline:open-support.
+- store : supportChatHidden dans useAppStore — ClientApp masque la bulle sur les onglets booking et chat (flux plein écran avec CTA en bas).
+- Intégrations : monté dans page.tsx (visible invités/clients/laveurs, caché admin) ; bloc support du profil → bouton principal « Discuter avec l'assistant » (Appeler/WhatsApp rétrogradés en secondaires) ; AdminPanel → menu « Plus d'options » + entrée « Support Clients » (rouge, Headphones) + nouveau composant AdminSupportTickets (filtres Tous/Ouvert/En cours/Résolu, compteur d'ouverts, tickets dépliables avec conversation Soco, changement de statut, boutons Appeler/WhatsApp).
+- TESTS E2E navigateur : curl invité « prix du Confort » → 4 000 FCFA/30 min (données live ✓) ; UI client → pas-à-pas de réservation ✓ ; escalade client → réponse empathique citant le VRAI n° de commande WG63979666 (contexte live ✓), ticket lié au compte (phone 90123456, role CLIENT) ✓, carte verte ✓ ; admin 71998155 → 2 tickets listés + badge « 2 ouverts » + dépliage (conversation visible) + statut passé En cours ✓ ; invité sur AuthScreen → bulle visible, reset + chip « Prix des formules » → les 4 formules avec prix exacts ✓ ; capture d'écran validée. Lint 0 erreur.
+- Captures : test-captures/soco-panel-open.png, soco-escalade.png, soco-admin-tickets.png, soco-guest.png.
+- Commit ✨ 1c64d9e ciblé (10 fichiers, rien du working tree pollué firebase/ios embarqué).
+
+Stage Summary:
+- « Soco » répond 7j/7 dans l'app (invités compris) avec les prix/formules/promos TOUJOURS à jour (lus en BDD à chaque message) et le contexte réel du compte connecté ; tout problème → ticket créé + contacts directs ; l'équipe gère les tickets dans Admin ▸ Plus d'options ▸ Support Clients.
+- Points d'entrée : bulle flottante partout (sauf réservation/chat/admin) + profil ▸ Besoin d'aide ▸ Discuter avec l'assistant.
+- Déploiement : nécessite git reset + deploy.sh --update ET la migration BDD est auto (db:push fait par deploy.sh). Relancer le serveur après migration (géré par le script).
