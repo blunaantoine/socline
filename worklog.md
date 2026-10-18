@@ -1691,3 +1691,29 @@ Stage Summary:
 - Livré : blindage safe-area web (bénéficie PWA/Chrome immédiatement après deploy) + APK v1.1 Capacitor 8.3.1 respectant les zones sûres + téléchargement /apk/ de nouveau fonctionnel après deploy.
 - Actions utilisateur : (1) redeploy VPS, (2) sur le téléphone : désinstaller Socline v1.0 PUIS installer https://socline.oquitogo.com/apk/socline-v1.1-debug.apk (signature debug différente), (3) PWA Chrome : simple rechargement.
 - Build tooling sandbox réutilisable : /home/z/build-tools/jdk-21.0.12.1+1 + /home/z/android-sdk + android/local.properties (non commité).
+
+---
+Task ID: ui-1 (session 56 — refonte écrans auth : inscription en 3 étapes + OTP 6 cases)
+Agent: main (Z.ai Code)
+Task: Suite à l'audit UI de Claude Design (maquette « Vérification SMS-html.zip » fournie) : corriger les bugs visuels (header sous la barre d'état, « Déjà un compte ? » chevauché par la barre de navigation Android, contraste blanc/#FF9800 ≈ 2:1) et refondre l'inscription client en 3 étapes (Identité, Véhicule, Sécurité) + l'écran de vérification SMS en 6 cases, conformément à la maquette.
+
+Work Log:
+- Analyse maquette Claude (extraite dans /home/z/maquette-claude, HORS repo pour ne pas polluer le lint) : fond crème #FFF7ED, accent #C2410C (blanc sur #C2410C ≈ 4.9:1 AA), bordures #E7D9CB, texte #1C1410, cases OTP 60px radius 14px, bouton retour rond 44px, illustration cercle #FFE8D1.
+- Audit du code existant (AuthScreen.tsx 1276 lignes, 8 modes) : headers login/verify-otp/laveur déjà blindés safe-top (ops-3) mais header register NON ; AUCUN écran auth sans pb-safe → chevauchement bas confirmé.
+- src/components/ui/input-otp.tsx : ajout prop `masked` sur InputOTPSlot ({masked && char ? "•" : char}) pour les PIN.
+- AuthScreen.tsx refondu : tokens design (AUTH_BG/AUTH_BORDER/ACCENT_BTN/FOCUS_RING/SAFE_TOP/SAFE_BOTTOM) ; sous-composants AuthBackButton (rond 44px), AuthProgress (3 segments + « Étape X sur 3 » + role=progressbar), FieldError (erreur sous champ), AuthError, PhoneField (drapeau 🇹🇬 + bloc +228 séparé + input 8 chiffres), ColorPicker (10 pastilles rondes sans texte, anneau #C2410C + coche blanche/sombre selon pastille, nom de couleur à droite du titre, role=radiogroup), PinBoxes (InputOTP 4 slots masked h-14), OtpBoxes (6 slots flex-1 h-14 radius 14px).
+- Wizard client : state regStep 1-3 + fieldErrors par champ ; validation par étape (nom, 8 chiffres → plaque + couleur → PIN 4 + correspondance) ; CTA footer fixé avec pb safe-area (plus jamais chevauché) ; bouton retour = étape-1/welcome ; handleSendOtp inchangé en validation globale finale.
+- Étape 3 : PIN 4 cases + confirmation 4 cases + indicateur live « Les codes correspondent »/« ne correspondent pas » (aria-live).
+- Verify-otp refait à l'identique de la maquette : illustration cercle + MessageCircle, titre centré « Vérifiez votre numéro », numéro formaté par paires en gras, lien « Modifier le numéro » sous le texte, 6 cases, auto-submit dès le 6e chiffre (useEffect + autoSubmitRef anti double-envoi + verifyOtpRef pour éviter les deps instables), bandeau démo conservé, « Renvoyer le code » en lien souligné après countdown, CTA fixé en bas.
+- Login refait au style maquette (retour rond, PhoneField avec +228, PinBoxes masked, CTA accent) ; welcome : dégradé profond #F57C00→#C2410C (blanc lisible), logo en cercle blanc, pb-safe.
+- Écrans laveur : headers orange #FF9800 → #E65100 (texte blanc lisible), CTA #C2410C, pb safe-area sur conteneurs scrollables, header washer-info safe-top (pt-8 → calc(1.5rem+safe)).
+- BUG découvert en E2E : l'erreur d'un écran fuyait vers le suivant (« Ce numéro est déjà enregistré » de l'inscription s'affichait sur la connexion) → fix : setError(null) à chaque changement de mode + PIN/OTP vidés au retour welcome.
+- E2E agent-browser (390×844 + desktop 1280×800) : wizard 1→2→3 complet ×2 (création réelle 91112233 + 92223344 en mode démo, auto-submit OTP fonctionnel — compte créé sans clic), validation par étape (2 alertes), uppercase plaque auto, pastille Rouge (aria-checked + nom affiché), indicateur PIN live (saisie clavier ; NOTE : agent-browser fill ne marche pas de façon fiable sur input-otp, utiliser click+press), « Modifier le numéro » → wizard étape 3 CONSERVÉE avec PIN, login avec PIN boxes OK, fuite d'erreur CORRIGÉE (0 [role=alert] sur login), desktop propre, lint exit 0, 0 erreur JS.
+- Aréfacte connu (non-bug) : les SMS africastalking échouent InsufficientBalance → mode démo (banner + auto-fill) prend le relais, comportement inchangé.
+
+Stage Summary:
+- Livré : inscription client en 3 étapes conforme à la maquette Claude + OTP 6 cases avec auto-submit + contraste #C2410C (AA) + safe-areas haut/bas sur TOUS les écrans auth + fix fuite d'erreur inter-écrans + PIN masqué en cases.
+- Fichiers : src/components/client/AuthScreen.tsx (refonte), src/components/ui/input-otp.tsx (prop masked).
+- Non modifié (hors périmètre) : flux laveur conservé (seulement safe-area + couleurs), socline/AuthModal et washgo/AuthModal inchangés.
+- Déploiement VPS requis : cd /opt/socline && sudo git fetch origin && sudo git reset --hard origin/main && sudo bash deploy/deploy.sh --update (Ctrl+C avant collage !).
+- Note SMS : compte africastalking sans solde → tous les nouveaux comptes passent en mode démo tant que le solde n'est pas rechargé (le code s'affiche dans un banner côté client).
