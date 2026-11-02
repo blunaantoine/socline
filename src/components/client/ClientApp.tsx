@@ -42,6 +42,7 @@ import { Segmented } from '@/components/design/Segmented';
 import { ServiceArtCard } from '@/components/design/ServiceArtCard';
 import { WasherRow } from '@/components/design/WasherRow';
 import { EmptyState } from '@/components/design/EmptyState';
+import { ServiceHub } from '@/components/design/ServiceHub';
 import { CARD_CLASSES } from '@/lib/design-system';
 import { SupportChatbot } from '@/components/support/SupportChatbot';
 
@@ -57,7 +58,7 @@ const navItems = [
 
 // Titre de l'en-tête selon l'onglet actif — libellés courts (design system)
 const HEADER_TITLES: Record<string, string> = {
-  home: "Quel lavage aujourd'hui ?",
+  home: "De quoi avez-vous besoin ?",
   activity: 'Mes activités',
   wallet: 'Portefeuille',
   profile: 'Profil',
@@ -407,7 +408,7 @@ export function ClientApp() {
                 ) : (
                   <MapPin className="w-3.5 h-3.5 text-brand flex-shrink-0" />
                 )}
-                <span className="truncate">Bonjour · {userLocation?.address || 'Lomé'}</span>
+                <span className="truncate">{userLocation?.address || 'Lomé'}</span>
               </button>
               <h1 className="text-title text-ink truncate">{HEADER_TITLES[activeTab] ?? 'Socline'}</h1>
             </div>
@@ -751,12 +752,23 @@ function HomeContent({
       <div className="relative">
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-soft pointer-events-none" />
         <Input
-          placeholder="Rechercher un service..."
+          placeholder="Rechercher un service, un garage..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-10 h-12 bg-surface border-line rounded-btn text-body shadow-card"
         />
       </div>
+
+      {/* Catégories — Socline = tout l'automobile (lavage aujourd'hui, le reste à venir) */}
+      <section>
+        <ServiceHub
+          onSelect={(id) => {
+            if (id === 'wash') {
+              document.getElementById('home-wash')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          }}
+        />
+      </section>
 
       {/* Bandeau promo — carte visuelle navy : pastille remise, titre court,
           code à copier, illustration voiture (design system) */}
@@ -877,7 +889,8 @@ function HomeContent({
       )}
 
       {/* Choix Indépendants / Stations — sélecteur segmenté */}
-      <section>
+      <section id="home-wash" className="scroll-mt-2">
+        <SectionHeader title="Lavage auto" />
         <Segmented
           options={[
             { value: 'independent', label: 'Indépendants', icon: <User className="w-[18px] h-[18px]" /> },
