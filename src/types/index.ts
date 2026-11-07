@@ -37,6 +37,8 @@ export interface Washer {
   totalRatings: number;
   totalEarnings: number;
   completedJobs: number;
+  /** Commission espèces due à Socline (champ Prisma Washer.cashDebt, défaut 0). */
+  cashDebt?: number;
   // Computed/aggregated stats (optional - returned by some endpoints, not the Prisma model)
   todayEarnings?: number;
   todayJobs?: number;

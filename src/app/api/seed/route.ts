@@ -1,9 +1,35 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { timingSafeEqual } from 'crypto';
 import { db } from '@/lib/db';
-import { hashPin } from '@/lib/auth';
+import { hashPin, requireAdmin } from '@/lib/auth';
 
-// POST /api/seed - Seed database with initial data
-export async function POST() {
+// Jeton d'amorçage (deploy.sh) comparé en temps constant.
+function hasValidSeedToken(request: NextRequest): boolean {
+  const expected = process.env.SEED_TOKEN?.trim();
+  const given = request.headers.get('x-seed-token')?.trim();
+  if (!expected || !given) return false;
+  const a = Buffer.from(expected);
+  const b = Buffer.from(given);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+// POST /api/seed — données de base (formules, station, promos, opérateurs Mobile Money).
+//
+// SÉCURITÉ (production) :
+//  · accès réservé à deploy.sh (en-tête x-seed-token = SEED_TOKEN du .env) ou à un ADMIN connecté ;
+//  · AUCUN compte de démonstration (client/laveur/admin à PIN 1234) n'est créé,
+//    sauf si SEED_DEMO_ACCOUNTS=true est explicitement défini ;
+//  · premier administrateur : créé uniquement si aucun ADMIN n'existe et que
+//    ADMIN_PHONE + ADMIN_PIN sont définis dans le .env (PIN ≠ 1234).
+// En développement : comportement historique (comptes de démo inclus).
+export async function POST(request: NextRequest) {
+  const isProd = process.env.NODE_ENV === 'production';
+  if (isProd && !hasValidSeedToken(request)) {
+    const { authorized, response } = await requireAdmin(request);
+    if (!authorized) return response;
+  }
+  const createDemoAccounts = !isProd || process.env.SEED_DEMO_ACCOUNTS?.trim() === 'true';
+
   try {
     // Check if services already exist
     const existingServices = await db.service.findMany();
@@ -89,7 +115,7 @@ export async function POST() {
     // Check if stations exist
     const existingStations = await db.station.count();
     
-    let station = null;
+    let station: Awaited<ReturnType<typeof db.station.create>> | null = null;
     if (existingStations === 0) {
       // Create a default station
       station = await db.station.create({
@@ -105,7 +131,8 @@ export async function POST() {
       });
     }
 
-    // Create test users if they don't exist
+    // Comptes de démonstration — jamais en production (sauf SEED_DEMO_ACCOUNTS=true)
+    if (createDemoAccounts) {
     let clientUser = await db.user.findUnique({ where: { phone: '90123456' } });
     if (!clientUser) {
       clientUser = await db.user.create({
@@ -220,6 +247,22 @@ export async function POST() {
           isActive: true,
         },
       });
+    }
+    } // fin des comptes de démonstration
+
+    // Premier administrateur en production : depuis le .env, jamais avec un PIN par défaut
+    if (isProd) {
+      const adminPhone = process.env.ADMIN_PHONE?.replace(/\D/g, '');
+      const adminPin = process.env.ADMIN_PIN?.trim();
+      const adminCount = await db.user.count({ where: { role: 'ADMIN' } });
+      if (adminCount === 0 && adminPhone && adminPin && /^\d{4,6}$/.test(adminPin) && adminPin !== '1234') {
+        const existing = await db.user.findUnique({ where: { phone: adminPhone } });
+        if (!existing) {
+          await db.user.create({
+            data: { phone: adminPhone, name: 'Admin Socline', role: 'ADMIN', pin: await hashPin(adminPin), isActive: true },
+          });
+        }
+      }
     }
 
     // Create default promotion if doesn't exist
@@ -353,11 +396,13 @@ export async function POST() {
       message: 'Database seeded successfully',
       services,
       station,
-      testUsers: {
-        client: { phone: '90123456', pin: '1234', role: 'CLIENT' },
-        washer: { phone: '90234567', pin: '1234', role: 'WASHER' },
-        admin: { phone: '71998155', pin: '1234', role: 'ADMIN' },
-      }
+      ...(createDemoAccounts && {
+        testUsers: {
+          client: { phone: '90123456', pin: '1234', role: 'CLIENT' },
+          washer: { phone: '90234567', pin: '1234', role: 'WASHER' },
+          admin: { phone: '71998155', pin: '1234', role: 'ADMIN' },
+        },
+      }),
     });
   } catch (error) {
     console.error('Seed error:', error);

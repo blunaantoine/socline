@@ -200,8 +200,9 @@ export function ClientApp() {
   // Fetch real services from API — auto-refresh 60 s + retour sur l'app
   const loadServices = useCallback(async (source: 'initial' | 'interval' | 'focus' = 'initial') => {
     try {
-      // Seed database if needed (au premier chargement uniquement)
-      if (source === 'initial') {
+      // Base vide en DÉVELOPPEMENT : amorçage automatique au premier chargement.
+      // En production, l'amorçage est fait par deploy.sh (jeton) — jamais par le client.
+      if (source === 'initial' && process.env.NODE_ENV !== 'production') {
         const seedCheck = await fetch('/api/seed');
         if (seedCheck.ok) {
           const contentType = seedCheck.headers.get('content-type');

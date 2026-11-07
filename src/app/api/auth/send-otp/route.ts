@@ -83,9 +83,23 @@ export async function POST(request: NextRequest) {
     // the code is NEVER returned in the API response.
     console.log('[OTP] code for', cleanPhone, ':', code);
 
-    // Pure demo mode: neither SMS nor WhatsApp provider configured at all —
-    // expose the code so the app stays testable without any provider.
+    // Mode démo explicite (SMS_DEMO_FALLBACK=true) : seul cas où le code peut
+    // être renvoyé au client. MUST rester désactivé en production.
+    const demoFallback =
+      (process.env.SMS_DEMO_FALLBACK || '').trim().toLowerCase() === 'true';
+
+    // Aucun fournisseur SMS/WhatsApp configuré.
     if (!isSmsConfigured() && !isWhatsappConfigured()) {
+      // Production sans mode démo explicite : on ne révèle JAMAIS le code
+      // (sinon n'importe qui pourrait vérifier le numéro d'un autre).
+      if (process.env.NODE_ENV === 'production' && !demoFallback) {
+        console.error('[OTP] Aucun fournisseur SMS/WhatsApp configuré — envoi impossible.');
+        return NextResponse.json(
+          { success: false, error: "L'envoi du code par SMS est momentanément indisponible. Réessayez plus tard." },
+          { status: 503 }
+        );
+      }
+      // Développement (ou démo explicite) : code exposé pour tester sans fournisseur.
       return NextResponse.json({
         success: true,
         message: 'Un code de vérification a été envoyé par SMS.',
@@ -128,8 +142,6 @@ export async function POST(request: NextRequest) {
     // configured but every channel failed (no credit, unreachable number…),
     // expose the code in the UI instead of blocking the whole registration
     // flow. MUST be disabled ("false" / unset) in production.
-    const demoFallback =
-      (process.env.SMS_DEMO_FALLBACK || '').trim().toLowerCase() === 'true';
     if (!anySent && demoFallback) {
       return NextResponse.json({
         success: true,
@@ -142,11 +154,18 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Fournisseur configuré mais aucun envoi réussi (crédit épuisé, numéro
+    // injoignable…) : le dire honnêtement plutôt que « code envoyé ».
+    if (!anySent) {
+      return NextResponse.json(
+        { success: false, error: "Le SMS n'a pas pu être envoyé. Vérifiez le numéro ou réessayez dans quelques minutes." },
+        { status: 503 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
-      message: anySent
-        ? `Un code de vérification a été envoyé par ${deliveredChannels.join(' et ')}.`
-        : 'Un code de vérification a été envoyé.',
+      message: `Un code de vérification a été envoyé par ${deliveredChannels.join(' et ')}.`,
       expiresIn: 300,
       demoMode: false,
       smsSent: anySent,

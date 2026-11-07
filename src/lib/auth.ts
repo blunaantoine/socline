@@ -3,13 +3,13 @@ import jwt from 'jsonwebtoken';
 import { db } from '@/lib/db';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
+import { getJwtSecret } from '@/lib/secrets';
 
 const SALT_ROUNDS = 10;
 const TOKEN_COOKIE_NAME = 'socline_token';
 
 // JWT secret shared with the mobile API (src/lib/jwt.ts).
 // Must be set in .env in production.
-const SESSION_JWT_SECRET = process.env.JWT_SECRET || 'socline-jwt-secret-change-in-production';
 const SESSION_EXPIRES_IN = '7d';
 
 interface SessionTokenPayload {
@@ -95,7 +95,7 @@ export async function verifyPin(pin: string, storedPin: string, userId?: string)
 // Generate a signed JWT session token with userId embedded.
 // The token is cryptographically signed: it cannot be forged without JWT_SECRET.
 export function generateToken(userId: string): string {
-  return jwt.sign({ userId } satisfies SessionTokenPayload, SESSION_JWT_SECRET, {
+  return jwt.sign({ userId } satisfies SessionTokenPayload, getJwtSecret(), {
     expiresIn: SESSION_EXPIRES_IN,
   });
 }
@@ -104,7 +104,7 @@ export function generateToken(userId: string): string {
 // Rejects forged, tampered or expired tokens.
 function parseToken(token: string): SessionTokenPayload | null {
   try {
-    const payload = jwt.verify(token, SESSION_JWT_SECRET) as SessionTokenPayload;
+    const payload = jwt.verify(token, getJwtSecret()) as SessionTokenPayload;
     if (payload && typeof payload.userId === 'string' && payload.userId) {
       return payload;
     }

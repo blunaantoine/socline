@@ -42,7 +42,13 @@ const PORT = 3003;
 // MÊME valeur de repli que l'app web : sans cela, tout .env qui ne contient pas
 // ces clés (ex. .env anciens ou réduits) rejetait CHAQUE handshake socket
 // (« unauthorized ») → messagerie, suivi et position laveur morts côté client.
-const JWT_SECRET = process.env.JWT_SECRET || 'socline-jwt-secret-change-in-production';
+// En production, aucune clé de repli : sans JWT_SECRET le service refuse de démarrer
+// (même règle que l'app web, src/lib/secrets.ts). En dev : même clé locale que l'app web.
+if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET?.trim()) {
+  console.error('[Chat] JWT_SECRET manquant dans le .env — démarrage refusé en production.');
+  process.exit(1);
+}
+const JWT_SECRET = process.env.JWT_SECRET?.trim() || 'socline-dev-only-secret';
 const INTERNAL_SOCKET_SECRET = process.env.INTERNAL_SOCKET_SECRET || 'socline-internal-socket-secret';
 
 if (!process.env.JWT_SECRET || !process.env.INTERNAL_SOCKET_SECRET) {

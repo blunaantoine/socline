@@ -6,9 +6,9 @@
 import jwt from 'jsonwebtoken';
 import { db } from '@/lib/db';
 import { hashPin, verifyPin } from '@/lib/auth';
+import { getJwtSecret } from '@/lib/secrets';
 
-// JWT Secret - en production, utiliser une variable d'environnement sécurisée
-const JWT_SECRET = process.env.JWT_SECRET || 'socline-jwt-secret-change-in-production';
+// Secret JWT : getJwtSecret() (src/lib/secrets.ts) — erreur explicite en production s'il manque
 const JWT_EXPIRES_IN = '7d';
 const REFRESH_TOKEN_EXPIRES_IN = '30d';
 
@@ -42,16 +42,16 @@ export interface AuthResponse {
 // ============================================
 
 export function generateAccessToken(payload: Omit<JwtPayload, 'iat' | 'exp'>): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+  return jwt.sign(payload, getJwtSecret(), { expiresIn: JWT_EXPIRES_IN });
 }
 
 export function generateRefreshToken(payload: Omit<JwtPayload, 'iat' | 'exp'>): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
+  return jwt.sign(payload, getJwtSecret(), { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
 }
 
 export function verifyAccessToken(token: string): JwtPayload | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as JwtPayload;
+    return jwt.verify(token, getJwtSecret()) as JwtPayload;
   } catch {
     return null;
   }
@@ -59,7 +59,7 @@ export function verifyAccessToken(token: string): JwtPayload | null {
 
 export function verifyRefreshToken(token: string): JwtPayload | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as JwtPayload;
+    return jwt.verify(token, getJwtSecret()) as JwtPayload;
   } catch {
     return null;
   }

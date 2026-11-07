@@ -146,10 +146,20 @@ if [[ -f "${APP_DIR}/.env" ]]; then
     echo "INTERNAL_SOCKET_SECRET=\"$(openssl rand -hex 32)\"" >> "${APP_DIR}/.env"
     c_warn "INTERNAL_SOCKET_SECRET absent du .env → clé aléatoire AJOUTÉE"
   fi
+  # Jeton d'amorçage : /api/seed est fermé en production, sauf pour ce script.
+  if ! grep -q '^SEED_TOKEN=' "${APP_DIR}/.env"; then
+    echo "SEED_TOKEN=\"$(openssl rand -hex 32)\"" >> "${APP_DIR}/.env"
+    c_ok "SEED_TOKEN ajouté au .env (amorçage protégé de /api/seed)"
+  fi
+  # Sécurité : le mode démo SMS affiche le code OTP à l'écran → interdit en production.
+  if grep -qiE '^SMS_DEMO_FALLBACK="?true"?' "${APP_DIR}/.env"; then
+    c_warn "SMS_DEMO_FALLBACK=true dans ${APP_DIR}/.env : le code SMS peut s'afficher à l'écran (n'importe qui peut vérifier le numéro d'un autre). Mettez-le à \"false\" dès que le fournisseur SMS est rechargé."
+  fi
 else
   JWT_SECRET="$(openssl rand -hex 32)"
   JWT_REFRESH_SECRET="$(openssl rand -hex 32)"
   INTERNAL_SOCKET_SECRET="$(openssl rand -hex 32)"
+  SEED_TOKEN="$(openssl rand -hex 32)"
   cat > "${APP_DIR}/.env" <<EOF
 # Socline — configuration production VPS (générée par deploy.sh)
 DATABASE_URL="file:${APP_DIR}/db/custom.db"
@@ -158,14 +168,19 @@ DATABASE_URL="file:${APP_DIR}/db/custom.db"
 JWT_SECRET="${JWT_SECRET}"
 JWT_REFRESH_SECRET="${JWT_REFRESH_SECRET}"
 INTERNAL_SOCKET_SECRET="${INTERNAL_SOCKET_SECRET}"
+SEED_TOKEN="${SEED_TOKEN}"
+
+# Premier administrateur (créé une seule fois si aucun admin n'existe) — PIN ≠ 1234
+# ADMIN_PHONE=90000000
+# ADMIN_PIN=
 
 # --- SMS / OTP (Africa's Talking) : renseignez pour l'envoi réel ---
 # SMS_PROVIDER=africastalking
 # SMS_USERNAME=votre_username
 # SMS_API_KEY=votre_cle_api
 # SMS_SENDER_ID=SOCLINE
-# En démo (sans provider), le code OTP est affiché dans l'app :
-SMS_DEMO_FALLBACK="true"
+# Mode démo : NE JAMAIS activer en production (le code OTP serait affiché à l'écran).
+SMS_DEMO_FALLBACK="false"
 OTP_CHANNEL=sms
 EOF
   c_ok ".env généré avec des secrets aléatoires"
@@ -447,9 +462,16 @@ if [[ "${INTERNAL_CODE}" == "200" ]]; then
       c_warn "nginx répond ${PUBLIC_CODE:-000} via le port ${PUBLIC_PORT} alors que l'app tourne — vérifier : nginx -t && systemctl reload nginx"
     fi
   fi
-  # Seed des comptes de démonstration (idempotent)
-  curl -s -X POST "http://127.0.0.1:${WEB_PORT}/api/seed" >/dev/null 2>&1 \
-    && c_ok "Comptes de démonstration prêts (PIN : 1234)" || true
+  # Amorçage des données de base (formules, promos, opérateurs) — idempotent.
+  # /api/seed est fermé en production : on présente le jeton SEED_TOKEN du .env.
+  # Aucun compte de démonstration n'est créé en production.
+  SEED_TOKEN_VALUE="$(grep -E '^SEED_TOKEN=' "${APP_DIR}/.env" | head -n1 | cut -d= -f2- | tr -d '"')"
+  SEED_CODE="$(curl -s -o /dev/null -w "%{http_code}" -X POST -H "x-seed-token: ${SEED_TOKEN_VALUE}" "http://127.0.0.1:${WEB_PORT}/api/seed" || true)"
+  if [[ "${SEED_CODE}" == "200" ]]; then
+    c_ok "Données de base à jour (formules, promotions, opérateurs Mobile Money)"
+  else
+    c_warn "Amorçage /api/seed : HTTP ${SEED_CODE:-000} (vérifier SEED_TOKEN dans ${APP_DIR}/.env)"
+  fi
 else
   c_warn "L'app ne démarre PAS sur le port interne ${WEB_PORT} — extrait des logs socline-web :"
   journalctl -u socline-web -n 30 --no-pager 2>/dev/null | tail -n 30 || true
