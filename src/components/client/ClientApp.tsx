@@ -16,7 +16,8 @@ import {
   MapPin, Search, Star, Clock, Car, Building, Armchair, ArrowLeft,
   CheckCircle, Phone, Loader2, Heart,
   Zap, Droplets, Sparkles, RefreshCw,
-  Home, Calendar, MessageCircle, User, Bell, Settings, LogOut, Wallet, Copy, Plus, ChevronRight, Headphones, MessageSquare, Pencil, ClipboardList
+  Home, Calendar, MessageCircle, User, Bell, Settings, LogOut, Wallet, Copy, Plus, ChevronRight, Headphones, MessageSquare, Pencil, ClipboardList,
+  CalendarCheck, LifeBuoy
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { onSoclineNotification } from '@/components/RealtimeNotifications';
@@ -38,21 +39,23 @@ import { formatPrice, getServiceCoverage } from '@/lib/service-coverage';
 import { MediaCarousel } from './MediaCarousel';
 // Design System — composants réutilisables (refonte UI)
 import { SectionHeader } from '@/components/design/SectionHeader';
-import { Segmented } from '@/components/design/Segmented';
 import { ServiceArtCard } from '@/components/design/ServiceArtCard';
 import { WasherRow } from '@/components/design/WasherRow';
 import { EmptyState } from '@/components/design/EmptyState';
+import { ActionTileLarge, ActionTileSmall } from '@/components/design/ActionTile';
+import { WalletSummaryCard } from '@/components/design/WalletSummaryCard';
 import { CARD_CLASSES } from '@/lib/design-system';
 import { SupportChatbot } from '@/components/support/SupportChatbot';
 
 // Abonnements fusionné dans l'onglet Réserver (vue secondaire) → 5 onglets,
 // cibles tactiles plus larges dans la barre de navigation.
+// Barre du bas courte (style super-app) : la réservation s'ouvre depuis les
+// tuiles de l'Accueil — l'onglet interne « booking » n'est plus dans la barre.
 const navItems = [
   { id: 'home', icon: Home, label: 'Accueil' },
-  { id: 'booking', icon: Calendar, label: 'Réserver' },
   { id: 'activity', icon: ClipboardList, label: 'Activités' },
   { id: 'wallet', icon: Wallet, label: 'Portefeuille' },
-  { id: 'profile', icon: User, label: 'Profil' },
+  { id: 'profile', icon: User, label: 'Compte' },
 ];
 
 // Titre de l'en-tête selon l'onglet actif — libellés courts (design system)
@@ -60,7 +63,7 @@ const HEADER_TITLES: Record<string, string> = {
   home: "Quel lavage aujourd'hui ?",
   activity: 'Mes activités',
   wallet: 'Portefeuille',
-  profile: 'Profil',
+  profile: 'Compte',
 };
 
 const CAR_COLORS: Record<string, string> = {
@@ -84,7 +87,6 @@ export function ClientApp() {
   const { nearbyWashers, setNearbyWashers } = useWashersStore();
   const { stations, setStations } = useStationsStore();
   const [activeTab, setActiveTab] = useState('home');
-  const [searchQuery, setSearchQuery] = useState('');
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [showTracking, setShowTracking] = useState(true);
   const [promotions, setPromotions] = useState<
@@ -103,8 +105,6 @@ export function ClientApp() {
   >([]);
   const [currentPromoIndex, setCurrentPromoIndex] = useState(0);
   const [walletBalance, setWalletBalance] = useState(0);
-  // Service tab toggle: independent washers (APP services) vs. stations (STATION services)
-  const [serviceTab, setServiceTab] = useState<'independent' | 'station'>('independent');
   // Onglet Réserver : vue principale = parcours de lavage, vue secondaire = Abonnements
   // (les deux fonctionnalités sont fusionnées dans le même onglet)
   const [bookingView, setBookingView] = useState<'wash' | 'subscriptions'>('wash');
@@ -393,7 +393,38 @@ export function ClientApp() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* App Bar claire et aérée (masquée sur chat / parcours de réservation) */}
-        {activeTab !== 'chat' && activeTab !== 'booking' && (
+        {activeTab === 'home' && (
+          <header className="bg-app px-4 pt-4 pb-2 flex items-center justify-between gap-3 flex-shrink-0 max-md:pt-[calc(1rem+max(env(safe-area-inset-top),var(--safe-area-inset-top,0px)))]">
+            <div className="flex items-center gap-3 min-w-0">
+              <button
+                onClick={() => setActiveTab('profile')}
+                aria-label="Mon compte"
+                className="w-11 h-11 rounded-[15px] bg-gradient-to-br from-brand to-brand-light grid place-items-center text-white text-section font-extrabold flex-shrink-0 active:scale-95 transition-transform"
+              >
+                {user?.name?.charAt(0)?.toUpperCase() || 'S'}
+              </button>
+              <div className="min-w-0">
+                <h1 className="text-title text-ink truncate">Bonjour, {user?.name?.split(' ')[0] || 'bienvenue'}</h1>
+                <button
+                  onClick={getUserLocation}
+                  className="flex items-center gap-1 text-detail text-soft max-w-[230px] active:opacity-70 transition-opacity"
+                  aria-label={`Position : ${userLocation?.address || 'Lomé'}. Toucher pour actualiser`}
+                >
+                  {isLoadingLocation ? (
+                    <Loader2 className="w-3.5 h-3.5 text-brand flex-shrink-0 animate-spin" />
+                  ) : (
+                    <MapPin className="w-3.5 h-3.5 text-brand flex-shrink-0" />
+                  )}
+                  <span className="truncate">{userLocation?.address || 'Lomé'}</span>
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center flex-shrink-0">
+              <NotificationCenter />
+            </div>
+          </header>
+        )}
+        {activeTab !== 'chat' && activeTab !== 'booking' && activeTab !== 'home' && (
           <header className="bg-app px-4 pt-4 pb-1 flex items-start justify-between gap-2 flex-shrink-0 max-md:pt-[calc(1rem+max(env(safe-area-inset-top),var(--safe-area-inset-top,0px)))]">
             <div className="min-w-0">
               {/* Bonjour + position — puces tappable (même fonction : géolocalisation) */}
@@ -407,7 +438,7 @@ export function ClientApp() {
                 ) : (
                   <MapPin className="w-3.5 h-3.5 text-brand flex-shrink-0" />
                 )}
-                <span className="truncate">Bonjour · {userLocation?.address || 'Lomé'}</span>
+                <span className="truncate">{userLocation?.address || 'Lomé'}</span>
               </button>
               <h1 className="text-title text-ink truncate">{HEADER_TITLES[activeTab] ?? 'Socline'}</h1>
             </div>
@@ -443,14 +474,27 @@ export function ClientApp() {
                 setBookingView('wash');
                 setActiveTab('booking');
               }}
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
               promotions={promotions}
               currentPromoIndex={currentPromoIndex}
               setCurrentPromoIndex={setCurrentPromoIndex}
-              serviceTab={serviceTab}
-              setServiceTab={setServiceTab}
               appStations={appStations}
+              walletBalance={walletBalance}
+              activeOrder={
+                currentOrder && ['PENDING', 'ACCEPTED', 'EN_ROUTE', 'ARRIVED', 'IN_PROGRESS'].includes(currentOrder.status)
+                  ? currentOrder
+                  : null
+              }
+              onResumeTracking={() => setShowTracking(true)}
+              onOpenTab={(tab) => setActiveTab(tab)}
+              onOpenSubscriptions={() => {
+                setBookingView('subscriptions');
+                setActiveTab('booking');
+              }}
+              onOpenSupport={() => {
+                // Soco (assistant) est monté dans l'onglet Compte : on y va puis on l'ouvre
+                setActiveTab('profile');
+                setTimeout(() => window.dispatchEvent(new CustomEvent('socline:open-support')), 350);
+              }}
             />
           )}
           {activeTab === 'booking' && bookingView === 'wash' && (
@@ -713,19 +757,22 @@ function ReviewPopup() {
 // Home Content - Android Material Design Style
 function HomeContent({
   services, nearbyWashers, washersLoading, userLocation,
-  onStartOrder, onStartOrderForService, searchQuery, setSearchQuery, 
+  onStartOrder, onStartOrderForService, 
   promotions, currentPromoIndex, setCurrentPromoIndex,
-  serviceTab, setServiceTab, appStations,
+  appStations, walletBalance, activeOrder, onResumeTracking, onOpenTab, onOpenSubscriptions, onOpenSupport,
 }: {
   services: any[]; nearbyWashers: any[]; washersLoading?: boolean;
   userLocation: any;
   onStartOrder: () => void; 
   onStartOrderForService: (service: any, isHomeService: boolean, stationId?: string | null, address?: string) => void;
-  searchQuery: string; setSearchQuery: (q: string) => void;
   promotions: any[]; currentPromoIndex: number; setCurrentPromoIndex: (i: number) => void;
-  serviceTab: 'independent' | 'station';
-  setServiceTab: (t: 'independent' | 'station') => void;
   appStations: any[];
+  walletBalance: number;
+  activeOrder: any | null;
+  onResumeTracking: () => void;
+  onOpenTab: (tab: string) => void;
+  onOpenSubscriptions: () => void;
+  onOpenSupport: () => void;
 }) {
   const currentPromo = promotions[currentPromoIndex];
   const [selectedService, setSelectedService] = useState<any | null>(null);
@@ -733,6 +780,8 @@ function HomeContent({
   const [selectedStation, setSelectedStation] = useState<any | null>(null);
   // "Voir tout" toggle for the available washers section (carousel ↔ full grid)
   const [showAllWashers, setShowAllWashers] = useState(false);
+  // Sous-vue de l'Accueil : écran principal ou liste des stations (tuile « En station »)
+  const [homeView, setHomeView] = useState<'main' | 'stations'>('main');
   const availableWashers = nearbyWashers.filter((w) => w.isAvailable);
 
   // Helper to safely parse a station's images JSON string into an array
@@ -747,16 +796,133 @@ function HomeContent({
 
   return (
     <div className="px-4 pt-2 pb-6 space-y-5">
-      {/* Recherche — champ blanc discret sur fond gris clair */}
-      <div className="relative">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-soft pointer-events-none" />
-        <Input
-          placeholder="Rechercher un service..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10 h-12 bg-surface border-line rounded-btn text-body shadow-card"
-        />
-      </div>
+      {homeView === 'stations' ? (
+        /* Sous-vue « Lavage en station » — le client se rend à la station */
+        <section>
+          <div className="flex items-center gap-3 mb-4">
+            <button
+              onClick={() => setHomeView('main')}
+              aria-label="Retour à l'accueil"
+              className="w-10 h-10 rounded-btn border border-line bg-surface grid place-items-center flex-shrink-0 active:scale-95 transition-transform"
+            >
+              <ArrowLeft className="w-5 h-5 text-ink" strokeWidth={2.2} />
+            </button>
+            <div className="min-w-0">
+              <h2 className="text-section text-ink leading-tight">Lavage en station</h2>
+              <p className="text-detail text-soft truncate">Choisissez une station près de vous</p>
+            </div>
+          </div>
+            {appStations.length === 0 ? (
+              <EmptyState icon={Building} message="Aucune station disponible pour le moment" />
+            ) : (
+              <div className="space-y-2.5">
+                {appStations.map((station) => {
+                  const image = getStationImage(station);
+                  const serviceCount = Array.isArray(station.services) ? station.services.length : 0;
+                  return (
+                    <button
+                      key={station.id}
+                      onClick={() => setSelectedStation(station)}
+                      className="w-full bg-surface rounded-card border border-line shadow-card p-3 flex gap-3 items-center active:scale-[0.99] transition-transform text-left"
+                    >
+                      {image ? (
+                        <img src={image} alt={station.name} className="w-16 h-16 rounded-btn object-cover flex-shrink-0" />
+                      ) : (
+                        <div className="w-16 h-16 bg-brand-soft rounded-btn flex items-center justify-center flex-shrink-0">
+                          <Building className="w-7 h-7 text-brand" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-body font-semibold text-ink truncate">{station.name}</p>
+                        <p className="text-detail text-soft truncate">{station.address}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          {station.rating > 0 && (
+                            <div className="flex items-center gap-0.5">
+                              <Star className="w-3 h-3 text-star fill-star" />
+                              <span className="text-detail text-soft">{station.rating.toFixed(1)}</span>
+                            </div>
+                          )}
+                          {serviceCount > 0 && (
+                            <span className="text-detail text-soft">{serviceCount} service{serviceCount > 1 ? 's' : ''}</span>
+                          )}
+                        </div>
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-soft flex-shrink-0" />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+        </section>
+      ) : (
+        <>
+          {/* Portefeuille — solde en un coup d'œil */}
+          <WalletSummaryCard
+            balance={walletBalance}
+            onOpen={() => onOpenTab('wallet')}
+            onTopUp={() => onOpenTab('wallet')}
+          />
+
+          {/* Commande en cours — toujours mise en avant */}
+          {activeOrder && (
+            <button
+              onClick={onResumeTracking}
+              className="w-full bg-surface rounded-card border-2 border-brand/40 shadow-card p-3.5 flex items-center gap-3 text-left active:scale-[0.99] transition-transform"
+            >
+              <span className="relative w-11 h-11 rounded-[14px] bg-brand-soft grid place-items-center flex-shrink-0">
+                <Car className="w-[22px] h-[22px] text-brand" />
+                <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-success border-2 border-surface animate-pulse" />
+              </span>
+              <span className="flex-1 min-w-0">
+                <span className="block text-body font-bold text-ink truncate">Lavage en cours</span>
+                <span className="block text-detail text-soft truncate">{activeOrder.service?.name || 'Votre commande'} · Suivre en direct</span>
+              </span>
+              <ChevronRight className="w-5 h-5 text-brand flex-shrink-0" />
+            </button>
+          )}
+
+          {/* Actions principales — grandes tuiles illustrées + raccourcis */}
+          <section>
+            <SectionHeader title="Que voulez-vous faire ?" />
+            <div className="grid grid-cols-2 gap-3">
+              <ActionTileLarge
+                title="Lavage à domicile"
+                subtitle="Un laveur vient à vous"
+                image="/voitures/services/laveur-hydro.png"
+                tint="bg-brand-soft"
+                onClick={onStartOrder}
+              />
+              <ActionTileLarge
+                title="Lavage en station"
+                subtitle="Rendez-vous en station"
+                image="/voitures/services/brillance.png"
+                tint="bg-plan-blue"
+                onClick={() => setHomeView('stations')}
+              />
+            </div>
+            <div className="grid grid-cols-4 gap-2 mt-4">
+              <ActionTileSmall label="Abonnements" icon={CalendarCheck} tint="bg-plan-purple" iconColor="text-plan-purple-icon" onClick={onOpenSubscriptions} />
+              <ActionTileSmall label="Activités" icon={ClipboardList} tint="bg-plan-green" iconColor="text-plan-green-icon" onClick={() => onOpenTab('activity')} />
+              <ActionTileSmall label="Véhicules" icon={Car} tint="bg-plan-orange" iconColor="text-plan-orange-icon" onClick={() => onOpenTab('profile')} />
+              <ActionTileSmall label="Aide" icon={LifeBuoy} tint="bg-plan-blue" iconColor="text-plan-blue-icon" onClick={onOpenSupport} />
+            </div>
+          </section>
+
+          {/* Nos formules — rangée horizontale compacte */}
+          <section>
+            <SectionHeader title="Nos formules" action={services.length > 0 ? 'Réserver' : undefined} onAction={onStartOrder} />
+            {services.length === 0 ? (
+              <EmptyState icon={Car} message="Aucune formule disponible pour le moment" />
+            ) : (
+              <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 snap-x">
+                {services.map((service, index) => (
+                  <div key={service.id} className="flex-shrink-0 w-[168px] snap-start">
+                    <ServiceArtCard service={service} index={index} onClick={() => setSelectedService(service)} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
 
       {/* Bandeau promo — carte visuelle navy : pastille remise, titre court,
           code à copier, illustration voiture (design system) */}
@@ -876,94 +1042,63 @@ function HomeContent({
         </div>
       )}
 
-      {/* Choix Indépendants / Stations — sélecteur segmenté */}
+      {/* Laveurs disponibles — rangées : avatar, note, statut en ligne, un bouton clair */}
       <section>
-        <Segmented
-          options={[
-            { value: 'independent', label: 'Indépendants', icon: <User className="w-[18px] h-[18px]" /> },
-            { value: 'station', label: 'Stations', icon: <Building className="w-[18px] h-[18px]" /> },
-          ]}
-          value={serviceTab}
-          onChange={setServiceTab}
+        <SectionHeader
+          title="Laveurs disponibles"
+          action={!washersLoading && availableWashers.length > 4 ? (showAllWashers ? 'Réduire' : 'Voir tout') : undefined}
+          onAction={() => setShowAllWashers(!showAllWashers)}
         />
-
-        {/* Formules des laveurs indépendants — service à domicile (le laveur
-            se déplace chez vous) : cartes illustrées, icônes à la place du texte */}
-        {serviceTab === 'independent' && (
-          <>
-            <div className="mt-4">
-              <SectionHeader title="Nos formules" />
-            </div>
-
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              {services.length === 0 ? (
-                <div className="col-span-2 lg:col-span-4">
-                  <EmptyState icon={Car} message="Aucune formule disponible pour le moment" />
+        {washersLoading ? (
+          /* Skeleton loaders (design system) */
+          <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex-shrink-0 w-[290px] bg-surface rounded-card border border-line p-3 flex items-center gap-3 animate-pulse">
+                <div className="w-[54px] h-[54px] rounded-[18px] bg-line" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3.5 bg-line rounded-pill w-24" />
+                  <div className="h-3 bg-line rounded-pill w-32" />
                 </div>
-              ) : (
-                services.map((service, index) => (
-                  <ServiceArtCard
-                    key={service.id}
-                    service={service}
-                    index={index}
-                    onClick={() => setSelectedService(service)}
-                  />
-                ))
-              )}
-            </div>
-          </>
-        )}
-        
-        {/* Stations — le client se rend à la station */}
-        {serviceTab === 'station' && (
-          <>
-            <div className="mt-4">
-              <SectionHeader title="Stations" />
-            </div>
-            {appStations.length === 0 ? (
-              <EmptyState icon={Building} message="Aucune station disponible pour le moment" />
-            ) : (
-              <div className="space-y-2.5">
-                {appStations.map((station) => {
-                  const image = getStationImage(station);
-                  const serviceCount = Array.isArray(station.services) ? station.services.length : 0;
-                  return (
-                    <button
-                      key={station.id}
-                      onClick={() => setSelectedStation(station)}
-                      className="w-full bg-surface rounded-card border border-line shadow-card p-3 flex gap-3 items-center active:scale-[0.99] transition-transform text-left"
-                    >
-                      {image ? (
-                        <img src={image} alt={station.name} className="w-16 h-16 rounded-btn object-cover flex-shrink-0" />
-                      ) : (
-                        <div className="w-16 h-16 bg-brand-soft rounded-btn flex items-center justify-center flex-shrink-0">
-                          <Building className="w-7 h-7 text-brand" />
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-body font-semibold text-ink truncate">{station.name}</p>
-                        <p className="text-detail text-soft truncate">{station.address}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          {station.rating > 0 && (
-                            <div className="flex items-center gap-0.5">
-                              <Star className="w-3 h-3 text-star fill-star" />
-                              <span className="text-detail text-soft">{station.rating.toFixed(1)}</span>
-                            </div>
-                          )}
-                          {serviceCount > 0 && (
-                            <span className="text-detail text-soft">{serviceCount} service{serviceCount > 1 ? 's' : ''}</span>
-                          )}
-                        </div>
-                      </div>
-                      <ChevronRight className="w-5 h-5 text-soft flex-shrink-0" />
-                    </button>
-                  );
-                })}
+                <div className="h-9 w-[76px] bg-line rounded-btn" />
               </div>
-            )}
-          </>
+            ))}
+          </div>
+        ) : availableWashers.length === 0 ? (
+          <EmptyState icon={User} message="Aucun laveur en ligne pour le moment" />
+        ) : showAllWashers ? (
+          <div className="space-y-2.5">
+            {availableWashers.map((washer) => (
+              <WasherRow
+                key={washer.id}
+                name={washer.user?.name || 'Laveur'}
+                rating={washer.rating ?? 0}
+                jobs={washer.completedJobs ?? 0}
+                avatar={washer.user?.avatar ?? null}
+                onAction={onStartOrder}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4">
+            {availableWashers.map((washer) => (
+              <div key={washer.id} className="flex-shrink-0 w-[290px]">
+                <WasherRow
+                  name={washer.user?.name || 'Laveur'}
+                  rating={washer.rating ?? 0}
+                  jobs={washer.completedJobs ?? 0}
+                  avatar={washer.user?.avatar ?? null}
+                  onAction={onStartOrder}
+                />
+              </div>
+            ))}
+          </div>
         )}
       </section>
+
+      {/* Carrousel média (images + vidéos) — juste après « Laveurs disponibles » */}
+      <MediaCarousel onReserve={onStartOrder} />
+        </>
+      )}
 
       {/* Service Details Modal */}
       <Dialog open={!!selectedService} onOpenChange={(next) => { if (!next) setSelectedService(null); }}>
@@ -1177,61 +1312,6 @@ function HomeContent({
         </DialogContent>
       </Dialog>
 
-      {/* Laveurs disponibles — rangées : avatar, note, statut en ligne, un bouton clair */}
-      <section>
-        <SectionHeader
-          title="Laveurs disponibles"
-          action={!washersLoading && availableWashers.length > 4 ? (showAllWashers ? 'Réduire' : 'Voir tout') : undefined}
-          onAction={() => setShowAllWashers(!showAllWashers)}
-        />
-        {washersLoading ? (
-          /* Skeleton loaders (design system) */
-          <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex-shrink-0 w-[290px] bg-surface rounded-card border border-line p-3 flex items-center gap-3 animate-pulse">
-                <div className="w-[54px] h-[54px] rounded-[18px] bg-line" />
-                <div className="flex-1 space-y-2">
-                  <div className="h-3.5 bg-line rounded-pill w-24" />
-                  <div className="h-3 bg-line rounded-pill w-32" />
-                </div>
-                <div className="h-9 w-[76px] bg-line rounded-btn" />
-              </div>
-            ))}
-          </div>
-        ) : availableWashers.length === 0 ? (
-          <EmptyState icon={User} message="Aucun laveur en ligne pour le moment" />
-        ) : showAllWashers ? (
-          <div className="space-y-2.5">
-            {availableWashers.map((washer) => (
-              <WasherRow
-                key={washer.id}
-                name={washer.user?.name || 'Laveur'}
-                rating={washer.rating ?? 0}
-                jobs={washer.completedJobs ?? 0}
-                avatar={washer.user?.avatar ?? null}
-                onAction={onStartOrder}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4">
-            {availableWashers.map((washer) => (
-              <div key={washer.id} className="flex-shrink-0 w-[290px]">
-                <WasherRow
-                  name={washer.user?.name || 'Laveur'}
-                  rating={washer.rating ?? 0}
-                  jobs={washer.completedJobs ?? 0}
-                  avatar={washer.user?.avatar ?? null}
-                  onAction={onStartOrder}
-                />
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Carrousel média (images + vidéos) — juste après « Laveurs disponibles » */}
-      <MediaCarousel onReserve={onStartOrder} />
     </div>
   );
 }
