@@ -411,9 +411,9 @@ export function ClientApp() {
                   aria-label={`Position : ${userLocation?.address || 'Lomé'}. Toucher pour actualiser`}
                 >
                   {isLoadingLocation ? (
-                    <Loader2 className="w-3.5 h-3.5 text-brand flex-shrink-0 animate-spin" />
+                    <Loader2 className="w-3.5 h-3.5 text-brand-ink flex-shrink-0 animate-spin" />
                   ) : (
-                    <MapPin className="w-3.5 h-3.5 text-brand flex-shrink-0" />
+                    <MapPin className="w-3.5 h-3.5 text-brand-ink flex-shrink-0" />
                   )}
                   <span className="truncate">{userLocation?.address || 'Lomé'}</span>
                 </button>
@@ -434,9 +434,9 @@ export function ClientApp() {
                 aria-label={`Position : ${userLocation?.address || 'Lomé'}. Toucher pour actualiser`}
               >
                 {isLoadingLocation ? (
-                  <Loader2 className="w-3.5 h-3.5 text-brand flex-shrink-0 animate-spin" />
+                  <Loader2 className="w-3.5 h-3.5 text-brand-ink flex-shrink-0 animate-spin" />
                 ) : (
-                  <MapPin className="w-3.5 h-3.5 text-brand flex-shrink-0" />
+                  <MapPin className="w-3.5 h-3.5 text-brand-ink flex-shrink-0" />
                 )}
                 <span className="truncate">{userLocation?.address || 'Lomé'}</span>
               </button>
@@ -587,7 +587,7 @@ export function ClientApp() {
                 onClick={() => setActiveTab(item.id)}
                 aria-current={isActive ? 'page' : undefined}
                 className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-1 px-0.5 transition-all active:scale-95 ${
-                  isActive ? 'text-brand' : 'text-soft'
+                  isActive ? 'text-brand-ink' : 'text-soft'
                 }`}
               >
                 <item.icon className={`w-[22px] h-[22px] ${isActive ? 'fill-current' : ''}`} />
@@ -740,7 +740,7 @@ function ReviewPopup() {
             )}
 
             <Button
-              className="w-full h-11 bg-[#FF9800] hover:bg-[#F57C00] rounded-xl"
+              className="w-full h-11 bg-[#C2410C] hover:bg-[#9A3412] rounded-xl"
               onClick={handleSubmit}
               disabled={rating === 0 || isSubmitting}
             >
@@ -829,7 +829,7 @@ function HomeContent({
                         <img src={image} alt={station.name} className="w-16 h-16 rounded-btn object-cover flex-shrink-0" />
                       ) : (
                         <div className="w-16 h-16 bg-brand-soft rounded-btn flex items-center justify-center flex-shrink-0">
-                          <Building className="w-7 h-7 text-brand" />
+                          <Building className="w-7 h-7 text-brand-ink" />
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
@@ -870,14 +870,14 @@ function HomeContent({
               className="w-full bg-surface rounded-card border-2 border-brand/40 shadow-card p-3.5 flex items-center gap-3 text-left active:scale-[0.99] transition-transform"
             >
               <span className="relative w-11 h-11 rounded-[14px] bg-brand-soft grid place-items-center flex-shrink-0">
-                <Car className="w-[22px] h-[22px] text-brand" />
+                <Car className="w-[22px] h-[22px] text-brand-ink" />
                 <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-success border-2 border-surface animate-pulse" />
               </span>
               <span className="flex-1 min-w-0">
                 <span className="block text-body font-bold text-ink truncate">Lavage en cours</span>
                 <span className="block text-detail text-soft truncate">{activeOrder.service?.name || 'Votre commande'} · Suivre en direct</span>
               </span>
-              <ChevronRight className="w-5 h-5 text-brand flex-shrink-0" />
+              <ChevronRight className="w-5 h-5 text-brand-ink flex-shrink-0" />
             </button>
           )}
 
@@ -954,7 +954,7 @@ function HomeContent({
                   />
                 )}
                 <div className="absolute bottom-0 left-0 right-0 p-3.5 bg-gradient-to-t from-black/70 to-transparent flex items-end justify-between gap-2">
-                  <span className="bg-brand text-white text-micro font-bold px-2.5 py-1 rounded-pill">
+                  <span className="bg-brand-ink text-white text-micro font-bold px-2.5 py-1 rounded-pill">
                     {currentPromo.discountType === 'PERCENTAGE'
                       ? `-${currentPromo.discountValue}%`
                       : `-${currentPromo.discountValue.toLocaleString('fr-FR')}F`}
@@ -985,7 +985,7 @@ function HomeContent({
               // Mode texte — carte navy aérée avec illustration
               <div className="relative bg-gradient-to-br from-ink to-ink-2 p-[18px] min-h-[150px] overflow-hidden text-white">
                 <div className="relative z-10">
-                  <span className="inline-block bg-brand text-white font-bold text-micro px-2.5 py-1 rounded-pill">
+                  <span className="inline-block bg-brand-ink text-white font-bold text-micro px-2.5 py-1 rounded-pill">
                     {currentPromo.discountType === 'PERCENTAGE'
                       ? `-${currentPromo.discountValue}%`
                       : `-${currentPromo.discountValue.toLocaleString('fr-FR')}F`}
@@ -1115,11 +1115,11 @@ function HomeContent({
                 {/* Service Icon, Category & Coverage */}
                 <div className="flex items-center gap-3">
                   <div className="w-14 h-14 bg-[#FFF3E0] rounded-xl flex items-center justify-center">
-                    <ServiceIcon service={selectedService} className="w-7 h-7 text-[#FF9800]" />
+                    <ServiceIcon service={selectedService} className="w-7 h-7 text-[#C2410C]" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Badge className="bg-[#FFF3E0] text-[#FF9800] capitalize">
+                      <Badge className="bg-[#FFF3E0] text-[#C2410C] capitalize">
                         {selectedService.category}
                       </Badge>
                       <CoverageBadge service={selectedService} />
@@ -1135,7 +1135,7 @@ function HomeContent({
                     <span className="text-sm">{selectedService.duration} min</span>
                   </div>
                   <div className="flex-1" />
-                  <span className="text-xl font-bold text-[#FF9800]">{formatPrice(selectedService.price)}</span>
+                  <span className="text-xl font-bold text-[#C2410C]">{formatPrice(selectedService.price)}</span>
                 </div>
 
                 {/* What the wash includes — exterior vs interior */}
@@ -1178,7 +1178,7 @@ function HomeContent({
                     <p className="text-sm font-medium text-[#212121] mb-2">Offres disponibles</p>
                     <div className="space-y-2">
                       {promotions.slice(0, 2).map((promo) => (
-                        <div key={promo.id} className="bg-gradient-to-r from-[#FF9800] to-[#F57C00] rounded-xl p-3 text-white">
+                        <div key={promo.id} className="bg-gradient-to-r from-[#C2410C] to-[#9A3412] rounded-xl p-3 text-white">
                           <div className="flex justify-between items-center">
                             <div>
                               <p className="font-bold text-sm">{promo.name}</p>
@@ -1213,7 +1213,7 @@ function HomeContent({
                     setSelectedService(null);
                     onStartOrderForService(service, true);
                   }}
-                  className="w-full bg-[#FF9800] hover:bg-[#F57C00] text-white font-semibold py-3 rounded-xl transition-colors"
+                  className="w-full bg-[#C2410C] hover:bg-[#9A3412] text-white font-semibold py-3 rounded-xl transition-colors"
                 >
                   Réserver ce service
                 </button>
@@ -1238,12 +1238,12 @@ function HomeContent({
                 {/* Station info card */}
                 <div className="bg-[#FAFAFA] rounded-xl p-3 space-y-1.5">
                   <div className="flex items-start gap-2 text-sm text-[#616161]">
-                    <MapPin className="w-4 h-4 text-[#FF9800] mt-0.5 flex-shrink-0" />
+                    <MapPin className="w-4 h-4 text-[#C2410C] mt-0.5 flex-shrink-0" />
                     <span>{selectedStation.address}</span>
                   </div>
                   {selectedStation.phone && (
                     <div className="flex items-center gap-2 text-sm text-[#616161]">
-                      <Phone className="w-4 h-4 text-[#FF9800]" />
+                      <Phone className="w-4 h-4 text-[#C2410C]" />
                       <span>{selectedStation.phone}</span>
                     </div>
                   )}
@@ -1269,7 +1269,7 @@ function HomeContent({
                         <div key={service.id} className="bg-white border border-[#E0E0E0] rounded-lg p-3">
                           <div className="flex items-start gap-3">
                             <div className="w-10 h-10 bg-[#FFF3E0] rounded-lg flex items-center justify-center flex-shrink-0">
-                              <ServiceIcon service={service} className="w-5 h-5 text-[#FF9800]" />
+                              <ServiceIcon service={service} className="w-5 h-5 text-[#C2410C]" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start justify-between gap-2">
@@ -1283,7 +1283,7 @@ function HomeContent({
                                 <span className="text-xs text-[#757575] flex items-center gap-1">
                                   <Clock className="w-3 h-3" /> {service.duration} min
                                 </span>
-                                <span className="text-sm font-bold text-[#FF9800]">{formatPrice(service.price)}</span>
+                                <span className="text-sm font-bold text-[#C2410C]">{formatPrice(service.price)}</span>
                               </div>
                             </div>
                           </div>
@@ -1293,7 +1293,7 @@ function HomeContent({
                               setSelectedStation(null);
                               onStartOrderForService(service, false, station.id, station.address);
                             }}
-                            className="w-full mt-2 bg-[#FF9800] hover:bg-[#F57C00] text-white text-sm font-semibold py-2 rounded-lg transition-colors"
+                            className="w-full mt-2 bg-[#C2410C] hover:bg-[#9A3412] text-white text-sm font-semibold py-2 rounded-lg transition-colors"
                           >
                             Réserver ce service
                           </button>
@@ -1393,7 +1393,7 @@ function ProfileContent({ user, onLogout }: { user: any; onLogout: () => void })
             aria-label="Modifier mon profil"
             className="w-9 h-9 rounded-[11px] bg-surface border border-line grid place-items-center flex-shrink-0 active:scale-95 transition-transform"
           >
-            <Pencil className="w-[17px] h-[17px] text-brand" />
+            <Pencil className="w-[17px] h-[17px] text-brand-ink" />
           </button>
         </div>
       </div>
@@ -1410,7 +1410,7 @@ function ProfileContent({ user, onLogout }: { user: any; onLogout: () => void })
               <Droplets className="w-5 h-5 text-plan-blue-icon" strokeWidth={2} />
             </div>
             <p className="text-[17px] font-bold text-ink leading-none">
-              {profileStats ? profileStats.washes : <Loader2 className="w-4 h-4 animate-spin mx-auto text-brand" />}
+              {profileStats ? profileStats.washes : <Loader2 className="w-4 h-4 animate-spin mx-auto text-brand-ink" />}
             </p>
             <p className="text-micro text-soft mt-1.5">Lavages</p>
           </div>
@@ -1426,7 +1426,7 @@ function ProfileContent({ user, onLogout }: { user: any; onLogout: () => void })
               <Wallet className="w-5 h-5 text-plan-green-icon" strokeWidth={2} />
             </div>
             <p className="text-[17px] font-bold text-ink leading-none">
-              {profileStats ? `${profileStats.spent.toLocaleString('fr-FR')} F` : <Loader2 className="w-4 h-4 animate-spin mx-auto text-brand" />}
+              {profileStats ? `${profileStats.spent.toLocaleString('fr-FR')} F` : <Loader2 className="w-4 h-4 animate-spin mx-auto text-brand-ink" />}
             </p>
             <p className="text-micro text-soft mt-1.5">Dépensé</p>
           </div>
@@ -1449,7 +1449,7 @@ function ProfileContent({ user, onLogout }: { user: any; onLogout: () => void })
             onClick={handleOpenAssistant}
             className="w-full bg-white text-ink rounded-btn py-3 px-3 flex items-center justify-center gap-2 text-body font-bold min-h-[48px] active:scale-[0.98] transition-transform"
           >
-            <Sparkles className="w-[18px] h-[18px] text-brand" />
+            <Sparkles className="w-[18px] h-[18px] text-brand-ink" />
             Discuter avec l&apos;assistant
           </button>
           <div className="grid grid-cols-2 gap-2.5">
@@ -1462,7 +1462,7 @@ function ProfileContent({ user, onLogout }: { user: any; onLogout: () => void })
             </button>
             <button
               onClick={handleWhatsAppSupport}
-              className="bg-[#25D366] text-white rounded-btn py-2.5 px-3 flex items-center justify-center gap-2 text-detail font-bold min-h-[44px] active:scale-95 transition-transform"
+              className="bg-[#167D4A] text-white rounded-btn py-2.5 px-3 flex items-center justify-center gap-2 text-detail font-bold min-h-[44px] active:scale-95 transition-transform"
             >
               <MessageSquare className="w-[17px] h-[17px]" />
               WhatsApp
@@ -1484,7 +1484,7 @@ function ProfileContent({ user, onLogout }: { user: any; onLogout: () => void })
             className="w-full flex items-center gap-3 p-3.5 active:bg-app transition-colors border-b border-line last:border-0"
           >
             <div className="w-10 h-10 bg-brand-soft rounded-[13px] grid place-items-center flex-shrink-0">
-              <item.icon className="w-5 h-5 text-brand" strokeWidth={2} />
+              <item.icon className="w-5 h-5 text-brand-ink" strokeWidth={2} />
             </div>
             <div className="flex-1 text-left min-w-0">
               <span className="text-ink text-body font-semibold">{item.label}</span>

@@ -164,7 +164,7 @@ export function MediaCarousel({
               {onReserve && (
                 <button
                   onClick={onReserve}
-                  className="pointer-events-auto mt-2 inline-flex items-center bg-[#FF9800] hover:bg-[#F57C00] active:scale-95 transition-all text-white text-xs font-bold px-4 py-2 rounded-full shadow-md"
+                  className="pointer-events-auto mt-2 inline-flex items-center bg-[#C2410C] hover:bg-[#9A3412] active:scale-95 transition-all text-white text-xs font-bold px-4 py-2 rounded-full shadow-md"
                 >
                   Réserver maintenant →
                 </button>

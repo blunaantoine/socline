@@ -207,7 +207,7 @@ export function ClientActivities({
 
       {isLoading ? (
         <div className="flex items-center justify-center py-14">
-          <Loader2 className="w-7 h-7 animate-spin text-brand" />
+          <Loader2 className="w-7 h-7 animate-spin text-brand-ink" />
         </div>
       ) : (
         <>
@@ -269,13 +269,13 @@ function ServiceIcon({ category }: { category?: string | null }) {
   return (
     <div className="w-11 h-11 rounded-[14px] bg-brand-soft grid place-items-center flex-shrink-0">
       {category === 'basic' ? (
-        <Zap className="w-5 h-5 text-brand" />
+        <Zap className="w-5 h-5 text-brand-ink" />
       ) : category === 'premium' ? (
-        <Sparkles className="w-5 h-5 text-brand" />
+        <Sparkles className="w-5 h-5 text-brand-ink" />
       ) : category === 'deluxe' ? (
-        <Crown className="w-5 h-5 text-brand" />
+        <Crown className="w-5 h-5 text-brand-ink" />
       ) : (
-        <Droplets className="w-5 h-5 text-brand" />
+        <Droplets className="w-5 h-5 text-brand-ink" />
       )}
     </div>
   );
@@ -368,7 +368,7 @@ function OngoingList({
                   )}
                   {order.status === 'PENDING' && (
                     <p className="text-[11px] text-soft mt-1 flex items-center gap-1.5">
-                      <Loader2 className="w-3 h-3 animate-spin text-brand flex-shrink-0" />
+                      <Loader2 className="w-3 h-3 animate-spin text-brand-ink flex-shrink-0" />
                       Nous cherchons le laveur le plus proche…
                     </p>
                   )}
@@ -694,7 +694,7 @@ function SubscriptionSection({
               <span>
                 {used}/{total} séance{total > 1 ? 's' : ''} utilisée{used > 1 ? 's' : ''}
               </span>
-              <span className="text-brand">{subscription.remainingWashes} restante{subscription.remainingWashes > 1 ? 's' : ''}</span>
+              <span className="text-brand-ink">{subscription.remainingWashes} restante{subscription.remainingWashes > 1 ? 's' : ''}</span>
             </div>
             <div className="h-2.5 bg-line rounded-full overflow-hidden" role="progressbar" aria-valuenow={used} aria-valuemin={0} aria-valuemax={total}>
               <div
@@ -726,7 +726,7 @@ function SubscriptionSection({
           <Card>
             <CardContent className="p-4">
               <p className="text-detail text-soft flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-brand flex-shrink-0" />
+                <CheckCircle2 className="w-4 h-4 text-brand-ink flex-shrink-0" />
                 Aucune séance utilisée pour le moment — réservez votre premier
                 lavage, il sera déduit de la formule.
               </p>

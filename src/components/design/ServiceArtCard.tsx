@@ -71,7 +71,7 @@ export function ServiceArtCard({
         <div className="flex justify-between items-center">
           <span className="font-extrabold text-base text-ink">
             {service.price.toLocaleString('fr-FR')}
-            <small className="text-[11px] font-bold text-brand"> F</small>
+            <small className="text-[11px] font-bold text-brand-ink"> F</small>
           </span>
           <span className="text-detail text-soft flex items-center gap-1">
             <Clock className="w-3 h-3" strokeWidth={2.2} />

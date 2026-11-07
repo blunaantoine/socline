@@ -19,7 +19,7 @@ export function SectionHeader({
       {action && (
         <button
           onClick={onAction}
-          className="text-detail text-brand font-semibold active:opacity-70 transition-opacity"
+          className="text-detail text-brand-ink font-semibold active:opacity-70 transition-opacity"
         >
           {action}
         </button>

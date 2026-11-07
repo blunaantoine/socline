@@ -69,7 +69,7 @@ const TRANSACTION_LABELS: Record<string, string> = {
 const TRANSACTION_COLORS: Record<string, string> = {
   DEPOSIT: 'text-success',
   WITHDRAWAL: 'text-danger',
-  PAYMENT: 'text-brand',
+  PAYMENT: 'text-brand-ink',
   REFUND: 'text-success',
   BONUS: 'text-plan-purple-icon',
 };
@@ -583,7 +583,7 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
           aria-label="Actualiser le solde"
           className="w-9 h-9 rounded-btn bg-surface border border-line grid place-items-center active:scale-95 transition-transform"
         >
-          <RefreshCw className={`w-[18px] h-[18px] text-brand ${isRefreshing ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-[18px] h-[18px] text-brand-ink ${isRefreshing ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
@@ -646,7 +646,7 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
           <h2 className="text-section text-ink">Transactions récentes</h2>
           <button
             onClick={() => setShowHistory(true)}
-            className="text-detail text-brand font-semibold active:opacity-70 transition-opacity"
+            className="text-detail text-brand-ink font-semibold active:opacity-70 transition-opacity"
           >
             Voir tout
           </button>
@@ -655,7 +655,7 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
         {!wallet?.transactions || wallet.transactions.length === 0 ? (
           <div className={`py-8 px-4 ${CARD_CLASSES} flex flex-col items-center text-center`}>
             <div className="w-[84px] h-[84px] rounded-[26px] bg-brand-soft grid place-items-center mb-3">
-              <Wallet className="w-11 h-11 text-brand" strokeWidth={1.6} />
+              <Wallet className="w-11 h-11 text-brand-ink" strokeWidth={1.6} />
             </div>
             <p className="text-body font-bold text-ink">Aucune transaction</p>
             <p className="text-detail text-soft mt-1 mb-4">Rechargez pour payer vos lavages en un geste.</p>
@@ -690,17 +690,17 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
               <DialogTitle className="text-title text-ink flex items-center gap-2">
                 {deposit.step === 'paydunya' ? (
                   <>
-                    <CreditCard className="w-5 h-5 text-brand" />
+                    <CreditCard className="w-5 h-5 text-brand-ink" />
                     Paiement en ligne
                   </>
                 ) : deposit.step === 'ussd' || deposit.step === 'confirm' ? (
                   <>
-                    <Phone className="w-5 h-5 text-brand" />
+                    <Phone className="w-5 h-5 text-brand-ink" />
                     Paiement USSD
                   </>
                 ) : (
                   <>
-                    <Plus className="w-5 h-5 text-brand" />
+                    <Plus className="w-5 h-5 text-brand-ink" />
                     Recharger le portefeuille
                   </>
                 )}
@@ -716,7 +716,7 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
                   <div key={step} className="flex items-center">
                     <div className={`w-6 h-6 rounded-full grid place-items-center text-micro font-semibold ${
                       ['amount', 'paydunya'].indexOf(deposit.step) >= index
-                        ? 'bg-brand text-white'
+                        ? 'bg-brand-ink text-white'
                         : 'bg-line text-soft'
                     }`}>
                       {index + 1}
@@ -737,7 +737,7 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
                   <div key={step} className="flex items-center">
                     <div className={`w-6 h-6 rounded-full grid place-items-center text-micro font-semibold ${
                       ['amount', 'operator', 'phone', 'ussd', 'confirm'].indexOf(deposit.step) >= index
-                        ? 'bg-brand text-white'
+                        ? 'bg-brand-ink text-white'
                         : 'bg-line text-soft'
                     }`}>
                       {index + 1}
@@ -765,7 +765,7 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
                       onClick={() => setDeposit(prev => ({ ...prev, amount: opt.value }))}
                       className={`p-3 rounded-btn text-body font-semibold transition-all ${
                         deposit.amount === opt.value
-                          ? 'bg-brand text-white'
+                          ? 'bg-brand-ink text-white'
                           : 'bg-app text-soft hover:bg-line'
                       }`}
                     >
@@ -816,7 +816,7 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
                         </p>
                       </div>
                       {deposit.operatorId === op.id && (
-                        <Check className="w-5 h-5 text-brand flex-shrink-0" />
+                        <Check className="w-5 h-5 text-brand-ink flex-shrink-0" />
                       )}
                     </button>
                   ))
@@ -833,7 +833,7 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
                 <div className="bg-brand-wash rounded-btn p-4 mb-1">
                   <div className="flex justify-between items-center">
                     <span className="text-body text-soft">Montant à recharger</span>
-                    <span className="font-extrabold text-brand text-lg">
+                    <span className="font-extrabold text-brand-ink text-lg">
                       {deposit.amount.toLocaleString('fr-FR')} F
                     </span>
                   </div>
@@ -899,7 +899,7 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
                 <div className="bg-brand-wash rounded-btn p-4">
                   <div className="flex justify-between items-center">
                     <span className="text-body text-soft">Montant à recharger</span>
-                    <span className="font-extrabold text-brand text-lg">
+                    <span className="font-extrabold text-brand-ink text-lg">
                       {deposit.amount.toLocaleString('fr-FR')} F
                     </span>
                   </div>
@@ -908,7 +908,7 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
                 {/* Instructions */}
                 <div className="bg-app border border-line rounded-btn p-3">
                   <div className="flex gap-2">
-                    <CreditCard className="w-4 h-4 text-brand flex-shrink-0 mt-0.5" />
+                    <CreditCard className="w-4 h-4 text-brand-ink flex-shrink-0 mt-0.5" />
                     <div>
                       <p className="font-semibold text-ink text-body">Paiement sécurisé PayDunya</p>
                       <p className="text-detail text-soft mt-1">
@@ -944,7 +944,7 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
               <div className="space-y-3">
                 <div className="text-center py-2">
                   <div className="w-14 h-14 bg-brand-soft rounded-full grid place-items-center mx-auto mb-3">
-                    <CheckCircle className="w-7 h-7 text-brand" />
+                    <CheckCircle className="w-7 h-7 text-brand-ink" />
                   </div>
                   <p className="font-semibold text-ink">Avez-vous validé le paiement ?</p>
                   <p className="text-detail text-soft mt-1.5">
@@ -1076,7 +1076,7 @@ export function WalletScreen({ onBack }: { onBack?: () => void }) {
           <div className="p-4 border-b border-line flex-shrink-0">
             <DialogHeader>
               <DialogTitle className="text-title text-ink flex items-center gap-2">
-                <History className="w-5 h-5 text-brand" />
+                <History className="w-5 h-5 text-brand-ink" />
                 Historique des transactions
               </DialogTitle>
             </DialogHeader>

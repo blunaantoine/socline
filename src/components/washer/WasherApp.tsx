@@ -716,7 +716,7 @@ export function WasherApp() {
   if (isInitialLoading) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-[#FAFAFA] min-h-screen">
-        <Loader2 className="w-10 h-10 text-[#FF9800] animate-spin mb-3" />
+        <Loader2 className="w-10 h-10 text-[#C2410C] animate-spin mb-3" />
         <p className="text-sm text-[#757575]">Chargement...</p>
       </div>
     );
@@ -920,7 +920,7 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
       {/* Status Banner */}
       {!isAvailable && (
         <div className="bg-[#FFF3E0] border border-[#FFCC80] rounded-xl p-4 flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 text-[#FF9800]" />
+          <AlertCircle className="w-5 h-5 text-[#C2410C]" />
           <div>
             <p className="font-medium text-[#E65100]">Vous êtes hors ligne</p>
             <p className="text-sm text-[#EF6C00]">
@@ -1123,7 +1123,7 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
             onClick={onRefresh}
             disabled={isLoading}
             aria-label="Actualiser les commandes en attente"
-            className="text-[#FF9800] text-sm flex items-center gap-1 p-2.5 -m-2.5"
+            className="text-[#C2410C] text-sm flex items-center gap-1 p-2.5 -m-2.5"
           >
             {isLoading ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -1139,7 +1139,7 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
               {pendingOrders.map((order) => (
                 <Card key={order.id} className="border-0 shadow-sm overflow-hidden">
                   <CardContent className="p-0">
-                    <div className="p-4 bg-gradient-to-r from-[#FF9800] to-[#F57C00] text-white">
+                    <div className="p-4 bg-gradient-to-r from-[#C2410C] to-[#9A3412] text-white">
                       <div className="flex justify-between items-start">
                         <div>
                           <p className="text-sm opacity-80">Nouvelle commande</p>
@@ -1161,10 +1161,10 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
                     </div>
                     <div className="p-4 space-y-3">
                       <div className="flex items-center gap-2">
-                        <MapPin className="w-4 h-4 text-[#FF9800]" />
+                        <MapPin className="w-4 h-4 text-[#C2410C]" />
                         <span className="text-sm text-[#212121]">{order.address || 'Adresse non spécifiée'}</span>
                         {typeof order.distanceKm === 'number' && (
-                          <span className="ml-auto shrink-0 text-xs font-semibold text-[#FF9800] bg-[#FFF3E0] px-2 py-0.5 rounded-full">
+                          <span className="ml-auto shrink-0 text-xs font-semibold text-[#C2410C] bg-[#FFF3E0] px-2 py-0.5 rounded-full">
                             {order.distanceKm} km
                           </span>
                         )}
@@ -1209,7 +1209,7 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
             <div className="bg-white rounded-2xl p-6 text-center shadow-sm">
               {isLoading ? (
                 <>
-                  <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin mx-auto mb-3" />
+                  <Loader2 className="w-8 h-8 text-[#C2410C] animate-spin mx-auto mb-3" />
                   <p className="text-[#757575]">Recherche de commandes...</p>
                 </>
               ) : (
@@ -1453,7 +1453,7 @@ function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat, acceptedOr
             </Button>
             {/* WhatsApp : discussion pré-remplie avec le client */}
             <Button variant="outline"
-              className="h-10 text-xs font-semibold gap-1.5 px-2 border-[#25D366] text-[#25D366] hover:bg-[#25D366] hover:text-white"
+              className="h-10 text-xs font-semibold gap-1.5 px-2 border-[#167D4A] text-[#167D4A] hover:bg-[#167D4A] hover:text-white"
               aria-label="Contacter le client sur WhatsApp"
               disabled={!order.client?.phone}
               onClick={() => openWhatsApp(
@@ -1489,7 +1489,7 @@ function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat, acceptedOr
           <div>
             <p className="text-xs text-[#757575]">Adresse</p>
             <div className="flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-[#FF9800]" />
+              <MapPin className="w-4 h-4 text-[#C2410C]" />
               <p className="font-medium text-[#212121]">{order.address || 'N/A'}</p>
             </div>
           </div>
@@ -2078,7 +2078,7 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, onRefreshWallet, isRe
                 <Button
                   onClick={handleSettleCommission}
                   disabled={isSettling || stats.walletBalance <= 0}
-                  className="w-full mt-3 bg-[#FF9800] hover:bg-[#F57C00] text-white font-semibold"
+                  className="w-full mt-3 bg-[#C2410C] hover:bg-[#9A3412] text-white font-semibold"
                 >
                   {isSettling ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />

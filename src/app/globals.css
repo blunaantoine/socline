@@ -20,6 +20,9 @@
   --brand-soft: #FFF3E0;   /* fond orange doux */
   --brand-wash: #FFF8F0;   /* fond orange très doux */
   --brand-light: #FFB547;  /* orange clair : dégradés (avatar, accents) */
+  /* — Orange lisible : boutons à texte blanc, textes et icônes orange sur fond clair (≥ 4.5:1) — */
+  --brand-ink: #C2410C;
+  --brand-ink-strong: #9A3412; /* hover / pressé */
 
   /* — Neutre foncé (direction artistique) — */
   --ink: #0F1B2D;          /* navy : titres, boutons secondaires */
@@ -74,6 +77,8 @@
   --color-brand-soft: var(--brand-soft);
   --color-brand-wash: var(--brand-wash);
   --color-brand-light: var(--brand-light);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-ink-strong: var(--brand-ink-strong);
   --color-ink: var(--ink);
   --color-ink-2: var(--ink-2);
   --color-app: var(--app-bg);

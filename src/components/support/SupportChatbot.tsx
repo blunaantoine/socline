@@ -165,7 +165,7 @@ export function SupportChatbot() {
         <button
           onClick={handleOpen}
           aria-label="Ouvrir l'assistant d'aide Soco"
-          className="fixed right-4 bottom-[calc(4.25rem+max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))] z-40 w-14 h-14 rounded-full bg-gradient-to-br from-brand to-brand-light shadow-lg shadow-brand/30 grid place-items-center active:scale-90 transition-transform"
+          className="fixed right-4 bottom-[calc(4.25rem+max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))] z-40 w-14 h-14 rounded-full bg-gradient-to-br from-brand-ink to-brand shadow-lg shadow-brand-ink/30 grid place-items-center active:scale-95 transition-transform"
         >
           <span className="absolute inset-0 rounded-full bg-brand/25 animate-ping [animation-duration:2.5s]" aria-hidden="true" />
           <Headphones className="w-6 h-6 text-white relative" strokeWidth={2.2} />
@@ -216,7 +216,7 @@ export function SupportChatbot() {
                   <div
                     className={`px-3.5 py-2.5 rounded-2xl text-body leading-relaxed whitespace-pre-wrap ${
                       msg.role === 'user'
-                        ? 'bg-brand text-white rounded-br-md'
+                        ? 'bg-brand-ink text-white rounded-br-md'
                         : msg.isError
                           ? 'bg-red-50 border border-red-200 text-red-700 rounded-bl-md'
                           : 'bg-surface border border-line text-ink rounded-bl-md'
@@ -248,7 +248,7 @@ export function SupportChatbot() {
                           href="https://wa.me/22871998155?text=Bonjour%2C%20j%27ai%20un%20probl%C3%A8me%20avec%20l%27application%20Socline."
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center justify-center gap-1.5 bg-[#25D366] text-white rounded-btn py-2 text-detail font-bold min-h-[40px] active:scale-95 transition-transform"
+                          className="flex items-center justify-center gap-1.5 bg-[#167D4A] text-white rounded-btn py-2 text-detail font-bold min-h-[40px] active:scale-95 transition-transform"
                         >
                           <MessageSquare className="w-4 h-4" />
                           WhatsApp
@@ -285,7 +285,7 @@ export function SupportChatbot() {
                 <button
                   key={q}
                   onClick={() => sendMessage(q)}
-                  className="flex-shrink-0 text-detail font-semibold text-brand bg-brand-soft rounded-pill px-3.5 py-2 active:scale-95 transition-transform whitespace-nowrap"
+                  className="flex-shrink-0 text-detail font-semibold text-brand-ink bg-brand-soft rounded-pill px-3.5 py-2 active:scale-95 transition-transform whitespace-nowrap"
                 >
                   {q}
                 </button>

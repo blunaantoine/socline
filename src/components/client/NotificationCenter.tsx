@@ -117,7 +117,7 @@ export function NotificationCenter() {
     switch (type) {
       case 'order':
       case 'NEW_ORDER':
-        return <Car className="w-5 h-5 text-[#FF9800]" />;
+        return <Car className="w-5 h-5 text-[#C2410C]" />;
       case 'message':
         return <MessageCircle className="w-5 h-5 text-[#2196F3]" />;
       case 'payment':
@@ -153,7 +153,7 @@ export function NotificationCenter() {
         >
           <Bell className="w-5 h-5 text-ink" />
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 bg-brand text-white text-micro rounded-pill border-2 border-white flex items-center justify-center font-bold">
+            <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 bg-brand-ink text-white text-micro rounded-pill border-2 border-white flex items-center justify-center font-bold">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
@@ -172,7 +172,7 @@ export function NotificationCenter() {
                   variant="ghost"
                   size="sm"
                   onClick={markAllAsRead}
-                  className="text-[#FF9800] text-xs"
+                  className="text-[#C2410C] text-xs"
                 >
                   Tout marquer lu
                 </Button>
@@ -185,7 +185,7 @@ export function NotificationCenter() {
             {notifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full p-8">
                 <div className="w-16 h-16 bg-[#FFF3E0] rounded-full flex items-center justify-center mb-4">
-                  <Bell className="w-8 h-8 text-[#FF9800]" />
+                  <Bell className="w-8 h-8 text-[#C2410C]" />
                 </div>
                 <p className="text-[#757575] text-center">
                   Aucune notification

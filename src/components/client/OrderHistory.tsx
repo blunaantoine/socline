@@ -119,7 +119,7 @@ export function OrderHistory() {
             onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               activeTab === tab.id
-                ? 'bg-[#FF9800] text-white'
+                ? 'bg-[#C2410C] text-white'
                 : 'bg-[#F5F5F5] text-[#757575]'
             }`}
           >
@@ -132,7 +132,7 @@ export function OrderHistory() {
       <div className="flex-1 overflow-y-auto p-4 space-y-3 pb-28">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-[#FF9800]" />
+            <Loader2 className="w-8 h-8 animate-spin text-[#C2410C]" />
           </div>
         ) : filteredOrders.length === 0 ? (
           <div className="text-center py-12">
@@ -179,10 +179,10 @@ function OrderCard({ order, onViewDetails }: { order: Order; onViewDetails: () =
         >
           {/* Service Icon */}
           <div className="w-14 h-14 bg-[#FFF3E0] rounded-lg flex items-center justify-center flex-shrink-0">
-            {order.service.category === 'basic' && <Zap className="w-6 h-6 text-[#FF9800]" />}
-            {order.service.category === 'standard' && <Droplets className="w-6 h-6 text-[#FF9800]" />}
-            {order.service.category === 'premium' && <Sparkles className="w-6 h-6 text-[#FF9800]" />}
-            {order.service.category === 'deluxe' && <Crown className="w-6 h-6 text-[#FF9800]" />}
+            {order.service.category === 'basic' && <Zap className="w-6 h-6 text-[#C2410C]" />}
+            {order.service.category === 'standard' && <Droplets className="w-6 h-6 text-[#C2410C]" />}
+            {order.service.category === 'premium' && <Sparkles className="w-6 h-6 text-[#C2410C]" />}
+            {order.service.category === 'deluxe' && <Crown className="w-6 h-6 text-[#C2410C]" />}
           </div>
 
           {/* Details */}
@@ -224,7 +224,7 @@ function OrderCard({ order, onViewDetails }: { order: Order; onViewDetails: () =
                 👑 Abonnement
               </div>
             ) : (
-              <div className="font-bold text-[#FF9800]">
+              <div className="font-bold text-[#C2410C]">
                 {formatPrice(order.totalPrice)}
               </div>
             )}
@@ -240,7 +240,7 @@ function OrderCard({ order, onViewDetails }: { order: Order; onViewDetails: () =
 
         {order.status === 'COMPLETED' && !order.review && (
           <div className="px-4 pb-4">
-            <Button variant="outline" className="w-full border-[#FF9800] text-[#FF9800]">
+            <Button variant="outline" className="w-full border-[#FF9800] text-[#C2410C]">
               <Star className="w-4 h-4 mr-2" />
               Laisser un avis
             </Button>
@@ -271,7 +271,7 @@ export function OrderDetails({ order, onClose }: { order: Order; onClose: () => 
   return (
     <div className="flex flex-col">
       {/* Header */}
-      <div className="bg-gradient-to-r from-[#FF9800] to-[#F57C00] p-4 text-white">
+      <div className="bg-gradient-to-r from-[#C2410C] to-[#9A3412] p-4 text-white">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm opacity-80">Commande</span>
           <Badge className="bg-white/20 text-white">
@@ -310,7 +310,7 @@ export function OrderDetails({ order, onClose }: { order: Order; onClose: () => 
                   👑 Abonnement
                 </div>
               ) : (
-                <div className="font-bold text-[#FF9800] text-lg">
+                <div className="font-bold text-[#C2410C] text-lg">
                   {formatPrice(order.totalPrice)}
                 </div>
               )}
@@ -379,7 +379,7 @@ export function OrderDetails({ order, onClose }: { order: Order; onClose: () => 
                 href={`tel:${order.washer.user.phone}`}
                 className="p-2 bg-[#FFF3E0] rounded-lg"
               >
-                <Phone className="w-5 h-5 text-[#FF9800]" />
+                <Phone className="w-5 h-5 text-[#C2410C]" />
               </a>
             </div>
           </div>
@@ -539,7 +539,7 @@ export function OrderDetails({ order, onClose }: { order: Order; onClose: () => 
             {order.isSubscriptionOrder ? (
               <span className="text-purple-700">👑 Séance abonnement</span>
             ) : (
-              <span className="text-[#FF9800]">{formatPrice(order.totalPrice)}</span>
+              <span className="text-[#C2410C]">{formatPrice(order.totalPrice)}</span>
             )}
           </div>
         </div>
@@ -548,7 +548,7 @@ export function OrderDetails({ order, onClose }: { order: Order; onClose: () => 
       {/* Actions */}
       <div className="p-4 border-t border-[#E0E0E0] space-y-2">
         {order.status === 'COMPLETED' && !order.review && (
-          <Button className="w-full bg-[#FF9800] hover:bg-[#F57C00]">
+          <Button className="w-full bg-[#C2410C] hover:bg-[#9A3412]">
             <Star className="w-4 h-4 mr-2" />
             Laisser un avis
           </Button>

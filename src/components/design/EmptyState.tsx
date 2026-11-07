@@ -12,7 +12,7 @@ export function EmptyState({
   actionLabel,
   onAction,
   tint = 'bg-brand-soft',
-  iconColor = 'text-brand',
+  iconColor = 'text-brand-ink',
 }: {
   icon: LucideIcon;
   message: string;

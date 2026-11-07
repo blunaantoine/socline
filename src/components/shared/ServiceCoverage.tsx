@@ -61,7 +61,7 @@ export function CoverageDetails({ service }: { service: any }) {
       <p className="text-sm font-medium text-[#212121] mb-2">Ce que comprend le lavage</p>
       <div className="bg-[#F5F5F5] rounded-xl p-3 space-y-2.5">
         <div className="flex items-start gap-2.5">
-          <Car className="w-4 h-4 text-[#FF9800] mt-0.5 flex-shrink-0" />
+          <Car className="w-4 h-4 text-[#C2410C] mt-0.5 flex-shrink-0" />
           <div>
             <p className="text-sm font-medium text-[#212121]">Extérieur</p>
             <p className="text-xs text-[#616161] leading-relaxed">{exterior}</p>

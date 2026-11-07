@@ -359,7 +359,7 @@ export function CarsManager({ userId }: CarsManagerProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="w-6 h-6 animate-spin text-[#FF9800]" />
+        <Loader2 className="w-6 h-6 animate-spin text-[#C2410C]" />
       </div>
     );
   }
@@ -372,7 +372,7 @@ export function CarsManager({ userId }: CarsManagerProps) {
         {canAddMore && (
           <Button
             size="sm"
-            className="bg-[#FF9800] hover:bg-[#F57C00]"
+            className="bg-[#C2410C] hover:bg-[#9A3412] text-white"
             onClick={() => {
               resetForm();
               setShowAddModal(true);
@@ -396,7 +396,7 @@ export function CarsManager({ userId }: CarsManagerProps) {
           <p className="text-[#757575]">Aucun véhicule enregistré</p>
           <p className="text-sm text-[#9E9E9E] mt-1">Ajoutez votre premier véhicule</p>
           <Button
-            className="mt-4 bg-[#FF9800] hover:bg-[#F57C00]"
+            className="mt-4 bg-[#C2410C] hover:bg-[#9A3412]"
             onClick={() => setShowAddModal(true)}
           >
             <Plus className="w-4 h-4 mr-2" />
@@ -408,7 +408,7 @@ export function CarsManager({ userId }: CarsManagerProps) {
           {cars.map((car) => (
             <div
               key={car.id}
-              className={`bg-white rounded-lg p-4 shadow-sm border-2 ${
+              className={`bg-white rounded-lg p-3 shadow-sm border-2 ${
                 car.isDefault ? 'border-[#FF9800]' : 'border-transparent'
               }`}
             >
@@ -423,31 +423,31 @@ export function CarsManager({ userId }: CarsManagerProps) {
                 {/* Car Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-[#212121]">
+                    <span className="font-bold text-[#212121] truncate">
                       {car.nickname || `${car.brand || ''} ${car.model || ''}`.trim() || 'Mon véhicule'}
                     </span>
                     {car.isDefault && (
-                      <span className="text-xs bg-[#FF9800] text-white px-2 py-0.5 rounded-full">
+                      <span className="text-xs bg-[#C2410C] text-white px-2 py-0.5 rounded-full flex-shrink-0 whitespace-nowrap">
                         Par défaut
                       </span>
                     )}
                   </div>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="text-sm font-mono text-[#757575]">{car.plateNumber}</span>
+                    <span className="text-sm font-mono text-[#757575] whitespace-nowrap">{car.plateNumber}</span>
                     <div className={`w-4 h-4 rounded-full ${getColorStyle(car.color)}`} />
                     <span className="text-sm text-[#757575]">{car.color}</span>
                   </div>
                   {car.year && (
-                    <p className="text-xs text-[#9E9E9E] mt-1">Année: {car.year}</p>
+                    <p className="text-xs text-[#6B6B6B] mt-1">Année: {car.year}</p>
                   )}
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-1">
+                <div className="flex items-center -mr-1.5 -mt-1.5 flex-shrink-0">
                   {!car.isDefault && (
                     <button
                       onClick={() => handleSetDefault(car.id)}
-                      className="p-3 hover:bg-[#F5F5F5] rounded-lg"
+                      className="p-2.5 hover:bg-[#F5F5F5] rounded-lg"
                       title="Définir par défaut"
                       aria-label="Définir comme véhicule par défaut"
                     >
@@ -456,15 +456,15 @@ export function CarsManager({ userId }: CarsManagerProps) {
                   )}
                   <button
                     onClick={() => openEditModal(car)}
-                    className="p-3 hover:bg-[#F5F5F5] rounded-lg"
-                    aria-label={`Modifier ${car.name || 'ce véhicule'}`}
+                    className="p-2.5 hover:bg-[#F5F5F5] rounded-lg"
+                    aria-label={`Modifier le véhicule ${car.plateNumber}`}
                   >
                     <Edit className="w-4 h-4 text-[#757575]" />
                   </button>
                   <button
                     onClick={() => handleDeleteCar(car.id)}
-                    className="p-3 hover:bg-red-50 rounded-lg"
-                    aria-label={`Supprimer ${car.name || 'ce véhicule'}`}
+                    className="p-2.5 hover:bg-red-50 rounded-lg"
+                    aria-label={`Supprimer le véhicule ${car.plateNumber}`}
                   >
                     <Trash2 className="w-4 h-4 text-red-500" />
                   </button>
@@ -587,10 +587,10 @@ export function CarsManager({ userId }: CarsManagerProps) {
                   className="w-full h-20 rounded-lg border-2 border-dashed border-[#FF9800]/40 bg-[#FFF8F0] flex flex-col items-center justify-center gap-1 hover:bg-[#FFF3E0] transition-colors"
                 >
                   {isUploadingPhoto ? (
-                    <Loader2 className="w-5 h-5 text-[#FF9800] animate-spin" />
+                    <Loader2 className="w-5 h-5 text-[#C2410C] animate-spin" />
                   ) : (
                     <>
-                      <Camera className="w-5 h-5 text-[#FF9800]" />
+                      <Camera className="w-5 h-5 text-[#C2410C]" />
                       <span className="text-xs text-[#757575]">Prendre / choisir une photo</span>
                     </>
                   )}
@@ -632,7 +632,7 @@ export function CarsManager({ userId }: CarsManagerProps) {
                 Annuler
               </Button>
               <Button
-                className="flex-1 bg-[#FF9800] hover:bg-[#F57C00]"
+                className="flex-1 bg-[#C2410C] hover:bg-[#9A3412]"
                 onClick={handleAddCar}
                 disabled={isSubmitting || !plateNumber}
               >
@@ -760,10 +760,10 @@ export function CarsManager({ userId }: CarsManagerProps) {
                   className="w-full h-20 rounded-lg border-2 border-dashed border-[#FF9800]/40 bg-[#FFF8F0] flex flex-col items-center justify-center gap-1 hover:bg-[#FFF3E0] transition-colors"
                 >
                   {isUploadingPhoto ? (
-                    <Loader2 className="w-5 h-5 text-[#FF9800] animate-spin" />
+                    <Loader2 className="w-5 h-5 text-[#C2410C] animate-spin" />
                   ) : (
                     <>
-                      <Camera className="w-5 h-5 text-[#FF9800]" />
+                      <Camera className="w-5 h-5 text-[#C2410C]" />
                       <span className="text-xs text-[#757575]">Prendre / choisir une photo</span>
                     </>
                   )}
@@ -808,7 +808,7 @@ export function CarsManager({ userId }: CarsManagerProps) {
                 Annuler
               </Button>
               <Button
-                className="flex-1 bg-[#FF9800] hover:bg-[#F57C00]"
+                className="flex-1 bg-[#C2410C] hover:bg-[#9A3412]"
                 onClick={handleEditCar}
                 disabled={isSubmitting || !plateNumber}
               >

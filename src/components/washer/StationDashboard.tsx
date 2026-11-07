@@ -414,7 +414,7 @@ export function StationDashboard({ washer, user, onLogout }: StationDashboardPro
       <div className="bg-white border-b px-4 py-3 flex-shrink-0 sticky top-0 md:top-6 z-40 max-md:pt-[calc(0.75rem+max(env(safe-area-inset-top),var(--safe-area-inset-top,0px)))]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-[#FF9800] to-[#F57C00] rounded-full flex items-center justify-center text-white">
+            <div className="w-12 h-12 bg-gradient-to-br from-[#C2410C] to-[#9A3412] rounded-full flex items-center justify-center text-white">
               <Building2 className="w-6 h-6" />
             </div>
             <div>
@@ -440,7 +440,7 @@ export function StationDashboard({ washer, user, onLogout }: StationDashboardPro
               fetchServices();
               fetchOrders();
             }}
-            className="text-[#FF9800] hover:bg-[#FFF3E0]"
+            className="text-[#C2410C] hover:bg-[#FFF3E0]"
             aria-label="Rafraîchir"
           >
             <RefreshCw className="w-5 h-5" />
@@ -494,7 +494,7 @@ export function StationDashboard({ washer, user, onLogout }: StationDashboardPro
               key={tab.id}
               onClick={() => setActiveTab(tab.id as typeof activeTab)}
               className={`flex-1 flex flex-col items-center justify-center py-1 px-1 transition-all active:scale-95 active:bg-[#F5F5F5] ${
-                isActive ? 'text-[#FF9800]' : 'text-[#757575]'
+                isActive ? 'text-[#C2410C]' : 'text-[#757575]'
               }`}
             >
               <tab.icon className={`w-6 h-6 ${isActive ? 'fill-current' : ''}`} />
@@ -575,7 +575,7 @@ export function StationDashboard({ washer, user, onLogout }: StationDashboardPro
             <Button
               onClick={handleSaveStation}
               disabled={isSavingStation}
-              className="bg-[#FF9800] hover:bg-[#F57C00] text-white"
+              className="bg-[#C2410C] hover:bg-[#9A3412] text-white"
             >
               {isSavingStation ? (
                 <>
@@ -710,7 +710,7 @@ export function StationDashboard({ washer, user, onLogout }: StationDashboardPro
             <Button
               onClick={handleSaveService}
               disabled={isSavingService}
-              className="bg-[#FF9800] hover:bg-[#F57C00] text-white"
+              className="bg-[#C2410C] hover:bg-[#9A3412] text-white"
             >
               {isSavingService ? (
                 <>
@@ -741,7 +741,7 @@ function StationInfoSection({
   if (isLoading && !station) {
     return (
       <div className="p-4 flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+        <Loader2 className="w-8 h-8 text-[#C2410C] animate-spin" />
       </div>
     );
   }
@@ -751,7 +751,7 @@ function StationInfoSection({
       <div className="p-4">
         <Card className="border-0 shadow-sm">
           <CardContent className="p-6 text-center">
-            <AlertCircle className="w-10 h-10 text-[#FF9800] mx-auto mb-3" />
+            <AlertCircle className="w-10 h-10 text-[#C2410C] mx-auto mb-3" />
             <p className="font-medium text-[#212121]">Aucune station associée</p>
             <p className="text-sm text-[#757575] mt-1">
               Votre compte n&apos;est pas encore lié à une station. Contactez le support.
@@ -766,7 +766,7 @@ function StationInfoSection({
     <div className="p-4 space-y-4">
       {/* Station hero card */}
       <Card className="border-0 shadow-sm overflow-hidden">
-        <div className="bg-gradient-to-r from-[#FF9800] to-[#F57C00] p-5 text-white">
+        <div className="bg-gradient-to-r from-[#C2410C] to-[#9A3412] p-5 text-white">
           <div className="flex items-start justify-between">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
@@ -788,7 +788,7 @@ function StationInfoSection({
             <Button
               size="sm"
               onClick={onEdit}
-              className="bg-white text-[#FF9800] hover:bg-white/90 flex-shrink-0"
+              className="bg-white text-[#C2410C] hover:bg-white/90 flex-shrink-0"
             >
               <Edit className="w-4 h-4 mr-1" /> Modifier
             </Button>
@@ -797,7 +797,7 @@ function StationInfoSection({
 
         <CardContent className="p-4 space-y-3">
           <div className="flex items-start gap-3">
-            <MapPin className="w-5 h-5 text-[#FF9800] flex-shrink-0 mt-0.5" />
+            <MapPin className="w-5 h-5 text-[#C2410C] flex-shrink-0 mt-0.5" />
             <div className="min-w-0">
               <p className="text-xs text-[#757575]">Adresse</p>
               <p className="text-sm text-[#212121] break-words">{station.address}</p>
@@ -805,7 +805,7 @@ function StationInfoSection({
           </div>
           {station.phone ? (
             <div className="flex items-start gap-3">
-              <Phone className="w-5 h-5 text-[#FF9800] flex-shrink-0 mt-0.5" />
+              <Phone className="w-5 h-5 text-[#C2410C] flex-shrink-0 mt-0.5" />
               <div className="min-w-0">
                 <p className="text-xs text-[#757575]">Téléphone</p>
                 <p className="text-sm text-[#212121]">{station.phone}</p>
@@ -827,11 +827,11 @@ function StationInfoSection({
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-[#FFF3E0] rounded-full flex items-center justify-center">
-                <Star className="w-5 h-5 text-[#FF9800]" />
+                <Star className="w-5 h-5 text-[#C2410C]" />
               </div>
               <div>
                 <p className="text-xs text-[#757575]">Note</p>
-                <p className="text-lg font-bold text-[#FF9800]">
+                <p className="text-lg font-bold text-[#C2410C]">
                   {station.rating > 0 ? station.rating.toFixed(1) : '—'}
                 </p>
               </div>
@@ -842,11 +842,11 @@ function StationInfoSection({
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-[#FFF3E0] rounded-full flex items-center justify-center">
-                <Tag className="w-5 h-5 text-[#FF9800]" />
+                <Tag className="w-5 h-5 text-[#C2410C]" />
               </div>
               <div>
                 <p className="text-xs text-[#757575]">Avis clients</p>
-                <p className="text-lg font-bold text-[#FF9800]">{station.totalRatings || 0}</p>
+                <p className="text-lg font-bold text-[#C2410C]">{station.totalRatings || 0}</p>
               </div>
             </div>
           </CardContent>
@@ -882,7 +882,7 @@ function ServicesSection({
         </div>
         <Button
           onClick={onAdd}
-          className="bg-[#FF9800] hover:bg-[#F57C00] text-white"
+          className="bg-[#C2410C] hover:bg-[#9A3412] text-white"
           size="sm"
         >
           <Plus className="w-4 h-4 mr-1" /> Ajouter
@@ -891,19 +891,19 @@ function ServicesSection({
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+          <Loader2 className="w-8 h-8 text-[#C2410C] animate-spin" />
         </div>
       ) : services.length === 0 ? (
         <Card className="border-0 shadow-sm">
           <CardContent className="p-8 text-center">
-            <Package className="w-12 h-12 text-[#FF9800] mx-auto mb-3" />
+            <Package className="w-12 h-12 text-[#C2410C] mx-auto mb-3" />
             <p className="font-medium text-[#212121]">Aucun service pour le moment</p>
             <p className="text-sm text-[#757575] mt-1 mb-4">
               Créez votre premier service ou tarif pour que les clients puissent réserver.
             </p>
             <Button
               onClick={onAdd}
-              className="bg-[#FF9800] hover:bg-[#F57C00] text-white"
+              className="bg-[#C2410C] hover:bg-[#9A3412] text-white"
             >
               <Plus className="w-4 h-4 mr-1" /> Créer un service
             </Button>
@@ -929,7 +929,7 @@ function ServicesSection({
                       </p>
                     ) : null}
                     <div className="flex flex-wrap items-center gap-3 text-sm">
-                      <span className="flex items-center gap-1 text-[#FF9800] font-semibold">
+                      <span className="flex items-center gap-1 text-[#C2410C] font-semibold">
                         <DollarSign className="w-4 h-4" />
                         {service.price.toLocaleString('fr-FR')} XOF
                       </span>
@@ -949,7 +949,7 @@ function ServicesSection({
                       size="sm"
                       variant="ghost"
                       onClick={() => onEdit(service)}
-                      className="h-8 w-8 p-0 text-[#FF9800] hover:bg-[#FFF3E0]"
+                      className="h-8 w-8 p-0 text-[#C2410C] hover:bg-[#FFF3E0]"
                       aria-label="Modifier"
                     >
                       <Edit className="w-4 h-4" />
@@ -1001,7 +1001,7 @@ function OrdersSection({
           onClick={onRefresh}
           variant="ghost"
           size="sm"
-          className="text-[#FF9800] hover:bg-[#FFF3E0]"
+          className="text-[#C2410C] hover:bg-[#FFF3E0]"
           aria-label="Rafraîchir"
         >
           <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
@@ -1010,12 +1010,12 @@ function OrdersSection({
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+          <Loader2 className="w-8 h-8 text-[#C2410C] animate-spin" />
         </div>
       ) : orders.length === 0 ? (
         <Card className="border-0 shadow-sm">
           <CardContent className="p-8 text-center">
-            <ShoppingBag className="w-12 h-12 text-[#FF9800] mx-auto mb-3" />
+            <ShoppingBag className="w-12 h-12 text-[#C2410C] mx-auto mb-3" />
             <p className="font-medium text-[#212121]">Aucune commande pour le moment</p>
             <p className="text-sm text-[#757575] mt-1">
               Les commandes passées par les clients apparaîtront ici.
@@ -1054,14 +1054,14 @@ function OrderCard({ order }: { order: Order }) {
 
         <div className="space-y-1.5 text-sm">
           <div className="flex items-center gap-2 text-[#757575]">
-            <UserIcon className="w-4 h-4 text-[#FF9800]" />
+            <UserIcon className="w-4 h-4 text-[#C2410C]" />
             <span>{order.client?.name || 'Client'}</span>
             {order.client?.phone ? (
               <span className="text-xs text-[#6B6B6B]">· {order.client.phone}</span>
             ) : null}
           </div>
           <div className="flex items-center gap-2 text-[#757575]">
-            <Calendar className="w-4 h-4 text-[#FF9800]" />
+            <Calendar className="w-4 h-4 text-[#C2410C]" />
             <span>
               {new Date(order.createdAt).toLocaleDateString('fr-FR', {
                 day: '2-digit',
@@ -1077,7 +1077,7 @@ function OrderCard({ order }: { order: Order }) {
           <span className="text-xs text-[#757575]">
             {order.isHomeService ? 'À domicile' : 'Sur place'}
           </span>
-          <span className="font-bold text-[#FF9800]">
+          <span className="font-bold text-[#C2410C]">
             {(order.totalPrice ?? 0).toLocaleString('fr-FR')} XOF
           </span>
         </div>
@@ -1101,7 +1101,7 @@ function StationProfileSection({
     <div className="p-4 space-y-4">
       <Card className="border-0 shadow-sm">
         <CardContent className="p-5 text-center">
-          <div className="w-20 h-20 mx-auto mb-3 bg-gradient-to-br from-[#FF9800] to-[#F57C00] rounded-full flex items-center justify-center text-white text-3xl font-bold">
+          <div className="w-20 h-20 mx-auto mb-3 bg-gradient-to-br from-[#C2410C] to-[#9A3412] rounded-full flex items-center justify-center text-white text-3xl font-bold">
             {displayName.charAt(0).toUpperCase()}
           </div>
           <h2 className="font-semibold text-[#212121]">{displayName}</h2>
@@ -1118,16 +1118,16 @@ function StationProfileSection({
             <h3 className="font-semibold text-[#212121] text-sm">Ma station</h3>
             <div className="text-sm space-y-1.5 text-[#757575]">
               <div className="flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-[#FF9800]" />
+                <Building2 className="w-4 h-4 text-[#C2410C]" />
                 <span>{station.name}</span>
               </div>
               <div className="flex items-start gap-2">
-                <MapPin className="w-4 h-4 text-[#FF9800] mt-0.5" />
+                <MapPin className="w-4 h-4 text-[#C2410C] mt-0.5" />
                 <span className="break-words">{station.address}</span>
               </div>
               {station.phone ? (
                 <div className="flex items-center gap-2">
-                  <Phone className="w-4 h-4 text-[#FF9800]" />
+                  <Phone className="w-4 h-4 text-[#C2410C]" />
                   <span>{station.phone}</span>
                 </div>
               ) : null}

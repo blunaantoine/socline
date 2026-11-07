@@ -130,7 +130,7 @@ export function ActivityHistory({ userId, onBack }: { userId: string; onBack: ()
   const getActivityIcon = (activity: Activity) => {
     switch (activity.type) {
       case 'ORDER':
-        return <Car className="w-5 h-5 text-[#FF9800]" />;
+        return <Car className="w-5 h-5 text-[#C2410C]" />;
       case 'TRANSACTION':
         if (activity.transactionType === 'DEPOSIT' || activity.transactionType === 'REFUND' || activity.transactionType === 'BONUS') {
           return <ArrowDownLeft className="w-5 h-5 text-green-500" />;
@@ -179,7 +179,7 @@ export function ActivityHistory({ userId, onBack }: { userId: string; onBack: ()
             onClick={() => setFilter(f.id as any)}
             className={`px-4 py-2 rounded-full text-sm whitespace-nowrap ${
               filter === f.id
-                ? 'bg-[#FF9800] text-white'
+                ? 'bg-[#C2410C] text-white'
                 : 'bg-[#F5F5F5] text-[#757575]'
             }`}
           >
@@ -191,7 +191,7 @@ export function ActivityHistory({ userId, onBack }: { userId: string; onBack: ()
       {/* Activities List */}
       {isLoading ? (
         <div className="flex justify-center py-12">
-          <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+          <Loader2 className="w-8 h-8 text-[#C2410C] animate-spin" />
         </div>
       ) : activities.length === 0 ? (
         <div className="text-center py-12">
@@ -529,13 +529,13 @@ export function AddressesManager({ userId, onBack }: { userId: string; onBack: (
         <div className="p-4 bg-white border-t border-[#E0E0E0] space-y-3">
           {selectedPosition && formData.address && (
             <div className="flex items-start gap-2">
-              <MapPin className="w-5 h-5 text-[#FF9800] flex-shrink-0 mt-0.5" />
+              <MapPin className="w-5 h-5 text-[#C2410C] flex-shrink-0 mt-0.5" />
               <p className="text-sm text-[#212121]">{formData.address}</p>
             </div>
           )}
           <div className="flex gap-2">
             <Button
-              className="flex-1 bg-[#FF9800] hover:bg-[#F57C00]"
+              className="flex-1 bg-[#C2410C] hover:bg-[#9A3412]"
               onClick={() => setShowMapSelector(false)}
               disabled={!selectedPosition}
             >
@@ -562,7 +562,7 @@ export function AddressesManager({ userId, onBack }: { userId: string; onBack: (
         </div>
         <button
           onClick={() => setShowForm(true)}
-          className="w-10 h-10 bg-[#FF9800] rounded-full flex items-center justify-center text-white"
+          className="w-10 h-10 bg-[#C2410C] rounded-full flex items-center justify-center text-white"
         >
           <Plus className="w-5 h-5" />
         </button>
@@ -585,7 +585,7 @@ export function AddressesManager({ userId, onBack }: { userId: string; onBack: (
                   onClick={() => setFormData({ ...formData, type: t })}
                   className={`flex-1 py-2 px-3 rounded-lg border-2 text-sm font-medium flex items-center justify-center gap-2 ${
                     formData.type === t
-                      ? 'border-[#FF9800] bg-[#FFF3E0] text-[#FF9800]'
+                      ? 'border-[#FF9800] bg-[#FFF3E0] text-[#C2410C]'
                       : 'border-[#E0E0E0] text-[#757575]'
                   }`}
                 >
@@ -637,7 +637,7 @@ export function AddressesManager({ userId, onBack }: { userId: string; onBack: (
           <button
             onClick={handleGetCurrentLocation}
             disabled={isLocating}
-            className="w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed border-[#FF9800] rounded-lg text-[#FF9800] hover:bg-[#FFF3E0] transition-colors"
+            className="w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed border-[#FF9800] rounded-lg text-[#C2410C] hover:bg-[#FFF3E0] transition-colors"
           >
             {isLocating ? (
               <>
@@ -678,7 +678,7 @@ export function AddressesManager({ userId, onBack }: { userId: string; onBack: (
               id="isDefault"
               checked={formData.isDefault}
               onChange={(e) => setFormData({ ...formData, isDefault: e.target.checked })}
-              className="w-4 h-4 text-[#FF9800]"
+              className="w-4 h-4 text-[#C2410C]"
             />
             <label htmlFor="isDefault" className="text-sm text-[#212121]">
               Définir comme adresse par défaut
@@ -688,7 +688,7 @@ export function AddressesManager({ userId, onBack }: { userId: string; onBack: (
           {/* Actions */}
           <div className="flex gap-2">
             <Button
-              className="flex-1 bg-[#FF9800] hover:bg-[#F57C00]"
+              className="flex-1 bg-[#C2410C] hover:bg-[#9A3412]"
               onClick={handleSave}
               disabled={isSaving}
             >
@@ -705,14 +705,14 @@ export function AddressesManager({ userId, onBack }: { userId: string; onBack: (
       {/* Addresses List */}
       {isLoading ? (
         <div className="flex justify-center py-12">
-          <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+          <Loader2 className="w-8 h-8 text-[#C2410C] animate-spin" />
         </div>
       ) : addresses.length === 0 ? (
         <div className="text-center py-12">
           <MapPin className="w-12 h-12 text-[#9E9E9E] mx-auto mb-3" />
           <p className="text-[#757575]">Aucune adresse enregistrée</p>
           <Button
-            className="mt-4 bg-[#FF9800] hover:bg-[#F57C00]"
+            className="mt-4 bg-[#C2410C] hover:bg-[#9A3412]"
             onClick={() => setShowForm(true)}
           >
             <Plus className="w-4 h-4 mr-2" />
@@ -724,14 +724,14 @@ export function AddressesManager({ userId, onBack }: { userId: string; onBack: (
           {addresses.map((address) => (
             <div key={address.id} className="bg-white rounded-lg p-4 shadow-sm">
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 bg-[#FFF3E0] rounded-full flex items-center justify-center text-[#FF9800]">
+                <div className="w-10 h-10 bg-[#FFF3E0] rounded-full flex items-center justify-center text-[#C2410C]">
                   {getTypeIcon(address.type)}
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="font-medium text-[#212121]">{address.label}</h3>
                     {address.isDefault && (
-                      <Badge className="bg-[#FF9800] text-white text-xs">Par défaut</Badge>
+                      <Badge className="bg-[#C2410C] text-white text-xs">Par défaut</Badge>
                     )}
                     {address.latitude && address.longitude && (
                       <Badge className="bg-green-100 text-green-700 text-xs">
@@ -880,7 +880,7 @@ export function AccountSettings({ userId, userPhone, onBack }: { userId: string;
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-[#FFF3E0] rounded-full flex items-center justify-center">
-              <Phone className="w-5 h-5 text-[#FF9800]" />
+              <Phone className="w-5 h-5 text-[#C2410C]" />
             </div>
             <div>
               <h3 className="font-medium text-[#212121]">Numéro de téléphone</h3>
@@ -912,7 +912,7 @@ export function AccountSettings({ userId, userPhone, onBack }: { userId: string;
             </div>
             <div className="flex gap-2">
               <Button
-                className="flex-1 bg-[#FF9800] hover:bg-[#F57C00]"
+                className="flex-1 bg-[#C2410C] hover:bg-[#9A3412]"
                 onClick={handleChangePhone}
                 disabled={isSaving}
               >
@@ -932,7 +932,7 @@ export function AccountSettings({ userId, userPhone, onBack }: { userId: string;
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-[#FFF3E0] rounded-full flex items-center justify-center">
-              <Lock className="w-5 h-5 text-[#FF9800]" />
+              <Lock className="w-5 h-5 text-[#C2410C]" />
             </div>
             <div>
               <h3 className="font-medium text-[#212121]">Code PIN</h3>
@@ -1002,7 +1002,7 @@ export function AccountSettings({ userId, userPhone, onBack }: { userId: string;
             </div>
             <div className="flex gap-2">
               <Button
-                className="flex-1 bg-[#FF9800] hover:bg-[#F57C00]"
+                className="flex-1 bg-[#C2410C] hover:bg-[#9A3412]"
                 onClick={handleChangePin}
                 disabled={isSaving}
               >

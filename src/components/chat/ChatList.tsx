@@ -74,7 +74,7 @@ export function ChatList({ onBack }: ChatListProps) {
         <div className="flex items-center gap-3">
           <button
             onClick={() => onBack?.()}
-            className="flex items-center gap-1 text-[#FF9800] font-medium hover:bg-[#FFF3E0] px-2 py-1 rounded-lg transition-colors"
+            className="flex items-center gap-1 text-[#C2410C] font-medium hover:bg-[#FFF3E0] px-2 py-1 rounded-lg transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
             <span className="text-sm">Retour</span>
@@ -88,12 +88,12 @@ export function ChatList({ onBack }: ChatListProps) {
       <div className="flex-1 overflow-y-auto">
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
-            <Loader2 className="w-6 h-6 animate-spin text-[#FF9800]" />
+            <Loader2 className="w-6 h-6 animate-spin text-[#C2410C]" />
           </div>
         ) : conversations.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full p-8">
             <div className="w-20 h-20 bg-[#FFF3E0] rounded-full flex items-center justify-center mb-4">
-              <MessageCircle className="w-10 h-10 text-[#FF9800]" />
+              <MessageCircle className="w-10 h-10 text-[#C2410C]" />
             </div>
             <h3 className="text-lg font-semibold text-[#212121] mb-2">Aucune conversation</h3>
             <p className="text-[#757575] text-center text-sm">
@@ -115,12 +115,12 @@ export function ChatList({ onBack }: ChatListProps) {
                 >
                   {/* Avatar */}
                   <div className="relative">
-                    <div className="w-14 h-14 bg-gradient-to-br from-[#FF9800] to-[#F57C00] rounded-full flex items-center justify-center text-white font-bold text-lg">
+                    <div className="w-14 h-14 bg-gradient-to-br from-[#C2410C] to-[#9A3412] rounded-full flex items-center justify-center text-white font-bold text-lg">
                       {otherUser?.name?.charAt(0) || '?'}
                     </div>
                     {!isClient && otherUser && (
                       <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center border-2 border-[#FF9800]">
-                        <Car className="w-3 h-3 text-[#FF9800]" />
+                        <Car className="w-3 h-3 text-[#C2410C]" />
                       </div>
                     )}
                   </div>
@@ -182,7 +182,7 @@ export function ChatList({ onBack }: ChatListProps) {
 
       {/* Info Banner */}
       <div className="bg-[#FFF3E0] px-4 py-3 text-center">
-        <p className="text-xs text-[#FF9800]">
+        <p className="text-xs text-[#C2410C]">
           💬 Les conversations sont liées à vos commandes pour votre sécurité
         </p>
       </div>

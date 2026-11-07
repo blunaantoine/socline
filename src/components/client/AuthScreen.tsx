@@ -374,7 +374,7 @@ function WasherRegistrationInfo({ onBack, onContinue }: { onBack: () => void; on
 
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 bg-[#FFF3E0] rounded-full flex items-center justify-center flex-shrink-0">
-                  <CreditCard className="w-5 h-5 text-[#FF9800]" />
+                  <CreditCard className="w-5 h-5 text-[#C2410C]" />
                 </div>
                 <div>
                   <p className="font-medium text-[#212121]">Photo d&apos;identité récente</p>
@@ -430,7 +430,7 @@ function WasherRegistrationInfo({ onBack, onContinue }: { onBack: () => void; on
           {/* Progressive remuneration (Contrat Article 5) */}
           <div className="space-y-3">
             <h3 className="font-semibold text-[#212121] flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-[#FF9800]" />
+              <TrendingUp className="w-5 h-5 text-[#C2410C]" />
               Rémunération progressive
             </h3>
             <p className="text-xs text-[#757575] -mt-1">
@@ -444,7 +444,7 @@ function WasherRegistrationInfo({ onBack, onContinue }: { onBack: () => void; on
                   key={lvl.level}
                   className={`flex items-center gap-3 p-3 ${idx % 2 === 0 ? 'bg-[#FFF8F0]' : 'bg-white'} ${idx !== partnerLevels.length - 1 ? 'border-b border-[#F0F0F0]' : ''}`}
                 >
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#FF9800] to-[#F57C00] text-white flex flex-col items-center justify-center flex-shrink-0">
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#C2410C] to-[#9A3412] text-white flex flex-col items-center justify-center flex-shrink-0">
                     <span className="text-[9px] leading-none opacity-90">Niv.</span>
                     <span className="text-sm font-bold leading-none">{lvl.level}</span>
                   </div>
@@ -508,7 +508,7 @@ function WasherRegistrationInfo({ onBack, onContinue }: { onBack: () => void; on
               </a>
               <a
                 href="https://wa.me/22871998155?text=Bonjour, je souhaite devenir laveur sur Socline"
-                className="flex-1 bg-[#25D366] text-white rounded-lg py-2 text-center font-medium text-sm"
+                className="flex-1 bg-[#167D4A] text-white rounded-lg py-2 text-center font-medium text-sm"
               >
                 WhatsApp
               </a>
@@ -936,7 +936,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
                 setInfoOrigin('washer-type');
                 setMode('washer-info');
               }}
-              className="w-full text-center text-[#FF9800] text-sm hover:text-[#F57C00] transition-colors mt-2 py-2 flex items-center justify-center gap-1"
+              className="w-full text-center text-[#C2410C] text-sm hover:text-[#F57C00] transition-colors mt-2 py-2 flex items-center justify-center gap-1"
             >
               <Info className="w-4 h-4" />
               En savoir plus sur le partenariat
@@ -980,9 +980,9 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
             {/* Washer Type Badge */}
             <div className="flex items-center gap-2 bg-[#FFF3E0] rounded-xl p-3">
               {isStation ? (
-                <Building className="w-5 h-5 text-[#FF9800]" />
+                <Building className="w-5 h-5 text-[#C2410C]" />
               ) : (
-                <Car className="w-5 h-5 text-[#FF9800]" />
+                <Car className="w-5 h-5 text-[#C2410C]" />
               )}
               <span className="text-sm font-medium text-[#757575]">
                 {isStation ? 'Station de Lavage' : 'Laveur Indépendant'}
@@ -1027,7 +1027,7 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
               <>
                 <div className="border-t border-[#F5F5F5] pt-4">
                   <h3 className="font-semibold text-[#212121] text-sm mb-3 flex items-center gap-2">
-                    <Building className="w-4 h-4 text-[#FF9800]" />
+                    <Building className="w-4 h-4 text-[#C2410C]" />
                     Informations de la station
                   </h3>
                 </div>

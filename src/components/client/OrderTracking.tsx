@@ -439,7 +439,7 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
                   <div
                     className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${
                       isActive
-                        ? 'bg-[#FF9800] text-white shadow-lg shadow-[#FF9800]/30'
+                        ? 'bg-[#C2410C] text-white shadow-lg shadow-[#FF9800]/30'
                         : isPast
                         ? 'bg-[#4CAF50] text-white'
                         : 'bg-[#E0E0E0] text-[#9E9E9E]'
@@ -448,7 +448,7 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
                     <Icon className="w-3.5 h-3.5" />
                   </div>
                   <span className={`text-[9px] mt-0.5 font-medium whitespace-nowrap ${
-                    isActive ? 'text-[#FF9800]' : isPast ? 'text-[#4CAF50]' : 'text-[#9E9E9E]'
+                    isActive ? 'text-[#C2410C]' : isPast ? 'text-[#4CAF50]' : 'text-[#9E9E9E]'
                   }`}>
                     {item.label}
                   </span>
@@ -555,7 +555,7 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
                     numéro du laveur (repli fiable si l'appel ne passe pas). */}
                 <Button
                   variant="outline"
-                  className="h-10 text-xs font-semibold gap-1.5 px-2 border-[#25D366] text-[#25D366] hover:bg-[#25D366] hover:text-white"
+                  className="h-10 text-xs font-semibold gap-1.5 px-2 border-[#167D4A] text-[#167D4A] hover:bg-[#167D4A] hover:text-white"
                   aria-label="Contacter le laveur sur WhatsApp"
                   disabled={!washer.user?.phone}
                   onClick={() => openWhatsApp(
@@ -737,7 +737,7 @@ function OrderCompleted({ order, onBack, onGoHome }: { order: Order; onBack?: ()
               <p className="text-[#757575] mb-4">
                 Votre avis a été enregistré. À bientôt sur Socline!
               </p>
-              <Button onClick={onGoHome} className="w-full h-12 bg-[#FF9800] hover:bg-[#F57C00] rounded-xl">
+              <Button onClick={onGoHome} className="w-full h-12 bg-[#C2410C] hover:bg-[#9A3412] rounded-xl">
                 <Home className="w-4 h-4 mr-2" />
                 Retour à l&apos;accueil
               </Button>
@@ -797,7 +797,7 @@ function OrderCompleted({ order, onBack, onGoHome }: { order: Order; onBack?: ()
                     👑 Séance abonnement
                   </div>
                 ) : (
-                  <div className="text-xl font-bold text-[#FF9800]">
+                  <div className="text-xl font-bold text-[#C2410C]">
                     {formatPrice(order.totalPrice)}
                   </div>
                 )}
@@ -813,7 +813,7 @@ function OrderCompleted({ order, onBack, onGoHome }: { order: Order; onBack?: ()
             <Card className="border-0 shadow-lg">
               <CardContent className="p-4">
                 <h3 className="font-semibold mb-3 text-[#212121] flex items-center gap-2">
-                  <Camera className="w-4 h-4 text-[#FF9800]" />
+                  <Camera className="w-4 h-4 text-[#C2410C]" />
                   Photos de vérification
                 </h3>
                 <div className="grid grid-cols-2 gap-3">
@@ -896,7 +896,7 @@ function OrderCompleted({ order, onBack, onGoHome }: { order: Order; onBack?: ()
                 )}
 
                 <Button
-                  className="w-full h-12 bg-[#FF9800] hover:bg-[#F57C00] rounded-xl mt-3"
+                  className="w-full h-12 bg-[#C2410C] hover:bg-[#9A3412] rounded-xl mt-3"
                   onClick={handleSubmitReview}
                   disabled={rating === 0 || isSubmitting}
                 >

@@ -69,6 +69,6 @@ export const COVERAGE_BADGE_STYLES: Record<ServiceCoverage, string> = {
 /** Utilitaires communs des cartes (rayon 20 px, bordure fine, ombre légère). */
 export const CARD_CLASSES = 'bg-surface rounded-card border border-line shadow-card';
 /** Utilitaires du bouton principal (orange de marque). */
-export const BTN_PRIMARY_CLASSES = 'bg-brand hover:bg-brand-strong text-white rounded-btn';
+export const BTN_PRIMARY_CLASSES = 'bg-brand-ink hover:bg-brand-ink-strong text-white rounded-btn';
 /** Utilitaires du bouton secondaire (navy). */
 export const BTN_SECONDARY_CLASSES = 'bg-ink hover:bg-ink-2 text-white rounded-btn';

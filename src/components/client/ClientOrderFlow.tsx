@@ -493,7 +493,7 @@ export function ClientOrderFlow({
                   <div
                     className={`w-8 h-8 rounded-full grid place-items-center transition-colors ${
                       isActive
-                        ? 'bg-brand text-white'
+                        ? 'bg-brand-ink text-white'
                         : isPast
                         ? 'bg-success text-white'
                         : 'bg-line text-soft'
@@ -506,7 +506,7 @@ export function ClientOrderFlow({
                     )}
                   </div>
                   <span className={`text-micro mt-1 ${
-                    isActive ? 'text-brand' : isPast ? 'text-success' : 'text-soft'
+                    isActive ? 'text-brand-ink' : isPast ? 'text-success' : 'text-soft'
                   }`}>
                     {item.label}
                   </span>
@@ -539,7 +539,7 @@ export function ClientOrderFlow({
                   <span className="text-body font-bold text-ink block">Voir les abonnements</span>
                   <span className="text-detail text-soft block">Lavez plus, payez moins — formules flexibles</span>
                 </span>
-                <ChevronRight className="w-5 h-5 text-brand flex-shrink-0" />
+                <ChevronRight className="w-5 h-5 text-brand-ink flex-shrink-0" />
               </button>
             )}
             {services.length === 0 ? (
@@ -578,7 +578,7 @@ export function ClientOrderFlow({
                     <div className="flex justify-between items-baseline bg-brand-wash rounded-btn p-3.5">
                       <span className="text-body text-soft">Prix</span>
                       <span className="font-extrabold text-lg text-ink">
-                        {infoService.price.toLocaleString('fr-FR')} <span className="text-brand text-sm">F</span>
+                        {infoService.price.toLocaleString('fr-FR')} <span className="text-brand-ink text-sm">F</span>
                       </span>
                     </div>
                     <Button
@@ -610,7 +610,7 @@ export function ClientOrderFlow({
                   } ${stationId ? 'opacity-50 cursor-not-allowed' : ''}`}
                   onClick={() => !stationId && setIsHomeService(true)}
                 >
-                  <MapPin className={`w-6 h-6 mx-auto mb-2 ${isHomeService ? 'text-brand' : 'text-soft'}`} strokeWidth={2} />
+                  <MapPin className={`w-6 h-6 mx-auto mb-2 ${isHomeService ? 'text-brand-ink' : 'text-soft'}`} strokeWidth={2} />
                   <span className="text-body font-bold text-ink block">À domicile</span>
                   <span className="text-detail text-soft mt-0.5 block">Le laveur vient chez vous</span>
                 </button>
@@ -620,7 +620,7 @@ export function ClientOrderFlow({
                   } ${stationId ? 'opacity-50 cursor-not-allowed' : ''}`}
                   onClick={() => !stationId && setIsHomeService(false)}
                 >
-                  <Building2 className={`w-6 h-6 mx-auto mb-2 ${!isHomeService ? 'text-brand' : 'text-soft'}`} strokeWidth={2} />
+                  <Building2 className={`w-6 h-6 mx-auto mb-2 ${!isHomeService ? 'text-brand-ink' : 'text-soft'}`} strokeWidth={2} />
                   <span className="text-body font-bold text-ink block">En station</span>
                   <span className="text-detail text-soft mt-0.5 block">Vous allez à la station</span>
                 </button>
@@ -643,7 +643,7 @@ export function ClientOrderFlow({
                     type="button"
                     onClick={handleUseCurrentLocation}
                     disabled={isGettingLocation}
-                    className="inline-flex items-center gap-2 text-detail font-semibold text-brand bg-brand-soft rounded-pill px-3 py-2 disabled:opacity-60 active:scale-95 transition-transform"
+                    className="inline-flex items-center gap-2 text-detail font-semibold text-brand-ink bg-brand-soft rounded-pill px-3 py-2 disabled:opacity-60 active:scale-95 transition-transform"
                   >
                     {isGettingLocation ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -680,7 +680,7 @@ export function ClientOrderFlow({
                     />
                   </div>
                   <p className="text-detail text-soft flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5 flex-shrink-0 text-brand" />
+                    <MapPin className="w-3.5 h-3.5 flex-shrink-0 text-brand-ink" />
                     {coords
                       ? 'Position enregistrée — touchez la carte pour l\u2019ajuster'
                       : 'Touchez la carte pour définir votre position exacte'}
@@ -691,11 +691,11 @@ export function ClientOrderFlow({
                   {stationId && presetAddress ? (
                     <div className="w-full p-3.5 rounded-btn border border-brand bg-brand-wash text-left">
                       <div className="text-body font-bold text-ink flex items-center gap-2">
-                        <MapPin className="w-4 h-4 text-brand" />
+                        <MapPin className="w-4 h-4 text-brand-ink" />
                         Station sélectionnée
                       </div>
                       <div className="text-body text-soft mt-1">{presetAddress}</div>
-                      <div className="text-detail text-brand mt-1">Station prédéfinie lors de la sélection du service</div>
+                      <div className="text-detail text-brand-ink mt-1">Station prédéfinie lors de la sélection du service</div>
                     </div>
                   ) : (
                     [
@@ -711,7 +711,7 @@ export function ClientOrderFlow({
                       >
                         <div className="text-body font-bold text-ink">{station.name}</div>
                         <div className="text-detail text-soft">{station.addr}</div>
-                        <div className="text-detail text-brand font-semibold">{station.distance}</div>
+                        <div className="text-detail text-brand-ink font-semibold">{station.distance}</div>
                       </button>
                     ))
                   )}
@@ -761,13 +761,13 @@ export function ClientOrderFlow({
                             {car.plateNumber}
                           </Badge>
                         </div>
-                        {isSelected && <CheckCircle className="w-5 h-5 text-brand flex-shrink-0" />}
+                        {isSelected && <CheckCircle className="w-5 h-5 text-brand-ink flex-shrink-0" />}
                       </button>
                     );
                   })}
                 </div>
                 <p className="text-detail text-soft mt-2.5 flex items-center gap-1.5">
-                  <Car className="w-3.5 h-3.5 flex-shrink-0 text-brand" />
+                  <Car className="w-3.5 h-3.5 flex-shrink-0 text-brand-ink" />
                   Le laveur verra cette fiche pour reconnaître votre voiture (photo, plaque, couleur).
                 </p>
               </div>
@@ -797,7 +797,7 @@ export function ClientOrderFlow({
                 >
                   <div className="flex items-center gap-3">
                     <div className={`w-10 h-10 rounded-btn grid place-items-center flex-shrink-0 ${scheduledTime === 'now' ? 'bg-brand-soft' : 'bg-app'}`}>
-                      <Zap className={`w-5 h-5 ${scheduledTime === 'now' ? 'text-brand' : 'text-soft'}`} strokeWidth={2.2} />
+                      <Zap className={`w-5 h-5 ${scheduledTime === 'now' ? 'text-brand-ink' : 'text-soft'}`} strokeWidth={2.2} />
                     </div>
                     <div className="flex-1">
                       <span className="text-body font-bold text-ink">Maintenant</span>
@@ -814,7 +814,7 @@ export function ClientOrderFlow({
                 >
                   <div className="flex items-center gap-3">
                     <div className={`w-10 h-10 rounded-btn grid place-items-center flex-shrink-0 ${scheduledTime === 'later' ? 'bg-brand-soft' : 'bg-app'}`}>
-                      <Calendar className={`w-5 h-5 ${scheduledTime === 'later' ? 'text-brand' : 'text-soft'}`} strokeWidth={2.2} />
+                      <Calendar className={`w-5 h-5 ${scheduledTime === 'later' ? 'text-brand-ink' : 'text-soft'}`} strokeWidth={2.2} />
                     </div>
                     <div className="flex-1">
                       <span className="text-body font-bold text-ink">Planifier</span>
@@ -830,7 +830,7 @@ export function ClientOrderFlow({
                   {/* Date picker */}
                   <div className="space-y-1.5">
                     <Label className="text-body font-bold text-ink flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-brand" />
+                      <Calendar className="w-4 h-4 text-brand-ink" />
                       Date
                     </Label>
                     <Input
@@ -850,7 +850,7 @@ export function ClientOrderFlow({
                   {/* Time picker */}
                   <div className="space-y-1.5">
                     <Label className="text-body font-bold text-ink flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-brand" />
+                      <Clock className="w-4 h-4 text-brand-ink" />
                       Heure
                     </Label>
                     <Input
@@ -872,7 +872,7 @@ export function ClientOrderFlow({
                   {scheduledDate && scheduledDate.split('T')[0] && scheduledDate.split('T')[1] && (
                     <div className="bg-brand-soft border border-brand/30 rounded-btn p-3 flex items-center gap-3">
                       <div className="w-10 h-10 bg-surface rounded-full grid place-items-center flex-shrink-0">
-                        <Calendar className="w-5 h-5 text-brand" />
+                        <Calendar className="w-5 h-5 text-brand-ink" />
                       </div>
                       <div>
                         <p className="text-detail text-soft">Rendez-vous prévu</p>
@@ -962,9 +962,9 @@ export function ClientOrderFlow({
                   <span className="text-soft">Type</span>
                   <span className="text-ink flex items-center gap-1.5">
                     {isHomeService ? (
-                      <><MapPin className="w-3.5 h-3.5 text-brand" /> À domicile</>
+                      <><MapPin className="w-3.5 h-3.5 text-brand-ink" /> À domicile</>
                     ) : (
-                      <><Building2 className="w-3.5 h-3.5 text-brand" /> En station</>
+                      <><Building2 className="w-3.5 h-3.5 text-brand-ink" /> En station</>
                     )}
                   </span>
                 </div>
@@ -1007,7 +1007,7 @@ export function ClientOrderFlow({
                     )}
                     <div className="flex justify-between text-title text-ink pt-1.5 items-baseline">
                       <span>Total</span>
-                      <span className="text-brand font-extrabold">{formatPrice(getFinalPrice())}</span>
+                      <span className="text-brand-ink font-extrabold">{formatPrice(getFinalPrice())}</span>
                     </div>
                   </>
                 )}
@@ -1038,7 +1038,7 @@ export function ClientOrderFlow({
                     />
                     <Button
                       variant="outline"
-                      className="border-brand text-brand rounded-btn font-semibold hover:bg-brand-soft"
+                      className="border-brand text-brand-ink rounded-btn font-semibold hover:bg-brand-soft"
                       onClick={handleApplyPromo}
                       disabled={!promoCode || isValidatingPromo}
                     >

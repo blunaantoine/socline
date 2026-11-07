@@ -30,7 +30,7 @@ export function WalletSummaryCard({
         <button
           type="button"
           onClick={onTopUp}
-          className="flex-shrink-0 inline-flex items-center gap-1.5 bg-brand text-white rounded-pill px-3.5 py-2 text-detail font-bold active:scale-95 transition-transform"
+          className="flex-shrink-0 inline-flex items-center gap-1.5 bg-brand-ink text-white rounded-pill px-3.5 py-2 text-detail font-bold active:scale-95 transition-transform"
         >
           <Plus className="w-4 h-4" strokeWidth={2.6} />
           Recharger

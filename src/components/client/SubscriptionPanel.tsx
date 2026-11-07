@@ -266,7 +266,7 @@ export function SubscriptionPanel({ userId, walletBalance }: SubscriptionPanelPr
           aria-label="Actualiser les abonnements"
           className="w-9 h-9 rounded-btn bg-surface border border-line grid place-items-center active:scale-95 transition-transform disabled:opacity-60"
         >
-          <RefreshCw className={`w-[18px] h-[18px] text-brand ${isLoading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-[18px] h-[18px] text-brand-ink ${isLoading ? 'animate-spin' : ''}`} />
         </button>
       </div>
       <p className="text-body text-soft">Lavez plus, payez moins.</p>
@@ -282,7 +282,7 @@ export function SubscriptionPanel({ userId, walletBalance }: SubscriptionPanelPr
         <div className="min-w-0">
           <p className="text-detail font-semibold text-ink">Quelle différence&nbsp;?</p>
           <p className="text-detail text-soft leading-relaxed">
-            <span className="font-semibold text-brand">Complet</span> = extérieur + intérieur ·{' '}
+            <span className="font-semibold text-brand-ink">Complet</span> = extérieur + intérieur ·{' '}
             <span className="font-semibold text-[#2E7D32]">Extérieur</span> = carrosserie uniquement.
           </p>
         </div>
@@ -307,7 +307,7 @@ export function SubscriptionPanel({ userId, walletBalance }: SubscriptionPanelPr
                 </div>
               </div>
               <div className="text-right flex-shrink-0">
-                <div className="text-title font-extrabold text-brand">
+                <div className="text-title font-extrabold text-brand-ink">
                   {activeSubscription.remainingWashes}
                 </div>
                 <div className="text-micro text-soft">lavages restants</div>
@@ -331,7 +331,7 @@ export function SubscriptionPanel({ userId, walletBalance }: SubscriptionPanelPr
             {/* Stats */}
             <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-line">
               <div className="text-center">
-                <div className="flex items-center justify-center gap-1 text-brand">
+                <div className="flex items-center justify-center gap-1 text-brand-ink">
                   <Clock className="w-4 h-4" />
                   <span className="font-bold text-body">{getDaysRemaining(activeSubscription.endDate)}</span>
                 </div>
@@ -378,7 +378,7 @@ export function SubscriptionPanel({ userId, walletBalance }: SubscriptionPanelPr
                 }}
               >
                 {isPopular && (
-                  <span className="absolute -top-2.5 right-4 bg-brand text-white text-micro font-bold rounded-pill px-2.5 py-0.5">
+                  <span className="absolute -top-2.5 right-4 bg-brand-ink text-white text-micro font-bold rounded-pill px-2.5 py-0.5">
                     Populaire
                   </span>
                 )}
@@ -512,7 +512,7 @@ export function SubscriptionPanel({ userId, walletBalance }: SubscriptionPanelPr
                 </div>
                 <div className="flex justify-between text-body font-bold pt-2 border-t border-brand/20">
                   <span className="text-ink">Total</span>
-                  <span className="text-brand">{getPrice(selectedPlan, selectedDuration).toLocaleString('fr-FR')} F</span>
+                  <span className="text-brand-ink">{getPrice(selectedPlan, selectedDuration).toLocaleString('fr-FR')} F</span>
                 </div>
               </div>
 

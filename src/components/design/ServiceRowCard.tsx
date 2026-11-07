@@ -58,7 +58,7 @@ export function ServiceRowCard({
             <button
               type="button"
               aria-label={`Détails de ${service.name}`}
-              className="text-soft/60 hover:text-brand active:scale-90 transition-all flex-shrink-0"
+              className="text-soft/60 hover:text-brand-ink active:scale-90 transition-all flex-shrink-0"
               onClick={(e) => {
                 e.stopPropagation();
                 onInfo();
@@ -90,7 +90,7 @@ export function ServiceRowCard({
         <div className="flex justify-between items-center">
           <span className="font-extrabold text-base text-ink">
             {service.price.toLocaleString('fr-FR')}
-            <small className="text-[11px] font-bold text-brand"> F</small>
+            <small className="text-[11px] font-bold text-brand-ink"> F</small>
           </span>
           <span className="w-[34px] h-[34px] rounded-[11px] bg-brand grid place-items-center">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">

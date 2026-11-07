@@ -300,12 +300,12 @@ export function ChatView({ conversation, onBack }: ChatViewProps) {
       <header className="bg-white px-4 py-3 flex items-center gap-3 border-b border-[#F5F5F5] flex-shrink-0">
         <button
           onClick={onBack}
-          className="flex items-center gap-1 text-[#FF9800] font-medium hover:bg-[#FFF3E0] px-2 py-1 rounded-lg transition-colors"
+          className="flex items-center gap-1 text-[#C2410C] font-medium hover:bg-[#FFF3E0] px-2 py-1 rounded-lg transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
           <span className="text-sm">Retour</span>
         </button>
-        <div className="w-10 h-10 bg-gradient-to-br from-[#FF9800] to-[#F57C00] rounded-full flex items-center justify-center text-white font-bold">
+        <div className="w-10 h-10 bg-gradient-to-br from-[#C2410C] to-[#9A3412] rounded-full flex items-center justify-center text-white font-bold">
           {otherUser?.name?.charAt(0) || '?'}
         </div>
         <div className="flex-1">
@@ -327,7 +327,7 @@ export function ChatView({ conversation, onBack }: ChatViewProps) {
 
       {/* Order Info Banner */}
       <div className="bg-[#FFF3E0] px-4 py-2 flex items-center justify-between text-xs">
-        <span className="text-[#FF9800] font-medium">Commande #{conversation.order.orderNumber}</span>
+        <span className="text-[#C2410C] font-medium">Commande #{conversation.order.orderNumber}</span>
         <span className="text-[#757575]">{conversation.order.service.name}</span>
       </div>
 
@@ -336,7 +336,7 @@ export function ChatView({ conversation, onBack }: ChatViewProps) {
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <div className="w-16 h-16 bg-[#FFF3E0] rounded-full flex items-center justify-center mb-3">
-              <MapPin className="w-8 h-8 text-[#FF9800]" />
+              <MapPin className="w-8 h-8 text-[#C2410C]" />
             </div>
             <p className="text-[#757575] text-sm">Commencez la conversation</p>
           </div>
@@ -349,7 +349,7 @@ export function ChatView({ conversation, onBack }: ChatViewProps) {
                   {/* Quick message badge */}
                   {message.type === 'QUICK_MESSAGE' && (
                     <div className={`text-xs mb-1 ${isOwn ? 'text-right' : 'text-left'}`}>
-                      <span className="bg-[#FFF3E0] text-[#FF9800] px-2 py-0.5 rounded-full">
+                      <span className="bg-[#FFF3E0] text-[#C2410C] px-2 py-0.5 rounded-full">
                         {QUICK_MESSAGES.find(q => q.id === message.quickType)?.icon} {message.content}
                       </span>
                     </div>
@@ -360,7 +360,7 @@ export function ChatView({ conversation, onBack }: ChatViewProps) {
                     <div
                       className={`px-4 py-2 rounded-2xl ${
                         isOwn
-                          ? 'bg-[#FF9800] text-white rounded-br-md'
+                          ? 'bg-[#C2410C] text-white rounded-br-md'
                           : 'bg-white text-[#212121] rounded-bl-md shadow-sm'
                       }`}
                     >
@@ -370,7 +370,7 @@ export function ChatView({ conversation, onBack }: ChatViewProps) {
                           href={`https://www.google.com/maps?q=${message.latitude},${message.longitude}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className={`flex items-center gap-2 ${isOwn ? 'text-white' : 'text-[#FF9800]'}`}
+                          className={`flex items-center gap-2 ${isOwn ? 'text-white' : 'text-[#C2410C]'}`}
                         >
                           <Navigation className="w-5 h-5" />
                           <span className="underline">Voir la position</span>
@@ -423,7 +423,7 @@ export function ChatView({ conversation, onBack }: ChatViewProps) {
             <button
               key={qm.id}
               onClick={() => handleSendQuickMessage(qm)}
-              className="flex-shrink-0 min-h-[36px] px-4 py-2 bg-[#FFF3E0] rounded-full text-sm text-[#FF9800] font-medium whitespace-nowrap active:scale-95 transition-transform"
+              className="flex-shrink-0 min-h-[36px] px-4 py-2 bg-[#FFF3E0] rounded-full text-sm text-[#C2410C] font-medium whitespace-nowrap active:scale-95 transition-transform"
             >
               {qm.icon} {qm.label}
             </button>
@@ -435,7 +435,7 @@ export function ChatView({ conversation, onBack }: ChatViewProps) {
       <div className="bg-white px-4 pt-3 pb-[calc(0.75rem+max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))] flex items-center gap-2 border-t border-[#F5F5F5]">
         <button
           onClick={handleShareLocation}
-          className="w-11 h-11 flex items-center justify-center text-[#FF9800] hover:bg-[#FFF3E0] rounded-full active:scale-95 transition-transform"
+          className="w-11 h-11 flex items-center justify-center text-[#C2410C] hover:bg-[#FFF3E0] rounded-full active:scale-95 transition-transform"
         >
           <MapPin className="w-5 h-5" />
         </button>
@@ -460,7 +460,7 @@ export function ChatView({ conversation, onBack }: ChatViewProps) {
         <button
           onClick={() => sendMessage()}
           disabled={isSending || !newMessage.trim()}
-          className="w-11 h-11 flex-shrink-0 flex items-center justify-center bg-[#FF9800] text-white rounded-full disabled:opacity-50 active:scale-95 transition-transform"
+          className="w-11 h-11 flex-shrink-0 flex items-center justify-center bg-[#C2410C] text-white rounded-full disabled:opacity-50 active:scale-95 transition-transform"
         >
           {isSending ? (
             <Loader2 className="w-5 h-5 animate-spin" />
