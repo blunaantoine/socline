@@ -341,8 +341,10 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
           </div>
         )}
 
-        {/* Status Badge */}
-        <div className="absolute top-4 left-4 right-4 z-[900]">
+        {/* Status Badge — décalé à droite des boutons de zoom de la carte (+/−,
+            en haut à gauche) qu'il recouvrait ; pointer-events-none pour que
+            la carte reste déplaçable sous le bandeau. */}
+        <div className="absolute top-4 left-[60px] right-4 z-[900] pointer-events-none">
           <Badge className={`${config.color} text-base px-4 py-2`}>
             <StatusIcon className="w-4 h-4 mr-2" />
             {config.label}

@@ -44,6 +44,7 @@ import { toast } from 'sonner';
 import { parseJsonResponse } from '@/lib/json-helper';
 import { useAutoRefresh, type RefreshSource } from '@/hooks/useAutoRefresh';
 import { AdminNotificationCenter } from '@/components/admin/AdminNotificationCenter';
+import { useKeyboardOpen } from '@/hooks/useKeyboardOpen';
 
 // Component to drag and position image
 // Convention de stockage : CSS object-position standard « X% Y% » (horizontal
@@ -360,6 +361,8 @@ export function AdminPanel() {
   // setView available if needed for navigation
   useAppStore();
   const [activeTab, setActiveTab] = useState('dashboard');
+  // Clavier virtuel ouvert → barre du bas masquée (sinon elle remonte collée au clavier)
+  const keyboardOpen = useKeyboardOpen();
   const [isLoading, setIsLoading] = useState(false);
   const [stats, setStats] = useState<Stats | null>(null);
   const [revenueByDay, setRevenueByDay] = useState<{day: string, revenue: number}[]>([]);
@@ -899,7 +902,7 @@ export function AdminPanel() {
       </div>
 
       {/* Android Bottom Navigation - FIXED at bottom (safe-area iOS incluse) */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E0E0E0] flex justify-around items-stretch h-[calc(3.5rem+max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))] pb-[max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px))] z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
+      <nav className={`fixed bottom-0 left-0 right-0 bg-white border-t border-[#E0E0E0] flex justify-around items-stretch h-[calc(3.5rem+max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))] pb-[max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px))] z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]${keyboardOpen ? ' hidden' : ''}`}>
         {[
           { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
           { id: 'users', icon: Users, label: 'Utilis.' },

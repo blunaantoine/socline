@@ -32,6 +32,7 @@ import { getServiceCoverage } from '@/lib/service-coverage';
 import { openWhatsApp } from '@/lib/contact';
 import { DynamicLeafletMap } from '@/components/map/DynamicLeafletMap';
 import { SupportChatbot } from '@/components/support/SupportChatbot';
+import { useKeyboardOpen } from '@/hooks/useKeyboardOpen';
 
 // ---------------------------------------------------------------------
 // Abonnement : une commande payée par séance d'abonnement affiche
@@ -215,6 +216,8 @@ export function WasherApp() {
   const { user, logout } = useAuthStore();
   const { currentOrder, setCurrentOrder, orders, setOrders, updateOrder } = useOrdersStore();
   const [activeTab, setActiveTab] = useState('dashboard');
+  // Clavier virtuel ouvert → barre du bas masquée (sinon elle remonte collée au clavier)
+  const keyboardOpen = useKeyboardOpen();
   const [isAvailable, setIsAvailable] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [pendingOrders, setPendingOrders] = useState<Order[]>([]);
@@ -849,7 +852,7 @@ export function WasherApp() {
       </div>
 
       {/* Android Bottom Navigation - FIXED at bottom (safe-area iOS incluse) */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E0E0E0] flex justify-around items-stretch h-[calc(3.5rem+max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))] pb-[max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px))] z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
+      <nav className={`fixed bottom-0 left-0 right-0 bg-white border-t border-[#E0E0E0] flex justify-around items-stretch h-[calc(3.5rem+max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))] pb-[max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px))] z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]${keyboardOpen ? ' hidden' : ''}`}>
         {[
           { id: 'dashboard', icon: Home, label: 'Accueil' },
           { id: 'active', icon: Car, label: 'Active' },

@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { Toaster } from "@/components/ui/toaster";
+// Notifications : TOUTE l'app appelle `toast` de « sonner » → c'est le Toaster sonner qu'il faut monter
+// (l'ancien import de @/components/ui/toaster montait un autre système, jamais appelé : aucune notif ne s'affichait).
+import { Toaster } from "@/components/ui/sonner";
 import { ApiAuthProvider } from "@/components/ApiAuthProvider";
 import { RealtimeNotifications } from "@/components/RealtimeNotifications";
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION, SITE_OG_IMAGE } from "@/lib/site";
@@ -25,6 +27,10 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
+  // Clavier virtuel : la zone d'affichage RÉTRÉCIT au-dessus du clavier (au lieu
+  // de faire glisser toute la page sous lui) → le champ de saisie et le bouton
+  // Envoyer restent visibles, l'en-tête reste en place.
+  interactiveWidget: "resizes-content",
 };
 
 export const metadata: Metadata = {
@@ -107,8 +113,13 @@ export default function RootLayout({
             les notifications ne chevauchent plus le header/carte en haut
             (safe-area iOS respectée). */}
         <Toaster
+          theme="light"
           position="bottom-center"
-          offset="calc(5rem + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))"
+          // Au-dessus de la barre de navigation du bas. Sur mobile (< 600 px),
+          // sonner lit `mobileOffset` et ignore `offset` : les deux sont fixés,
+          // sinon la notification recouvrait la barre du bas.
+          offset={{ bottom: "calc(5rem + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))" }}
+          mobileOffset={{ bottom: "calc(5rem + max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))", left: "1rem", right: "1rem" }}
           visibleToasts={3}
         />
       </body>

@@ -46,6 +46,7 @@ import { ActionTileLarge, ActionTileSmall } from '@/components/design/ActionTile
 import { WalletSummaryCard } from '@/components/design/WalletSummaryCard';
 import { CARD_CLASSES } from '@/lib/design-system';
 import { SupportChatbot } from '@/components/support/SupportChatbot';
+import { useKeyboardOpen } from '@/hooks/useKeyboardOpen';
 
 // Abonnements fusionné dans l'onglet Réserver (vue secondaire) → 5 onglets,
 // cibles tactiles plus larges dans la barre de navigation.
@@ -87,6 +88,8 @@ export function ClientApp() {
   const { nearbyWashers, setNearbyWashers } = useWashersStore();
   const { stations, setStations } = useStationsStore();
   const [activeTab, setActiveTab] = useState('home');
+  // Clavier virtuel ouvert → barre du bas masquée (sinon elle remonte collée au clavier)
+  const keyboardOpen = useKeyboardOpen();
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [showTracking, setShowTracking] = useState(true);
   const [promotions, setPromotions] = useState<
@@ -578,8 +581,9 @@ export function ClientApp() {
 
       {/* Barre de navigation basse — icônes lisibles, onglet actif orange,
           bordure fine au lieu d'une ombre lourde (design system) */}
-      {activeTab !== 'chat' && (
-        <nav className="fixed bottom-0 left-0 right-0 bg-surface border-t border-line flex justify-around items-stretch h-[calc(3.5rem+max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))] pb-[max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px))] z-50">
+      {/* Masquée pendant le parcours de réservation (comme les applis de commande) : retour par la flèche */}
+      {activeTab !== 'chat' && activeTab !== 'booking' && (
+        <nav className={`fixed bottom-0 left-0 right-0 bg-surface border-t border-line flex justify-around items-stretch h-[calc(3.5rem+max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))] pb-[max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px))] z-50${keyboardOpen ? ' hidden' : ''}`}>
           {navItems.map((item) => {
             const isActive = activeTab === item.id;
             return (

@@ -70,7 +70,7 @@ export function ChatList({ onBack }: ChatListProps) {
   return (
     <div className="flex-1 flex flex-col bg-[#FFF8F0]">
       {/* Header */}
-      <header className="bg-white px-4 py-4 border-b border-[#F5F5F5] flex-shrink-0">
+      <header className="bg-white px-4 py-4 border-b border-[#F5F5F5] flex-shrink-0 pt-[calc(1rem+max(env(safe-area-inset-top),var(--safe-area-inset-top,0px)))]">
         <div className="flex items-center gap-3">
           <button
             onClick={() => onBack?.()}

@@ -47,6 +47,7 @@ import {
 import { toast } from 'sonner';
 import { parseJsonResponse } from '@/lib/json-helper';
 import type { User, Washer, Station, Service, Order, OrderStatus } from '@/types';
+import { useKeyboardOpen } from '@/hooks/useKeyboardOpen';
 
 // ---------- Types ----------
 interface StationDashboardProps {
@@ -111,6 +112,8 @@ const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
 // ---------- Main component ----------
 export function StationDashboard({ washer, user, onLogout }: StationDashboardProps) {
   const [activeTab, setActiveTab] = useState<'station' | 'services' | 'orders' | 'profile'>('station');
+  // Clavier virtuel ouvert → barre du bas masquée (sinon elle remonte collée au clavier)
+  const keyboardOpen = useKeyboardOpen();
 
   // Station state
   const [station, setStation] = useState<Station | null>(washer.station || null);
@@ -481,7 +484,7 @@ export function StationDashboard({ washer, user, onLogout }: StationDashboardPro
       </div>
 
       {/* Bottom navigation (safe-area iOS incluse) */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E0E0E0] flex justify-around items-stretch h-[calc(3.5rem+max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))] pb-[max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px))] z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]">
+      <nav className={`fixed bottom-0 left-0 right-0 bg-white border-t border-[#E0E0E0] flex justify-around items-stretch h-[calc(3.5rem+max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))] pb-[max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px))] z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]${keyboardOpen ? ' hidden' : ''}`}>
         {[
           { id: 'station', icon: Building2, label: 'Station' },
           { id: 'services', icon: Tag, label: 'Services' },

@@ -193,9 +193,12 @@ export const useChatStore = create<ChatState>()((set) => ({
     conversations: [conversation, ...state.conversations]
   })),
   setMessages: (messages) => set({ messages }),
-  addMessage: (message) => set((state) => ({
-    messages: [...state.messages, message]
-  })),
+  // Sans doublon : un message déjà affiché (même id) n'est jamais ajouté deux fois
+  addMessage: (message) => set((state) => (
+    state.messages.some((m) => m.id === message.id)
+      ? state
+      : { messages: [...state.messages, message] }
+  )),
   updateMessageReadStatus: (conversationId, readBy) => set((state) => ({
     messages: state.messages.map((m) =>
       m.conversationId === conversationId && m.senderId !== readBy

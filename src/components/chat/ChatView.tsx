@@ -106,6 +106,9 @@ export function ChatView({ conversation, onBack }: ChatViewProps) {
       });
 
       socket.on('new-message', (message: Message) => {
+        // Nos propres messages sont déjà affichés dès la réponse de l'API
+        // (le relais temps réel leur donne un autre identifiant → doublon sinon).
+        if (message.senderId === useAuthStore.getState().user?.id) return;
         addMessage(message);
       });
 
@@ -148,6 +151,23 @@ export function ChatView({ conversation, onBack }: ChatViewProps) {
 
     fetchMessages();
   }, [conversation.id, setMessages]);
+
+  // Secours sans temps réel (réseau mobile instable, service de chat coupé) :
+  // on recharge la conversation toutes les 5 s tant que la connexion n'est pas
+  // établie — les messages de l'autre personne arrivent quand même.
+  useEffect(() => {
+    if (isConnected) return;
+    const timer = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/conversations/${conversation.id}/messages`);
+        const data = await parseJsonResponse<any>(res);
+        if (data?.success && Array.isArray(data.messages)) setMessages(data.messages);
+      } catch {
+        // on réessaiera au prochain tour
+      }
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [isConnected, conversation.id, setMessages]);
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -197,6 +217,9 @@ export function ChatView({ conversation, onBack }: ChatViewProps) {
       if (!data) return;
 
       if (data.success) {
+        // Affichage immédiat de NOTRE message (id réel de la base), même si le
+        // temps réel est coupé — avant, il n'apparaissait qu'au retour du socket.
+        if (data.message) addMessage(data.message);
         // Also emit via WebSocket for real-time
         if (socketRef.current) {
           socketRef.current.emit('send-message', {
@@ -210,9 +233,12 @@ export function ChatView({ conversation, onBack }: ChatViewProps) {
         }
 
         setNewMessage('');
+      } else {
+        toast.error(data.error || "Message non envoyé — réessayez.");
       }
     } catch (error) {
       console.error('Failed to send message:', error);
+      toast.error('Message non envoyé — vérifiez votre connexion.');
     } finally {
       setIsSending(false);
     }
@@ -295,9 +321,11 @@ export function ChatView({ conversation, onBack }: ChatViewProps) {
   }, [updateMessageReadStatus]);
 
   return (
-    <div className="flex-1 flex flex-col bg-[#FFF8F0]">
+    // min-h-0 : sans lui, une longue conversation agrandit la colonne au lieu de
+    // défiler, et pousse la barre de saisie sous l'écran (surtout clavier ouvert).
+    <div className="flex-1 min-h-0 flex flex-col bg-[#FFF8F0]">
       {/* Header */}
-      <header className="bg-white px-4 py-3 flex items-center gap-3 border-b border-[#F5F5F5] flex-shrink-0">
+      <header className="bg-white px-4 py-3 flex items-center gap-3 border-b border-[#F5F5F5] flex-shrink-0 pt-[calc(0.75rem+max(env(safe-area-inset-top),var(--safe-area-inset-top,0px)))]">
         <button
           onClick={onBack}
           className="flex items-center gap-1 text-[#C2410C] font-medium hover:bg-[#FFF3E0] px-2 py-1 rounded-lg transition-colors"
@@ -326,13 +354,13 @@ export function ChatView({ conversation, onBack }: ChatViewProps) {
       </header>
 
       {/* Order Info Banner */}
-      <div className="bg-[#FFF3E0] px-4 py-2 flex items-center justify-between text-xs">
+      <div className="bg-[#FFF3E0] px-4 py-2 flex items-center justify-between text-xs flex-shrink-0">
         <span className="text-[#C2410C] font-medium">Commande #{conversation.order.orderNumber}</span>
         <span className="text-[#757575]">{conversation.order.service.name}</span>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-3">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <div className="w-16 h-16 bg-[#FFF3E0] rounded-full flex items-center justify-center mb-3">
@@ -417,7 +445,7 @@ export function ChatView({ conversation, onBack }: ChatViewProps) {
       {/* Quick Messages — défilement horizontal SANS scrollbar visible :
           sur mobile la scrollbar masquait le début des puces coupées
           (« Petit retard » tronqué) et donnait l'impression de boutons cassés. */}
-      <div className="bg-white border-t border-[#F5F5F5] p-2">
+      <div className="bg-white border-t border-[#F5F5F5] p-2 flex-shrink-0">
         <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {QUICK_MESSAGES.map((qm) => (
             <button
@@ -432,7 +460,7 @@ export function ChatView({ conversation, onBack }: ChatViewProps) {
       </div>
 
       {/* Input Area — safe-area basse pour la barre gestuelle iOS */}
-      <div className="bg-white px-4 pt-3 pb-[calc(0.75rem+max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))] flex items-center gap-2 border-t border-[#F5F5F5]">
+      <div className="bg-white px-4 pt-3 pb-[calc(0.75rem+max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))] flex items-center gap-2 border-t border-[#F5F5F5] flex-shrink-0">
         <button
           onClick={handleShareLocation}
           className="w-11 h-11 flex items-center justify-center text-[#C2410C] hover:bg-[#FFF3E0] rounded-full active:scale-95 transition-transform"
