@@ -938,7 +938,7 @@ function ServicesSection({
                         {service.duration} min
                       </span>
                       {service.image ? (
-                        <span className="flex items-center gap-1 text-[#9E9E9E] text-xs">
+                        <span className="flex items-center gap-1 text-[#6B6B6B] text-xs">
                           <ImageIcon className="w-3.5 h-3.5" /> Image
                         </span>
                       ) : null}
@@ -1042,7 +1042,7 @@ function OrderCard({ order }: { order: Order }) {
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-2 mb-2">
           <div className="min-w-0">
-            <p className="text-xs text-[#9E9E9E] font-mono">#{order.orderNumber}</p>
+            <p className="text-xs text-[#6B6B6B] font-mono">#{order.orderNumber}</p>
             <p className="font-semibold text-[#212121] truncate">
               {order.service?.name || 'Service'}
             </p>
@@ -1057,7 +1057,7 @@ function OrderCard({ order }: { order: Order }) {
             <UserIcon className="w-4 h-4 text-[#FF9800]" />
             <span>{order.client?.name || 'Client'}</span>
             {order.client?.phone ? (
-              <span className="text-xs text-[#9E9E9E]">· {order.client.phone}</span>
+              <span className="text-xs text-[#6B6B6B]">· {order.client.phone}</span>
             ) : null}
           </div>
           <div className="flex items-center gap-2 text-[#757575]">

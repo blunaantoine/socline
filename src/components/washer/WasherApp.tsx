@@ -163,7 +163,7 @@ function PhotoCaptureDialog({ open, type, order, onUploaded, onClose }: PhotoCap
       <DialogContent className="max-w-sm rounded-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
-            <Camera className="w-5 h-5 text-[#4CAF50]" />
+            <Camera className="w-5 h-5 text-[#2E7D32]" />
             {isBefore ? 'Photo AVANT lavage' : 'Photo APRÈS lavage'}
           </DialogTitle>
         </DialogHeader>
@@ -192,7 +192,7 @@ function PhotoCaptureDialog({ open, type, order, onUploaded, onClose }: PhotoCap
             onClick={() => inputRef.current?.click()}
             className="w-full h-40 rounded-xl border-2 border-dashed border-[#4CAF50]/50 bg-[#E8F5E9] flex flex-col items-center justify-center gap-2 hover:bg-[#E8F5E9]/70 transition-colors"
           >
-            <Camera className="w-10 h-10 text-[#4CAF50]" />
+            <Camera className="w-10 h-10 text-[#2E7D32]" />
             <span className="text-sm font-medium text-[#2E7D32]">Prendre la photo</span>
             <span className="text-xs text-[#757575]">Appareil photo ou galerie</span>
           </button>
@@ -758,7 +758,7 @@ export function WasherApp() {
                     <span className="text-sm text-[#757575]">{washerStats.rating.toFixed(1)}</span>
                   </>
                 ) : (
-                  <span className="text-sm text-[#9E9E9E]">Nouveau laveur</span>
+                  <span className="text-sm text-[#6B6B6B]">Nouveau laveur</span>
                 )}
               </div>
             </div>
@@ -766,13 +766,14 @@ export function WasherApp() {
           <div className="flex items-center gap-3">
             <div className="text-right">
               <div className="text-xs text-[#757575]">Disponibilité</div>
-              <div className={`text-sm font-medium ${isAvailable ? 'text-[#4CAF50]' : 'text-[#9E9E9E]'}`}>
+              <div className={`text-sm font-medium ${isAvailable ? 'text-[#2E7D32]' : 'text-[#6B6B6B]'}`}>
                 {isAvailable ? 'En ligne' : 'Hors ligne'}
               </div>
             </div>
             <Switch
               checked={isAvailable}
               onCheckedChange={handleToggleAvailability}
+              aria-label={isAvailable ? 'Passer hors ligne' : 'Passer en ligne'}
               className={isAvailable ? 'bg-[#4CAF50]' : ''}
             />
           </div>
@@ -862,7 +863,7 @@ export function WasherApp() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`flex-1 flex flex-col items-center justify-center py-1 px-1 transition-all active:scale-95 active:bg-[#F5F5F5] ${
-                isActive ? 'text-[#4CAF50]' : 'text-[#757575]'
+                isActive ? 'text-[#2E7D32]' : 'text-[#757575]'
               }`}
             >
               <tab.icon className={`w-6 h-6 ${isActive ? 'fill-current' : ''}`} />
@@ -964,14 +965,14 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
                     Niveau {partnerLevel.level} – {partnerLevel.name}
                   </p>
                   <p className="text-xs text-[#757575]">
-                    Votre part : <span className="font-bold text-[#4CAF50]">{partnerLevel.share} %</span> par prestation
+                    Votre part : <span className="font-bold text-[#2E7D32]">{partnerLevel.share} %</span> par prestation
                   </p>
                 </div>
               </div>
               {partnerLevel.nextLevel && (
                 <div className="text-right">
-                  <p className="text-[10px] text-[#9E9E9E] uppercase tracking-wide">Suivant</p>
-                  <p className="text-xs font-semibold text-[#E65100]">
+                  <p className="text-[10px] text-[#6B6B6B] uppercase tracking-wide">Suivant</p>
+                  <p className="text-xs font-semibold text-[#E65100] whitespace-nowrap">
                     Niv. {partnerLevel.nextLevel.level} · {partnerLevel.nextLevel.share} %
                   </p>
                 </div>
@@ -991,12 +992,12 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
                     }}
                   />
                 </div>
-                <p className="text-[10px] text-[#9E9E9E] mt-1.5">
+                <p className="text-[10px] text-[#6B6B6B] mt-1.5">
                   {partnerLevel.nextLevel.description}
                 </p>
               </div>
             ) : (
-              <p className="text-[11px] text-[#4CAF50] mt-2 font-medium">
+              <p className="text-[11px] text-[#2E7D32] mt-2 font-medium">
                 🏆 Niveau maximum atteint — Bravo pour votre excellence !
               </p>
             )}
@@ -1020,7 +1021,8 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
             <button 
               onClick={onRefreshBalance}
               disabled={isRefreshingBalance}
-              className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition-colors"
+              aria-label="Actualiser le solde"
+              className="w-11 h-11 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition-colors"
             >
               {isRefreshingBalance ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -1038,16 +1040,16 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-[#E8F5E9] rounded-full flex items-center justify-center">
-                <DollarSign className="w-5 h-5 text-[#4CAF50]" />
+                <DollarSign className="w-5 h-5 text-[#2E7D32]" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs text-[#757575]">Aujourd&apos;hui</p>
                 <HideableBalanceLight
                   balance={stats.todayEarnings}
                   currency="XOF"
                   size="md"
                   storageKey="hide-washer-today-earnings"
-                  balanceClassName="text-[#4CAF50]"
+                  balanceClassName="text-[#2E7D32] whitespace-nowrap"
                 />
               </div>
             </div>
@@ -1099,7 +1101,7 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-[#4CAF50]">{orderDisplayAmount(order).toLocaleString()} XOF</p>
+                      <p className="font-bold text-[#2E7D32]">{orderDisplayAmount(order).toLocaleString()} XOF</p>
                       {order.isSubscriptionOrder && (
                         <p className="text-[10px] font-semibold text-purple-700 bg-purple-100 rounded-full px-2 py-0.5 mt-0.5">Séance abonnement</p>
                       )}
@@ -1120,7 +1122,8 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
           <button 
             onClick={onRefresh}
             disabled={isLoading}
-            className="text-[#FF9800] text-sm flex items-center gap-1"
+            aria-label="Actualiser les commandes en attente"
+            className="text-[#FF9800] text-sm flex items-center gap-1 p-2.5 -m-2.5"
           >
             {isLoading ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -1212,7 +1215,7 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
               ) : (
                 <>
                   <div className="w-16 h-16 bg-[#E8F5E9] rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Clock className="w-8 h-8 text-[#4CAF50]" />
+                    <Clock className="w-8 h-8 text-[#2E7D32]" />
                   </div>
                   <p className="font-semibold text-[#212121]">En attente de commandes</p>
                   <p className="text-sm text-[#757575] mt-1">
@@ -1225,10 +1228,10 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
         ) : (
           <div className="bg-white rounded-2xl p-6 text-center shadow-sm">
             <div className="w-16 h-16 bg-[#F5F5F5] rounded-full flex items-center justify-center mx-auto mb-4">
-              <Power className="w-8 h-8 text-[#9E9E9E]" />
+              <Power className="w-8 h-8 text-[#6B6B6B]" />
             </div>
             <p className="font-medium text-[#757575]">Vous êtes hors ligne</p>
-            <p className="text-sm text-[#9E9E9E] mt-1">
+            <p className="text-sm text-[#6B6B6B] mt-1">
               Activez votre disponibilité pour recevoir des commandes.
             </p>
           </div>
@@ -1265,7 +1268,7 @@ function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat, acceptedOr
         {/* Back Button */}
         <button 
           onClick={onBack}
-          className="flex items-center gap-2 text-[#4CAF50]"
+          className="flex items-center gap-2 text-[#2E7D32]"
         >
           <ArrowLeft className="w-5 h-5" />
           <span>Retour</span>
@@ -1301,7 +1304,7 @@ function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat, acceptedOr
                       <ScheduledBadge scheduledAt={o.scheduledAt} className="mt-1" />
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-[#4CAF50]">{orderDisplayAmount(o).toLocaleString()} XOF</p>
+                      <p className="font-bold text-[#2E7D32]">{orderDisplayAmount(o).toLocaleString()} XOF</p>
                       {o.isSubscriptionOrder && (
                         <p className="text-[10px] font-semibold text-purple-700 bg-purple-100 rounded-full px-2 py-0.5 mt-0.5">Séance abonnement</p>
                       )}
@@ -1314,10 +1317,10 @@ function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat, acceptedOr
         ) : (
           <div className="bg-white rounded-2xl p-8 text-center shadow-sm">
             <div className="w-16 h-16 bg-[#F5F5F5] rounded-full flex items-center justify-center mx-auto mb-4">
-              <Car className="w-8 h-8 text-[#9E9E9E]" />
+              <Car className="w-8 h-8 text-[#6B6B6B]" />
             </div>
             <p className="font-medium text-[#757575]">Aucune commande active</p>
-            <p className="text-sm text-[#9E9E9E] mt-1">
+            <p className="text-sm text-[#6B6B6B] mt-1">
               Les nouvelles commandes apparaîtront ici.
             </p>
           </div>
@@ -1333,7 +1336,7 @@ function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat, acceptedOr
       {/* Back Button */}
       <button 
         onClick={onBack}
-        className="flex items-center gap-2 text-[#4CAF50]"
+        className="flex items-center gap-2 text-[#2E7D32]"
       >
         <ArrowLeft className="w-5 h-5" />
         <span>Retour</span>
@@ -1362,13 +1365,13 @@ function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat, acceptedOr
                         ? 'bg-[#4CAF50] text-white shadow-lg shadow-[#4CAF50]/30'
                         : isPast
                         ? 'bg-[#4CAF50] text-white'
-                        : 'bg-[#E0E0E0] text-[#9E9E9E]'
+                        : 'bg-[#E0E0E0] text-[#6B6B6B]'
                     }`}
                   >
                     <Icon className="w-4 h-4" />
                   </div>
                   <span className={`text-[9px] mt-0.5 font-medium whitespace-nowrap ${
-                    isActive ? 'text-[#4CAF50] font-bold' : isPast ? 'text-[#4CAF50]' : 'text-[#9E9E9E]'
+                    isActive ? 'text-[#2E7D32] font-bold' : isPast ? 'text-[#2E7D32]' : 'text-[#6B6B6B]'
                   }`}>
                     {step.label}
                   </span>
@@ -1492,7 +1495,7 @@ function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat, acceptedOr
           </div>
           <div className="flex justify-between pt-2 border-t border-[#F5F5F5]">
             <span className="text-[#757575]">Vos gains</span>
-            <span className="font-bold text-[#4CAF50]">
+            <span className="font-bold text-[#2E7D32]">
               {washerGainAmount(order).toLocaleString()} XOF
             </span>
           </div>
@@ -1524,7 +1527,7 @@ function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat, acceptedOr
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-[#212121]">
                   {[order.car.brand, order.car.model].filter(Boolean).join(' ') || 'Véhicule client'}
-                  {order.car.nickname ? <span className="text-xs font-normal text-[#9E9E9E]"> ({order.car.nickname})</span> : null}
+                  {order.car.nickname ? <span className="text-xs font-normal text-[#6B6B6B]"> ({order.car.nickname})</span> : null}
                 </p>
                 <p className="text-xs text-[#757575]">
                   {order.car.color}{order.car.year ? ` • ${order.car.year}` : ''}
@@ -1535,7 +1538,7 @@ function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat, acceptedOr
               </div>
             </div>
           ) : (
-            <p className="text-sm text-[#9E9E9E]">
+            <p className="text-sm text-[#6B6B6B]">
               Aucun véhicule enregistré — appelez le client pour identifier la voiture.
             </p>
           )}
@@ -1658,7 +1661,7 @@ function WasherOrderHistory({ orders, onBack }: {
       {/* Back Button */}
       <button 
         onClick={onBack}
-        className="flex items-center gap-2 text-[#4CAF50]"
+        className="flex items-center gap-2 text-[#2E7D32]"
       >
         <ArrowLeft className="w-5 h-5" />
         <span>Retour</span>
@@ -1675,7 +1678,7 @@ function WasherOrderHistory({ orders, onBack }: {
                   <div>
                     <h3 className="font-medium text-[#212121]">{order.client?.name || 'Client'}</h3>
                     <p className="text-sm text-[#757575]">{order.service?.name || 'Service'}</p>
-                    <p className="text-xs text-[#9E9E9E] mt-1">
+                    <p className="text-xs text-[#6B6B6B] mt-1">
                       {new Date(order.createdAt).toLocaleDateString('fr-FR')}
                     </p>
                     {/* Étoiles reçues sur CETTE prestation */}
@@ -1702,7 +1705,7 @@ function WasherOrderHistory({ orders, onBack }: {
                     )}
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-[#4CAF50]">
+                    <p className="font-bold text-[#2E7D32]">
                       {washerGainAmount(order).toLocaleString()} XOF
                     </p>
                     {order.isSubscriptionOrder && (
@@ -1722,10 +1725,10 @@ function WasherOrderHistory({ orders, onBack }: {
       ) : (
         <div className="bg-white rounded-2xl p-8 text-center shadow-sm">
           <div className="w-16 h-16 bg-[#F5F5F5] rounded-full flex items-center justify-center mx-auto mb-4">
-            <Clock className="w-8 h-8 text-[#9E9E9E]" />
+            <Clock className="w-8 h-8 text-[#6B6B6B]" />
           </div>
           <p className="font-medium text-[#757575]">Aucun historique</p>
-          <p className="text-sm text-[#9E9E9E] mt-1">
+          <p className="text-sm text-[#6B6B6B] mt-1">
             Vos lavages terminés apparaîtront ici.
           </p>
         </div>
@@ -1990,7 +1993,7 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, onRefreshWallet, isRe
       {/* Back Button */}
       <button 
         onClick={onBack}
-        className="flex items-center gap-2 text-[#4CAF50]"
+        className="flex items-center gap-2 text-[#2E7D32]"
       >
         <ArrowLeft className="w-5 h-5" />
         <span>Retour</span>
@@ -2020,7 +2023,8 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, onRefreshWallet, isRe
               <button 
                 onClick={onRefreshBalance}
                 disabled={isRefreshingBalance}
-                className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition-colors"
+                aria-label="Actualiser le solde"
+                className="w-11 h-11 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition-colors"
               >
                 {isRefreshingBalance ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -2033,7 +2037,7 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, onRefreshWallet, isRe
           {/* Withdraw Button */}
           <Button 
             onClick={() => setShowWithdrawModal(true)}
-            className="w-full mt-4 bg-white text-[#4CAF50] hover:bg-white/90 font-semibold"
+            className="w-full mt-4 bg-white text-[#2E7D32] hover:bg-white/90 font-semibold"
             disabled={stats.totalEarnings - stats.cashDebt < 500}
           >
             <Banknote className="w-4 h-4 mr-2" />
@@ -2069,7 +2073,7 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, onRefreshWallet, isRe
                 </p>
                 <div className="flex items-center justify-between mt-2 text-xs">
                   <span className="text-[#757575]">Gains totaux : <b>{stats.totalEarnings.toLocaleString('fr-FR')} XOF</b></span>
-                  <span className="text-[#4CAF50] font-medium">Disponible : <b>{(stats.totalEarnings - stats.cashDebt).toLocaleString('fr-FR')} XOF</b></span>
+                  <span className="text-[#2E7D32] font-medium">Disponible : <b>{(stats.totalEarnings - stats.cashDebt).toLocaleString('fr-FR')} XOF</b></span>
                 </div>
                 <Button
                   onClick={handleSettleCommission}
@@ -2088,7 +2092,7 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, onRefreshWallet, isRe
                     Portefeuille vide — rechargez-le d'abord pour régler la commission.
                   </p>
                 ) : (
-                  <p className="text-xs text-center text-[#9E9E9E] mt-2">
+                  <p className="text-xs text-center text-[#6B6B6B] mt-2">
                     Solde du portefeuille : {stats.walletBalance.toLocaleString('fr-FR')} XOF
                     {stats.walletBalance < stats.cashDebt && ' — règlement partiel possible'}
                   </p>
@@ -2110,7 +2114,7 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, onRefreshWallet, isRe
         </Card>
         <Card className="border-0 shadow-sm">
           <CardContent className="p-4 text-center">
-            <Calendar className="w-6 h-6 text-[#4CAF50] mx-auto mb-2" />
+            <Calendar className="w-6 h-6 text-[#2E7D32] mx-auto mb-2" />
             <p className="text-xs text-[#757575]">Ce mois</p>
             <p className="text-lg font-bold text-[#212121]">0 XOF</p>
           </CardContent>
@@ -2122,12 +2126,12 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, onRefreshWallet, isRe
         <CardContent className="p-4">
           <div className="flex items-center justify-between mb-1">
             <h3 className="font-semibold text-[#212121] flex items-center gap-2">
-              <Banknote className="w-4 h-4 text-[#4CAF50]" />
+              <Banknote className="w-4 h-4 text-[#2E7D32]" />
               Numéros de retrait confirmés
             </h3>
-            <span className="text-xs text-[#9E9E9E]">{numbers.length}/3</span>
+            <span className="text-xs text-[#6B6B6B]">{numbers.length}/3</span>
           </div>
-          <p className="text-xs text-[#9E9E9E] mb-3">
+          <p className="text-xs text-[#6B6B6B] mb-3">
             Seuls ces numéros peuvent recevoir vos retraits. Toute modification ultérieure passe par l’administrateur.
           </p>
 
@@ -2156,7 +2160,7 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, onRefreshWallet, isRe
                 size="sm"
                 variant="outline"
                 onClick={() => setShowAddNumber(true)}
-                className="w-full border-[#4CAF50] text-[#4CAF50] hover:bg-[#E8F5E9]"
+                className="w-full border-[#4CAF50] text-[#2E7D32] hover:bg-[#E8F5E9]"
               >
                 + Ajouter un numéro
               </Button>
@@ -2184,7 +2188,7 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, onRefreshWallet, isRe
                   <div>
                     <p className="font-semibold text-[#212121]">{w.amount.toLocaleString()} XOF</p>
                     <p className="text-xs text-[#757575]">{w.phoneNumber} • {w.operator}</p>
-                    <p className="text-xs text-[#9E9E9E]">
+                    <p className="text-xs text-[#6B6B6B]">
                       {new Date(w.createdAt).toLocaleDateString('fr-FR')}
                     </p>
                   </div>
@@ -2201,7 +2205,7 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, onRefreshWallet, isRe
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Banknote className="w-5 h-5 text-[#4CAF50]" />
+              <Banknote className="w-5 h-5 text-[#2E7D32]" />
               Demande de retrait
             </DialogTitle>
           </DialogHeader>
@@ -2210,7 +2214,7 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, onRefreshWallet, isRe
             {/* Available Balance */}
             <div className="bg-[#E8F5E9] rounded-xl p-3 text-center">
               <p className="text-sm text-[#757575]">Solde disponible</p>
-              <p className="text-xl font-bold text-[#4CAF50]">{stats.totalEarnings.toLocaleString()} XOF</p>
+              <p className="text-xl font-bold text-[#2E7D32]">{stats.totalEarnings.toLocaleString()} XOF</p>
             </div>
 
             {/* Amount */}
@@ -2228,7 +2232,7 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, onRefreshWallet, isRe
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#757575]">XOF</span>
               </div>
-              <p className="text-xs text-[#9E9E9E]">Minimum: 500 XOF</p>
+              <p className="text-xs text-[#6B6B6B]">Minimum: 500 XOF</p>
             </div>
 
             {/* Operator */}
@@ -2273,7 +2277,7 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, onRefreshWallet, isRe
                       setShowWithdrawModal(false);
                       setShowAddNumber(true);
                     }}
-                    className="border-[#4CAF50] text-[#4CAF50]"
+                    className="border-[#4CAF50] text-[#2E7D32]"
                   >
                     + Ajouter un numéro
                   </Button>
@@ -2299,7 +2303,7 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, onRefreshWallet, isRe
                         <p className="text-xs text-[#757575]">{n.operator ?? '—'}</p>
                       </div>
                       {phoneNumber === n.phoneNumber && (
-                        <CheckCircle className="w-5 h-5 text-[#4CAF50]" />
+                        <CheckCircle className="w-5 h-5 text-[#2E7D32]" />
                       )}
                     </button>
                   ))}
@@ -2312,7 +2316,7 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, onRefreshWallet, isRe
               <div className="bg-[#F5F5F5] rounded-xl p-3">
                 <div className="flex justify-between font-semibold">
                   <span>Montant à recevoir</span>
-                  <span className="text-[#4CAF50]">
+                  <span className="text-[#2E7D32]">
                     {parseFloat(withdrawAmount).toLocaleString()} XOF
                   </span>
                 </div>
@@ -2340,7 +2344,7 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, onRefreshWallet, isRe
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Banknote className="w-5 h-5 text-[#4CAF50]" />
+              <Banknote className="w-5 h-5 text-[#2E7D32]" />
               Ajouter un numéro de retrait
             </DialogTitle>
           </DialogHeader>
@@ -2418,7 +2422,7 @@ function WasherEarnings({ stats, onBack, onRefreshBalance, onRefreshWallet, isRe
                 onChange={(e) => setChangeMessage(e.target.value)}
                 className="w-full p-3 border border-[#E0E0E0] rounded-xl resize-none h-24 text-sm focus:outline-none focus:border-[#4CAF50]"
               />
-              <p className="text-xs text-[#9E9E9E]">
+              <p className="text-xs text-[#6B6B6B]">
                 Seul l’administrateur peut modifier vos numéros. Il sera notifié immédiatement.
               </p>
             </div>
@@ -2449,7 +2453,7 @@ function WasherProfile({ user, stats, onLogout, onBack, onNavigate }: {
       {/* Back Button */}
       <button 
         onClick={onBack}
-        className="flex items-center gap-2 text-[#4CAF50]"
+        className="flex items-center gap-2 text-[#2E7D32]"
       >
         <ArrowLeft className="w-5 h-5" />
         <span>Retour</span>
@@ -2479,7 +2483,7 @@ function WasherProfile({ user, stats, onLogout, onBack, onNavigate }: {
           <h3 className="font-semibold text-[#212121] mb-3">Statistiques</h3>
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center">
-              <div className="text-xl font-bold text-[#4CAF50]">{stats.completedJobs}</div>
+              <div className="text-xl font-bold text-[#2E7D32]">{stats.completedJobs}</div>
               <div className="text-xs text-[#757575]">Lavages</div>
             </div>
             <div className="text-center">
@@ -2492,7 +2496,7 @@ function WasherProfile({ user, stats, onLogout, onBack, onNavigate }: {
                 currency="XOF"
                 size="md"
                 storageKey="hide-washer-profile-earnings"
-                balanceClassName="text-[#2196F3]"
+                balanceClassName="text-[#1565C0] whitespace-nowrap text-sm"
                 showToggle={false}
               />
               <div className="text-xs text-[#757575]">Gains</div>
@@ -2517,10 +2521,10 @@ function WasherProfile({ user, stats, onLogout, onBack, onNavigate }: {
             className="w-full flex items-center gap-3 p-4 hover:bg-[#F5F5F5] transition-colors border-b border-[#F5F5F5] last:border-0"
           >
             <div className="w-8 h-8 bg-[#E8F5E9] rounded-lg flex items-center justify-center">
-              <item.icon className="w-4 h-4 text-[#4CAF50]" />
+              <item.icon className="w-4 h-4 text-[#2E7D32]" />
             </div>
             <span className="flex-1 text-left text-[#212121] text-sm">{item.label}</span>
-            <div className="w-5 h-5 text-[#9E9E9E]">›</div>
+            <div className="w-5 h-5 text-[#6B6B6B]">›</div>
           </button>
         ))}
       </Card>
@@ -2588,7 +2592,7 @@ function WasherProfileSection({ section, onBack, user }: {
       {/* Back Button */}
       <button 
         onClick={onBack}
-        className="flex items-center gap-2 text-[#4CAF50]"
+        className="flex items-center gap-2 text-[#2E7D32]"
       >
         <ArrowLeft className="w-5 h-5" />
         <span>Retour</span>
@@ -2670,7 +2674,7 @@ function WasherProfileSection({ section, onBack, user }: {
                   Alertes instantanées dans l&apos;app (nouvelles commandes, paiements)
                 </p>
               </div>
-              <Badge className="bg-[#E8F5E9] text-[#4CAF50] border-0">Actives ✅</Badge>
+              <Badge className="bg-[#E8F5E9] text-[#2E7D32] border-0">Actives ✅</Badge>
             </div>
             <div className="flex items-center justify-between">
               <div>
@@ -2679,7 +2683,7 @@ function WasherProfileSection({ section, onBack, user }: {
                   Automatiques pour les événements critiques (retraits, paiements)
                 </p>
               </div>
-              <Badge className="bg-[#E8F5E9] text-[#4CAF50] border-0">Actifs ✅</Badge>
+              <Badge className="bg-[#E8F5E9] text-[#2E7D32] border-0">Actifs ✅</Badge>
             </div>
           </CardContent>
         </Card>
@@ -2756,7 +2760,7 @@ function WasherReviews({ user }: { user: User | null }) {
   if (isLoading) {
     return (
       <div className="flex justify-center py-8">
-        <Loader2 className="w-8 h-8 text-[#4CAF50] animate-spin" />
+        <Loader2 className="w-8 h-8 text-[#2E7D32] animate-spin" />
       </div>
     );
   }
@@ -2790,10 +2794,10 @@ function WasherReviews({ user }: { user: User | null }) {
       {reviews.length === 0 ? (
         <div className="bg-white rounded-2xl p-8 text-center shadow-sm">
           <div className="w-16 h-16 bg-[#F5F5F5] rounded-full flex items-center justify-center mx-auto mb-4">
-            <Star className="w-8 h-8 text-[#9E9E9E]" />
+            <Star className="w-8 h-8 text-[#6B6B6B]" />
           </div>
           <p className="font-medium text-[#757575]">Aucun avis pour le moment</p>
-          <p className="text-sm text-[#9E9E9E] mt-1">
+          <p className="text-sm text-[#6B6B6B] mt-1">
             Les étoiles attribuées par vos clients après chaque lavage apparaîtront ici.
           </p>
         </div>
@@ -2818,7 +2822,7 @@ function WasherReviews({ user }: { user: User | null }) {
                         />
                       ))}
                     </div>
-                    <p className="text-[11px] text-[#9E9E9E] mt-0.5">
+                    <p className="text-[11px] text-[#6B6B6B] mt-0.5">
                       {new Date(r.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
                     </p>
                   </div>

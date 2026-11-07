@@ -204,7 +204,7 @@ export function MediaCarousel({
 
       {/* Points de navigation */}
       {count > 1 && (
-        <div className="flex justify-center gap-1.5 mt-2.5" role="tablist" aria-label="Navigation du carrousel">
+        <div className="flex justify-center mt-1" role="tablist" aria-label="Navigation du carrousel">
           {MEDIA_ITEMS.map((item, i) => (
             <button
               key={`dot-${item.src}`}
@@ -216,7 +216,7 @@ export function MediaCarousel({
                 markInteraction();
                 goTo(i);
               }}
-              className={`h-2 rounded-full transition-all duration-200 ${
+              className={`h-2 box-content py-2 px-1 bg-clip-content rounded-full transition-[width,background-color] duration-200 ease-out ${
                 i === index ? 'w-5 bg-[#FF9800]' : 'w-2 bg-[#E0E0E0] hover:bg-[#BDBDBD]'
               }`}
             />

@@ -28,7 +28,7 @@
   /* — Surfaces & texte — */
   --app-bg: #F4F5F7;       /* fond d'écran gris très clair */
   --surface: #FFFFFF;      /* cartes */
-  --soft: #6B7686;         /* texte secondaire */
+  --soft: #5F6A7A;         /* texte secondaire (≥ 4.5:1 sur fond app et teintes) */
   --line: #E7EAEF;         /* bordures fines */
 
   /* — États — */
@@ -318,4 +318,14 @@
 
 .animate-fade-in {
   animation: fade-in 0.4s ease-out forwards;
+}
+
+/* Accessibilité : mouvement réduit — on garde les fondus, on retire les déplacements */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -407,7 +407,7 @@ export function ClientApp() {
                 <h1 className="text-title text-ink truncate">Bonjour, {user?.name?.split(' ')[0] || 'bienvenue'}</h1>
                 <button
                   onClick={getUserLocation}
-                  className="flex items-center gap-1 text-detail text-soft max-w-[230px] active:opacity-70 transition-opacity"
+                  className="flex items-center gap-1 text-detail text-soft max-w-[230px] min-h-[28px] -my-1 active:opacity-70 transition-opacity"
                   aria-label={`Position : ${userLocation?.address || 'Lomé'}. Toucher pour actualiser`}
                 >
                   {isLoadingLocation ? (
@@ -591,7 +591,7 @@ export function ClientApp() {
                 }`}
               >
                 <item.icon className={`w-[22px] h-[22px] ${isActive ? 'fill-current' : ''}`} />
-                <span className="text-[10px] leading-tight whitespace-nowrap">{item.label}</span>
+                <span className="text-micro leading-tight whitespace-nowrap">{item.label}</span>
               </button>
             );
           })}
@@ -901,9 +901,9 @@ function HomeContent({
               />
             </div>
             <div className="grid grid-cols-4 gap-2 mt-4">
-              <ActionTileSmall label="Abonnements" icon={CalendarCheck} tint="bg-plan-purple" iconColor="text-plan-purple-icon" onClick={onOpenSubscriptions} />
+              <ActionTileSmall label="Abonnements" icon={CalendarCheck} tint="bg-plan-orange" iconColor="text-brand-deep" onClick={onOpenSubscriptions} />
               <ActionTileSmall label="Activités" icon={ClipboardList} tint="bg-plan-green" iconColor="text-plan-green-icon" onClick={() => onOpenTab('activity')} />
-              <ActionTileSmall label="Véhicules" icon={Car} tint="bg-plan-orange" iconColor="text-plan-orange-icon" onClick={() => onOpenTab('profile')} />
+              <ActionTileSmall label="Véhicules" icon={Car} tint="bg-star-soft" iconColor="text-[#9A6B00]" onClick={() => onOpenTab('profile')} />
               <ActionTileSmall label="Aide" icon={LifeBuoy} tint="bg-plan-blue" iconColor="text-plan-blue-icon" onClick={onOpenSupport} />
             </div>
           </section>
@@ -1024,13 +1024,13 @@ function HomeContent({
 
           {/* Points du carrousel — pastille allongée pour l'actif */}
           {promotions.length > 1 && (
-            <div className="flex justify-center gap-1.5 mt-2.5">
+            <div className="flex justify-center mt-1">
               {promotions.map((_, index) => (
                 <button
                   key={index}
                   onClick={() => setCurrentPromoIndex(index)}
                   aria-label={`Promotion ${index + 1}`}
-                  className={`h-1.5 rounded-pill transition-all duration-300 ${
+                  className={`h-1.5 box-content py-2 px-1 bg-clip-content rounded-pill transition-[width,background-color] duration-200 ease-out ${
                     index === currentPromoIndex
                       ? 'w-[18px] bg-brand'
                       : 'w-1.5 bg-line'

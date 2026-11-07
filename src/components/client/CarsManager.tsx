@@ -447,21 +447,24 @@ export function CarsManager({ userId }: CarsManagerProps) {
                   {!car.isDefault && (
                     <button
                       onClick={() => handleSetDefault(car.id)}
-                      className="p-2 hover:bg-[#F5F5F5] rounded-lg"
+                      className="p-3 hover:bg-[#F5F5F5] rounded-lg"
                       title="Définir par défaut"
+                      aria-label="Définir comme véhicule par défaut"
                     >
                       <CheckCircle className="w-4 h-4 text-[#9E9E9E]" />
                     </button>
                   )}
                   <button
                     onClick={() => openEditModal(car)}
-                    className="p-2 hover:bg-[#F5F5F5] rounded-lg"
+                    className="p-3 hover:bg-[#F5F5F5] rounded-lg"
+                    aria-label={`Modifier ${car.name || 'ce véhicule'}`}
                   >
                     <Edit className="w-4 h-4 text-[#757575]" />
                   </button>
                   <button
                     onClick={() => handleDeleteCar(car.id)}
-                    className="p-2 hover:bg-red-50 rounded-lg"
+                    className="p-3 hover:bg-red-50 rounded-lg"
+                    aria-label={`Supprimer ${car.name || 'ce véhicule'}`}
                   >
                     <Trash2 className="w-4 h-4 text-red-500" />
                   </button>
