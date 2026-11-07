@@ -47,7 +47,17 @@ export default function SoclineApp() {
   }
 
   return (
-    <div className="min-h-dvh bg-[#FAFAFA] flex flex-col">
+    // Connecté : coque de hauteur fixe (h-dvh) — seule la zone de contenu interne
+    // de chaque app défile ; l'en-tête et la barre du bas restent en place et le
+    // contenu ne passe jamais sous la barre d'état du téléphone.
+    // Non connecté (écrans d'authentification) : défilement normal de la page.
+    <div
+      className={
+        isAuthenticated
+          ? 'h-dvh overflow-hidden bg-[#FAFAFA] flex flex-col [&>*]:min-h-0'
+          : 'min-h-dvh bg-[#FAFAFA] flex flex-col'
+      }
+    >
       {!isAuthenticated ? (
         <AuthScreen onComplete={() => {}} />
       ) : (
