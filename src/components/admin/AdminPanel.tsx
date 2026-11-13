@@ -3600,6 +3600,27 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
     }
   };
 
+  // Suppression définitive d'une promotion (bouton corbeille) — après confirmation.
+  // Avant : le bouton appelait une fonction inexistante, rien ne se passait.
+  const handleDelete = async (id: string) => {
+    const promo = promotions.find((p) => p.id === id);
+    const label = promo?.code || promo?.name || 'cette promotion';
+    if (!window.confirm(`Supprimer la promotion « ${label} » ? Cette action est définitive.`)) return;
+    try {
+      const res = await fetch(`/api/promotions?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      const data = await parseJsonResponse<any>(res);
+      if (!data) return;
+      if (data.success) {
+        toast.success('Promotion supprimée');
+        onRefresh();
+      } else {
+        toast.error(data.error || 'Erreur lors de la suppression');
+      }
+    } catch (error) {
+      toast.error('Erreur lors de la suppression');
+    }
+  };
+
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -3946,6 +3967,7 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
                           size="sm" 
                           variant="ghost"
                           onClick={() => handleEdit(promo)}
+                          aria-label={`Modifier la promotion ${promo.code || promo.name}`}
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
@@ -3953,6 +3975,7 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
                           size="sm" 
                           variant="ghost"
                           onClick={() => handleToggleActive(promo)}
+                          aria-label={promo.isActive ? `Désactiver la promotion ${promo.code || promo.name}` : `Activer la promotion ${promo.code || promo.name}`}
                         >
                           {promo.isActive ? (
                             <XCircle className="w-4 h-4 text-red-500" />
@@ -3964,6 +3987,7 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
                           size="sm" 
                           variant="ghost"
                           onClick={() => handleDelete(promo.id)}
+                          aria-label={`Supprimer la promotion ${promo.code || promo.name}`}
                         >
                           <Trash2 className="w-4 h-4 text-red-500" />
                         </Button>
