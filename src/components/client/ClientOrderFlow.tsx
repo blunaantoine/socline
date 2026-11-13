@@ -95,7 +95,7 @@ export function ClientOrderFlow({
   const { services, selectedService, selectService, setServices } = useServicesStore();
   const { setCurrentOrder, addOrder } = useOrdersStore();
   const { userLocation } = useAppStore();
-  const { user } = useAuthStore();
+  const { user, logout } = useAuthStore();
   // If a service was preselected (e.g. from a station service click), skip the service step
   const [step, setStep] = useState<StepType>(selectedService ? 'location' : 'service');
   const [isHomeService, setIsHomeService] = useState(presetIsHomeService);
@@ -138,11 +138,14 @@ export function ClientOrderFlow({
   useEffect(() => {
     const loadServices = async () => {
       try {
-        const seedCheck = await fetch('/api/seed');
-        const seedData = await parseJsonResponse<any>(seedCheck);
-        
-        if (!seedData || !seedData.seeded || seedData.servicesCount === 0) {
-          await fetch('/api/seed', { method: 'POST' });
+        // Base vide en DÉVELOPPEMENT uniquement : en production, /api/seed est
+        // réservé à deploy.sh (l'appel répondait « Non authentifié »).
+        if (process.env.NODE_ENV !== 'production') {
+          const seedCheck = await fetch('/api/seed');
+          const seedData = await parseJsonResponse<any>(seedCheck);
+          if (!seedData || !seedData.seeded || seedData.servicesCount === 0) {
+            await fetch('/api/seed', { method: 'POST' });
+          }
         }
 
         const res = await fetch('/api/services');
@@ -374,6 +377,15 @@ export function ClientOrderFlow({
           useSubscription: useSubscription && activeSubscription,
         }),
       });
+
+      // Session refusée par le serveur (compte supprimé ou modifié, session
+      // trop ancienne) : message clair + retour à l'écran de connexion, au lieu
+      // du message brut « Non authentifié ».
+      if (res.status === 401) {
+        toast.error('Votre session a expiré. Reconnectez-vous pour commander.');
+        logout();
+        return;
+      }
 
       const data = await parseJsonResponse<any>(res);
       if (!data) return;
