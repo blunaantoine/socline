@@ -334,3 +334,44 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* =====================================================================
+   Carte de suivi — marqueurs « appli de livraison » (LeafletMap.tsx)
+   ===================================================================== */
+.socline-marker { background: transparent; border: 0; }
+.socline-washer { position: relative; width: 56px; height: 56px; }
+.socline-washer-badge {
+  position: absolute; left: 50%; top: 50%; width: 40px; height: 40px;
+  margin: -20px 0 0 -20px; border-radius: 9999px;
+  background: var(--brand-ink); border: 3px solid #fff;
+  box-shadow: 0 4px 10px rgba(15, 27, 45, 0.3);
+  display: grid; place-items: center; z-index: 2;
+}
+.socline-washer-pulse {
+  position: absolute; left: 50%; top: 50%; width: 40px; height: 40px;
+  margin: -20px 0 0 -20px; border-radius: 9999px; background: var(--brand);
+  opacity: 0.35; animation: socline-pulse 2s cubic-bezier(0.23, 1, 0.32, 1) infinite;
+}
+/* Flèche de direction : petit triangle posé sur le bord de la pastille */
+.socline-washer-heading { position: absolute; inset: 0; z-index: 1; transition: transform 300ms ease-out; }
+.socline-washer-heading > span {
+  position: absolute; left: 50%; top: 0; margin-left: -7px;
+  border-left: 7px solid transparent; border-right: 7px solid transparent;
+  border-bottom: 10px solid var(--brand-ink);
+}
+@keyframes socline-pulse {
+  0% { transform: scale(0.9); opacity: 0.45; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+.socline-home { position: relative; width: 40px; height: 48px; }
+.socline-home-pin {
+  position: absolute; left: 50%; top: 0; width: 36px; height: 36px; margin-left: -18px;
+  border-radius: 9999px 9999px 9999px 4px; transform: rotate(-45deg);
+  background: var(--ink); border: 3px solid #fff;
+  box-shadow: 0 4px 10px rgba(15, 27, 45, 0.3);
+  display: grid; place-items: center;
+}
+.socline-home-pin > svg { transform: rotate(45deg); }
+@media (prefers-reduced-motion: reduce) {
+  .socline-washer-pulse { animation: none; opacity: 0.25; transform: scale(1.3); }
+}

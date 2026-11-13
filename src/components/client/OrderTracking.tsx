@@ -343,6 +343,8 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
             className="h-full"
             markers={mapMarkers}
             fitToMarkers
+            // Haut : badge de statut + heures ; bas : encadrés distance / arrivée estimée
+            fitPadding={{ top: 110, bottom: 170, side: 48 }}
           />
         ) : (
           <div className="h-full bg-gradient-to-br from-blue-100 to-green-100">
