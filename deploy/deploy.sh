@@ -505,7 +505,7 @@ if [[ -f "${NGINX_CONF}" ]] && grep -q "ssl_certificate" "${NGINX_CONF}"; then
 else
   echo "  🌐 Application   : http://${IP_ADDR}:${PUBLIC_PORT}"
 fi
-echo "  📱 Comptes démo  : admin 71998155 · client 90123456 · laveur 90234567 (PIN 1234)"
+echo "  🔐 Comptes       : plus de comptes de démo créés en production — gérez-les dans l'admin (onglet Utilisateurs)"
 echo ""
 echo "  Ports internes   : Next.js ${WEB_PORT} · chat 3003 · washgo 3005 (locaux uniquement)"
 echo "  Logs             : journalctl -u socline-web -f   (ou socline-chat / socline-washgo)"
