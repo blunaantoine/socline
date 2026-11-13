@@ -172,31 +172,40 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
   }, [order.id, setCurrentOrder, updateOrder]);
 
   // ---------------------------------------------------------------------
-  // Fallback polling (safety net if the socket drops): light 15s GET that
-  // reconciles the status with the DB.
+  // Fallback polling (safety net if the socket drops): light GET every 10 s
+  // (same rhythm as the washer's GPS pushes) that reconciles the status AND
+  // the washer position with the DB. Runs once immediately on mount so the
+  // last known position shows without waiting for the first tick.
   // ---------------------------------------------------------------------
   useEffect(() => {
-    const interval = setInterval(async () => {
+    let cancelled = false;
+
+    const reconcile = async () => {
       try {
         const res = await fetch(`/api/orders/${order.id}`);
-        if (!res.ok) return;
-        // Fetch + hydrate: the GET response carries the persisted tracking
-        // events, so the last known washer position survives a page reload
-        // (before any live socket push arrives).
+        if (!res.ok || cancelled) return;
+        // The GET response carries the persisted tracking events (newest
+        // first), so the washer position survives a page reload AND keeps
+        // moving when the realtime socket is down (weak mobile network).
         const data = await res.json();
+        if (cancelled) return;
         if (data?.success && data.order) {
-          setWasherLocation((prev) => {
-            if (prev) return prev; // a live socket position is fresher
-            const events: TrackingEvent[] = Array.isArray(data.order.tracking)
-              ? data.order.tracking
-              : [];
-            const lastLoc = events.find(
-              (t) => t.event === 'WASHER_LOCATION' &&
-                t.latitude != null && t.longitude != null
-            );
-            if (!lastLoc || lastLoc.latitude == null || lastLoc.longitude == null) return prev;
-            return { lat: lastLoc.latitude, lng: lastLoc.longitude, at: lastLoc.createdAt };
-          });
+          const events: TrackingEvent[] = Array.isArray(data.order.tracking)
+            ? data.order.tracking
+            : [];
+          const lastLoc = events.find(
+            (t) => t.event === 'WASHER_LOCATION' &&
+              t.latitude != null && t.longitude != null
+          );
+          if (lastLoc && lastLoc.latitude != null && lastLoc.longitude != null) {
+            const next = { lat: lastLoc.latitude, lng: lastLoc.longitude, at: lastLoc.createdAt };
+            setWasherLocation((prev) => {
+              // Keep whichever position is the most recent: a live socket
+              // push is never overwritten by an older persisted one.
+              if (prev && new Date(prev.at).getTime() >= new Date(next.at).getTime()) return prev;
+              return next;
+            });
+          }
           if (data.order.status !== order.status) {
             setCurrentOrder(data.order);
             updateOrder(data.order);
@@ -205,9 +214,15 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
       } catch {
         // Network hiccup — next tick will retry.
       }
-    }, 15000);
+    };
 
-    return () => clearInterval(interval);
+    reconcile();
+    const interval = setInterval(reconcile, 10000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [order.id, order.status, setCurrentOrder, updateOrder]);
 
   const config = STATUS_CONFIG[order.status];
