@@ -275,6 +275,10 @@ export interface Location {
   latitude: number;
   longitude: number;
   address: string;
+  /** Précision du point GPS en mètres (absente si inconnue). */
+  accuracy?: number;
+  /** true = position de repli (centre de Lomé), à ne JAMAIS envoyer comme adresse de lavage. */
+  isFallback?: boolean;
 }
 
 // Marker types for map

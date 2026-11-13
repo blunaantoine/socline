@@ -374,7 +374,7 @@ export function WasherApp() {
               clearTimeout(timer);
               resolve(undefined);
             },
-            { timeout: 4500, maximumAge: 60000, enableHighAccuracy: false }
+            { timeout: 4500, maximumAge: 30000, enableHighAccuracy: true }
           );
         });
         latitude = coords?.latitude;
@@ -585,18 +585,33 @@ export function WasherApp() {
       if (failures >= 3) stopSharing();
     };
 
+    // Filtre de précision : un point à plus de 100 m d'incertitude (Wi-Fi /
+    // antenne, GPS pas encore calé) ferait sauter l'icône chez le client. On
+    // l'ignore, sauf si aucun point correct n'est arrivé depuis 20 s (mieux
+    // vaut une position approximative que pas de position du tout).
+    const MAX_ACCURACY_M = 100;
+    const COARSE_FALLBACK_MS = 20000;
+    let lastAcceptedAt = Date.now();
+    const onFix = (position: GeolocationPosition, force = false) => {
+      const accuracy = position.coords.accuracy ?? Infinity;
+      const now = Date.now();
+      if (accuracy > MAX_ACCURACY_M && now - lastAcceptedAt < COARSE_FALLBACK_MS) return;
+      lastAcceptedAt = now;
+      sendIfDue(position.coords.latitude, position.coords.longitude, force);
+    };
+
     setLocationSharing(true);
     watchId = navigator.geolocation.watchPosition(
-      (position) => sendIfDue(position.coords.latitude, position.coords.longitude),
+      (position) => onFix(position),
       onGeoError,
-      { enableHighAccuracy: true }
+      { enableHighAccuracy: true, maximumAge: 0 }
     );
 
     // Send one fix immediately when sharing starts (bypasses the throttle).
     navigator.geolocation.getCurrentPosition(
-      (position) => sendIfDue(position.coords.latitude, position.coords.longitude, true),
+      (position) => onFix(position, true),
       (error) => console.warn('[WasherApp] Initial geolocation error:', error.message),
-      { enableHighAccuracy: true }
+      { enableHighAccuracy: true, maximumAge: 0 }
     );
 
     return () => {

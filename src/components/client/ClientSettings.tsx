@@ -44,6 +44,7 @@ import { toast } from 'sonner';
 import { DynamicLeafletMap } from '@/components/map/DynamicLeafletMap';
 import { parseJsonResponse } from '@/lib/json-helper';
 import { formatScheduledShort } from '@/lib/scheduled';
+import { getPrecisePosition, formatAccuracy, GeoError } from '@/lib/geolocation';
 
 // Types
 interface Address {
@@ -342,11 +343,14 @@ export function AddressesManager({ userId, onBack }: { userId: string; onBack: (
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
+    // GPS haute précision : meilleur point sur ~10 s (src/lib/geolocation.ts)
+    getPrecisePosition({ maxWaitMs: 10000, goodAccuracy: 25 })
+      .then(async ({ latitude, longitude, accuracy }) => {
         setSelectedPosition({ lat: latitude, lng: longitude });
         setFormData(prev => ({ ...prev, latitude, longitude }));
+        if (accuracy > 50) {
+          toast.info(`Position approximative (${formatAccuracy(accuracy)}) : touchez la carte sur votre adresse pour la préciser.`);
+        }
 
         // Reverse geocode using Nominatim (free, no API key needed)
         try {
@@ -365,13 +369,11 @@ export function AddressesManager({ userId, onBack }: { userId: string; onBack: (
         }
         setIsLocating(false);
         setShowMapSelector(true);
-      },
-      (error) => {
-        toast.error('Impossible d\'obtenir votre position');
+      })
+      .catch((error) => {
+        toast.error(error instanceof GeoError ? error.message : "Impossible d'obtenir votre position");
         setIsLocating(false);
-      },
-      { enableHighAccuracy: true }
-    );
+      });
   };
 
   // Handle map click to select position

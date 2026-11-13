@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useServicesStore, useOrdersStore, useAppStore, useAuthStore } from '@/store';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,7 @@ import { MediaCarousel } from './MediaCarousel';
 import { CarPhoto } from '@/components/shared/CarPhoto';
 import type { Service, Order, Car as CarType } from '@/types';
 import { parseJsonResponse } from '@/lib/json-helper';
+import { getPrecisePosition, formatAccuracy, GeoError, GEO_ERROR_MESSAGES } from '@/lib/geolocation';
 import { DynamicLeafletMap } from '@/components/map/DynamicLeafletMap';
 import { COVERAGE_LONG_LABEL, getServiceCoverage, formatPrice } from '@/lib/service-coverage';
 import { ServiceRowCard } from '@/components/design/ServiceRowCard';
@@ -115,7 +116,17 @@ export function ClientOrderFlow({
   const [useSubscription, setUseSubscription] = useState(false);
   // "Utiliser ma position actuelle" (étape adresse)
   const [isGettingLocation, setIsGettingLocation] = useState(false);
-  const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  // Point de départ : la position GPS déjà trouvée sur l'accueil si elle est précise (≤ 50 m)
+  const initialPrecise =
+    userLocation && !userLocation.isFallback && userLocation.accuracy !== undefined && userLocation.accuracy <= 50
+      ? userLocation
+      : null;
+  const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(
+    initialPrecise ? { latitude: initialPrecise.latitude, longitude: initialPrecise.longitude } : null
+  );
+  // Précision (m) du point GPS retenu ; null = point posé à la main sur la carte (exact)
+  const [coordsAccuracy, setCoordsAccuracy] = useState<number | null>(initialPrecise?.accuracy ?? null);
+  const autoLocateTriedRef = useRef(false);
   // Vehicle selection (étape adresse) — the washer relies on it to
   // recognize the car. Defaults to the client's default car.
   const [cars, setCars] = useState<CarType[]>([]);
@@ -224,6 +235,11 @@ export function ClientOrderFlow({
 
   const handleLocationSubmit = () => {
     if (!address) return;
+    // À domicile : un point précis est obligatoire (GPS ou carte) — jamais de position approximative
+    if (isHomeService && !stationId && !coords) {
+      toast.error('Indiquez votre position : « Utiliser ma position actuelle » ou touchez la carte.');
+      return;
+    }
     goToStep('schedule');
   };
 
@@ -231,28 +247,39 @@ export function ClientOrderFlow({
     goToStep('payment');
   };
 
-  const handleUseCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      toast.error('Impossible d\'obtenir votre position');
-      return;
-    }
+  // Localisation PRÉCISE : on écoute le GPS jusqu'à ~10 s et on garde le
+  // meilleur point (src/lib/geolocation.ts) au lieu d'un premier point grossier.
+  const handleUseCurrentLocation = async (silent = false) => {
     setIsGettingLocation(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setCoords({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        });
-        setAddress('Position actuelle');
-        setIsGettingLocation(false);
-      },
-      () => {
-        setIsGettingLocation(false);
-        toast.error('Impossible d\'obtenir votre position');
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
-    );
+    try {
+      const pos = await getPrecisePosition({ maxWaitMs: 10000, goodAccuracy: 25 });
+      setCoords({ latitude: pos.latitude, longitude: pos.longitude });
+      setCoordsAccuracy(pos.accuracy);
+      setAddress((prev) =>
+        prev && prev !== 'Position actuelle' && prev !== 'Position sur la carte' ? prev : 'Position actuelle'
+      );
+    } catch (error) {
+      if (!silent) {
+        toast.error(error instanceof GeoError ? error.message : GEO_ERROR_MESSAGES.unavailable);
+      }
+    } finally {
+      setIsGettingLocation(false);
+    }
   };
+
+  // Arrivée sur l'étape Adresse (à domicile) sans point : on localise
+  // automatiquement, une seule fois (asynchrone, hors du rendu).
+  useEffect(() => {
+    if (step !== 'location' || !isHomeService || coords || autoLocateTriedRef.current) return;
+    // Le marqueur n'est posé qu'au démarrage réel : si l'effet est annulé avant
+    // (double exécution de React, re-rendu), la localisation sera relancée.
+    const t = setTimeout(() => {
+      if (autoLocateTriedRef.current) return;
+      autoLocateTriedRef.current = true;
+      handleUseCurrentLocation(true);
+    }, 0);
+    return () => clearTimeout(t);
+  }, [step, isHomeService, coords]);
 
   const handleApplyPromo = async () => {
     if (!promoCode || !selectedService) return;
@@ -337,8 +364,9 @@ export function ClientOrderFlow({
           stationId: stationId || null,
           carId: selectedCarId || null,
           address,
-          latitude: coords?.latitude ?? userLocation?.latitude,
-          longitude: coords?.longitude ?? userLocation?.longitude,
+          // Jamais la position de repli (centre de Lomé) : seulement un point réel
+          latitude: coords?.latitude ?? (userLocation && !userLocation.isFallback ? userLocation.latitude : undefined),
+          longitude: coords?.longitude ?? (userLocation && !userLocation.isFallback ? userLocation.longitude : undefined),
           totalPrice: finalPrice,
           promoCode: appliedPromo?.code || null,
           discount: appliedPromo?.discountAmount || 0,
@@ -641,7 +669,7 @@ export function ClientOrderFlow({
                   />
                   <button
                     type="button"
-                    onClick={handleUseCurrentLocation}
+                    onClick={() => handleUseCurrentLocation()}
                     disabled={isGettingLocation}
                     className="inline-flex items-center gap-2 text-detail font-semibold text-brand-ink bg-brand-soft rounded-pill px-3 py-2 disabled:opacity-60 active:scale-95 transition-transform"
                   >
@@ -670,6 +698,7 @@ export function ClientOrderFlow({
                       height="220px"
                       onMapClick={(lat, lng) => {
                         setCoords({ latitude: lat, longitude: lng });
+                        setCoordsAccuracy(null); // point posé à la main : exact
                         setAddress((prev) =>
                           prev && prev !== 'Position actuelle' && prev !== 'Position sur la carte'
                             ? prev
@@ -679,10 +708,16 @@ export function ClientOrderFlow({
                       selectedPosition={coords ? [coords.latitude, coords.longitude] : null}
                     />
                   </div>
-                  <p className="text-detail text-soft flex items-center gap-1.5">
+                  <p className={`text-detail flex items-center gap-1.5 ${coords && coordsAccuracy !== null && coordsAccuracy > 50 ? 'text-brand-ink font-semibold' : 'text-soft'}`}>
                     <MapPin className="w-3.5 h-3.5 flex-shrink-0 text-brand-ink" />
                     {coords
-                      ? 'Position enregistrée — touchez la carte pour l\u2019ajuster'
+                      ? coordsAccuracy !== null && coordsAccuracy > 50
+                        ? `Position approximative (${formatAccuracy(coordsAccuracy)}) — touchez la carte sur votre maison pour la préciser`
+                        : coordsAccuracy !== null
+                        ? `Position GPS précise (${formatAccuracy(coordsAccuracy)}) — touchez la carte pour l\u2019ajuster`
+                        : 'Position choisie sur la carte — touchez à nouveau pour l\u2019ajuster'
+                      : isGettingLocation
+                      ? 'Recherche de votre position GPS…'
                       : 'Touchez la carte pour définir votre position exacte'}
                   </p>
                 </div>
@@ -776,7 +811,7 @@ export function ClientOrderFlow({
             <Button 
               className={`w-full h-12 ${BTN_PRIMARY_CLASSES} font-bold`}
               onClick={handleLocationSubmit}
-              disabled={!address}
+              disabled={!address || (isHomeService && !stationId && !coords)}
             >
               Continuer
             </Button>

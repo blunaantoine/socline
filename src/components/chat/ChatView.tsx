@@ -14,6 +14,7 @@ import {
 import { parseJsonResponse } from '@/lib/json-helper';
 import { isRealtimeEnabled } from '@/lib/realtime-flag';
 import { toast } from 'sonner';
+import { getPrecisePosition, GeoError } from '@/lib/geolocation';
 
 interface ChatViewProps {
   conversation: Conversation;
@@ -248,18 +249,14 @@ export function ChatView({ conversation, onBack }: ChatViewProps) {
     sendMessage('QUICK_MESSAGE', quickMsg.label, { quickType: quickMsg.id });
   };
 
+  // Partage de position : GPS haute précision (meilleur point sur ~8 s)
   const handleShareLocation = async () => {
-    if (!navigator.geolocation) return;
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        sendMessage('LOCATION', '📍 Position partagée', { latitude, longitude });
-      },
-      (error) => {
-        console.error('Failed to get location:', error);
-      }
-    );
+    try {
+      const { latitude, longitude } = await getPrecisePosition({ maxWaitMs: 8000, goodAccuracy: 25 });
+      sendMessage('LOCATION', '📍 Position partagée', { latitude, longitude });
+    } catch (error) {
+      toast.error(error instanceof GeoError ? error.message : "Impossible d'obtenir votre position");
+    }
   };
 
   const formatTime = (dateStr: string) => {

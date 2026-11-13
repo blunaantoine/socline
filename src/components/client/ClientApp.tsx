@@ -47,6 +47,7 @@ import { WalletSummaryCard } from '@/components/design/WalletSummaryCard';
 import { CARD_CLASSES } from '@/lib/design-system';
 import { SupportChatbot } from '@/components/support/SupportChatbot';
 import { useKeyboardOpen } from '@/hooks/useKeyboardOpen';
+import { getPrecisePosition } from '@/lib/geolocation';
 
 // Abonnements fusionné dans l'onglet Réserver (vue secondaire) → 5 onglets,
 // cibles tactiles plus larges dans la barre de navigation.
@@ -324,24 +325,19 @@ export function ClientApp() {
     return () => clearInterval(interval);
   }, [promotions]);
 
-  // Get user location
+  // Position du client : GPS haute précision (meilleur point sur ~8 s,
+  // src/lib/geo.ts). En cas d'échec : repli « Lomé » marqué isFallback — il
+  // sert à l'affichage de l'en-tête, jamais comme adresse d'une commande.
   const getUserLocation = useCallback(() => {
     setIsLoadingLocation(true);
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({ latitude: position.coords.latitude, longitude: position.coords.longitude, address: 'Ma position' });
-          setIsLoadingLocation(false);
-        },
-        () => {
-          setUserLocation({ latitude: 6.1725, longitude: 1.2314, address: 'Lomé, Togo' });
-          setIsLoadingLocation(false);
-        }
-      );
-    } else {
-      setUserLocation({ latitude: 6.1725, longitude: 1.2314, address: 'Lomé, Togo' });
-      setIsLoadingLocation(false);
-    }
+    getPrecisePosition({ maxWaitMs: 8000, goodAccuracy: 50 })
+      .then((pos) => {
+        setUserLocation({ latitude: pos.latitude, longitude: pos.longitude, accuracy: pos.accuracy, address: 'Ma position' });
+      })
+      .catch(() => {
+        setUserLocation({ latitude: 6.1725, longitude: 1.2314, address: 'Lomé, Togo', isFallback: true });
+      })
+      .finally(() => setIsLoadingLocation(false));
   }, [setUserLocation]);
 
   useEffect(() => {
