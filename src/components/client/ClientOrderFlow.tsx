@@ -43,6 +43,10 @@ interface ClientOrderFlowProps {
 
 type StepType = 'service' | 'location' | 'schedule' | 'payment';
 
+// Libellés d'adresse posés automatiquement (pas tapés par le client) : ils sont
+// remplacés dès qu'une vraie position est connue.
+const AUTO_ADDRESS_LABELS = new Set(['Lomé, Togo', 'Ma position', 'Position actuelle', 'Position sur la carte']);
+
 /** Pastille radio réutilisable (cercle fin + point orange si coché). */
 function RadioDot({ checked }: { checked: boolean }) {
   return (
@@ -127,6 +131,8 @@ export function ClientOrderFlow({
   // Précision (m) du point GPS retenu ; null = point posé à la main sur la carte (exact)
   const [coordsAccuracy, setCoordsAccuracy] = useState<number | null>(initialPrecise?.accuracy ?? null);
   const autoLocateTriedRef = useRef(false);
+  // Dernier échec de localisation (affiché dans un encart avec « Réessayer »)
+  const [geoError, setGeoError] = useState<string | null>(null);
   // Vehicle selection (étape adresse) — the washer relies on it to
   // recognize the car. Defaults to the client's default car.
   const [cars, setCars] = useState<CarType[]>([]);
@@ -256,15 +262,15 @@ export function ClientOrderFlow({
     setIsGettingLocation(true);
     try {
       const pos = await getPrecisePosition({ maxWaitMs: 10000, goodAccuracy: 25 });
+      setGeoError(null);
       setCoords({ latitude: pos.latitude, longitude: pos.longitude });
       setCoordsAccuracy(pos.accuracy);
-      setAddress((prev) =>
-        prev && prev !== 'Position actuelle' && prev !== 'Position sur la carte' ? prev : 'Position actuelle'
-      );
+      // Remplace un libellé automatique (« Lomé, Togo », « Ma position »…) ; garde une adresse tapée
+      setAddress((prev) => (prev && !AUTO_ADDRESS_LABELS.has(prev) ? prev : 'Position actuelle'));
     } catch (error) {
-      if (!silent) {
-        toast.error(error instanceof GeoError ? error.message : GEO_ERROR_MESSAGES.unavailable);
-      }
+      const message = error instanceof GeoError ? error.message : GEO_ERROR_MESSAGES.unavailable;
+      setGeoError(message);
+      if (!silent) toast.error(message);
     } finally {
       setIsGettingLocation(false);
     }
@@ -282,6 +288,17 @@ export function ClientOrderFlow({
       handleUseCurrentLocation(true);
     }, 0);
     return () => clearTimeout(t);
+  }, [step, isHomeService, coords]);
+
+  // Retour dans l'app (ex. le client vient d'activer la localisation dans les
+  // réglages) : si l'étape Adresse n'a toujours pas de point, on relance.
+  useEffect(() => {
+    if (step !== 'location' || !isHomeService || coords) return;
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') handleUseCurrentLocation(true);
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
   }, [step, isHomeService, coords]);
 
   const handleApplyPromo = async () => {
@@ -701,21 +718,44 @@ export function ClientOrderFlow({
                     </span>
                   </button>
 
+                  {/* Échec de localisation : explication + Réessayer (au lieu d'une
+                      carte silencieusement centrée sur Lomé) */}
+                  {!coords && !isGettingLocation && geoError && (
+                    <div role="alert" className="rounded-btn border border-brand/40 bg-brand-wash p-3 flex items-start gap-2.5">
+                      <AlertCircle className="w-5 h-5 text-brand-ink flex-shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-body font-semibold text-ink">Activez la localisation pour utiliser votre position actuelle</p>
+                        <p className="text-detail text-soft mt-0.5">{geoError}</p>
+                        <p className="text-detail text-soft mt-0.5">Ou touchez la carte sur votre maison.</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleUseCurrentLocation()}
+                        className="flex-shrink-0 rounded-pill bg-brand-ink text-white text-detail font-bold px-3 py-2 active:scale-95 transition-transform"
+                      >
+                        Réessayer
+                      </button>
+                    </div>
+                  )}
+
                   {/* Map picker — tap to drop/adjust the service pin. Guarantees
                       GPS coordinates even when the text address is typed manually. */}
                   <div className="rounded-card overflow-hidden border border-line">
                     <DynamicLeafletMap
-                      center={coords ? [coords.latitude, coords.longitude] : [6.1725, 1.2314]}
-                      zoom={coords ? 15 : 13}
+                      // Position actuelle du client d'abord ; Lomé seulement si aucune position connue
+                      center={
+                        coords
+                          ? [coords.latitude, coords.longitude]
+                          : userLocation && !userLocation.isFallback
+                          ? [userLocation.latitude, userLocation.longitude]
+                          : [6.1725, 1.2314]
+                      }
+                      zoom={coords ? 16 : userLocation && !userLocation.isFallback ? 15 : 13}
                       height="220px"
                       onMapClick={(lat, lng) => {
                         setCoords({ latitude: lat, longitude: lng });
                         setCoordsAccuracy(null); // point posé à la main : exact
-                        setAddress((prev) =>
-                          prev && prev !== 'Position actuelle' && prev !== 'Position sur la carte'
-                            ? prev
-                            : 'Position sur la carte'
-                        );
+                        setAddress((prev) => (prev && !AUTO_ADDRESS_LABELS.has(prev) ? prev : 'Position sur la carte'));
                       }}
                       selectedPosition={coords ? [coords.latitude, coords.longitude] : null}
                     />
