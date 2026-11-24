@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { hashPin, generateToken, setAuthCookie } from '@/lib/auth';
+import { linkCompanyInvitations } from '@/lib/company';
 import { verifyOtp } from '@/lib/otp';
 
 // POST /api/auth/register - Register new client or washer
@@ -202,6 +203,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Default: CLIENT registration (existing flow)
+    // Offre Entreprises : relie les invitations en attente pour ce numéro
+    // (gestionnaire → rôle COMPANY, conducteur → voiture de service ajoutée).
+    const linkedRole = await linkCompanyInvitations(user.id, user.phone);
     // Generate auth token and set cookie
     const token = generateToken(user.id);
     await setAuthCookie(token);
@@ -213,7 +217,7 @@ export async function POST(request: NextRequest) {
         id: user.id,
         phone: user.phone,
         name: user.name,
-        role: user.role,
+        role: linkedRole ?? user.role,
         plateNumber: user.plateNumber,
         carColor: user.carColor,
       },

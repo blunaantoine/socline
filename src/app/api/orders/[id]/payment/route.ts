@@ -52,7 +52,7 @@ export async function POST(
     // Validate method: only CASH or WALLET are allowed (default CASH as today).
     // Commande abonnement : la séance est déjà réglée via l'abonnement —
     // JAMAIS d'encaissement espèces sur place (on force WALLET = déjà réglé).
-    const validMethod = order.isSubscriptionOrder
+    const validMethod = (order.isSubscriptionOrder || order.isCompanyOrder)
       ? 'WALLET'
       : method === 'WALLET'
         ? 'WALLET'
@@ -82,12 +82,16 @@ export async function POST(
       });
       if (washerRecord?.userId) {
         const amountLabel = `${amount.toLocaleString('fr-FR')} XOF`;
-        const title = order.isSubscriptionOrder
+        const title = order.isCompanyOrder
+          ? 'Lavage entreprise 🏢'
+          : order.isSubscriptionOrder
           ? 'Séance abonnement 👑'
           : validMethod === 'CASH'
             ? 'Paiement en espèces 💵'
             : 'Paiement par portefeuille ✅';
-        const message = order.isSubscriptionOrder
+        const message = order.isCompanyOrder
+          ? `Commande ${order.orderNumber} — voiture de service prise en charge par l'entreprise du client. Rien à encaisser : votre part vous sera créditée à la fin du lavage.`
+          : order.isSubscriptionOrder
           ? `Commande ${order.orderNumber} — prestation réglée via l'abonnement du client. Rien à encaisser : votre part vous sera créditée à la fin du lavage.`
           : validMethod === 'CASH'
             ? `Commande ${order.orderNumber} — encaissez ${amountLabel} en espèces auprès du client.`

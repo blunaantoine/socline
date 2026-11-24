@@ -41,7 +41,8 @@ import { useKeyboardOpen } from '@/hooks/useKeyboardOpen';
 // l'a réglée en amont). Helpers d'affichage pour le laveur.
 // ---------------------------------------------------------------------
 function orderDisplayAmount(order: Order): number {
-  return order.isSubscriptionOrder ? (order.basePrice ?? 0) : (order.totalPrice ?? 0);
+  // Abonnement ou voiture d'entreprise : prépayé, la valeur reste basePrice.
+  return order.isSubscriptionOrder || order.isCompanyOrder ? (order.basePrice ?? 0) : (order.totalPrice ?? 0);
 }
 function washerGainAmount(order: Order): number {
   const value = orderDisplayAmount(order);
@@ -1124,6 +1125,9 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
                       {order.isSubscriptionOrder && (
                         <p className="text-[10px] font-semibold text-purple-700 bg-purple-100 rounded-full px-2 py-0.5 mt-0.5">Séance abonnement</p>
                       )}
+                      {order.isCompanyOrder && (
+                        <p className="text-[10px] font-semibold text-[#1B5E20] bg-[#E8F5E9] rounded-full px-2 py-0.5 mt-0.5">🏢 {order.company?.name || 'Entreprise'}</p>
+                      )}
                       <p className="text-xs text-[#757575]">{order.address?.substring(0, 20)}...</p>
                     </div>
                   </div>
@@ -1172,6 +1176,11 @@ function WasherDashboard({ stats, isAvailable, isLoading, pendingOrders, onAccep
                           {order.isSubscriptionOrder && (
                             <span className="inline-block mt-0.5 bg-white/25 rounded-full px-2 py-0.5 text-[10px] font-semibold">
                               👑 Séance abonnement
+                            </span>
+                          )}
+                          {order.isCompanyOrder && (
+                            <span className="inline-block mt-0.5 bg-white/25 rounded-full px-2 py-0.5 text-[10px] font-semibold">
+                              🏢 {order.company?.name || 'Entreprise'}
                             </span>
                           )}
                           <p className="text-sm opacity-80">{order.service?.duration || 30} min</p>
@@ -1326,6 +1335,9 @@ function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat, acceptedOr
                       <p className="font-bold text-[#2E7D32]">{orderDisplayAmount(o).toLocaleString()} XOF</p>
                       {o.isSubscriptionOrder && (
                         <p className="text-[10px] font-semibold text-purple-700 bg-purple-100 rounded-full px-2 py-0.5 mt-0.5">Séance abonnement</p>
+                      )}
+                      {o.isCompanyOrder && (
+                        <p className="text-[10px] font-semibold text-[#1B5E20] bg-[#E8F5E9] rounded-full px-2 py-0.5 mt-0.5">🏢 {o.company?.name || 'Entreprise'}</p>
                       )}
                     </div>
                   </div>
@@ -1580,7 +1592,14 @@ function ActiveOrderView({ order, onUpdateStatus, onBack, onOpenChat, acceptedOr
           <div className="bg-[#E8F5E9] border border-[#C8E6C9] rounded-xl p-3 flex items-center gap-3">
             <Wallet className="w-6 h-6 text-[#2E7D32] flex-shrink-0" />
             <div>
-              {order.isSubscriptionOrder ? (
+              {order.isCompanyOrder ? (
+                <>
+                  <p className="text-sm font-semibold text-[#1B5E20]">
+                    Voiture de service 🏢 — rien à encaisser
+                  </p>
+                  <p className="text-xs text-[#2E7D32]">Lavage payé par {order.company?.name || "l'entreprise du client"}. Votre part sera créditée à la fin du lavage.</p>
+                </>
+              ) : order.isSubscriptionOrder ? (
                 <>
                   <p className="text-sm font-semibold text-[#1B5E20]">
                     Séance abonnement 👑 — rien à encaisser
@@ -1729,6 +1748,9 @@ function WasherOrderHistory({ orders, onBack }: {
                     </p>
                     {order.isSubscriptionOrder && (
                       <p className="text-[10px] font-semibold text-purple-700 bg-purple-100 rounded-full px-2 py-0.5 mt-0.5">Séance abonnement</p>
+                    )}
+                    {order.isCompanyOrder && (
+                      <p className="text-[10px] font-semibold text-[#1B5E20] bg-[#E8F5E9] rounded-full px-2 py-0.5 mt-0.5">🏢 {order.company?.name || 'Entreprise'}</p>
                     )}
                   </div>
                 </div>

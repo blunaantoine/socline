@@ -257,3 +257,23 @@ export async function requireAuth(request: NextRequest): Promise<{ authorized: b
 
   return { authorized: true, user };
 }
+
+// Middleware helper: gestionnaire d'entreprise (offre Socline Entreprises)
+export async function requireCompany(request: NextRequest): Promise<{ authorized: boolean; user: Session | null; response?: NextResponse }> {
+  const user = await getSessionFromRequest(request);
+  if (!user) {
+    return {
+      authorized: false,
+      user: null,
+      response: NextResponse.json({ success: false, error: 'Non authentifié' }, { status: 401 }),
+    };
+  }
+  if (user.role !== 'COMPANY') {
+    return {
+      authorized: false,
+      user: null,
+      response: NextResponse.json({ success: false, error: 'Accès réservé aux entreprises' }, { status: 403 }),
+    };
+  }
+  return { authorized: true, user };
+}

@@ -23,6 +23,8 @@ export interface OrderForNotification {
   // Commande payée via une séance d'abonnement (total à 0, séance décomptée
   // à la complétion) — adapte les messages client et laveur.
   isSubscriptionOrder?: boolean;
+  // Voiture de service payée par l'entreprise du client (offre Entreprises).
+  isCompanyOrder?: boolean;
   service?: { name?: string } | null;
   client?: { id: string } | null;
   washer?: { userId?: string | null; user?: { id: string; name?: string } | null } | null;
@@ -79,7 +81,9 @@ const CLIENT_STATUS_NOTIFS: Record<
   COMPLETED: {
     title: 'Lavage terminé ✅',
     message: (o) =>
-      o.isSubscriptionOrder
+      o.isCompanyOrder
+        ? `« ${o.service?.name || 'Votre lavage'} » est terminé — lavage pris en charge par votre entreprise. Merci de votre confiance !`
+        : o.isSubscriptionOrder
         ? `« ${o.service?.name || 'Votre lavage'} » est terminé — 1 séance décomptée de votre abonnement. Merci de votre confiance !`
         : `« ${o.service?.name || 'Votre lavage'} » est terminé. Merci de votre confiance !`,
   },
@@ -138,7 +142,15 @@ export async function notifyOrderStatusChange(
         // Séance abonnement : la prestation est déjà réglée via l'abonnement
         // du client — le laveur n'a RIEN à encaisser, il sera crédité de sa
         // part partenaire à la validation.
-        if (order.isSubscriptionOrder) {
+        if (order.isCompanyOrder) {
+          await notify({
+            userId: washerUserId,
+            title: 'Lavage entreprise 🏢',
+            message: `Commande ${order.orderNumber} — voiture de service prise en charge par l'entreprise du client. Rien à encaisser : votre part vous sera créditée à la fin du lavage.`,
+            type: 'payment',
+            data: { orderId: order.id, orderNumber: order.orderNumber, method: 'COMPANY', amount: 0 },
+          });
+        } else if (order.isSubscriptionOrder) {
           await notify({
             userId: washerUserId,
             title: 'Séance abonnement 👑',
@@ -167,6 +179,16 @@ export async function notifyOrderStatusChange(
       if (order.status === 'COMPLETED' && typeof options.washerAmount === 'number') {
         const fmt = (n: number) => n.toLocaleString('fr-FR');
         const isCash = options.paymentMethod === 'CASH';
+        if (order.isCompanyOrder) {
+          await notify({
+            userId: washerUserId,
+            title: 'Lavage entreprise terminé 💰',
+            message: `« ${serviceName} » terminée — ${fmt(options.washerAmount)} F ajoutés à vos gains.`,
+            type: 'payment',
+            data: { orderId: order.id, orderNumber: order.orderNumber, amount: options.washerAmount, method: 'COMPANY' },
+          });
+          return;
+        }
         if (options.isSubscriptionOrder) {
           await notify({
             userId: washerUserId,

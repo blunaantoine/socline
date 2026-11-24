@@ -39,6 +39,7 @@ import {
   RefreshCw, Loader2, ArrowLeft, LogOut, Percent, Wallet, Phone, Image as ImageIcon, Move, Banknote, Receipt, Video as VideoIcon, Film, Building2, CreditCard, Copy, Headphones
 } from 'lucide-react';
 import { AdminSupportTickets } from '@/components/admin/AdminSupportTickets';
+import { AdminCompanies } from '@/components/admin/AdminCompanies';
 import { HideableBalanceLight } from '@/components/ui/hideable-balance';
 import { toast } from 'sonner';
 import { parseJsonResponse } from '@/lib/json-helper';
@@ -875,6 +876,7 @@ export function AdminPanel() {
               )}
               {subTab === 'transactions' && <AdminTransactions />}
               {subTab === 'support' && <AdminSupportTickets />}
+              {subTab === 'companies' && <AdminCompanies />}
               {subTab === 'subscription-plans' && <AdminSubscriptionPlans />}
               {subTab === 'subscriptions' && <AdminSubscriptions />}
               {subTab === 'promotions' && (
@@ -2616,6 +2618,13 @@ function AdminPlusMenu({ depositsCount, withdrawalsCount, onSelect }: {
       label: 'Abonnements Clients',
       description: 'Gérer les abonnements et validations',
       color: '#9C27B0',
+    },
+    {
+      id: 'companies',
+      icon: Building2,
+      label: 'Entreprises',
+      description: 'Flottes au forfait mensuel : contrats, véhicules, factures',
+      color: '#0F1B2D',
     },
     {
       id: 'promotions',

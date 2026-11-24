@@ -219,7 +219,11 @@ function OrderCard({ order, onViewDetails }: { order: Order; onViewDetails: () =
 
           {/* Price */}
           <div className="text-right flex-shrink-0">
-            {order.isSubscriptionOrder ? (
+            {order.isCompanyOrder ? (
+              <div className="text-xs font-bold text-[#1B5E20] bg-[#E8F5E9] rounded-full px-2 py-0.5">
+                🏢 Entreprise
+              </div>
+            ) : order.isSubscriptionOrder ? (
               <div className="text-xs font-bold text-purple-700 bg-purple-100 rounded-full px-2 py-0.5">
                 👑 Abonnement
               </div>
@@ -305,7 +309,11 @@ export function OrderDetails({ order, onClose }: { order: Order; onClose: () => 
               <p className="text-sm text-[#757575]">{order.service.duration} min</p>
             </div>
             <div className="text-right">
-              {order.isSubscriptionOrder ? (
+              {order.isCompanyOrder ? (
+                <div className="text-sm font-bold text-[#1B5E20] bg-[#E8F5E9] rounded-full px-2.5 py-0.5">
+                  🏢 {order.company?.name || 'Entreprise'}
+                </div>
+              ) : order.isSubscriptionOrder ? (
                 <div className="text-sm font-bold text-purple-700 bg-purple-100 rounded-full px-2.5 py-0.5">
                   👑 Abonnement
                 </div>
@@ -536,7 +544,9 @@ export function OrderDetails({ order, onClose }: { order: Order; onClose: () => 
           )}
           <div className="flex justify-between font-bold pt-2 border-t border-[#E0E0E0]">
             <span className="text-[#212121]">Total</span>
-            {order.isSubscriptionOrder ? (
+            {order.isCompanyOrder ? (
+              <span className="text-[#1B5E20]">🏢 Payé par {order.company?.name || 'Entreprise'}</span>
+            ) : order.isSubscriptionOrder ? (
               <span className="text-purple-700">👑 Séance abonnement</span>
             ) : (
               <span className="text-[#C2410C]">{formatPrice(order.totalPrice)}</span>

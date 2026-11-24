@@ -66,6 +66,8 @@ interface CarData {
   photo: string | null;
   isDefault: boolean;
   createdAt: string;
+  /** Voiture de service (offre Entreprises) — gérée par l'entreprise. */
+  company?: { companyName: string; active: boolean; remaining: number; included: number } | null;
 }
 
 // Car brands and their models (popular in Togo/West Africa) - sorted alphabetically
@@ -440,6 +442,14 @@ export function CarsManager({ userId }: CarsManagerProps) {
                   {car.year && (
                     <p className="text-xs text-[#6B6B6B] mt-1">Année: {car.year}</p>
                   )}
+                  {car.company && (
+                    <p className="text-xs text-[#2E7D32] font-semibold mt-1.5">
+                      Voiture de service · {car.company.companyName}
+                      {car.company.active
+                        ? ` · ${car.company.remaining}/${car.company.included} lavage${car.company.included > 1 ? 's' : ''} ce mois`
+                        : ' · non prise en charge'}
+                    </p>
+                  )}
                 </div>
 
                 {/* Actions */}
@@ -454,20 +464,25 @@ export function CarsManager({ userId }: CarsManagerProps) {
                       <CheckCircle className="w-4 h-4 text-[#9E9E9E]" />
                     </button>
                   )}
-                  <button
-                    onClick={() => openEditModal(car)}
-                    className="p-2.5 hover:bg-[#F5F5F5] rounded-lg"
-                    aria-label={`Modifier le véhicule ${car.plateNumber}`}
-                  >
-                    <Edit className="w-4 h-4 text-[#757575]" />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteCar(car.id)}
-                    className="p-2.5 hover:bg-red-50 rounded-lg"
-                    aria-label={`Supprimer le véhicule ${car.plateNumber}`}
-                  >
-                    <Trash2 className="w-4 h-4 text-red-500" />
-                  </button>
+                  {/* Voiture de service : modifiée uniquement par l'entreprise */}
+                  {!car.company && (
+                    <>
+                      <button
+                        onClick={() => openEditModal(car)}
+                        className="p-2.5 hover:bg-[#F5F5F5] rounded-lg"
+                        aria-label={`Modifier le véhicule ${car.plateNumber}`}
+                      >
+                        <Edit className="w-4 h-4 text-[#757575]" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteCar(car.id)}
+                        className="p-2.5 hover:bg-red-50 rounded-lg"
+                        aria-label={`Supprimer le véhicule ${car.plateNumber}`}
+                      >
+                        <Trash2 className="w-4 h-4 text-red-500" />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

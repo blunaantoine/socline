@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
+import { getVehicleQuota, linkCompanyInvitations } from '@/lib/company';
 
 // GET /api/cars - Get all cars for the session user
 // Identity is derived from the session cookie (query userId is ignored).
@@ -10,13 +11,23 @@ export async function GET(request: NextRequest) {
   const userId = auth.user!.id;
 
   try {
-    const cars = await db.car.findMany({
+    // Offre Entreprises : ajoute les voitures de service reçues depuis la
+    // dernière visite, puis joint à chacune son entreprise et son quota du mois.
+    await linkCompanyInvitations(userId, auth.user!.phone);
+    const rawCars = await db.car.findMany({
       where: { userId },
+      include: { fleetVehicle: { select: { id: true } } },
       orderBy: [
         { isDefault: 'desc' },
         { createdAt: 'desc' },
       ],
     });
+    const cars = await Promise.all(
+      rawCars.map(async ({ fleetVehicle, ...car }) => ({
+        ...car,
+        company: fleetVehicle ? await getVehicleQuota(fleetVehicle.id) : null,
+      }))
+    );
 
     return NextResponse.json({
       success: true,
@@ -132,6 +143,16 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Véhicule non trouvé' }, { status: 404 });
     }
 
+    // Voiture de service : plaque, marque, modèle et couleur sont gérés par
+    // l'entreprise (le conducteur peut seulement changer le surnom, la photo
+    // et la voiture par défaut).
+    const isFleetCar = (await db.fleetVehicle.count({ where: { carId } })) > 0;
+    if (isFleetCar && (plateNumber || brand !== undefined || model !== undefined || color || year !== undefined)) {
+      return NextResponse.json({
+        error: "Cette voiture de service est gérée par votre entreprise : demandez à votre gestionnaire de modifier ses informations.",
+      }, { status: 403 });
+    }
+
     // Optional photo (data URL)
     if (photo !== undefined && photo !== null && (typeof photo !== 'string' || !photo.startsWith('data:image/'))) {
       return NextResponse.json({ error: 'Photo invalide' }, { status: 400 });
@@ -197,6 +218,12 @@ export async function DELETE(request: NextRequest) {
 
     if (!car) {
       return NextResponse.json({ error: 'Véhicule non trouvé' }, { status: 404 });
+    }
+
+    if ((await db.fleetVehicle.count({ where: { carId } })) > 0) {
+      return NextResponse.json({
+        error: "Cette voiture de service est gérée par votre entreprise : elle ne peut pas être supprimée ici.",
+      }, { status: 403 });
     }
 
     const wasDefault = car.isDefault;

@@ -104,6 +104,7 @@ export default function ConfidentialitePage() {
               ['Informations de la station : nom, adresse, téléphone, photos, services et prix', 'Présenter la station et ses offres aux clients', 'Stations'],
               ['Messages échangés entre client et laveur', 'Organiser le lavage (arrivée, accès, consignes)', 'Clients et laveurs'],
               ['Notes et avis', 'Informer les autres clients et améliorer la qualité du service', 'Clients'],
+              ['Entreprise cliente : nom, contact, NIF, voitures (plaque, marque, couleur), nom et numéro des conducteurs, factures', 'Gérer le forfait mensuel de lavage de sa flotte et le facturer', 'Entreprises et leurs conducteurs'],
               ['Identifiant de notifications de l’appareil', 'Vous envoyer les notifications de suivi de commande', 'Tous'],
               ['Conversation avec l’assistant « Soco » (facultatif) et, si vous êtes connecté, votre prénom, votre solde, le numéro et le statut de votre commande en cours et votre abonnement', 'Répondre à vos questions sur l’application de façon personnalisée', 'Tous'],
             ]}
@@ -128,6 +129,7 @@ export default function ConfidentialitePage() {
           <p>Uniquement avec les personnes et les prestataires nécessaires au service :</p>
           <ul className="list-disc pl-5 space-y-1.5">
             <li><strong>Le laveur ou la station</strong> qui réalise votre lavage : votre nom, votre adresse ou position, votre véhicule et vos messages pour cette commande ; <strong>le client</strong> voit le nom, la note et la position du laveur pendant la commande.</li>
+            <li><strong>L&apos;entreprise qui vous confie une voiture de service</strong> (offre Socline Entreprises) : pour cette voiture uniquement, son gestionnaire voit votre nom, votre numéro, les lavages commandés, leur date, les photos avant / après et votre note. Il ne voit pas vos autres véhicules ni vos autres commandes.</li>
             <li><strong>Les prestataires de paiement</strong> : PayDunya et les opérateurs Mobile Money (Mixx by Yas, Flooz), pour traiter les paiements.</li>
             <li><strong>Le prestataire d&apos;envoi de SMS</strong> (Africa&apos;s Talking), pour les codes de vérification.</li>
             <li><strong>Google Firebase</strong>, pour l&apos;envoi des notifications sur votre téléphone.</li>

@@ -233,6 +233,26 @@ export function ClientOrderFlow({
     fetchSubscription();
   }, [user?.id, selectedService]);
 
+  // -----------------------------------------------------------------
+  // Offre Entreprises : voiture de service sélectionnée → lavage pris en
+  // charge par l'entreprise (lavage à domicile, formule du contrat, dans la
+  // limite du quota du mois). Le serveur revérifie tout.
+  // -----------------------------------------------------------------
+  const selectedCar = cars.find((c) => c.id === selectedCarId) || null;
+  const companyCar = selectedCar?.company && selectedCar.company.active && isHomeService && !stationId
+    ? selectedCar.company
+    : null;
+  const coveredByCompany = Boolean(companyCar && companyCar.remaining > 0);
+  const contractServiceId = companyCar?.serviceId ?? null;
+  useEffect(() => {
+    if (!contractServiceId || !coveredByCompany || selectedService?.id === contractServiceId) return;
+    const contractService = services.find((sv) => sv.id === contractServiceId);
+    if (contractService) {
+      selectService(contractService);
+      toast.info(`Formule « ${contractService.name} » appliquée : c'est celle du contrat de votre entreprise.`);
+    }
+  }, [contractServiceId, coveredByCompany, selectedService?.id, services, selectService]);
+
   const goToStep = (newStep: StepType) => {
     setStep(newStep);
   };
@@ -344,6 +364,8 @@ export function ClientOrderFlow({
 
   const getFinalPrice = () => {
     if (!selectedService) return 0;
+    // Voiture de service : payée par l'entreprise
+    if (coveredByCompany) return 0;
     // If using subscription, price is 0
     if (useSubscription && activeSubscription) {
       return 0;
@@ -366,7 +388,7 @@ export function ClientOrderFlow({
     }
 
     const finalPrice = getFinalPrice();
-    if (paymentMethod === 'wallet' && walletBalance < finalPrice) {
+    if (!coveredByCompany && paymentMethod === 'wallet' && walletBalance < finalPrice) {
       toast.error('Solde insuffisant dans votre portefeuille.');
       return;
     }
@@ -391,7 +413,7 @@ export function ClientOrderFlow({
           promoCode: appliedPromo?.code || null,
           discount: appliedPromo?.discountAmount || 0,
           scheduledAt: scheduledTime === 'later' ? scheduledDate : null,
-          useSubscription: useSubscription && activeSubscription,
+          useSubscription: !coveredByCompany && useSubscription && activeSubscription,
         }),
       });
 
@@ -408,7 +430,7 @@ export function ClientOrderFlow({
       if (!data) return;
 
       if (data.success && data.order) {
-        if (paymentMethod === 'wallet') {
+        if (!coveredByCompany && paymentMethod === 'wallet') {
           const walletRes = await fetch('/api/wallet', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -433,7 +455,7 @@ export function ClientOrderFlow({
             amount: finalPrice,
             // Séance abonnement : rien à encaisser sur place — la prestation
             // est déjà réglée via l'abonnement (la route force aussi WALLET).
-            method: useSubscription && activeSubscription
+            method: coveredByCompany || (useSubscription && activeSubscription)
               ? 'WALLET'
               : paymentMethod === 'wallet' ? 'WALLET' : 'CASH',
           }),
@@ -847,6 +869,21 @@ export function ClientOrderFlow({
                           <Badge variant="outline" className="mt-0.5 font-mono text-micro border-line text-soft">
                             {car.plateNumber}
                           </Badge>
+                          {car.company && (
+                            <div className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-micro font-semibold ${
+                              car.company.active && car.company.remaining > 0
+                                ? 'bg-success/10 text-success'
+                                : 'bg-danger/10 text-danger'
+                            }`}>
+                              <Building2 className="w-3 h-3" aria-hidden="true" />
+                              {car.company.companyName} ·{' '}
+                              {!car.company.active
+                                ? 'non prise en charge'
+                                : car.company.remaining > 0
+                                  ? `${car.company.remaining}/${car.company.included} lavage${car.company.included > 1 ? 's' : ''} ce mois`
+                                  : 'quota du mois atteint'}
+                            </div>
+                          )}
                         </div>
                         {isSelected && <CheckCircle className="w-5 h-5 text-brand-ink flex-shrink-0" />}
                       </button>
@@ -857,6 +894,15 @@ export function ClientOrderFlow({
                   <Car className="w-3.5 h-3.5 flex-shrink-0 text-brand-ink" />
                   Le laveur verra cette fiche pour reconnaître votre voiture (photo, plaque, couleur).
                 </p>
+                {selectedCar?.company && !coveredByCompany && (
+                  <p className="text-detail text-danger mt-2" role="status">
+                    {!isHomeService || stationId
+                      ? `Les lavages de ${selectedCar.company.companyName} sont pris en charge uniquement à domicile.`
+                      : !selectedCar.company.active
+                        ? `Cette voiture n'est plus prise en charge par ${selectedCar.company.companyName}. Contactez votre gestionnaire.`
+                        : `Quota du mois atteint pour cette voiture. Il sera renouvelé le 1er du mois.`}
+                  </p>
+                )}
               </div>
             )}
 
@@ -996,7 +1042,20 @@ export function ClientOrderFlow({
         {step === 'payment' && selectedService && (
           <div className="space-y-4">
             {/* Abonnement actif : bandeau navy + couronne */}
-            {activeSubscription && (
+            {coveredByCompany && companyCar && (
+              <div className="bg-gradient-to-br from-ink to-ink-2 rounded-card p-4 text-white flex items-center gap-3">
+                <div className="w-11 h-11 rounded-full bg-white/15 flex items-center justify-center flex-shrink-0">
+                  <Building2 className="w-5 h-5" aria-hidden="true" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-body font-bold">Pris en charge par {companyCar.companyName}</h3>
+                  <p className="text-detail text-white/75">
+                    {companyCar.remaining} lavage{companyCar.remaining > 1 ? 's' : ''} restant{companyCar.remaining > 1 ? 's' : ''} ce mois pour cette voiture. Rien à payer.
+                  </p>
+                </div>
+              </div>
+            )}
+            {activeSubscription && !coveredByCompany && (
               <div className="bg-gradient-to-br from-ink to-ink-2 rounded-card p-4 text-white">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 bg-white/10 rounded-full grid place-items-center flex-shrink-0">
@@ -1065,7 +1124,22 @@ export function ClientOrderFlow({
                 </div>
                 <div className="h-px bg-line my-2" />
                 
-                {useSubscription && activeSubscription ? (
+                {coveredByCompany && companyCar ? (
+                  <>
+                    <div className="flex justify-between text-body">
+                      <span className="text-soft">Prix de base</span>
+                      <span className="text-soft line-through">{formatPrice(selectedService.price)}</span>
+                    </div>
+                    <div className="flex justify-between text-body font-semibold text-success">
+                      <span>Entreprise</span>
+                      <span className="truncate max-w-[170px]">{companyCar.companyName}</span>
+                    </div>
+                    <div className="flex justify-between text-title text-ink pt-1.5 items-baseline">
+                      <span>Total</span>
+                      <span className="text-success font-extrabold">0 F</span>
+                    </div>
+                  </>
+                ) : useSubscription && activeSubscription ? (
                   <>
                     <div className="flex justify-between text-body">
                       <span className="text-soft">Prix de base</span>
@@ -1102,7 +1176,7 @@ export function ClientOrderFlow({
             </div>
 
             {/* Code promo — masqué si abonnement utilisé */}
-            {!useSubscription && (
+            {!useSubscription && !coveredByCompany && (
               <div className={`p-4 ${CARD_CLASSES}`}>
                 <Label className="text-section text-ink mb-3 block">Code promo</Label>
                 {appliedPromo ? (
@@ -1138,7 +1212,7 @@ export function ClientOrderFlow({
             )}
 
             {/* Mode de paiement — masqué si abonnement utilisé */}
-            {!useSubscription && (
+            {!useSubscription && !coveredByCompany && (
               <div className={`p-4 ${CARD_CLASSES}`}>
                 <Label className="text-section text-ink mb-3 block">Mode de paiement</Label>
                 <div className="space-y-3">
@@ -1198,6 +1272,8 @@ export function ClientOrderFlow({
             >
               {isProcessing ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
+              ) : coveredByCompany ? (
+                'Confirmer le lavage'
               ) : useSubscription && activeSubscription ? (
                 'Confirmer avec mon abonnement'
               ) : (

@@ -493,7 +493,11 @@ export function OrderTracking({ order, onBack }: OrderTrackingProps) {
                 <h3 className="font-semibold">{order.service.name}</h3>
                 <p className="text-sm text-gray-500">{order.address}</p>
               </div>
-              {order.isSubscriptionOrder ? (
+              {order.isCompanyOrder ? (
+                <span className="text-sm font-bold text-[#1B5E20] bg-[#E8F5E9] rounded-full px-3 py-1">
+                  🏢 {order.company?.name || 'Entreprise'}
+                </span>
+              ) : order.isSubscriptionOrder ? (
                 <span className="text-sm font-bold text-purple-700 bg-purple-100 rounded-full px-3 py-1">
                   👑 Séance abonnement
                 </span>
@@ -807,11 +811,17 @@ function OrderCompleted({ order, onBack, onGoHome }: { order: Order; onBack?: ()
               </p>
               <div className="mt-3 p-3 bg-[#F5F5F5] rounded-xl">
                 <div className="text-xs text-[#757575]">
-                  {order.isSubscriptionOrder
+                  {order.isCompanyOrder
+                    ? 'Lavage pris en charge par votre entreprise'
+                    : order.isSubscriptionOrder
                     ? 'Prestation réglée via votre abonnement'
                     : order.payment?.method === 'CASH' ? 'À payer en espèces' : 'Total payé'}
                 </div>
-                {order.isSubscriptionOrder ? (
+                {order.isCompanyOrder ? (
+                  <div className="text-lg font-bold text-[#1B5E20]">
+                    🏢 {order.company?.name || 'Entreprise'}
+                  </div>
+                ) : order.isSubscriptionOrder ? (
                   <div className="text-lg font-bold text-purple-700">
                     👑 Séance abonnement
                   </div>

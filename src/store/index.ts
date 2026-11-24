@@ -44,7 +44,7 @@ export const useAuthStore = create<AuthState>()(
 );
 
 // App View Store (Client/Washer/Admin)
-type AppView = 'client' | 'washer' | 'admin';
+type AppView = 'client' | 'washer' | 'admin' | 'company';
 
 interface AppState {
   currentView: AppView;

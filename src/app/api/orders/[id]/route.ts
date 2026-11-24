@@ -27,6 +27,7 @@ export async function GET(
         // Véhicule concerné — le suivi côté client affiche la même fiche
         // véhicule que le côté laveur (photo/marque/couleur/plaque).
         car: true,
+        company: { select: { id: true, name: true } },
         station: true,
         payment: true,
         review: true,
@@ -264,13 +265,20 @@ export async function PATCH(
         rating: washerRecord?.rating ?? 0,
         cancellationRate,
       });
-      updateData.commission = commissionForLevel(partnerLevel, existingOrder.totalPrice ?? 0);
+      // Prépayé (abonnement / entreprise) : commission sur la valeur du service.
+      const commissionBase = (existingOrder.isSubscriptionOrder || existingOrder.isCompanyOrder)
+        ? (existingOrder.basePrice ?? 0)
+        : (existingOrder.totalPrice ?? 0);
+      updateData.commission = commissionForLevel(partnerLevel, commissionBase);
     }
 
     // Credit the washer when the order transitions to COMPLETED
     // (only if its previous status was not already COMPLETED — anti double-credit)
     const isCompletion = status === 'COMPLETED' && existingOrder.status !== 'COMPLETED';
-    const totalPrice = existingOrder.totalPrice ?? 0;
+    // Prépayé (abonnement / entreprise) : le total client vaut 0 mais la
+    // valeur de la prestation est le prix du service — jamais d'espèces.
+    const isPrepaid = Boolean(existingOrder.isSubscriptionOrder || existingOrder.isCompanyOrder);
+    const totalPrice = isPrepaid ? (existingOrder.basePrice ?? 0) : (existingOrder.totalPrice ?? 0);
     // Commission frozen at ACCEPTED per Contrat Article 5, clamped >= 0
     // (e.g. subscription orders at 0).
     const commission = Math.max(0, existingOrder.commission ?? 0);
@@ -285,7 +293,7 @@ export async function PATCH(
     // Paiement WALLET ou abonnement : la plateforme détient déjà l'argent,
     // seule la part nette du partenaire est créditée.
     // -----------------------------------------------------------------
-    const isCash = (existingOrder.payment?.method ?? null) === 'CASH';
+    const isCash = !isPrepaid && (existingOrder.payment?.method ?? null) === 'CASH';
     const washerAmount = isCompletion && !isCash
       ? Math.max(0, totalPrice - commission)
       : 0;

@@ -19,6 +19,7 @@ enum UserRole {
   CLIENT
   WASHER
   ADMIN
+  COMPANY // Gestionnaire d'une entreprise cliente (offre Socline Entreprises)
 }
 
 // Washer type enum - Two types of washers
@@ -123,6 +124,7 @@ model User {
   addresses     Address[] // User's saved addresses
   stations      Station[] @relation("StationOwner") // Stations owned by this user (if station owner)
   supportTickets SupportTicket[] @relation("SupportTickets") // Demandes de support remontées via l'assistant IA
+  managedCompanies Company[] @relation("CompanyManager") // Entreprise(s) gérée(s) (rôle COMPANY)
 
   @@map("users")
 }
@@ -174,6 +176,10 @@ model Car {
   
   // Orders booked for this vehicle
   orders        Order[]
+
+  // Voiture d'entreprise (offre Socline Entreprises) : prise en charge par la
+  // flotte d'une entreprise, le conducteur ne paie pas ses lavages.
+  fleetVehicle  FleetVehicle?
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -309,6 +315,7 @@ model Service {
   // Relations
   orders            Order[]
   subscriptionPlans SubscriptionPlan[] // Plans associated with this service
+  companyContracts  CompanyContract[] // Contrats entreprise couvrant ce service
 
   @@map("services")
 }
@@ -371,6 +378,14 @@ model Order {
   isSubscriptionOrder  Boolean      @default(false)  // True if this order uses a subscription session
   subscriptionValidated    Boolean      @default(false)  // True once washer validates the session
   subscriptionValidatedAt  DateTime?
+
+  // Offre Socline Entreprises : lavage d'une voiture de flotte, payé par
+  // l'entreprise via son forfait mensuel (totalPrice = 0 pour le conducteur).
+  isCompanyOrder  Boolean      @default(false)
+  companyId       String?
+  company         Company?     @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  fleetVehicleId  String?
+  fleetVehicle    FleetVehicle? @relation(fields: [fleetVehicleId], references: [id], onDelete: SetNull)
   
   // Status
   status          OrderStatus  @default(PENDING)
@@ -913,4 +928,110 @@ model SupportTicket {
   updatedAt   DateTime @updatedAt
 
   @@map("support_tickets")
+}
+
+// ============================================================================
+// OFFRE SOCLINE ENTREPRISES — flottes de véhicules (entreprises, hôtels…)
+// L'entreprise paie un forfait mensuel ; chaque voiture a un quota de lavages
+// par mois ; le conducteur commande depuis son propre compte sans payer.
+// ============================================================================
+
+model Company {
+  id            String   @id @default(cuid())
+  name          String
+  sector        String?  // Entreprise, Hôtel, Agence de location…
+  address       String?
+  contactName   String?
+  email         String?
+  taxId         String?  // NIF (facultatif)
+
+  // Gestionnaire : invité par son numéro, lié dès qu'il a un compte.
+  managerPhone  String
+  managerUserId String?
+  manager       User?    @relation("CompanyManager", fields: [managerUserId], references: [id], onDelete: SetNull)
+
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  contracts     CompanyContract[]
+  vehicles      FleetVehicle[]
+  orders        Order[]
+  invoices      CompanyInvoice[]
+
+  @@index([managerPhone])
+  @@map("companies")
+}
+
+model CompanyContract {
+  id               String    @id @default(cuid())
+  companyId        String
+  company          Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  serviceId        String    // Formule couverte (ex. Confort)
+  service          Service   @relation(fields: [serviceId], references: [id])
+  washesPerVehicle Int       @default(4)  // Lavages inclus par voiture et par mois
+  pricePerVehicle  Float                  // Prix mensuel par voiture (F CFA)
+  maxVehicles      Int       @default(10)
+  startDate        DateTime  @default(now())
+  endDate          DateTime?
+  isActive         Boolean   @default(true)
+  notes            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@map("company_contracts")
+}
+
+model FleetVehicle {
+  id          String   @id @default(cuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  plateNumber String
+  brand       String?
+  model       String?
+  color       String
+
+  // Conducteur : invité par son numéro ; la voiture apparaît dans son compte
+  // (Car) dès qu'il a un compte Socline.
+  driverName  String?
+  driverPhone String
+  carId       String?  @unique
+  car         Car?     @relation(fields: [carId], references: [id], onDelete: SetNull)
+
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  orders      Order[]
+
+  @@index([driverPhone])
+  @@map("fleet_vehicles")
+}
+
+enum CompanyInvoiceStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+model CompanyInvoice {
+  id               String               @id @default(cuid())
+  invoiceNumber    String               @unique
+  companyId        String
+  company          Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  period           String               // "2026-12"
+  vehicleCount     Int
+  washesIncluded   Int
+  washesDone       Int                  @default(0)
+  pricePerVehicle  Float
+  amount           Float
+  status           CompanyInvoiceStatus @default(PENDING)
+  paidAt           DateTime?
+  paymentReference String?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  @@unique([companyId, period])
+  @@map("company_invoices")
 }

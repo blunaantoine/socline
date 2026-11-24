@@ -4,6 +4,7 @@ import {
   hashPin, verifyPin, generateToken, setAuthCookie,
   isLoginRateLimited, recordFailedLogin, clearLoginAttempts
 } from '@/lib/auth';
+import { linkCompanyInvitations } from '@/lib/company';
 
 // POST /api/auth/login - Login with phone + PIN
 export async function POST(request: NextRequest) {
@@ -74,6 +75,10 @@ export async function POST(request: NextRequest) {
     // Clear rate limiting on successful login
     clearLoginAttempts(cleanPhone);
 
+    // Offre Entreprises : relie les invitations reçues depuis la dernière
+    // connexion (gestionnaire → rôle COMPANY, conducteur → voiture de service).
+    const linkedRole = await linkCompanyInvitations(user.id, user.phone);
+
     // Generate auth token with userId and set cookie
     const token = generateToken(user.id);
     await setAuthCookie(token);
@@ -87,7 +92,7 @@ export async function POST(request: NextRequest) {
         name: user.name,
         email: user.email,
         avatar: user.avatar,
-        role: user.role,
+        role: linkedRole ?? user.role,
         plateNumber: user.plateNumber,
         carColor: user.carColor,
       },

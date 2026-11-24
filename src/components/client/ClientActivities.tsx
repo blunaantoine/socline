@@ -283,6 +283,13 @@ function ServiceIcon({ category }: { category?: string | null }) {
 
 /** Montant de la carte : 👑 séance abonnement ou prix en F. */
 function OrderPrice({ order }: { order: Order }) {
+  if (order.isCompanyOrder) {
+    return (
+      <span className="inline-block text-[11px] font-bold text-[#1B5E20] bg-[#E8F5E9] rounded-full px-2 py-0.5 whitespace-nowrap">
+        🏢 Entreprise
+      </span>
+    );
+  }
   if (order.isSubscriptionOrder) {
     return (
       <span className="inline-block text-[11px] font-bold text-purple-700 bg-purple-100 rounded-full px-2 py-0.5 whitespace-nowrap">

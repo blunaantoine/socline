@@ -1,5 +1,5 @@
 // User types
-export type UserRole = 'CLIENT' | 'WASHER' | 'ADMIN';
+export type UserRole = 'CLIENT' | 'WASHER' | 'ADMIN' | 'COMPANY';
 
 export interface Vehicle {
   plateNumber: string;
@@ -143,6 +143,10 @@ export interface Order {
   // totalPrice vaut 0, la valeur de la prestation reste basePrice, et la
   // séance n'est décomptée qu'à la validation (fin du lavage).
   isSubscriptionOrder?: boolean;
+  // Offre Entreprises : voiture de service, lavage payé par l'entreprise.
+  isCompanyOrder?: boolean;
+  companyId?: string | null;
+  company?: { id: string; name: string } | null;
   subscriptionValidated?: boolean;
   subscriptionValidatedAt?: string;
   subscriptionUsage?: {
@@ -172,6 +176,21 @@ export interface Car {
   isDefault: boolean;
   createdAt: string;
   updatedAt: string;
+  /** Voiture de service (offre Entreprises) : entreprise et quota du mois. */
+  company?: CarCompanyQuota | null;
+}
+
+/** Quota d'une voiture de service — renvoyé par GET /api/cars. */
+export interface CarCompanyQuota {
+  fleetVehicleId: string;
+  companyId: string;
+  companyName: string;
+  active: boolean;
+  serviceId: string | null;
+  serviceName: string | null;
+  included: number;
+  used: number;
+  remaining: number;
 }
 
 export interface Payment {

@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
 import { validatePromotionCode } from '@/lib/promo';
 import { computePartnerLevel, commissionForLevel, DEFAULT_PARTNER_LEVEL } from '@/lib/washer-level';
+import { getVehicleQuota } from '@/lib/company';
 import { emitRealtime } from '@/lib/realtime';
 import { calculateDistanceKm } from '@/lib/geo';
 import { notifyOrderStatusChange } from '@/lib/order-notifications';
@@ -45,6 +46,8 @@ export async function GET(request: NextRequest) {
       // Review (étoiles + commentaire) — le laveur doit voir les notes
       // reçues sur chaque prestation terminée.
       review: true,
+      // Offre Entreprises : nom de l'entreprise qui prend le lavage en charge.
+      company: { select: { id: true, name: true } },
       subscriptionUsage: {
         include: {
           subscription: {
@@ -208,6 +211,40 @@ export async function POST(request: NextRequest) {
       verifiedCarId = car.id;
     }
 
+    // -----------------------------------------------------------------
+    // OFFRE SOCLINE ENTREPRISES — voiture de service : le lavage est payé
+    // par l'entreprise (forfait mensuel), dans la limite du quota du mois.
+    // Le conducteur ne paie rien ; la formule est celle du contrat.
+    // -----------------------------------------------------------------
+    let companyQuota: Awaited<ReturnType<typeof getVehicleQuota>> = null;
+    if (verifiedCarId) {
+      const fleetVehicle = await db.fleetVehicle.findUnique({ where: { carId: verifiedCarId }, select: { id: true } });
+      if (fleetVehicle) {
+        companyQuota = await getVehicleQuota(fleetVehicle.id);
+        if (!companyQuota || !companyQuota.active) {
+          return NextResponse.json({
+            error: `Cette voiture de service n'est plus prise en charge${companyQuota ? ` par ${companyQuota.companyName}` : ''}. Contactez votre gestionnaire.`,
+          }, { status: 400 });
+        }
+        if (companyQuota.serviceId !== serviceId) {
+          return NextResponse.json({
+            error: `Le contrat de ${companyQuota.companyName} couvre la formule « ${companyQuota.serviceName} ». Choisissez cette formule pour cette voiture.`,
+          }, { status: 400 });
+        }
+        if (companyQuota.remaining <= 0) {
+          return NextResponse.json({
+            error: `Quota du mois atteint pour cette voiture (${companyQuota.included} lavage${companyQuota.included > 1 ? 's' : ''} inclus par ${companyQuota.companyName}). Il sera renouvelé le 1er du mois.`,
+          }, { status: 400 });
+        }
+      }
+    }
+    const isCompanyOrder = companyQuota !== null;
+    if (isCompanyOrder && useSubscription) {
+      return NextResponse.json({
+        error: "Cette voiture est déjà prise en charge par votre entreprise : inutile d'utiliser votre abonnement.",
+      }, { status: 400 });
+    }
+
     // Check subscription if useSubscription is true
     let subscription = null;
     if (useSubscription) {
@@ -260,7 +297,7 @@ export async function POST(request: NextRequest) {
     let discount = 0;
     let normalizedPromoCode: string | null = null;
 
-    if (!useSubscription) {
+    if (!useSubscription && !isCompanyOrder) {
       // Recompute the promo discount server-side (validity, usage limits,
       // per-user limit, min amount) — the client-sent discount is ignored.
       if (promoCode) {
@@ -274,7 +311,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Final amount the client has to pay (subscription washes are free).
-    const totalPrice = useSubscription ? 0 : Math.max(0, basePrice - discount);
+    // Prépayé (abonnement ou entreprise) : rien à payer pour le client.
+    const isPrepaidOrder = Boolean(useSubscription) || isCompanyOrder;
+    const totalPrice = isPrepaidOrder ? 0 : Math.max(0, basePrice - discount);
 
     // Generate order number
     const orderNumber = `WG${Date.now().toString().slice(-8)}`;
@@ -292,24 +331,28 @@ export async function POST(request: NextRequest) {
         latitude,
         longitude,
         basePrice,
-        discount: useSubscription ? service.price : discount, // Full discount for subscription
-        promoCode: useSubscription ? null : normalizedPromoCode,
+        discount: isPrepaidOrder ? service.price : discount, // Full discount for subscription / company
+        promoCode: isPrepaidOrder ? null : normalizedPromoCode,
         totalPrice,
         commission: useSubscription
           ? 0
           // Default commission at level 1 (Contrat de Partenariat, Article 5 :
           // part du Partenaire 70 %). Recalculated at ACCEPTED based on the
           // washer's actual level (see PATCH below).
-          : commissionForLevel(DEFAULT_PARTNER_LEVEL, totalPrice),
+          : commissionForLevel(DEFAULT_PARTNER_LEVEL, isCompanyOrder ? basePrice : totalPrice),
         status: 'PENDING',
         scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
         isSubscriptionOrder: useSubscription || false,
         subscriptionId: subscription?.id || null,
+        isCompanyOrder,
+        companyId: companyQuota?.companyId ?? null,
+        fleetVehicleId: companyQuota?.fleetVehicleId ?? null,
       },
       include: {
         client: { select: { id: true, name: true, phone: true } },
         service: true,
         car: true,
+        company: { select: { id: true, name: true } },
         ...(stationId ? { station: true } : {}),
       },
     });
@@ -598,7 +641,7 @@ export async function PATCH(request: NextRequest) {
       // Commande abonnement : le total à 0 n'est PAS la valeur de la
       // prestation — le client l'a réglée en amont via son abonnement.
       // La commission est calculée sur le prix du service (basePrice).
-      const commissionBase = existingOrder.isSubscriptionOrder
+      const commissionBase = (existingOrder.isSubscriptionOrder || existingOrder.isCompanyOrder)
         ? (existingOrder.basePrice ?? 0)
         : (existingOrder.totalPrice ?? 0);
       updateData.commission = commissionForLevel(partnerLevel, commissionBase);
@@ -617,7 +660,11 @@ export async function PATCH(request: NextRequest) {
     // -----------------------------------------------------------------
     const isSubscriptionOrder = existingOrder.isSubscriptionOrder ?? false;
     const validateSession = isCompletion && isSubscriptionOrder && !existingOrder.subscriptionValidated;
-    const washValue = isSubscriptionOrder ? (existingOrder.basePrice ?? 0) : totalPrice;
+    // Commande entreprise : comme un abonnement, la valeur de la prestation est
+    // le prix du service — l'entreprise la règle via son forfait mensuel.
+    const isCompanyOrder = existingOrder.isCompanyOrder ?? false;
+    const isPrepaid = isSubscriptionOrder || isCompanyOrder;
+    const washValue = isPrepaid ? (existingOrder.basePrice ?? 0) : totalPrice;
     // Commission frozen at ACCEPTED (Contrat Article 5), clamped >= 0.
     const commission = Math.max(0, existingOrder.commission ?? 0);
     // -----------------------------------------------------------------
@@ -631,7 +678,7 @@ export async function PATCH(request: NextRequest) {
     // Paiement WALLET ou abonnement : la plateforme détient déjà l'argent,
     // seule la part nette du partenaire est créditée.
     // -----------------------------------------------------------------
-    const isCash = !isSubscriptionOrder && (existingOrder.payment?.method ?? null) === 'CASH';
+    const isCash = !isPrepaid && (existingOrder.payment?.method ?? null) === 'CASH';
     const washerAmount = isCompletion && !isCash
       ? Math.max(0, washValue - commission)
       : 0;

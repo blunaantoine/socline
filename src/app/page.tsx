@@ -5,6 +5,7 @@ import { useAuthStore, useAppStore } from '@/store';
 import { ClientApp } from '@/components/client/ClientApp';
 import { WasherApp } from '@/components/washer/WasherApp';
 import { AdminPanel } from '@/components/admin/AdminPanel';
+import { CompanyApp } from '@/components/company/CompanyApp';
 import { AuthScreen } from '@/components/client/AuthScreen';
 import { ApkDownloadButton } from '@/components/shared/ApkDownloadButton';
 import { Loader2 } from 'lucide-react';
@@ -19,7 +20,7 @@ function useHydrated() {
 }
 
 export default function SoclineApp() {
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, updateUser } = useAuthStore();
   const { currentView, setView } = useAppStore();
 
   // Check if hydrated from localStorage (client-side only)
@@ -27,10 +28,36 @@ export default function SoclineApp() {
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      const view = user.role === 'ADMIN' ? 'admin' : user.role === 'WASHER' ? 'washer' : 'client';
+      const view =
+        user.role === 'ADMIN' ? 'admin'
+        : user.role === 'WASHER' ? 'washer'
+        : user.role === 'COMPANY' ? 'company'
+        : 'client';
       setView(view);
     }
   }, [isAuthenticated, user, setView]);
+
+  // Rôle à jour au démarrage : un client invité comme gestionnaire d'entreprise
+  // pendant que sa session était ouverte passe à l'espace entreprise sans se
+  // reconnecter (le serveur relie aussi les voitures de service en attente).
+  const userId = user?.id;
+  const userRole = user?.role;
+  useEffect(() => {
+    if (!isAuthenticated || !userId) return;
+    let cancelled = false;
+    fetch('/api/auth/me')
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled && data?.valid && data.user?.role && data.user.role !== userRole) {
+          updateUser({ role: data.user.role });
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+    // userRole volontairement exclu : une seule vérification par session/compte.
+  }, [isAuthenticated, userId, updateUser]);
 
   // Show loading screen during hydration
   if (!mounted) {
@@ -65,6 +92,7 @@ export default function SoclineApp() {
           {currentView === 'client' && <ClientApp />}
           {currentView === 'washer' && <WasherApp />}
           {currentView === 'admin' && <AdminPanel />}
+          {currentView === 'company' && <CompanyApp />}
         </>
       )}
       <ApkDownloadButton />
