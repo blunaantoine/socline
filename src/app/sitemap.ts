@@ -14,5 +14,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'daily',
       priority: 1,
     },
+    {
+      url: `${SITE_URL}/confidentialite`,
+      lastModified: new Date('2026-11-24'),
+      changeFrequency: 'yearly',
+      priority: 0.3,
+    },
   ];
 }

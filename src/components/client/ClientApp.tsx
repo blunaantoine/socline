@@ -1496,6 +1496,14 @@ function ProfileContent({ user, onLogout }: { user: any; onLogout: () => void })
         ))}
       </div>
 
+      {/* Données personnelles — politique de confidentialité (page publique) */}
+      <a
+        href="/confidentialite"
+        className="flex items-center justify-center gap-1.5 text-detail text-soft underline underline-offset-2 min-h-[44px]"
+      >
+        Politique de confidentialité
+      </a>
+
       {/* Déconnexion */}
       <button
         onClick={onLogout}

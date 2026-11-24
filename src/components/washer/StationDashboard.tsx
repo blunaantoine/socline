@@ -1139,6 +1139,14 @@ function StationProfileSection({
         </Card>
       ) : null}
 
+      {/* Données personnelles — politique de confidentialité (page publique) */}
+      <a
+        href="/confidentialite"
+        className="flex items-center justify-center text-sm text-[#6B6B6B] underline underline-offset-2 min-h-[44px]"
+      >
+        Politique de confidentialité
+      </a>
+
       <Button
         variant="outline"
         onClick={onLogout}

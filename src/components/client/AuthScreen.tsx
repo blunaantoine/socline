@@ -1169,6 +1169,10 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
                 </>
               )}
             </Button>
+            <p className="text-center text-xs text-[#757575] leading-relaxed">
+            En continuant, vous acceptez notre{' '}
+            <a href="/confidentialite" className="underline underline-offset-2 font-semibold">politique de confidentialité</a>.
+          </p>
           </div>
 
           <p className="text-center mt-4 text-[#757575]">
@@ -1227,6 +1231,12 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
               <ChevronRight className="w-4 h-4" />
             </span>
           </button>
+          <a
+            href="/confidentialite"
+            className="block w-full text-center text-white/70 text-xs underline underline-offset-2 py-2 hover:text-white/90"
+          >
+            Politique de confidentialité
+          </a>
         </div>
       </div>
     );
@@ -1584,6 +1594,12 @@ export function AuthScreen({ onComplete }: AuthScreenProps) {
               'Créer mon compte'
             )}
           </Button>
+          {regStep === 3 && (
+            <p className="text-center text-xs text-[#6B5B4E] leading-relaxed">
+            En continuant, vous acceptez notre{' '}
+            <a href="/confidentialite" className="underline underline-offset-2 font-semibold">politique de confidentialité</a>.
+          </p>
+          )}
 
           <p className="text-center text-sm text-[#6B5B4E]">
             Déjà un compte ?{' '}
