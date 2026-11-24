@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isPhoneBlocked } from '@/lib/account-deletion';
 import { randomInt, randomUUID } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { db } from '@/lib/db';
@@ -42,6 +43,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Rate limiting: 1 send / 60s, then 5 sends / rolling hour.
+    // Numéro bloqué par un admin (compte malveillant supprimé).
+    if (await isPhoneBlocked(cleanPhone)) {
+      return NextResponse.json(
+        { success: false, error: 'Ce numéro ne peut pas être utilisé sur Socline. Contactez le support.' },
+        { status: 403 }
+      );
+    }
+
     const nowMs = Date.now();
     const now = new Date();
     const sends = (otpSendLog.get(cleanPhone) || []).filter((ts) => nowMs - ts < HOUR_MS);

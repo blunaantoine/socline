@@ -156,6 +156,12 @@ export default function ConfidentialitePage() {
               ['Pièce d’identité d’un laveur', 'Pendant la durée du partenariat, puis supprimée dans les 3 mois'],
             ]}
           />
+          <p>
+            Lorsqu&apos;un compte est supprimé (à votre demande, ou par Socline en cas de fraude ou d&apos;usage abusif),
+            le nom, le numéro, le code PIN, les véhicules, les adresses et le contenu des messages sont effacés
+            immédiatement. Seules les commandes et les paiements sont conservés, sans lien avec votre identité, pour nos
+            obligations comptables. En cas d&apos;abus, Socline peut aussi interdire la réutilisation du numéro.
+          </p>
         </Section>
 
         <Section title="6. Comment protégeons-nous vos données ?">

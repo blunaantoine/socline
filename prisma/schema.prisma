@@ -74,6 +74,7 @@ enum TransactionType {
   REFUND        // Remboursement
   BONUS         // Bonus/Promotion
   COMMISSION_SETTLEMENT // Règlement de la commission espèces par le laveur
+  ACCOUNT_CLOSURE // Solde conservé par Socline à la suppression du compte par un admin
 }
 
 // Wallet transaction status enum
@@ -105,6 +106,11 @@ model User {
   plateNumber   String?   // Numéro de plaque (deprecated - use Car model)
   carColor      String?   // Couleur de la voiture (deprecated - use Car model)
   pin           String?   // 4-digit PIN code
+
+  // Suppression par un admin : le compte est anonymisé (nom, numéro, PIN
+  // effacés) mais la ligne reste pour l'historique comptable des commandes.
+  deletedAt     DateTime?
+  deletedReason String?
   
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -1034,4 +1040,15 @@ model CompanyInvoice {
 
   @@unique([companyId, period])
   @@map("company_invoices")
+}
+
+// Numéros interdits d'inscription (comptes malveillants supprimés par un admin).
+model BlockedPhone {
+  id        String   @id @default(cuid())
+  phone     String   @unique
+  reason    String?
+  blockedBy String?  // ID de l'admin
+  createdAt DateTime @default(now())
+
+  @@map("blocked_phones")
 }

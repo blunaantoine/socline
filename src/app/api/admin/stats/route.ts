@@ -42,10 +42,10 @@ export async function GET(request: NextRequest) {
       }),
       
       // Total users (clients)
-      db.user.count({ where: { role: 'CLIENT' } }),
+      db.user.count({ where: { role: 'CLIENT', deletedAt: null } }),
       
       // Total washers
-      db.washer.count(),
+      db.washer.count({ where: { user: { deletedAt: null } } }),
       
       // Active washers (verified and available)
       db.washer.count({ where: { isAvailable: true, isVerified: true } }),

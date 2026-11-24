@@ -114,14 +114,16 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status'); // 'pending', 'verified', 'all'
 
     const where = {
-      ...(search && {
-        user: {
+      // Comptes supprimés (anonymisés) masqués de la liste.
+      user: {
+        deletedAt: null,
+        ...(search && {
           OR: [
             { name: { contains: search } },
             { phone: { contains: search } },
           ],
-        },
-      }),
+        }),
+      },
       ...(status === 'pending' && { isVerified: false }),
       ...(status === 'verified' && { isVerified: true }),
     };

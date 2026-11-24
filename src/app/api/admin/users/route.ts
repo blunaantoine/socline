@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAdmin } from '@/lib/auth';
+import { deleteUserAccount, deletionPreview, DeletionError } from '@/lib/account-deletion';
 import { hashPin } from '@/lib/auth';
 
 // POST /api/admin/users - Create a new user (client or washer)
@@ -163,8 +164,8 @@ export async function PATCH(request: NextRequest) {
 // DELETE /api/admin/users - Delete a user
 export async function DELETE(request: NextRequest) {
   // Check admin authorization
-  const { authorized, response } = await requireAdmin(request);
-  if (!authorized) return response;
+  const { authorized, response, user: admin } = await requireAdmin(request);
+  if (!authorized || !admin) return response;
 
   try {
     const { searchParams } = new URL(request.url);
@@ -174,23 +175,24 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'ID utilisateur requis' }, { status: 400 });
     }
 
-    // Check if user has orders
-    const orderCount = await db.order.count({
-      where: { clientId: userId },
-    });
-
-    if (orderCount > 0) {
-      return NextResponse.json({ 
-        error: 'Impossible de supprimer un utilisateur avec des commandes' 
-      }, { status: 400 });
+    // ?preview=1 : ce que la suppression va toucher (affiché avant confirmation)
+    if (searchParams.get('preview') === '1') {
+      return NextResponse.json({ success: true, preview: await deletionPreview(userId) });
     }
 
-    await db.user.delete({
-      where: { id: userId },
+    // Tout compte peut être supprimé, même avec des commandes ou un solde :
+    // il est anonymisé, l'historique comptable reste (src/lib/account-deletion.ts).
+    const summary = await deleteUserAccount(userId, {
+      adminId: admin.id,
+      blockPhone: searchParams.get('block') === '1',
+      reason: searchParams.get('reason'),
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, summary });
   } catch (error) {
+    if (error instanceof DeletionError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error('Delete user error:', error);
     return NextResponse.json({ error: 'Erreur lors de la suppression' }, { status: 500 });
   }
@@ -211,6 +213,8 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = {
+      // Comptes supprimés (anonymisés) masqués de la liste.
+      deletedAt: null,
       ...(roleFilter !== 'all' && { role: roleFilter }),
       ...(search && {
         OR: [

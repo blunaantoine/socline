@@ -1276,6 +1276,22 @@ function AdminUsers({ users, searchQuery, setSearchQuery, isLoading, onRefresh }
   const [editingUser, setEditingUser] = useState<ExtendedUser | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<ExtendedUser | null>(null);
+  // Suppression : aperçu (commandes, solde), motif et blocage du numéro.
+  const [deletePreview, setDeletePreview] = useState<{ orders: number; activeOrders: number; walletBalance: number } | null>(null);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [deleteBlock, setDeleteBlock] = useState(false);
+  useEffect(() => {
+    if (!deleteConfirm) return;
+    let cancelled = false;
+    setDeletePreview(null);
+    setDeleteReason('');
+    setDeleteBlock(false);
+    fetch(`/api/admin/users?userId=${deleteConfirm.id}&preview=1`, { method: 'DELETE' })
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled && d?.success) setDeletePreview(d.preview); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [deleteConfirm]);
   const [isSaving, setIsSaving] = useState(false);
   const [allUsers, setAllUsers] = useState<ExtendedUser[]>([]);
   
@@ -1452,14 +1468,24 @@ function AdminUsers({ users, searchQuery, setSearchQuery, isLoading, onRefresh }
 
     setIsSaving(true);
     try {
-      const res = await fetch(`/api/admin/users?userId=${deleteConfirm.id}`, {
+      const params = new URLSearchParams({ userId: deleteConfirm.id });
+      if (deleteBlock) params.set('block', '1');
+      if (deleteReason.trim()) params.set('reason', deleteReason.trim());
+      const res = await fetch(`/api/admin/users?${params}`, {
         method: 'DELETE',
       });
 
       const data = await parseJsonResponse<any>(res);
       if (!data) return;
       if (data.success) {
-        toast.success('Utilisateur supprimé');
+        const sm = data.summary || {};
+        const details = [
+          sm.cancelledOrders ? `${sm.cancelledOrders} commande(s) annulée(s)` : null,
+          sm.releasedOrders ? `${sm.releasedOrders} remise(s) en attente` : null,
+          sm.seizedBalance ? `${Math.round(sm.seizedBalance).toLocaleString('fr-FR')} F conservés` : null,
+          sm.phoneBlocked ? 'numéro bloqué' : null,
+        ].filter(Boolean).join(' · ');
+        toast.success('Compte supprimé', details ? { description: details } : undefined);
         setDeleteConfirm(null);
         fetchUsersWithFilter();
       } else {
@@ -1882,13 +1908,36 @@ function AdminUsers({ users, searchQuery, setSearchQuery, isLoading, onRefresh }
             <DialogTitle>Confirmer la suppression</DialogTitle>
           </DialogHeader>
           
-          <div className="py-4">
+          <div className="py-2 space-y-3">
             <p className="text-sm text-[#757575]">
-              Êtes-vous sûr de vouloir supprimer <strong>{deleteConfirm?.name || 'cet utilisateur'}</strong> ?
+              Supprimer le compte de <strong>{deleteConfirm?.name || 'cet utilisateur'}</strong> ({deleteConfirm?.phone}) ?
             </p>
-            <p className="text-xs text-red-500 mt-2">
-              Cette action est irréversible. Les utilisateurs avec des commandes ne peuvent pas être supprimés.
-            </p>
+            {deletePreview ? (
+              <ul className="text-xs text-[#616161] space-y-1 bg-[#FAFAFA] rounded-lg p-3">
+                <li>• {deletePreview.orders} commande(s) dans l&apos;historique : conservées sous « Compte supprimé ».</li>
+                {deletePreview.activeOrders > 0 && (
+                  <li className="text-[#E65100]">• {deletePreview.activeOrders} commande(s) en cours : annulées (ou remises en attente si c&apos;est un laveur).</li>
+                )}
+                {deletePreview.walletBalance > 0 && (
+                  <li className="text-[#E65100]">• Solde du portefeuille : {Math.round(deletePreview.walletBalance).toLocaleString('fr-FR')} F, conservé par Socline.</li>
+                )}
+                <li>• Nom, numéro, PIN, voitures, adresses et messages effacés ; connexion impossible.</li>
+              </ul>
+            ) : (
+              <Loader2 className="w-4 h-4 animate-spin text-[#9E9E9E]" />
+            )}
+            <div>
+              <Label htmlFor="delete-reason" className="text-xs">Motif (facultatif)</Label>
+              <Input id="delete-reason" value={deleteReason} onChange={(e) => setDeleteReason(e.target.value)} placeholder="Fraude, comportement abusif, demande du client…" className="h-10 mt-1 text-sm" />
+            </div>
+            <label className="flex items-start gap-2 text-sm text-[#212121] cursor-pointer">
+              <input type="checkbox" checked={deleteBlock} onChange={(e) => setDeleteBlock(e.target.checked)} className="mt-0.5 w-4 h-4 accent-red-600" />
+              <span>
+                Bloquer ce numéro
+                <span className="block text-xs text-[#757575]">Compte malveillant : il ne pourra plus se réinscrire avec ce numéro.</span>
+              </span>
+            </label>
+            <p className="text-xs text-red-500">Cette action est irréversible.</p>
           </div>
           
           <DialogFooter>

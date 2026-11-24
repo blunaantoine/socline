@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { hashPin, generateToken, setAuthCookie } from '@/lib/auth';
 import { linkCompanyInvitations } from '@/lib/company';
+import { isPhoneBlocked } from '@/lib/account-deletion';
 import { verifyOtp } from '@/lib/otp';
 
 // POST /api/auth/register - Register new client or washer
@@ -90,6 +91,14 @@ export async function POST(request: NextRequest) {
           );
         }
       }
+    }
+
+    // Numéro bloqué par un admin (compte malveillant supprimé).
+    if (await isPhoneBlocked(cleanPhone)) {
+      return NextResponse.json(
+        { success: false, error: 'Ce numéro ne peut pas être utilisé sur Socline. Contactez le support.' },
+        { status: 403 }
+      );
     }
 
     // Check if user already exists
