@@ -197,7 +197,7 @@ function ImagePositionEditor({
             transform: 'translate(-50%, -50%)'
           }}
         >
-          <div className={`w-4 h-4 border-2 border-white rounded-full ${isDragging ? 'bg-[#FF9800]/50' : 'bg-transparent'} shadow-lg`} />
+          <div className={`w-4 h-4 border-2 border-white rounded-full ${isDragging ? 'bg-brand-ink/50' : 'bg-transparent'} shadow-lg`} />
         </div>
       </div>
     </div>
@@ -702,13 +702,13 @@ export function AdminPanel() {
   // Get status badge style
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
-      PENDING: 'bg-yellow-100 text-yellow-800',
-      ACCEPTED: 'bg-blue-100 text-blue-800',
-      EN_ROUTE: 'bg-blue-100 text-blue-800',
-      ARRIVED: 'bg-purple-100 text-purple-800',
-      IN_PROGRESS: 'bg-purple-100 text-purple-800',
-      COMPLETED: 'bg-green-100 text-green-800',
-      CANCELLED: 'bg-red-100 text-red-800',
+      PENDING: 'bg-amber-50 text-amber-800',
+      ACCEPTED: 'bg-app text-ink',
+      EN_ROUTE: 'bg-app text-ink',
+      ARRIVED: 'bg-app text-ink',
+      IN_PROGRESS: 'bg-app text-ink',
+      COMPLETED: 'bg-success/10 text-success',
+      CANCELLED: 'bg-red-50 text-red-700',
     };
     
     const labels: Record<string, string> = {
@@ -725,9 +725,9 @@ export function AdminPanel() {
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-[#FAFAFA] overflow-hidden">
+    <div className="flex-1 flex flex-col bg-app overflow-hidden">
       {/* Android Status Bar — aperçu desktop uniquement */}
-      <div className="h-6 bg-[#FF9800] hidden md:flex items-center justify-between px-4 flex-shrink-0 sticky top-0 z-50">
+      <div className="h-6 bg-ink hidden md:flex items-center justify-between px-4 flex-shrink-0 sticky top-0 z-50">
         <span className="text-white text-xs font-medium">{new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
         <div className="flex items-center gap-1">
           {/* Signal Network Bars */}
@@ -748,17 +748,17 @@ export function AdminPanel() {
       <div className="bg-white border-b px-4 py-3 flex-shrink-0 sticky top-0 md:top-6 z-40 max-md:pt-[calc(0.75rem+max(env(safe-area-inset-top),var(--safe-area-inset-top,0px)))]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-[#FF9800] to-[#F57C00] rounded-full flex items-center justify-center text-white text-lg font-bold">
+            <div className="w-10 h-10 bg-ink rounded-full flex items-center justify-center text-white text-base font-bold">
               A
             </div>
             <div>
-              <div className="font-semibold text-[#212121]">Admin</div>
-              <div className="text-xs text-[#757575]">{user?.name || 'Socline'}</div>
+              <div className="font-semibold text-ink">Admin</div>
+              <div className="text-xs text-soft">{user?.name || 'Socline'}</div>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <AdminNotificationCenter />
-            <Button variant="outline" size="icon" onClick={logout} className="text-red-500">
+            <Button variant="outline" size="icon" onClick={logout} className="text-soft hover:text-red-600 border-line" aria-label="Déconnexion">
               <LogOut className="w-5 h-5" />
             </Button>
           </div>
@@ -825,16 +825,19 @@ export function AdminPanel() {
         {activeTab === 'finances' && <AdminFinances stats={stats} />}
         {activeTab === 'settings' && (
           subTab ? (
-            // Show sub-content with back button
-            <div className="p-4 space-y-4">
-              <div className="flex items-center gap-3 mb-4">
+            // Sous-écran : barre titre + retour, puis le contenu (qui a sa propre
+            // marge p-4 — pas de double marge) ; le titre interne en double est masqué.
+            <div className="[&>section>div>div:first-child>h2:first-child]:hidden [&>section>div>h2:first-child]:hidden [&>section>div>div:first-child:has(>h2:first-child)]:justify-end">
+              <div className="flex items-center gap-2 px-4 pt-4">
                 <button
                   onClick={() => setSubTab(null)}
-                  className="p-2 rounded-full bg-[#F5F5F5] hover:bg-[#E0E0E0]"
+                  className="w-10 h-10 -ml-2 rounded-full flex items-center justify-center hover:bg-app"
+                  aria-label="Retour au menu"
                 >
-                  <ArrowLeft className="w-5 h-5 text-[#757575]" />
+                  <ArrowLeft className="w-5 h-5 text-ink" />
                 </button>
-                <h2 className="font-semibold text-lg text-[#212121]">
+                <h2 className="font-semibold text-lg text-ink truncate">
+                  {subTab === 'companies' && 'Entreprises'}
                   {subTab === 'deposits' && 'Demandes de recharge'}
                   {subTab === 'withdrawals' && 'Retraits Laveurs'}
                   {subTab === 'stations' && 'Stations de Lavage'}
@@ -850,6 +853,7 @@ export function AdminPanel() {
                   {subTab === 'settings' && 'Paramètres'}
                 </h2>
               </div>
+              <section className="p-4 [&>div]:!p-0">
               {subTab === 'deposits' && (
                 <AdminDeposits
                   deposits={deposits}
@@ -891,6 +895,7 @@ export function AdminPanel() {
               {subTab === 'operators' && <AdminOperatorsSection />}
               {subTab === 'payment-system' && <AdminPaymentSystem />}
               {subTab === 'settings' && <AdminSettingsContent />}
+              </section>
             </div>
           ) : (
             // Show "Plus" menu
@@ -904,7 +909,7 @@ export function AdminPanel() {
       </div>
 
       {/* Android Bottom Navigation - FIXED at bottom (safe-area iOS incluse) */}
-      <nav className={`fixed bottom-0 left-0 right-0 bg-white border-t border-[#E0E0E0] flex justify-around items-stretch h-[calc(3.5rem+max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))] pb-[max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px))] z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.1)]${keyboardOpen ? ' hidden' : ''}`}>
+      <nav className={`fixed bottom-0 left-0 right-0 bg-white border-t border-line flex justify-around items-stretch h-[calc(3.5rem+max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px)))] pb-[max(env(safe-area-inset-bottom),var(--safe-area-inset-bottom,0px))] z-50${keyboardOpen ? ' hidden' : ''}`}>
         {[
           { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
           { id: 'users', icon: Users, label: 'Utilis.' },
@@ -917,12 +922,12 @@ export function AdminPanel() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 flex flex-col items-center justify-center py-1 px-1 transition-all active:scale-95 active:bg-[#F5F5F5] ${
-                isActive ? 'text-[#FF9800]' : 'text-[#757575]'
+              className={`flex-1 flex flex-col items-center justify-center py-1 px-1 transition-all active:scale-95 active:bg-app ${
+                isActive ? 'text-brand-ink' : 'text-soft'
               }`}
             >
-              <tab.icon className={`w-6 h-6 ${isActive ? 'fill-current' : ''}`} />
-              <span className="text-[10px] font-medium mt-0.5">{tab.label}</span>
+              <tab.icon className="w-6 h-6" strokeWidth={isActive ? 2.25 : 1.75} />
+              <span className={`text-[10px] mt-0.5 ${isActive ? 'font-semibold' : 'font-medium'}`}>{tab.label}</span>
             </button>
           );
         })}
@@ -944,8 +949,8 @@ function AdminDashboard({ stats, revenueByDay, ordersByService, recentOrders, is
     return (
       <div className="flex-1 flex items-center justify-center min-h-[300px]">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin mx-auto" />
-          <p className="text-sm text-[#757575] mt-2">Chargement...</p>
+          <Loader2 className="w-8 h-8 text-brand-ink animate-spin mx-auto" />
+          <p className="text-sm text-soft mt-2">Chargement...</p>
         </div>
       </div>
     );
@@ -955,9 +960,9 @@ function AdminDashboard({ stats, revenueByDay, ordersByService, recentOrders, is
     return (
       <div className="flex-1 flex items-center justify-center min-h-[300px]">
         <div className="text-center p-4">
-          <AlertCircle className="w-12 h-12 text-[#FF9800] mx-auto mb-3" />
-          <p className="text-[#757575] mb-3">Impossible de charger les statistiques</p>
-          <Button onClick={onRefresh} variant="outline" className="text-[#FF9800] border-[#FF9800]">
+          <AlertCircle className="w-12 h-12 text-brand-ink mx-auto mb-3" />
+          <p className="text-soft mb-3">Impossible de charger les statistiques</p>
+          <Button onClick={onRefresh} variant="outline" className="text-brand-ink border-brand-ink">
             <RefreshCw className="w-4 h-4 mr-2" />
             Réessayer
           </Button>
@@ -970,71 +975,71 @@ function AdminDashboard({ stats, revenueByDay, ordersByService, recentOrders, is
     <div className="p-4 space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="font-semibold text-lg text-[#212121]">Dashboard</h2>
-        <button onClick={onRefresh} disabled={isLoading} className="text-[#FF9800]">
-          <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+        <h2 className="font-semibold text-lg text-ink">Dashboard</h2>
+        <button onClick={onRefresh} disabled={isLoading} className="w-10 h-10 rounded-md border border-line bg-white flex items-center justify-center text-soft hover:bg-app" aria-label="Rafraîchir">
+          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 gap-3">
-        <Card className="border-0 shadow-sm">
+        <Card className="border border-line shadow-none py-0 gap-0">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#E3F2FD] rounded-full flex items-center justify-center">
-                <Clock className="w-5 h-5 text-[#2196F3]" />
+              <div className="w-10 h-10 bg-app rounded-full flex items-center justify-center">
+                <Clock className="w-5 h-5 text-ink" />
               </div>
               <div>
-                <p className="text-xs text-[#757575]">Commandes aujourd&apos;hui</p>
-                <p className="text-xl font-bold text-[#212121]">{stats.todayOrders}</p>
+                <p className="text-xs text-soft">Commandes aujourd&apos;hui</p>
+                <p className="text-xl font-bold text-ink">{stats.todayOrders}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-sm">
+        <Card className="border border-line shadow-none py-0 gap-0">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#E8F5E9] rounded-full flex items-center justify-center">
-                <DollarSign className="w-5 h-5 text-[#4CAF50]" />
+              <div className="w-10 h-10 bg-app rounded-full flex items-center justify-center">
+                <DollarSign className="w-5 h-5 text-ink" />
               </div>
               <div>
-                <p className="text-xs text-[#757575]">Revenus aujourd&apos;hui</p>
+                <p className="text-xs text-soft">Revenus aujourd&apos;hui</p>
                 <HideableBalanceLight
                   balance={stats.todayRevenue}
                   currency="XOF"
-                  size="lg"
+                  size="md"
                   storageKey="hide-admin-today-revenue"
-                  balanceClassName="text-[#4CAF50]"
+                  balanceClassName="text-ink"
                 />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-sm">
+        <Card className="border border-line shadow-none py-0 gap-0">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#FFF3E0] rounded-full flex items-center justify-center">
-                <Car className="w-5 h-5 text-[#FF9800]" />
+              <div className="w-10 h-10 bg-app rounded-full flex items-center justify-center">
+                <Car className="w-5 h-5 text-ink" />
               </div>
               <div>
-                <p className="text-xs text-[#757575]">Laveurs actifs</p>
-                <p className="text-xl font-bold text-[#212121]">{stats.activeWashers}</p>
+                <p className="text-xs text-soft">Laveurs actifs</p>
+                <p className="text-xl font-bold text-ink">{stats.activeWashers}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-sm">
+        <Card className="border border-line shadow-none py-0 gap-0">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#FCE4EC] rounded-full flex items-center justify-center">
-                <Users className="w-5 h-5 text-[#E91E63]" />
+              <div className="w-10 h-10 bg-app rounded-full flex items-center justify-center">
+                <Users className="w-5 h-5 text-ink" />
               </div>
               <div>
-                <p className="text-xs text-[#757575]">Clients</p>
-                <p className="text-xl font-bold text-[#212121]">{stats.totalUsers}</p>
+                <p className="text-xs text-soft">Clients</p>
+                <p className="text-xl font-bold text-ink">{stats.totalUsers}</p>
               </div>
             </div>
           </CardContent>
@@ -1043,25 +1048,25 @@ function AdminDashboard({ stats, revenueByDay, ordersByService, recentOrders, is
 
       {/* Quick Stats */}
       <div className="bg-white rounded-2xl p-4 shadow-sm">
-        <h3 className="font-semibold text-sm text-[#212121] mb-3">Aperçu rapide</h3>
+        <h3 className="font-semibold text-sm text-ink mb-3">Aperçu rapide</h3>
         <div className="grid grid-cols-3 gap-4">
           <div className="text-center">
-            <div className="text-2xl font-bold text-yellow-600">{stats.pendingOrders}</div>
-            <div className="text-xs text-[#757575]">En attente</div>
+            <div className="text-2xl font-bold text-ink">{stats.pendingOrders}</div>
+            <div className="text-xs text-soft">En attente</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-blue-600">{stats.inProgressOrders}</div>
-            <div className="text-xs text-[#757575]">En cours</div>
+            <div className="text-2xl font-bold text-ink">{stats.inProgressOrders}</div>
+            <div className="text-xs text-soft">En cours</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-green-600">{stats.completedOrders}</div>
-            <div className="text-xs text-[#757575]">Terminées</div>
+            <div className="text-2xl font-bold text-ink">{stats.completedOrders}</div>
+            <div className="text-xs text-soft">Terminées</div>
           </div>
         </div>
       </div>
 
       {/* Revenue Chart */}
-      <Card className="border-0 shadow-sm">
+      <Card className="border border-line shadow-none">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm">Revenus de la semaine</CardTitle>
         </CardHeader>
@@ -1073,10 +1078,10 @@ function AdminDashboard({ stats, revenueByDay, ordersByService, recentOrders, is
               return (
                 <div key={i} className="flex-1 flex flex-col items-center gap-1">
                   <div
-                    className="w-full bg-gradient-to-t from-[#FF9800] to-[#FFB74D] rounded-t"
+                    className="w-full bg-ink/85 rounded-t"
                     style={{ height: `${height}%`, minHeight: '4px' }}
                   />
-                  <span className="text-[10px] text-[#757575]">{item.day}</span>
+                  <span className="text-[10px] text-soft">{item.day}</span>
                 </div>
               );
             })}
@@ -1085,10 +1090,10 @@ function AdminDashboard({ stats, revenueByDay, ordersByService, recentOrders, is
       </Card>
 
       {/* Recent Orders */}
-      <Card className="border-0 shadow-sm">
+      <Card className="border border-line shadow-none">
         <CardHeader className="pb-2 flex flex-row items-center justify-between">
           <CardTitle className="text-sm">Commandes récentes</CardTitle>
-          <span className="text-xs text-[#FF9800]">{recentOrders.length} commandes</span>
+          <span className="text-xs text-brand-ink">{recentOrders.length} commandes</span>
         </CardHeader>
         <CardContent className="p-0">
           <div className="divide-y divide-[#F5F5F5]">
@@ -1096,11 +1101,11 @@ function AdminDashboard({ stats, revenueByDay, ordersByService, recentOrders, is
               <div key={order.id} className="flex items-center justify-between p-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs text-[#757575]">{order.id}</span>
+                    <span className="font-mono text-xs text-soft">{order.id}</span>
                     <Badge className={
-                      order.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
-                      order.status === 'IN_PROGRESS' ? 'bg-purple-100 text-purple-800' :
-                      order.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                      order.status === 'COMPLETED' ? 'bg-success/10 text-success' :
+                      order.status === 'IN_PROGRESS' ? 'bg-app text-ink' :
+                      order.status === 'PENDING' ? 'bg-amber-50 text-amber-800' :
                       'bg-gray-100 text-gray-800'
                     }>
                       {order.status === 'COMPLETED' && 'Terminée'}
@@ -1110,12 +1115,12 @@ function AdminDashboard({ stats, revenueByDay, ordersByService, recentOrders, is
                       {order.status === 'EN_ROUTE' && 'En route'}
                     </Badge>
                   </div>
-                  <p className="text-sm font-medium text-[#212121] mt-1">{order.client}</p>
-                  <p className="text-xs text-[#757575]">{order.service}</p>
+                  <p className="text-sm font-medium text-ink mt-1">{order.client}</p>
+                  <p className="text-xs text-soft">{order.service}</p>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold text-[#FF9800]">{order.amount.toLocaleString()} XOF</p>
-                  <p className="text-xs text-[#757575]">{order.time}</p>
+                  <p className="font-bold text-ink tabular-nums">{order.amount.toLocaleString()} XOF</p>
+                  <p className="text-xs text-soft">{order.time}</p>
                 </div>
               </div>
             ))}
@@ -1140,16 +1145,16 @@ function AdminOrders({ orders, statusFilter, setStatusFilter, searchQuery, setSe
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="font-semibold text-lg text-[#212121]">Commandes</h2>
-        <button onClick={onRefresh} disabled={isLoading} className="text-[#FF9800]">
-          <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+        <h2 className="font-semibold text-lg text-ink">Commandes</h2>
+        <button onClick={onRefresh} disabled={isLoading} className="w-10 h-10 rounded-md border border-line bg-white flex items-center justify-center text-soft hover:bg-app" aria-label="Rafraîchir">
+          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
       {/* Search & Filter */}
       <div className="flex gap-2">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#9E9E9E]" />
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-soft" />
           <Input
             placeholder="Rechercher..."
             value={searchQuery}
@@ -1174,33 +1179,33 @@ function AdminOrders({ orders, statusFilter, setStatusFilter, searchQuery, setSe
       {/* Orders List */}
       {isLoading ? (
         <div className="flex justify-center py-8">
-          <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+          <Loader2 className="w-8 h-8 text-brand-ink animate-spin" />
         </div>
       ) : orders.length > 0 ? (
         <div className="space-y-3">
           {orders.map((order) => (
-            <Card key={order.id} className="border-0 shadow-sm">
+            <Card key={order.id} className="border border-line shadow-none py-0 gap-0">
               <CardContent className="p-4">
-                <div className="flex justify-between items-start mb-2">
+                <div className="flex justify-between items-start gap-3 mb-2">
                   <div>
-                    <span className="font-mono text-xs text-[#757575]">{order.orderNumber}</span>
-                    <h3 className="font-medium text-[#212121]">{order.client}</h3>
-                    <p className="text-xs text-[#757575]">{order.service}</p>
+                    <span className="font-mono text-xs text-soft">{order.orderNumber}</span>
+                    <h3 className="font-medium text-ink">{order.client}</h3>
+                    <p className="text-xs text-soft">{order.service}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-[#FF9800]">{order.amount.toLocaleString()} XOF</p>
+                    <p className="font-bold text-ink tabular-nums">{order.amount.toLocaleString()} XOF</p>
                     {getStatusBadge(order.status)}
                   </div>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-[#757575]">
-                  <span>Laveur: {order.washer}</span>
-                  <span>•</span>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-soft">
+                  <span>{order.washer && order.washer !== '-' ? `Laveur : ${order.washer}` : 'Sans laveur'}</span>
+                  <span aria-hidden="true">·</span>
                   <span>{new Date(order.createdAt).toLocaleDateString('fr-FR')}</span>
                   {order.payment?.method && (
                     <>
-                      <span>•</span>
-                      <span className={order.payment.method === 'CASH' ? 'font-medium text-[#E65100]' : ''}>
-                        {order.payment.method === 'CASH' ? '💵 Espèces' : '✅ Portefeuille'}
+                      <span aria-hidden="true">·</span>
+                      <span className={order.payment.method === 'CASH' ? 'font-medium text-ink' : ''}>
+                        {order.payment.method === 'CASH' ? 'Espèces' : 'Portefeuille'}
                         {order.payment.status === 'PENDING' ? ' (à encaisser)' : ''}
                       </span>
                     </>
@@ -1209,11 +1214,11 @@ function AdminOrders({ orders, statusFilter, setStatusFilter, searchQuery, setSe
 
                 {/* Vehicle identification */}
                 {order.car && (
-                  <div className="mt-2 flex items-center gap-2 text-xs bg-[#F5F5F5] rounded-lg px-2 py-1.5 w-fit">
-                    <CarIcon className="w-3.5 h-3.5 text-[#2196F3]" />
-                    <span className="text-[#616161]">
+                  <div className="mt-2 flex items-center gap-2 text-xs bg-app rounded-lg px-2 py-1.5 w-fit">
+                    <CarIcon className="w-3.5 h-3.5 text-soft" />
+                    <span className="text-soft">
                       {[order.car.brand, order.car.model, order.car.color].filter(Boolean).join(' ')}
-                      <span className="font-mono text-[#2E7D32]"> • {order.car.plateNumber}</span>
+                      <span className="font-mono text-success"> • {order.car.plateNumber}</span>
                     </span>
                   </div>
                 )}
@@ -1228,7 +1233,7 @@ function AdminOrders({ orders, statusFilter, setStatusFilter, searchQuery, setSe
                           alt={`Photo avant lavage ${order.orderNumber}`}
                           className="w-16 h-12 object-cover rounded-md border hover:opacity-80"
                         />
-                        <span className="text-[9px] text-[#757575] block">Avant</span>
+                        <span className="text-[9px] text-soft block">Avant</span>
                       </a>
                     )}
                     {order.afterPhotoUrl && (
@@ -1238,11 +1243,11 @@ function AdminOrders({ orders, statusFilter, setStatusFilter, searchQuery, setSe
                           alt={`Photo après lavage ${order.orderNumber}`}
                           className="w-16 h-12 object-cover rounded-md border hover:opacity-80"
                         />
-                        <span className="text-[9px] text-[#757575] block">Après</span>
+                        <span className="text-[9px] text-soft block">Après</span>
                       </a>
                     )}
                     {order.review?.rating ? (
-                      <div className="self-center text-xs text-[#757575]">
+                      <div className="self-center text-xs text-soft">
                         ⭐ {order.review.rating}/5
                         {order.review.comment ? <span className="block max-w-[160px] truncate">“{order.review.comment}”</span> : null}
                       </div>
@@ -1255,8 +1260,8 @@ function AdminOrders({ orders, statusFilter, setStatusFilter, searchQuery, setSe
         </div>
       ) : (
         <div className="bg-white rounded-2xl p-8 text-center">
-          <Clock className="w-12 h-12 text-[#9E9E9E] mx-auto mb-3" />
-          <p className="text-[#757575]">Aucune commande trouvée</p>
+          <Clock className="w-12 h-12 text-soft mx-auto mb-3" />
+          <p className="text-soft">Aucune commande trouvée</p>
         </div>
       )}
     </div>
@@ -1276,6 +1281,7 @@ function AdminUsers({ users, searchQuery, setSearchQuery, isLoading, onRefresh }
   const [editingUser, setEditingUser] = useState<ExtendedUser | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<ExtendedUser | null>(null);
+  const currentAdminId = useAuthStore((st) => st.user?.id);
   // Suppression : aperçu (commandes, solde), motif et blocage du numéro.
   const [deletePreview, setDeletePreview] = useState<{ orders: number; activeOrders: number; walletBalance: number } | null>(null);
   const [deleteReason, setDeleteReason] = useState('');
@@ -1501,14 +1507,16 @@ function AdminUsers({ users, searchQuery, setSearchQuery, isLoading, onRefresh }
   // Get role badge
   const getRoleBadge = (role: string) => {
     const styles: Record<string, string> = {
-      ADMIN: 'bg-red-100 text-red-800',
-      WASHER: 'bg-orange-100 text-orange-800',
-      CLIENT: 'bg-blue-100 text-blue-800',
+      ADMIN: 'bg-ink text-white',
+      WASHER: 'bg-app text-ink border border-line',
+      CLIENT: 'bg-app text-ink border border-line',
+      COMPANY: 'bg-app text-ink border border-line',
     };
     const labels: Record<string, string> = {
       ADMIN: 'Admin',
       WASHER: 'Laveur',
       CLIENT: 'Client',
+      COMPANY: 'Entreprise',
     };
     return <Badge className={styles[role] || 'bg-gray-100 text-gray-800'}>{labels[role] || role}</Badge>;
   };
@@ -1516,86 +1524,62 @@ function AdminUsers({ users, searchQuery, setSearchQuery, isLoading, onRefresh }
   // Get avatar color based on role
   const getAvatarColor = (role: string) => {
     const colors: Record<string, string> = {
-      ADMIN: 'bg-red-100 text-red-600',
-      WASHER: 'bg-orange-100 text-orange-600',
-      CLIENT: 'bg-blue-100 text-blue-600',
+      ADMIN: 'bg-ink text-white',
     };
-    return colors[role] || 'bg-gray-100 text-gray-600';
+    return colors[role] || 'bg-app text-ink';
   };
 
   return (
     <div className="p-4 space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="font-semibold text-lg text-[#212121]">Gestion des utilisateurs</h2>
-        <div className="flex items-center gap-2">
-          <button onClick={fetchUsersWithFilter} disabled={isLoading || isSaving} className="text-[#FF9800]">
-            <RefreshCw className={`w-5 h-5 ${(isLoading || isSaving) ? 'animate-spin' : ''}`} />
-          </button>
-          <Button 
-            size="sm" 
-            className="bg-[#FF9800] hover:bg-[#F57C00]"
-            onClick={() => setShowAddModal(true)}
-          >
-            <Plus className="w-4 h-4 mr-1" />
-            Ajouter
-          </Button>
-        </div>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="font-semibold text-lg text-ink">Utilisateurs</h2>
+        <button
+          onClick={fetchUsersWithFilter}
+          disabled={isLoading || isSaving}
+          className="w-10 h-10 rounded-md border border-line bg-white flex items-center justify-center text-soft hover:bg-app"
+          aria-label="Rafraîchir"
+        >
+          <RefreshCw className={`w-4 h-4 ${(isLoading || isSaving) ? 'animate-spin' : ''}`} />
+        </button>
       </div>
 
-      {/* Quick Action Buttons */}
-      <div className="flex gap-2">
-        <Button
-          size="sm"
-          variant="outline"
-          className="flex-1 border-blue-200 text-blue-600 hover:bg-blue-50"
-          onClick={() => {
-            setNewUser({ name: '', phone: '', email: '', pin: '1234', role: 'CLIENT' });
-            setShowAddModal(true);
-          }}
-        >
-          <Users className="w-4 h-4 mr-1" />
-          Nouveau client
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          className="flex-1 border-orange-200 text-orange-600 hover:bg-orange-50"
-          onClick={() => {
-            setNewUser({ name: '', phone: '', email: '', pin: '1234', role: 'WASHER' });
-            setShowAddModal(true);
-          }}
-        >
-          <Car className="w-4 h-4 mr-1" />
-          Nouveau laveur
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          className="flex-1 border-red-200 text-red-600 hover:bg-red-50"
-          onClick={() => {
-            setNewUser({ name: '', phone: '', email: '', pin: '1234', role: 'ADMIN' });
-            setShowAddModal(true);
-          }}
-        >
-          <Settings className="w-4 h-4 mr-1" />
-          Nouvel admin
-        </Button>
+      {/* Création rapide : 3 boutons de même largeur, libellés courts (ne débordent pas en 360 px) */}
+      <div className="grid grid-cols-3 gap-2">
+        {([
+          { role: 'CLIENT', label: 'Client', icon: Users },
+          { role: 'WASHER', label: 'Laveur', icon: Car },
+          { role: 'ADMIN', label: 'Admin', icon: Settings },
+        ] as const).map((b) => (
+          <Button
+            key={b.role}
+            size="sm"
+            variant="outline"
+            className="h-10 border-line bg-white text-ink hover:bg-app font-medium px-2"
+            onClick={() => {
+              setNewUser({ name: '', phone: '', email: '', pin: '1234', role: b.role });
+              setShowAddModal(true);
+            }}
+          >
+            <Plus className="w-4 h-4 mr-1 flex-shrink-0" />
+            <span className="truncate">{b.label}</span>
+          </Button>
+        ))}
       </div>
 
       {/* Search and Filters */}
       <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#9E9E9E]" />
+        <div className="relative flex-1 min-w-0">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-soft" />
           <Input
-            placeholder="Rechercher par nom, téléphone, email..."
+            placeholder="Nom ou téléphone"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 bg-white"
+            className="pl-9 bg-white h-10"
           />
         </div>
         <Select value={roleFilter} onValueChange={setRoleFilter}>
-          <SelectTrigger className="w-32 bg-white">
+          <SelectTrigger className="w-28 bg-white h-10">
             <SelectValue placeholder="Rôle" />
           </SelectTrigger>
           <SelectContent>
@@ -1607,37 +1591,36 @@ function AdminUsers({ users, searchQuery, setSearchQuery, isLoading, onRefresh }
         </Select>
       </div>
 
-      {/* Stats Summary */}
+      {/* Compteurs (filtres rapides) */}
       <div className="grid grid-cols-3 gap-2">
-        <div className="bg-blue-50 rounded-lg p-2 text-center cursor-pointer hover:bg-blue-100 transition-colors" onClick={() => setRoleFilter('CLIENT')}>
-          <div className="text-lg font-bold text-blue-600">
-            {displayUsers.filter(u => u.role === 'CLIENT').length}
-          </div>
-          <div className="text-xs text-blue-800">Clients</div>
-        </div>
-        <div className="bg-orange-50 rounded-lg p-2 text-center cursor-pointer hover:bg-orange-100 transition-colors" onClick={() => setRoleFilter('WASHER')}>
-          <div className="text-lg font-bold text-orange-600">
-            {displayUsers.filter(u => u.role === 'WASHER').length}
-          </div>
-          <div className="text-xs text-orange-800">Laveurs</div>
-        </div>
-        <div className="bg-red-50 rounded-lg p-2 text-center cursor-pointer hover:bg-red-100 transition-colors" onClick={() => setRoleFilter('ADMIN')}>
-          <div className="text-lg font-bold text-red-600">
-            {displayUsers.filter(u => u.role === 'ADMIN').length}
-          </div>
-          <div className="text-xs text-red-800">Admins</div>
-        </div>
+        {([
+          { role: 'CLIENT', label: 'Clients' },
+          { role: 'WASHER', label: 'Laveurs' },
+          { role: 'ADMIN', label: 'Admins' },
+        ] as const).map((t) => {
+          const active = roleFilter === t.role;
+          return (
+            <button
+              key={t.role}
+              onClick={() => setRoleFilter(active ? 'all' : t.role)}
+              className={`rounded-lg border p-2 text-center transition-colors ${active ? 'border-ink bg-ink text-white' : 'border-line bg-white text-ink hover:bg-app'}`}
+            >
+              <div className="text-lg font-bold tabular-nums">{displayUsers.filter(u => u.role === t.role).length}</div>
+              <div className={`text-xs ${active ? 'text-white/80' : 'text-soft'}`}>{t.label}</div>
+            </button>
+          );
+        })}
       </div>
 
       {/* Users List */}
       {isLoading || isSaving ? (
         <div className="flex justify-center py-8">
-          <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+          <Loader2 className="w-8 h-8 text-brand-ink animate-spin" />
         </div>
       ) : displayUsers.length > 0 ? (
-        <div className="space-y-2 max-h-[calc(100vh-400px)] overflow-y-auto">
+        <div className="space-y-2">
           {displayUsers.map((user) => (
-            <Card key={user.id} className={`border-0 shadow-sm ${!user.isActive ? 'opacity-60' : ''}`}>
+            <Card key={user.id} className={`border border-line shadow-none py-0 gap-0 ${!user.isActive ? 'opacity-60' : ''}`}>
               <CardContent className="p-3">
                 <div className="flex items-center gap-3">
                   <Avatar className="w-10 h-10">
@@ -1647,63 +1630,68 @@ function AdminUsers({ users, searchQuery, setSearchQuery, isLoading, onRefresh }
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-medium text-[#212121] truncate">{user.name || 'N/A'}</h3>
+                      <h3 className="font-medium text-ink truncate">{user.name || 'N/A'}</h3>
                       {getRoleBadge(user.role)}
                     </div>
-                    <p className="text-xs text-[#757575]">{user.phone}</p>
-                    {user.email && <p className="text-xs text-[#9E9E9E]">{user.email}</p>}
+                    <p className="text-xs text-soft">{user.phone}</p>
+                    {user.email && <p className="text-xs text-soft">{user.email}</p>}
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-0.5 flex-shrink-0">
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-8 w-8 p-0"
+                      className="h-9 w-9 p-0 text-soft hover:text-ink"
                       onClick={() => openEditModal(user)}
+                      aria-label={`Modifier ${user.name || ''}`}
                     >
-                      <Edit className="w-4 h-4 text-blue-500" />
+                      <Edit className="w-4 h-4" />
                     </Button>
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-8 w-8 p-0"
+                      className="h-9 w-9 p-0"
                       onClick={() => handleToggleStatus(user)}
+                      aria-label={user.isActive ? 'Désactiver le compte' : 'Réactiver le compte'}
+                      title={user.isActive ? 'Compte actif — désactiver' : 'Compte désactivé — réactiver'}
                     >
                       {user.isActive ? (
-                        <CheckCircle className="w-4 h-4 text-green-500" />
+                        <CheckCircle className="w-4 h-4 text-success" />
                       ) : (
-                        <XCircle className="w-4 h-4 text-red-500" />
+                        <XCircle className="w-4 h-4 text-soft" />
                       )}
                     </Button>
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-8 w-8 p-0"
+                      className="h-9 w-9 p-0 text-soft hover:text-red-600"
                       onClick={() => setDeleteConfirm(user)}
-                      disabled={user.role === 'ADMIN'} // Don't allow deleting admins
+                      // Tout compte peut être supprimé, sauf le sien.
+                      disabled={user.id === currentAdminId}
+                      aria-label={`Supprimer ${user.name || ''}`}
                     >
-                      <Trash2 className="w-4 h-4 text-red-400" />
+                      <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>
                 
                 {/* Additional info for washers */}
                 {user.role === 'WASHER' && user.washer && (
-                  <div className="mt-2 pt-2 border-t border-[#F5F5F5] flex justify-between text-xs text-[#757575]">
+                  <div className="mt-2 pt-2 border-t border-line flex justify-between text-xs text-soft">
                     <div className="flex items-center gap-1">
                       <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
                       <span>{user.washer.rating > 0 ? user.washer.rating.toFixed(1) : '-'}</span>
                     </div>
                     <span>{user.washer.completedJobs} jobs</span>
-                    <span className="text-green-600 font-medium">{user.washer.totalEarnings.toLocaleString()} XOF</span>
+                    <span className="text-ink font-medium">{user.washer.totalEarnings.toLocaleString()} XOF</span>
                   </div>
                 )}
                 
                 {/* Wallet balance for clients */}
                 {user.role === 'CLIENT' && (
-                  <div className="mt-2 pt-2 border-t border-[#F5F5F5] flex justify-between text-xs">
-                    <span className="text-[#757575]">{user.orders} commandes</span>
-                    <span className="text-green-600 font-medium">
-                      Solde: {(user.walletBalance || 0).toLocaleString()} XOF
+                  <div className="mt-2 pt-2 border-t border-line flex justify-between text-xs">
+                    <span className="text-soft">{user.orders} commandes</span>
+                    <span className="text-ink font-medium">
+                      Solde : {(user.walletBalance || 0).toLocaleString()} XOF
                     </span>
                   </div>
                 )}
@@ -1713,8 +1701,8 @@ function AdminUsers({ users, searchQuery, setSearchQuery, isLoading, onRefresh }
         </div>
       ) : (
         <div className="bg-white rounded-2xl p-8 text-center">
-          <Users className="w-12 h-12 text-[#9E9E9E] mx-auto mb-3" />
-          <p className="text-[#757575]">Aucun utilisateur trouvé</p>
+          <Users className="w-12 h-12 text-soft mx-auto mb-3" />
+          <p className="text-soft">Aucun utilisateur trouvé</p>
         </div>
       )}
 
@@ -1788,7 +1776,7 @@ function AdminUsers({ users, searchQuery, setSearchQuery, isLoading, onRefresh }
               Annuler
             </Button>
             <Button 
-              className="bg-[#FF9800] hover:bg-[#F57C00]"
+              className="bg-brand-ink hover:bg-brand-ink-strong"
               onClick={handleCreateUser}
               disabled={isSaving || !newUser.phone}
             >
@@ -1884,7 +1872,7 @@ function AdminUsers({ users, searchQuery, setSearchQuery, isLoading, onRefresh }
               Annuler
             </Button>
             <Button 
-              className="bg-[#FF9800] hover:bg-[#F57C00]"
+              className="bg-brand-ink hover:bg-brand-ink-strong"
               onClick={handleUpdateUser}
               disabled={isSaving}
             >
@@ -1909,35 +1897,35 @@ function AdminUsers({ users, searchQuery, setSearchQuery, isLoading, onRefresh }
           </DialogHeader>
           
           <div className="py-2 space-y-3">
-            <p className="text-sm text-[#757575]">
+            <p className="text-sm text-soft">
               Supprimer le compte de <strong>{deleteConfirm?.name || 'cet utilisateur'}</strong> ({deleteConfirm?.phone}) ?
             </p>
             {deletePreview ? (
-              <ul className="text-xs text-[#616161] space-y-1 bg-[#FAFAFA] rounded-lg p-3">
+              <ul className="text-xs text-soft space-y-1 bg-app rounded-lg p-3">
                 <li>• {deletePreview.orders} commande(s) dans l&apos;historique : conservées sous « Compte supprimé ».</li>
                 {deletePreview.activeOrders > 0 && (
-                  <li className="text-[#E65100]">• {deletePreview.activeOrders} commande(s) en cours : annulées (ou remises en attente si c&apos;est un laveur).</li>
+                  <li className="text-brand-ink">• {deletePreview.activeOrders} commande(s) en cours : annulées (ou remises en attente si c&apos;est un laveur).</li>
                 )}
                 {deletePreview.walletBalance > 0 && (
-                  <li className="text-[#E65100]">• Solde du portefeuille : {Math.round(deletePreview.walletBalance).toLocaleString('fr-FR')} F, conservé par Socline.</li>
+                  <li className="text-brand-ink">• Solde du portefeuille : {Math.round(deletePreview.walletBalance).toLocaleString('fr-FR')} F, conservé par Socline.</li>
                 )}
                 <li>• Nom, numéro, PIN, voitures, adresses et messages effacés ; connexion impossible.</li>
               </ul>
             ) : (
-              <Loader2 className="w-4 h-4 animate-spin text-[#9E9E9E]" />
+              <Loader2 className="w-4 h-4 animate-spin text-soft" />
             )}
             <div>
               <Label htmlFor="delete-reason" className="text-xs">Motif (facultatif)</Label>
               <Input id="delete-reason" value={deleteReason} onChange={(e) => setDeleteReason(e.target.value)} placeholder="Fraude, comportement abusif, demande du client…" className="h-10 mt-1 text-sm" />
             </div>
-            <label className="flex items-start gap-2 text-sm text-[#212121] cursor-pointer">
+            <label className="flex items-start gap-2 text-sm text-ink cursor-pointer">
               <input type="checkbox" checked={deleteBlock} onChange={(e) => setDeleteBlock(e.target.checked)} className="mt-0.5 w-4 h-4 accent-red-600" />
               <span>
                 Bloquer ce numéro
-                <span className="block text-xs text-[#757575]">Compte malveillant : il ne pourra plus se réinscrire avec ce numéro.</span>
+                <span className="block text-xs text-soft">Compte malveillant : il ne pourra plus se réinscrire avec ce numéro.</span>
               </span>
             </label>
-            <p className="text-xs text-red-500">Cette action est irréversible.</p>
+            <p className="text-xs text-red-600">Cette action est irréversible.</p>
           </div>
           
           <DialogFooter>
@@ -2006,33 +1994,33 @@ function AdminWashers({ washers, isLoading, onRefresh, onVerify }: {
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="font-semibold text-lg text-[#212121]">Gestion des laveurs</h2>
-        <button onClick={onRefresh} disabled={isLoading} className="text-[#FF9800]">
-          <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+        <h2 className="font-semibold text-lg text-ink">Gestion des laveurs</h2>
+        <button onClick={onRefresh} disabled={isLoading} className="w-10 h-10 rounded-md border border-line bg-white flex items-center justify-center text-soft hover:bg-app" aria-label="Rafraîchir">
+          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
       {/* Stats Summary */}
       <div className="grid grid-cols-3 gap-2">
-        <div className="bg-orange-50 rounded-lg p-2 text-center">
-          <div className="text-lg font-bold text-orange-600">{washers.length}</div>
-          <div className="text-xs text-orange-800">Total</div>
+        <div className="bg-white border border-line rounded-lg p-2 text-center">
+          <div className="text-lg font-bold text-ink tabular-nums">{washers.length}</div>
+          <div className="text-xs text-soft">Total</div>
         </div>
-        <div className="bg-green-50 rounded-lg p-2 text-center">
-          <div className="text-lg font-bold text-green-600">{washers.filter(w => w.isAvailable && w.isVerified).length}</div>
-          <div className="text-xs text-green-800">En ligne</div>
+        <div className="bg-white border border-line rounded-lg p-2 text-center">
+          <div className="text-lg font-bold text-ink tabular-nums">{washers.filter(w => w.isAvailable && w.isVerified).length}</div>
+          <div className="text-xs text-soft">En ligne</div>
         </div>
-        <div className="bg-yellow-50 rounded-lg p-2 text-center">
-          <div className="text-lg font-bold text-yellow-600">{pendingWashers.length}</div>
-          <div className="text-xs text-yellow-800">En attente</div>
+        <div className="bg-white border border-line rounded-lg p-2 text-center">
+          <div className="text-lg font-bold text-ink tabular-nums">{pendingWashers.length}</div>
+          <div className="text-xs text-soft">À vérifier</div>
         </div>
       </div>
 
       {/* Commission espèces en attente de recouvrement (encaissements CASH) */}
       {debtors.length > 0 && (
-        <div className="bg-[#FFF8F0] border border-[#FFCC80] rounded-lg p-3 flex items-center gap-2">
-          <Banknote className="w-4 h-4 text-[#FF9800] flex-shrink-0" />
-          <p className="text-xs text-[#E65100]">
+        <div className="bg-brand-wash border border-line rounded-lg p-3 flex items-center gap-2">
+          <Banknote className="w-4 h-4 text-brand-ink flex-shrink-0" />
+          <p className="text-xs text-brand-ink">
             <b>{debtors.length}</b> laveur{debtors.length > 1 ? 's' : ''} avec commission espèces à recouvrer — total :{' '}
             <b>{debtors.reduce((s, w) => s + (w.cashDebt ?? 0), 0).toLocaleString()} XOF</b>
           </p>
@@ -2041,9 +2029,9 @@ function AdminWashers({ washers, isLoading, onRefresh, onVerify }: {
 
       {/* Pending Verifications */}
       {pendingWashers.length > 0 && (
-        <Card className="border-yellow-200 bg-yellow-50">
+        <Card className="border-amber-200 bg-amber-50">
           <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-yellow-800 text-sm">
+            <CardTitle className="flex items-center gap-2 text-amber-800 text-sm">
               <AlertCircle className="w-4 h-4" />
               En attente de vérification ({pendingWashers.length})
             </CardTitle>
@@ -2053,19 +2041,19 @@ function AdminWashers({ washers, isLoading, onRefresh, onVerify }: {
               <div key={washer.id} className="flex items-center justify-between bg-white p-3 rounded-lg">
                 <div className="flex items-center gap-3">
                   <Avatar>
-                    <AvatarFallback className="bg-[#FFF3E0] text-[#FF9800]">
+                    <AvatarFallback className="bg-brand-wash text-brand-ink">
                       {washer.name.charAt(0)}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="font-medium text-[#212121]">{washer.name}</p>
-                    <p className="text-xs text-[#757575]">{washer.phone}</p>
+                    <p className="font-medium text-ink">{washer.name}</p>
+                    <p className="text-xs text-soft">{washer.phone}</p>
                   </div>
                 </div>
                 <div className="flex gap-2">
                   <Button
                     size="sm"
-                    className="bg-green-600 hover:bg-green-700"
+                    className="bg-brand-ink hover:bg-brand-ink-strong"
                     onClick={() => onVerify(washer.id, 'verify')}
                   >
                     <CheckCircle className="w-4 h-4" />
@@ -2087,48 +2075,48 @@ function AdminWashers({ washers, isLoading, onRefresh, onVerify }: {
       {/* Verified Washers */}
       {isLoading ? (
         <div className="flex justify-center py-8">
-          <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+          <Loader2 className="w-8 h-8 text-brand-ink animate-spin" />
         </div>
       ) : verifiedWashers.length > 0 ? (
         <div className="space-y-3">
           {verifiedWashers.map((washer) => (
-            <Card key={washer.id} className="border-0 shadow-sm">
+            <Card key={washer.id} className="border border-line shadow-none py-0 gap-0">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
                   <Avatar className="w-10 h-10">
-                    <AvatarFallback className="bg-[#E8F5E9] text-[#4CAF50]">
+                    <AvatarFallback className="bg-success/10 text-success">
                       {washer.name.charAt(0)}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
-                    <h3 className="font-medium text-[#212121]">{washer.name}</h3>
-                    <p className="text-xs text-[#757575]">{washer.phone}</p>
+                    <h3 className="font-medium text-ink">{washer.name}</h3>
+                    <p className="text-xs text-soft">{washer.phone}</p>
                   </div>
                   <div className="text-right">
                     <div className="flex items-center gap-1 justify-end">
                       <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
                       <span className="text-sm font-medium">{washer.rating > 0 ? washer.rating.toFixed(1) : '-'}</span>
                     </div>
-                    <Badge className={washer.isAvailable ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
+                    <Badge className={washer.isAvailable ? 'bg-success/10 text-success' : 'bg-gray-100 text-gray-800'}>
                       {washer.isAvailable ? 'En ligne' : 'Hors ligne'}
                     </Badge>
                   </div>
                 </div>
-                <div className="flex justify-between mt-3 pt-3 border-t border-[#F5F5F5] text-xs text-[#757575]">
+                <div className="flex justify-between mt-3 pt-3 border-t border-line text-xs text-soft">
                   <span>{washer.completedJobs} jobs</span>
-                  <span className="font-medium text-[#4CAF50]">{washer.earnings.toLocaleString()} XOF gagnés</span>
+                  <span className="font-medium text-ink">{washer.earnings.toLocaleString()} XOF gagnés</span>
                 </div>
                 {/* Commission espèces à recouvrer — le laveur a encaissé le cash */}
                 {(washer.cashDebt ?? 0) > 0 && (
-                  <div className="mt-3 rounded-lg border-2 border-[#FF9800] bg-[#FFF8F0] p-3">
+                  <div className="mt-3 rounded-lg border-2 border-brand-ink bg-brand-wash p-3">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-xs font-semibold text-[#E65100]">💵 Commission espèces à recouvrer</p>
-                        <p className="text-lg font-bold text-[#E65100]">{(washer.cashDebt ?? 0).toLocaleString()} XOF</p>
+                        <p className="text-xs font-semibold text-brand-ink">💵 Commission espèces à recouvrer</p>
+                        <p className="text-lg font-bold text-brand-ink">{(washer.cashDebt ?? 0).toLocaleString()} XOF</p>
                       </div>
                       <Button
                         size="sm"
-                        className="bg-[#FF9800] hover:bg-[#F57C00] text-white font-semibold"
+                        className="bg-brand-ink hover:bg-brand-ink-strong text-white font-semibold"
                         disabled={recoveringId === washer.id}
                         onClick={() => handleRecover(washer)}
                       >
@@ -2139,7 +2127,7 @@ function AdminWashers({ washers, isLoading, onRefresh, onVerify }: {
                         )}
                       </Button>
                     </div>
-                    <p className="text-[11px] text-[#8D6E63] mt-1">
+                    <p className="text-[11px] text-soft mt-1">
                       Déduite du portefeuille du laveur — ses retraits sont bloqués tant que la dette n'est pas soldée.
                     </p>
                   </div>
@@ -2147,7 +2135,7 @@ function AdminWashers({ washers, isLoading, onRefresh, onVerify }: {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="w-full mt-3 border-[#FF9800] text-[#FF9800] hover:bg-[#FFF8F0]"
+                  className="w-full mt-3 border-line text-ink hover:bg-app"
                   onClick={() => setNumbersWasher({ id: washer.id, name: washer.name })}
                 >
                   <Banknote className="w-4 h-4 mr-1" />
@@ -2159,8 +2147,8 @@ function AdminWashers({ washers, isLoading, onRefresh, onVerify }: {
         </div>
       ) : (
         <div className="bg-white rounded-2xl p-8 text-center">
-          <Car className="w-12 h-12 text-[#9E9E9E] mx-auto mb-3" />
-          <p className="text-[#757575]">Aucun laveur vérifié</p>
+          <Car className="w-12 h-12 text-soft mx-auto mb-3" />
+          <p className="text-soft">Aucun laveur vérifié</p>
         </div>
       )}
 
@@ -2258,26 +2246,26 @@ function AdminWithdrawalNumbers({ washerId, washerName, onClose }: {
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Banknote className="w-5 h-5 text-[#FF9800]" />
+            <Banknote className="w-5 h-5 text-brand-ink" />
             Numéros de retrait — {washerName}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 pt-2">
           {isLoading ? (
             <div className="flex justify-center py-4">
-              <Loader2 className="w-6 h-6 animate-spin text-[#FF9800]" />
+              <Loader2 className="w-6 h-6 animate-spin text-brand-ink" />
             </div>
           ) : numbers.length === 0 ? (
-            <p className="text-sm text-[#757575] bg-[#F5F5F5] rounded-lg p-3 text-center">
+            <p className="text-sm text-soft bg-app rounded-lg p-3 text-center">
               Aucun numéro confirmé pour ce laveur.
             </p>
           ) : (
             <div className="space-y-2">
               {numbers.map((n) => (
-                <div key={n.id} className="flex items-center justify-between bg-[#F5F5F5] rounded-lg px-3 py-2">
+                <div key={n.id} className="flex items-center justify-between bg-app rounded-lg px-3 py-2">
                   <div>
-                    <p className="font-medium text-sm text-[#212121]">+228 {n.phoneNumber}</p>
-                    <p className="text-xs text-[#757575]">{n.operator ?? '—'}</p>
+                    <p className="font-medium text-sm text-ink">+228 {n.phoneNumber}</p>
+                    <p className="text-xs text-soft">{n.operator ?? '—'}</p>
                   </div>
                   <Button
                     size="sm"
@@ -2292,11 +2280,11 @@ function AdminWithdrawalNumbers({ washerId, washerName, onClose }: {
           )}
 
           {numbers.length < 3 && (
-            <div className="space-y-2 border-t border-[#F0F0F0] pt-3">
-              <label className="text-sm font-medium text-[#757575]">Ajouter un numéro</label>
+            <div className="space-y-2 border-t border-line pt-3">
+              <label className="text-sm font-medium text-soft">Ajouter un numéro</label>
               <div className="flex gap-2">
                 <div className="relative flex-1">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#757575]">+228</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-soft">+228</span>
                   <Input
                     type="tel"
                     placeholder="90 12 34 56"
@@ -2305,7 +2293,7 @@ function AdminWithdrawalNumbers({ washerId, washerName, onClose }: {
                     className="pl-14 h-10"
                   />
                 </div>
-                <Button onClick={handleAdd} disabled={isSaving} className="bg-[#FF9800] hover:bg-[#F57C00]">
+                <Button onClick={handleAdd} disabled={isSaving} className="bg-brand-ink hover:bg-brand-ink-strong">
                   {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                 </Button>
               </div>
@@ -2315,7 +2303,7 @@ function AdminWithdrawalNumbers({ washerId, washerName, onClose }: {
                     key={op}
                     onClick={() => setNewOperator(op)}
                     className={`p-2 rounded-lg border-2 text-xs font-medium transition-all ${
-                      newOperator === op ? 'border-[#FF9800] bg-[#FFF8F0] text-[#212121]' : 'border-gray-200 text-[#757575]'
+                      newOperator === op ? 'border-brand-ink bg-brand-wash text-ink' : 'border-gray-200 text-soft'
                     }`}
                   >
                     {op}
@@ -2324,7 +2312,7 @@ function AdminWithdrawalNumbers({ washerId, washerName, onClose }: {
               </div>
             </div>
           )}
-          <p className="text-xs text-[#9E9E9E]">
+          <p className="text-xs text-soft">
             Le laveur ne peut pas modifier ces numéros lui-même — il envoie une demande et vous seul agissez ici.
           </p>
         </div>
@@ -2430,8 +2418,8 @@ function AdminServices() {
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="font-semibold text-lg text-[#212121]">Services</h2>
-        <Button size="sm" className="bg-[#FF9800] hover:bg-[#F57C00]">
+        <h2 className="font-semibold text-lg text-ink">Services</h2>
+        <Button size="sm" className="bg-brand-ink hover:bg-brand-ink-strong">
           <Plus className="w-4 h-4 mr-1" />
           Ajouter
         </Button>
@@ -2439,39 +2427,39 @@ function AdminServices() {
 
       {isLoading ? (
         <div className="flex justify-center py-8">
-          <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+          <Loader2 className="w-8 h-8 text-brand-ink animate-spin" />
         </div>
       ) : (
         <div className="space-y-3">
           {services.map((service) => (
-            <Card key={service.id} className="border-0 shadow-sm">
-              <CardContent className="p-4">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-medium text-[#212121]">{service.name}</h3>
-                      <Badge variant="outline" className="text-xs">{service.category}</Badge>
-                    </div>
-                    <p className="text-xs text-[#757575] mt-1">{service.description}</p>
-                    <p className="text-xs text-[#757575] mt-1">{service.duration} min</p>
-                  </div>
-                  <div className="text-right flex flex-col items-end gap-2">
-                    <p className="font-bold text-[#FF9800] text-lg">{service.price.toLocaleString()} XOF</p>
-                    <div className="flex items-center gap-2">
-                      <Badge className={service.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
-                        {service.isActive ? 'Actif' : 'Inactif'}
-                      </Badge>
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        className="h-8 px-2"
-                        onClick={() => handleEditService(service)}
-                      >
-                        <Edit className="w-3 h-3 mr-1" />
-                        Modifier
-                      </Button>
-                    </div>
-                  </div>
+            <Card key={service.id} className="border border-line shadow-none py-0 gap-0">
+              <CardContent className="p-4 space-y-2">
+                {/* Ligne 1 : nom + prix (le prix ne se coupe jamais) */}
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="font-semibold text-ink leading-snug min-w-0">{service.name}</h3>
+                  <p className="font-bold text-ink whitespace-nowrap tabular-nums">{service.price.toLocaleString('fr-FR')} F</p>
+                </div>
+                {/* Ligne 2 : infos courtes */}
+                <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                  <span className="rounded-full border border-line px-2 py-0.5 text-soft">{service.category}</span>
+                  <span className="rounded-full border border-line px-2 py-0.5 text-soft">{service.duration} min</span>
+                  <span className={`rounded-full px-2 py-0.5 font-medium ${service.isActive ? 'bg-success/10 text-success' : 'bg-app text-soft'}`}>
+                    {service.isActive ? 'Actif' : 'Inactif'}
+                  </span>
+                </div>
+                {service.description && (
+                  <p className="text-xs text-soft leading-relaxed line-clamp-3">{service.description}</p>
+                )}
+                <div className="flex justify-end pt-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-9 border-line text-ink"
+                    onClick={() => handleEditService(service)}
+                  >
+                    <Edit className="w-3.5 h-3.5 mr-1.5" />
+                    Modifier
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -2541,7 +2529,7 @@ function AdminServices() {
               Annuler
             </Button>
             <Button 
-              className="bg-[#FF9800] hover:bg-[#F57C00]"
+              className="bg-brand-ink hover:bg-brand-ink-strong"
               onClick={handleSaveService}
               disabled={isSaving || !editPrice || !editName}
             >
@@ -2565,49 +2553,49 @@ function AdminServices() {
 function AdminFinances({ stats }: { stats: Stats | null }) {
   return (
     <div className="p-4 space-y-4">
-      <h2 className="font-semibold text-lg text-[#212121]">Finances</h2>
+      <h2 className="font-semibold text-lg text-ink">Finances</h2>
 
       <div className="grid grid-cols-2 gap-3">
-        <Card className="border-0 shadow-sm">
+        <Card className="border border-line shadow-none py-0 gap-0">
           <CardContent className="p-4">
-            <p className="text-xs text-[#757575]">Revenus totaux</p>
+            <p className="text-xs text-soft">Revenus totaux</p>
             <HideableBalanceLight
               balance={stats?.totalRevenue || 0}
               currency="XOF"
               size="lg"
               storageKey="hide-admin-total-revenue"
-              balanceClassName="text-[#4CAF50]"
+              balanceClassName="text-ink"
             />
           </CardContent>
         </Card>
-        <Card className="border-0 shadow-sm">
+        <Card className="border border-line shadow-none py-0 gap-0">
           <CardContent className="p-4">
-            <p className="text-xs text-[#757575]">Ce mois</p>
+            <p className="text-xs text-soft">Ce mois</p>
             <HideableBalanceLight
               balance={stats?.monthRevenue || 0}
               currency="XOF"
               size="lg"
               storageKey="hide-admin-month-revenue"
-              balanceClassName="text-[#2196F3]"
+              balanceClassName="text-soft"
             />
           </CardContent>
         </Card>
       </div>
 
-      <Card className="border-0 shadow-sm">
+      <Card className="border border-line shadow-none py-0 gap-0">
         <CardContent className="p-4">
           <div className="flex justify-between items-center">
             <div>
-              <p className="text-xs text-[#757575]">Commissions (15%)</p>
+              <p className="text-xs text-soft">Commissions (15%)</p>
               <HideableBalanceLight
                 balance={((stats?.totalRevenue || 0) * 0.15)}
                 currency="XOF"
                 size="lg"
                 storageKey="hide-admin-commissions"
-                balanceClassName="text-[#FF9800]"
+                balanceClassName="text-ink"
               />
             </div>
-            <TrendingUp className="w-8 h-8 text-[#FF9800]" />
+            <TrendingUp className="w-8 h-8 text-brand-ink" />
           </div>
         </CardContent>
       </Card>
@@ -2728,33 +2716,31 @@ function AdminPlusMenu({ depositsCount, withdrawalsCount, onSelect }: {
 
   return (
     <div className="p-4 space-y-4">
-      <h2 className="font-semibold text-lg text-[#212121]">Plus d&apos;options</h2>
+      <h2 className="font-semibold text-lg text-ink">Plus d&apos;options</h2>
 
       <div className="space-y-2">
         {menuItems.map((item) => (
           <button
             key={item.id}
             onClick={() => onSelect(item.id)}
-            className="w-full flex items-center gap-4 p-4 bg-white rounded-xl border border-[#E0E0E0] hover:border-[#FF9800] transition-all active:scale-[0.98]"
+            className="w-full flex items-center gap-3 p-3.5 bg-white rounded-xl border border-line hover:bg-app transition-colors active:scale-[0.99] text-left"
           >
-            <div
-              className="w-12 h-12 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: `${item.color}20` }}
-            >
-              <item.icon className="w-6 h-6" style={{ color: item.color }} />
+            {/* Icônes neutres : une seule couleur pour un rendu sobre */}
+            <div className="w-10 h-10 rounded-lg bg-app flex items-center justify-center flex-shrink-0">
+              <item.icon className="w-5 h-5 text-ink" />
             </div>
-            <div className="flex-1 text-left">
+            <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <span className="font-medium text-[#212121]">{item.label}</span>
+                <span className="font-semibold text-sm text-ink">{item.label}</span>
                 {item.badge && (
-                  <span className="px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">
+                  <span className="min-w-5 h-5 px-1.5 inline-flex items-center justify-center bg-brand-ink text-white text-[11px] font-bold rounded-full">
                     {item.badge}
                   </span>
                 )}
               </div>
-              <p className="text-sm text-[#757575]">{item.description}</p>
+              <p className="text-xs text-soft leading-snug mt-0.5">{item.description}</p>
             </div>
-            <ChevronDown className="w-5 h-5 text-[#9E9E9E] -rotate-90" />
+            <ChevronDown className="w-4 h-4 text-soft -rotate-90 flex-shrink-0" />
           </button>
         ))}
       </div>
@@ -2762,7 +2748,7 @@ function AdminPlusMenu({ depositsCount, withdrawalsCount, onSelect }: {
       {/* Logout button */}
       <button
         onClick={() => logout()}
-        className="w-full flex items-center justify-center gap-2 p-4 bg-red-50 text-red-600 rounded-xl border border-red-200 hover:bg-red-100 transition-all mt-6"
+        className="w-full flex items-center justify-center gap-2 h-12 bg-white text-red-600 rounded-xl border border-line hover:bg-red-50 transition-colors mt-6"
       >
         <LogOut className="w-5 h-5" />
         <span className="font-medium">Déconnexion</span>
@@ -2859,7 +2845,7 @@ function AdminPaymentSystem() {
   if (isLoading) {
     return (
       <div className="flex justify-center py-10">
-        <Loader2 className="w-6 h-6 animate-spin text-[#FF9800]" />
+        <Loader2 className="w-6 h-6 animate-spin text-brand-ink" />
       </div>
     );
   }
@@ -2885,7 +2871,7 @@ function AdminPaymentSystem() {
 
   return (
     <div className="space-y-4 pb-24">
-      <p className="text-sm text-[#757575]">
+      <p className="text-sm text-soft">
         Choisissez le système de paiement affiché aux clients pour recharger leur portefeuille.
       </p>
 
@@ -2899,32 +2885,31 @@ function AdminPaymentSystem() {
               onClick={() => setProvider(sys.id)}
               className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
                 isActive
-                  ? 'border-[#FF9800] bg-[#FFF8F0]'
-                  : 'border-[#E0E0E0] bg-white hover:border-[#BDBDBD]'
+                  ? 'border-brand-ink bg-brand-wash'
+                  : 'border-line bg-white hover:border-line'
               }`}
             >
               <div className="flex items-center gap-3">
                 <div
-                  className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ backgroundColor: sys.color }}
+                  className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 bg-app"
                 >
-                  <sys.icon className="w-6 h-6 text-white" />
+                  <sys.icon className="w-5 h-5 text-ink" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-[#212121]">{sys.name}</span>
+                    <span className="font-semibold text-ink">{sys.name}</span>
                     {isActive ? (
-                      <Badge className="bg-green-100 text-green-700 border-green-200">Actif</Badge>
+                      <Badge className="bg-success/10 text-success border-success/30">Actif</Badge>
                     ) : null}
                     {!sys.ready ? (
-                      <Badge className="bg-red-100 text-red-700 border-red-200">Non configuré</Badge>
+                      <Badge className="bg-red-50 text-red-700 border-red-200">Non configuré</Badge>
                     ) : null}
                   </div>
-                  <p className="text-xs text-[#757575] mt-1">{sys.description}</p>
+                  <p className="text-xs text-soft mt-1">{sys.description}</p>
                 </div>
                 <div
                   className={`w-5 h-5 rounded-full border-2 flex-shrink-0 ${
-                    isActive ? 'border-[#FF9800] bg-[#FF9800]' : 'border-[#BDBDBD]'
+                    isActive ? 'border-brand-ink bg-brand-ink' : 'border-line'
                   }`}
                 />
               </div>
@@ -2935,25 +2920,25 @@ function AdminPaymentSystem() {
 
       {/* Configuration PayDunya (affichée si PayDunya sélectionné) */}
       {provider === 'PAYDUNYA' && (
-        <Card className="border-0 shadow-sm">
+        <Card className="border border-line shadow-none py-0 gap-0">
           <CardContent className="p-4 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-medium text-[#212121] flex items-center gap-2">
-                <CreditCard className="w-5 h-5 text-[#E65100]" />
+              <h3 className="font-medium text-ink flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-brand-ink" />
                 Configuration PayDunya
               </h3>
               <Badge
                 className={
                   paydunyaConfigured
-                    ? 'bg-green-100 text-green-700 border-green-200'
-                    : 'bg-red-100 text-red-700 border-red-200'
+                    ? 'bg-success/10 text-success border-success/30'
+                    : 'bg-red-50 text-red-700 border-red-200'
                 }
               >
                 {paydunyaConfigured ? 'Clés enregistrées' : 'Clés manquantes'}
               </Badge>
             </div>
 
-            <p className="text-xs text-[#757575]">
+            <p className="text-xs text-soft">
               Récupérez ces informations sur <span className="font-medium">paydunya.com</span> → Compte marchand → API / Intégration.
               Les clés enregistrées sont masquées ; ne renseignez un champ que pour le changer.
             </p>
@@ -2969,7 +2954,7 @@ function AdminPaymentSystem() {
                   <SelectItem value="live">Production (live)</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-[#9E9E9E]">
+              <p className="text-xs text-soft">
                 En mode test, les paiements passent sur la page sandbox PayDunya — aucun argent réel.
               </p>
             </div>
@@ -2981,7 +2966,7 @@ function AdminPaymentSystem() {
                 onChange={(e) => setForm(prev => ({ ...prev, storeName: e.target.value }))}
                 placeholder="Socline"
               />
-              <p className="text-xs text-[#9E9E9E]">Nom affiché au client sur la page de paiement.</p>
+              <p className="text-xs text-soft">Nom affiché au client sur la page de paiement.</p>
             </div>
 
             <div className="space-y-2">
@@ -3011,15 +2996,15 @@ function AdminPaymentSystem() {
               />
             </div>
 
-            <div className="bg-[#FFF8F0] border border-[#FFE0B2] rounded-lg p-3">
+            <div className="bg-brand-wash border border-line rounded-lg p-3">
               <div className="flex gap-2">
-                <AlertCircle className="w-4 h-4 text-[#F57C00] flex-shrink-0 mt-0.5" />
+                <AlertCircle className="w-4 h-4 text-brand-ink flex-shrink-0 mt-0.5" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs text-[#E65100]">
+                  <p className="text-xs text-brand-ink">
                     Dans votre tableau de bord PayDunya, collez cette URL dans le champ « Endpoint IPN » puis appuyez sur « Activer » :
                   </p>
                   <div className="mt-2 flex items-center gap-2">
-                    <code className="flex-1 min-w-0 text-xs text-[#E65100] bg-white border border-[#FFE0B2] rounded px-2 py-1.5 break-all">
+                    <code className="flex-1 min-w-0 text-xs text-brand-ink bg-white border border-line rounded px-2 py-1.5 break-all">
                       https://socline.oquitogo.com/api/payment/paydunya/webhook
                     </code>
                     <button
@@ -3047,7 +3032,7 @@ function AdminPaymentSystem() {
                           }
                         }
                       }}
-                      className="flex-shrink-0 flex items-center gap-1 text-xs font-medium text-white bg-[#F57C00] hover:bg-[#E65100] rounded px-2.5 py-1.5 transition-colors"
+                      className="flex-shrink-0 flex items-center gap-1 text-xs font-medium text-white bg-brand-ink-strong hover:bg-brand-ink-strong rounded px-2.5 py-1.5 transition-colors"
                     >
                       <Copy className="w-3.5 h-3.5" />
                       Copier
@@ -3064,7 +3049,7 @@ function AdminPaymentSystem() {
       <Button
         onClick={handleSave}
         disabled={isSaving}
-        className="w-full bg-[#FF9800] hover:bg-[#F57C00] h-12"
+        className="w-full bg-brand-ink hover:bg-brand-ink-strong h-12"
       >
         {isSaving ? (
           <Loader2 className="w-5 h-5 animate-spin mr-2" />
@@ -3166,7 +3151,7 @@ function AdminOperatorsSection() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-[#757575]">Gérez les opérateurs de paiement mobile</p>
+        <p className="text-sm text-soft">Gérez les opérateurs de paiement mobile</p>
         <Button
           onClick={() => {
             setEditingOperator(null);
@@ -3182,7 +3167,7 @@ function AdminOperatorsSection() {
             });
             setShowForm(true);
           }}
-          className="bg-[#FF9800] hover:bg-[#F57C00]"
+          className="bg-brand-ink hover:bg-brand-ink-strong"
         >
           <Plus className="w-4 h-4 mr-2" />
           Nouveau
@@ -3191,14 +3176,14 @@ function AdminOperatorsSection() {
 
       {isLoading ? (
         <div className="flex justify-center py-8">
-          <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+          <Loader2 className="w-8 h-8 text-brand-ink animate-spin" />
         </div>
       ) : showForm ? (
-        <Card className="border-0 shadow-sm">
+        <Card className="border border-line shadow-none py-0 gap-0">
           <CardContent className="p-4 space-y-3">
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label className="text-xs text-[#757575]">Nom technique</Label>
+                <Label className="text-xs text-soft">Nom technique</Label>
                 <Input
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -3207,7 +3192,7 @@ function AdminOperatorsSection() {
                 />
               </div>
               <div>
-                <Label className="text-xs text-[#757575]">Nom affiché</Label>
+                <Label className="text-xs text-soft">Nom affiché</Label>
                 <Input
                   value={form.displayName}
                   onChange={(e) => setForm({ ...form, displayName: e.target.value })}
@@ -3217,20 +3202,20 @@ function AdminOperatorsSection() {
               </div>
             </div>
             <div>
-              <Label className="text-xs text-[#757575]">Pattern USSD</Label>
+              <Label className="text-xs text-soft">Pattern USSD</Label>
               <Input
                 value={form.ussdPattern}
                 onChange={(e) => setForm({ ...form, ussdPattern: e.target.value })}
                 placeholder="*145*5*{montant}*1416831#  (marchand)  ou  *145*1*{montant}*{numero}*2#"
                 className="mt-1"
               />
-              <p className="text-[11px] text-[#9E9E9E] mt-1">
+              <p className="text-[11px] text-soft mt-1">
                 Le pattern doit contenir {'{montant}'} et se terminer par #. Format marchand Mixx : *145*5*{'{montant}'}*1416831#
               </p>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label className="text-xs text-[#757575]">Numéro / code marchand destinataire</Label>
+                <Label className="text-xs text-soft">Numéro / code marchand destinataire</Label>
                 <Input
                   value={form.recipientNumber}
                   onChange={(e) => setForm({ ...form, recipientNumber: e.target.value })}
@@ -3239,7 +3224,7 @@ function AdminOperatorsSection() {
                 />
               </div>
               <div>
-                <Label className="text-xs text-[#757575]">Couleur</Label>
+                <Label className="text-xs text-soft">Couleur</Label>
                 <div className="flex gap-2 mt-1">
                   <Input
                     type="color"
@@ -3257,7 +3242,7 @@ function AdminOperatorsSection() {
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label className="text-xs text-[#757575]">Montant min (F)</Label>
+                <Label className="text-xs text-soft">Montant min (F)</Label>
                 <Input
                   type="number"
                   value={form.minAmount}
@@ -3266,7 +3251,7 @@ function AdminOperatorsSection() {
                 />
               </div>
               <div>
-                <Label className="text-xs text-[#757575]">Montant max (F)</Label>
+                <Label className="text-xs text-soft">Montant max (F)</Label>
                 <Input
                   type="number"
                   value={form.maxAmount}
@@ -3283,7 +3268,7 @@ function AdminOperatorsSection() {
               <Label className="text-sm">Actif</Label>
             </div>
             <div className="flex gap-2">
-              <Button onClick={handleSave} className="flex-1 bg-[#FF9800] hover:bg-[#F57C00]">
+              <Button onClick={handleSave} className="flex-1 bg-brand-ink hover:bg-brand-ink-strong">
                 {editingOperator ? 'Modifier' : 'Créer'}
               </Button>
               <Button variant="outline" onClick={() => setShowForm(false)}>
@@ -3300,24 +3285,23 @@ function AdminOperatorsSection() {
       ) : (
         <div className="space-y-2">
           {operators.map((operator) => (
-            <Card key={operator.id} className="border-0 shadow-sm">
+            <Card key={operator.id} className="border border-line shadow-none py-0 gap-0">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center"
-                      style={{ backgroundColor: `${operator.color}20` }}
+                      className="w-10 h-10 rounded-full flex items-center justify-center bg-app"
                     >
-                      <Phone className="w-5 h-5" style={{ color: operator.color }} />
+                      <Phone className="w-5 h-5 text-ink" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-[#212121]">{operator.displayName}</span>
+                        <span className="font-medium text-ink">{operator.displayName}</span>
                         {!operator.isActive && (
                           <Badge className="bg-gray-100 text-gray-600">Inactif</Badge>
                         )}
                       </div>
-                      <p className="text-xs text-[#757575]">{operator.ussdPattern}</p>
+                      <p className="text-xs text-soft">{operator.ussdPattern}</p>
                     </div>
                   </div>
                   <Button variant="ghost" size="sm" onClick={() => handleEdit(operator)}>
@@ -3365,29 +3349,29 @@ function AdminSettingsContent() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-[#757575]">Configuration générale de l&apos;application</p>
+      <p className="text-sm text-soft">Configuration générale de l&apos;application</p>
 
       {/* App Info */}
-      <Card className="border-0 shadow-sm">
+      <Card className="border border-line shadow-none py-0 gap-0">
         <CardContent className="p-4 space-y-3">
-          <h3 className="font-medium text-[#212121]">Informations</h3>
+          <h3 className="font-medium text-ink">Informations</h3>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-[#757575]">Version</span>
+              <span className="text-soft">Version</span>
               <span className="font-medium">1.0.0</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-[#757575]">Environnement</span>
-              <Badge className="bg-green-100 text-green-700">Production</Badge>
+              <span className="text-soft">Environnement</span>
+              <Badge className="bg-success/10 text-success">Production</Badge>
             </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Quick Actions */}
-      <Card className="border-0 shadow-sm">
+      <Card className="border border-line shadow-none py-0 gap-0">
         <CardContent className="p-4 space-y-3">
-          <h3 className="font-medium text-[#212121]">Actions rapides</h3>
+          <h3 className="font-medium text-ink">Actions rapides</h3>
           <div className="space-y-2">
             <Button
               variant="outline"
@@ -3682,33 +3666,32 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <h2 className="font-semibold text-lg text-[#212121]">Promotions</h2>
+        <h2 className="font-semibold text-lg text-ink">Promotions</h2>
         <div className="flex items-center gap-2">
-          <button onClick={onRefresh} disabled={isLoading} className="text-[#FF9800] p-1">
-            <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+          <button onClick={onRefresh} disabled={isLoading} className="w-10 h-10 rounded-md border border-line bg-white flex items-center justify-center text-soft hover:bg-app" aria-label="Rafraîchir">
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
           <Button 
             size="sm" 
-            className="bg-[#FF9800] hover:bg-[#F57C00]"
+            className="bg-brand-ink hover:bg-brand-ink-strong"
             onClick={() => setShowForm(true)}
           >
             <Plus className="w-4 h-4 mr-1" />
-            <span className="hidden sm:inline">Nouvelle</span>
-            <span className="sm:hidden">+</span>
+            Nouvelle
           </Button>
         </div>
       </div>
 
       {/* Form */}
       {showForm && (
-        <Card className="border-0 shadow-sm">
+        <Card className="border border-line shadow-none py-0 gap-0">
           <CardContent className="p-4 space-y-3">
-            <h3 className="font-semibold text-[#212121]">
+            <h3 className="font-semibold text-ink">
               {editingPromo ? 'Modifier la promotion' : 'Nouvelle promotion'}
             </h3>
             
             <div>
-              <Label className="text-xs text-[#757575]">Nom *</Label>
+              <Label className="text-xs text-soft">Nom *</Label>
               <Input
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -3718,7 +3701,7 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
             </div>
 
             <div>
-              <Label className="text-xs text-[#757575]">Description</Label>
+              <Label className="text-xs text-soft">Description</Label>
               <Input
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -3729,7 +3712,7 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label className="text-xs text-[#757575]">Type de réduction</Label>
+                <Label className="text-xs text-soft">Type de réduction</Label>
                 <Select 
                   value={formData.discountType} 
                   onValueChange={(v) => setFormData({ ...formData, discountType: v })}
@@ -3744,7 +3727,7 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
                 </Select>
               </div>
               <div>
-                <Label className="text-xs text-[#757575]">Valeur *</Label>
+                <Label className="text-xs text-soft">Valeur *</Label>
                 <Input
                   type="number"
                   value={formData.discountValue}
@@ -3756,7 +3739,7 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
             </div>
 
             <div>
-              <Label className="text-xs text-[#757575]">Code promo (optionnel)</Label>
+              <Label className="text-xs text-soft">Code promo (optionnel)</Label>
               <Input
                 value={formData.code}
                 onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
@@ -3767,7 +3750,7 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
 
             {/* Display Type Selection */}
             <div>
-              <Label className="text-xs text-[#757575]">Type d'affichage</Label>
+              <Label className="text-xs text-soft">Type d'affichage</Label>
               <div className="flex gap-2 mt-1">
                 <button
                   type="button"
@@ -3778,8 +3761,8 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
                   }}
                   className={`flex-1 py-2 px-2 rounded-lg border-2 text-xs sm:text-sm font-medium transition-all ${
                     formData.displayType === 'TEXT' 
-                      ? 'border-[#FF9800] bg-[#FFF3E0] text-[#FF9800]' 
-                      : 'border-[#E0E0E0] text-[#757575]'
+                      ? 'border-brand-ink bg-brand-wash text-brand-ink' 
+                      : 'border-line text-soft'
                   }`}
                 >
                   Texte uniquement
@@ -3789,8 +3772,8 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
                   onClick={() => setFormData({ ...formData, displayType: 'IMAGE', video: '' })}
                   className={`flex-1 py-2 px-2 rounded-lg border-2 text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-1 ${
                     formData.displayType === 'IMAGE' 
-                      ? 'border-[#FF9800] bg-[#FFF3E0] text-[#FF9800]' 
-                      : 'border-[#E0E0E0] text-[#757575]'
+                      ? 'border-brand-ink bg-brand-wash text-brand-ink' 
+                      : 'border-line text-soft'
                   }`}
                 >
                   <ImageIcon className="w-4 h-4" />
@@ -3801,8 +3784,8 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
                   onClick={() => setFormData({ ...formData, displayType: 'VIDEO', image: '' })}
                   className={`flex-1 py-2 px-2 rounded-lg border-2 text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-1 ${
                     formData.displayType === 'VIDEO' 
-                      ? 'border-[#FF9800] bg-[#FFF3E0] text-[#FF9800]' 
-                      : 'border-[#E0E0E0] text-[#757575]'
+                      ? 'border-brand-ink bg-brand-wash text-brand-ink' 
+                      : 'border-line text-soft'
                   }`}
                 >
                   <VideoIcon className="w-4 h-4" />
@@ -3815,9 +3798,9 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
             {formData.displayType === 'IMAGE' && (
               <div className="space-y-3">
                 <div>
-                  <Label className="text-xs text-[#757575]">Image de la promotion *</Label>
+                  <Label className="text-xs text-soft">Image de la promotion *</Label>
                   <div className="mt-1">
-                    <label className={`flex flex-col items-center justify-center w-full ${imagePreview ? 'h-48' : 'h-32'} border-2 border-dashed border-[#E0E0E0] rounded-lg ${!imagePreview ? 'cursor-pointer hover:bg-[#FAFAFA]' : ''} transition-colors`}>
+                    <label className={`flex flex-col items-center justify-center w-full ${imagePreview ? 'h-48' : 'h-32'} border-2 border-dashed border-line rounded-lg ${!imagePreview ? 'cursor-pointer hover:bg-app' : ''} transition-colors`}>
                       {imagePreview ? (
                         <ImagePositionEditor
                           imageSrc={imagePreview}
@@ -3830,9 +3813,9 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
                         />
                       ) : (
                         <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                          <ImageIcon className="w-8 h-8 text-[#9E9E9E] mb-2" />
-                          <p className="text-xs text-[#757575]">Cliquez pour ajouter une image</p>
-                          <p className="text-xs text-[#9E9E9E]">PNG, JPG, WEBP — toutes tailles acceptées</p>
+                          <ImageIcon className="w-8 h-8 text-soft mb-2" />
+                          <p className="text-xs text-soft">Cliquez pour ajouter une image</p>
+                          <p className="text-xs text-soft">PNG, JPG, WEBP — toutes tailles acceptées</p>
                         </div>
                       )}
                       <input 
@@ -3851,9 +3834,9 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
             {formData.displayType === 'VIDEO' && (
               <div className="space-y-3">
                 <div>
-                  <Label className="text-xs text-[#757575]">Vidéo de la promotion *</Label>
+                  <Label className="text-xs text-soft">Vidéo de la promotion *</Label>
                   <div className="mt-1">
-                    <label className={`flex flex-col items-center justify-center w-full ${videoPreview ? 'h-56' : 'h-32'} border-2 border-dashed border-[#E0E0E0] rounded-lg ${!videoPreview ? 'cursor-pointer hover:bg-[#FAFAFA]' : ''} transition-colors`}>
+                    <label className={`flex flex-col items-center justify-center w-full ${videoPreview ? 'h-56' : 'h-32'} border-2 border-dashed border-line rounded-lg ${!videoPreview ? 'cursor-pointer hover:bg-app' : ''} transition-colors`}>
                       {videoPreview ? (
                         <div className="relative w-full h-full">
                           <video
@@ -3880,9 +3863,9 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
                         </div>
                       ) : (
                         <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                          <VideoIcon className="w-8 h-8 text-[#9E9E9E] mb-2" />
-                          <p className="text-xs text-[#757575]">Cliquez pour ajouter une vidéo</p>
-                          <p className="text-xs text-[#9E9E9E]">MP4, WEBM (max 15 Mo) — lue en boucle sans le son</p>
+                          <VideoIcon className="w-8 h-8 text-soft mb-2" />
+                          <p className="text-xs text-soft">Cliquez pour ajouter une vidéo</p>
+                          <p className="text-xs text-soft">MP4, WEBM (max 15 Mo) — lue en boucle sans le son</p>
                         </div>
                       )}
                       <input 
@@ -3899,7 +3882,7 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label className="text-xs text-[#757575]">Date début *</Label>
+                <Label className="text-xs text-soft">Date début *</Label>
                 <Input
                   type="date"
                   value={formData.startDate}
@@ -3908,7 +3891,7 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
                 />
               </div>
               <div>
-                <Label className="text-xs text-[#757575]">Date fin *</Label>
+                <Label className="text-xs text-soft">Date fin *</Label>
                 <Input
                   type="date"
                   value={formData.endDate}
@@ -3923,12 +3906,12 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
                 checked={formData.isActive}
                 onCheckedChange={(v) => setFormData({ ...formData, isActive: v })}
               />
-              <Label className="text-xs text-[#757575]">Active</Label>
+              <Label className="text-xs text-soft">Active</Label>
             </div>
 
             <div className="flex gap-2">
               <Button 
-                className="flex-1 bg-[#FF9800] hover:bg-[#F57C00]"
+                className="flex-1 bg-brand-ink hover:bg-brand-ink-strong"
                 onClick={handleSubmit}
                 disabled={isSaving}
               >
@@ -3949,12 +3932,12 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
       {/* Promotions List */}
       {isLoading ? (
         <div className="flex justify-center py-8">
-          <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+          <Loader2 className="w-8 h-8 text-brand-ink animate-spin" />
         </div>
       ) : promotions.length > 0 ? (
         <div className="space-y-3">
           {promotions.map((promo) => (
-            <Card key={promo.id} className={`border-0 shadow-sm ${!promo.isActive ? 'opacity-60' : ''}`}>
+            <Card key={promo.id} className={`border border-line shadow-none py-0 gap-0 ${!promo.isActive ? 'opacity-60' : ''}`}>
               <CardContent className="p-4">
                 <div className="flex flex-col sm:flex-row gap-3">
                   {/* Image / video thumbnail */}
@@ -3982,72 +3965,58 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
                     </div>
                   ) : null}
                   <div className="flex-1 min-w-0">
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
+                    <div className="flex flex-col gap-2">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <Tag className="w-4 h-4 text-[#FF9800] flex-shrink-0" />
-                          <h3 className="font-medium text-[#212121] truncate">{promo.name}</h3>
+                          <h3 className="font-semibold text-ink truncate">{promo.name}</h3>
                           <Badge className={
                             isPromoActive(promo) 
-                              ? 'bg-green-100 text-green-800' 
+                              ? 'bg-success/10 text-success' 
                               : promo.isActive 
-                                ? 'bg-yellow-100 text-yellow-800'
+                                ? 'bg-amber-50 text-amber-800'
                                 : 'bg-gray-100 text-gray-800'
                           }>
                             {isPromoActive(promo) ? 'Active' : promo.isActive ? 'À venir' : 'Inactive'}
                           </Badge>
                         </div>
                         {promo.description && (
-                          <p className="text-xs text-[#757575] mt-1 line-clamp-2">{promo.description}</p>
+                          <p className="text-xs text-soft mt-1 line-clamp-2">{promo.description}</p>
                         )}
                         <div className="flex items-center gap-2 mt-2 flex-wrap">
-                          <span className="text-lg font-bold text-[#FF9800]">
+                          <span className="text-lg font-bold text-ink tabular-nums">
                             {promo.discountType === 'PERCENTAGE' 
                               ? `-${promo.discountValue}%` 
                               : `-${promo.discountValue.toLocaleString()}F`}
                           </span>
                           {promo.code && (
-                            <Badge className="bg-[#FFF3E0] text-[#FF9800]">
+                            <span className="rounded-md border border-line bg-app px-2 py-0.5 font-mono text-xs text-ink">
                               {promo.code}
-                            </Badge>
+                            </span>
                           )}
                         </div>
-                        <p className="text-xs text-[#757575] mt-2">
+                        <p className="text-xs text-soft mt-2">
                           {formatDate(promo.startDate)} - {formatDate(promo.endDate)}
                         </p>
-                        <p className="text-xs text-[#9E9E9E] mt-1">
+                        <p className="text-xs text-soft mt-1">
                           Utilisé {promo.currentUses} fois
                         </p>
                       </div>
                       {/* Action buttons - horizontal on mobile, vertical on desktop */}
-                      <div className="flex sm:flex-col gap-1 sm:items-end">
-                        <Button 
-                          size="sm" 
-                          variant="ghost"
-                          onClick={() => handleEdit(promo)}
-                          aria-label={`Modifier la promotion ${promo.code || promo.name}`}
-                        >
-                          <Edit className="w-4 h-4" />
+                      <div className="flex items-center justify-end gap-2 pt-1">
+                        <Button size="sm" variant="outline" className="h-9 border-line text-ink" onClick={() => handleEdit(promo)}>
+                          <Edit className="w-3.5 h-3.5 mr-1.5" /> Modifier
                         </Button>
-                        <Button 
-                          size="sm" 
-                          variant="ghost"
-                          onClick={() => handleToggleActive(promo)}
-                          aria-label={promo.isActive ? `Désactiver la promotion ${promo.code || promo.name}` : `Activer la promotion ${promo.code || promo.name}`}
-                        >
-                          {promo.isActive ? (
-                            <XCircle className="w-4 h-4 text-red-500" />
-                          ) : (
-                            <CheckCircle className="w-4 h-4 text-green-500" />
-                          )}
+                        <Button size="sm" variant="outline" className="h-9 border-line text-ink" onClick={() => handleToggleActive(promo)}>
+                          {promo.isActive ? 'Désactiver' : 'Activer'}
                         </Button>
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           variant="ghost"
+                          className="h-9 w-9 p-0 text-soft hover:text-red-600"
                           onClick={() => handleDelete(promo.id)}
                           aria-label={`Supprimer la promotion ${promo.code || promo.name}`}
                         >
-                          <Trash2 className="w-4 h-4 text-red-500" />
+                          <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
                     </div>
@@ -4059,10 +4028,10 @@ function AdminPromotions({ promotions, isLoading, onRefresh }: {
         </div>
       ) : (
         <div className="bg-white rounded-2xl p-8 text-center">
-          <Tag className="w-12 h-12 text-[#9E9E9E] mx-auto mb-3" />
-          <p className="text-[#757575]">Aucune promotion</p>
+          <Tag className="w-12 h-12 text-soft mx-auto mb-3" />
+          <p className="text-soft">Aucune promotion</p>
           <Button 
-            className="mt-4 bg-[#FF9800] hover:bg-[#F57C00]"
+            className="mt-4 bg-brand-ink hover:bg-brand-ink-strong"
             onClick={() => setShowForm(true)}
           >
             Créer une promotion
@@ -4083,45 +4052,45 @@ function AdminDeposits({ deposits, isLoading, onRefresh, onAction }: {
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="font-semibold text-lg text-[#212121]">Demandes de recharge</h2>
-        <button onClick={onRefresh} disabled={isLoading} className="text-[#FF9800]">
-          <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+        <h2 className="font-semibold text-lg text-ink">Demandes de recharge</h2>
+        <button onClick={onRefresh} disabled={isLoading} className="w-10 h-10 rounded-md border border-line bg-white flex items-center justify-center text-soft hover:bg-app" aria-label="Rafraîchir">
+          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
       {/* Pending Deposits */}
       {isLoading ? (
         <div className="flex justify-center py-8">
-          <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+          <Loader2 className="w-8 h-8 text-brand-ink animate-spin" />
         </div>
       ) : deposits.length > 0 ? (
         <div className="space-y-3">
           {deposits.map((deposit) => (
-            <Card key={deposit.id} className="border-0 shadow-sm">
+            <Card key={deposit.id} className="border border-line shadow-none py-0 gap-0">
               <CardContent className="p-4">
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-medium text-[#212121]">{deposit.user?.name || 'Client'}</h3>
-                      <Badge className="bg-yellow-100 text-yellow-800">En attente</Badge>
+                      <h3 className="font-medium text-ink">{deposit.user?.name || 'Client'}</h3>
+                      <Badge className="bg-amber-50 text-amber-800">En attente</Badge>
                     </div>
-                    <p className="text-xs text-[#757575]">{deposit.user?.phone}</p>
+                    <p className="text-xs text-soft">{deposit.user?.phone}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xl font-bold text-[#FF9800]">{deposit.amount.toLocaleString()} XOF</p>
+                    <p className="text-xl font-bold text-ink tabular-nums">{deposit.amount.toLocaleString()} XOF</p>
                   </div>
                 </div>
                 
-                <div className="bg-[#F5F5F5] rounded-lg p-3 space-y-2 mb-3">
+                <div className="bg-app rounded-lg p-3 space-y-2 mb-3">
                   <div className="flex items-center gap-2">
-                    <Phone className="w-4 h-4 text-[#757575]" />
-                    <span className="text-sm text-[#212121]">+228 {deposit.phoneNumber}</span>
+                    <Phone className="w-4 h-4 text-soft" />
+                    <span className="text-sm text-ink">+228 {deposit.phoneNumber}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Wallet className="w-4 h-4 text-[#757575]" />
-                    <span className="text-sm text-[#212121]">{deposit.paymentMethod}</span>
+                    <Wallet className="w-4 h-4 text-soft" />
+                    <span className="text-sm text-ink">{deposit.paymentMethod}</span>
                   </div>
-                  <div className="text-xs text-[#9E9E9E]">
+                  <div className="text-xs text-soft">
                     {new Date(deposit.createdAt).toLocaleString('fr-FR', {
                       day: 'numeric',
                       month: 'short',
@@ -4146,7 +4115,7 @@ function AdminDeposits({ deposits, isLoading, onRefresh, onAction }: {
                   ) : (
                     <>
                       <Button
-                        className="flex-1 bg-green-600 hover:bg-green-700"
+                        className="flex-1 bg-brand-ink hover:bg-brand-ink-strong"
                         onClick={() => onAction(deposit.id, 'validate')}
                       >
                         <CheckCircle className="w-4 h-4 mr-2" />
@@ -4169,8 +4138,8 @@ function AdminDeposits({ deposits, isLoading, onRefresh, onAction }: {
         </div>
       ) : (
         <div className="bg-white rounded-2xl p-8 text-center">
-          <Wallet className="w-12 h-12 text-[#9E9E9E] mx-auto mb-3" />
-          <p className="text-[#757575]">Aucune demande de recharge en attente</p>
+          <Wallet className="w-12 h-12 text-soft mx-auto mb-3" />
+          <p className="text-soft">Aucune demande de recharge en attente</p>
         </div>
       )}
     </div>
@@ -4187,45 +4156,45 @@ function AdminWithdrawals({ withdrawals, isLoading, onRefresh, onAction }: {
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="font-semibold text-lg text-[#212121]">Demandes de retrait</h2>
-        <button onClick={onRefresh} disabled={isLoading} className="text-[#FF9800]">
-          <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+        <h2 className="font-semibold text-lg text-ink">Demandes de retrait</h2>
+        <button onClick={onRefresh} disabled={isLoading} className="w-10 h-10 rounded-md border border-line bg-white flex items-center justify-center text-soft hover:bg-app" aria-label="Rafraîchir">
+          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
       {/* Pending Withdrawals */}
       {isLoading ? (
         <div className="flex justify-center py-8">
-          <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+          <Loader2 className="w-8 h-8 text-brand-ink animate-spin" />
         </div>
       ) : withdrawals.length > 0 ? (
         <div className="space-y-3">
           {withdrawals.map((withdrawal) => (
-            <Card key={withdrawal.id} className="border-0 shadow-sm">
+            <Card key={withdrawal.id} className="border border-line shadow-none py-0 gap-0">
               <CardContent className="p-4">
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-medium text-[#212121]">{withdrawal.washer?.user?.name || 'Laveur'}</h3>
-                      <Badge className="bg-yellow-100 text-yellow-800">En attente</Badge>
+                      <h3 className="font-medium text-ink">{withdrawal.washer?.user?.name || 'Laveur'}</h3>
+                      <Badge className="bg-amber-50 text-amber-800">En attente</Badge>
                     </div>
-                    <p className="text-xs text-[#757575]">{withdrawal.washer?.user?.phone || 'N/A'}</p>
+                    <p className="text-xs text-soft">{withdrawal.washer?.user?.phone || 'N/A'}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xl font-bold text-[#9C27B0]">{withdrawal.amount.toLocaleString()} XOF</p>
+                    <p className="text-xl font-bold text-soft">{withdrawal.amount.toLocaleString()} XOF</p>
                   </div>
                 </div>
                 
-                <div className="bg-[#F5F5F5] rounded-lg p-3 space-y-2 mb-3">
+                <div className="bg-app rounded-lg p-3 space-y-2 mb-3">
                   <div className="flex items-center gap-2">
-                    <Phone className="w-4 h-4 text-[#757575]" />
-                    <span className="text-sm text-[#212121]">+228 {withdrawal.phoneNumber}</span>
+                    <Phone className="w-4 h-4 text-soft" />
+                    <span className="text-sm text-ink">+228 {withdrawal.phoneNumber}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Wallet className="w-4 h-4 text-[#757575]" />
-                    <span className="text-sm text-[#212121]">{withdrawal.operator}</span>
+                    <Wallet className="w-4 h-4 text-soft" />
+                    <span className="text-sm text-ink">{withdrawal.operator}</span>
                   </div>
-                  <div className="text-xs text-[#9E9E9E]">
+                  <div className="text-xs text-soft">
                     {new Date(withdrawal.createdAt).toLocaleString('fr-FR', {
                       day: 'numeric',
                       month: 'short',
@@ -4237,7 +4206,7 @@ function AdminWithdrawals({ withdrawals, isLoading, onRefresh, onAction }: {
 
                 <div className="flex gap-2">
                   <Button
-                    className="flex-1 bg-green-600 hover:bg-green-700"
+                    className="flex-1 bg-brand-ink hover:bg-brand-ink-strong"
                     onClick={() => onAction(withdrawal.id, 'approve')}
                   >
                     <CheckCircle className="w-4 h-4 mr-2" />
@@ -4258,8 +4227,8 @@ function AdminWithdrawals({ withdrawals, isLoading, onRefresh, onAction }: {
         </div>
       ) : (
         <div className="bg-white rounded-2xl p-8 text-center">
-          <Banknote className="w-12 h-12 text-[#9E9E9E] mx-auto mb-3" />
-          <p className="text-[#757575]">Aucune demande de retrait en attente</p>
+          <Banknote className="w-12 h-12 text-soft mx-auto mb-3" />
+          <p className="text-soft">Aucune demande de retrait en attente</p>
         </div>
       )}
     </div>
@@ -4491,13 +4460,13 @@ function AdminSubscriptionPlans() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-[#757575]">Gérez les forfaits d&apos;abonnement disponibles</p>
+        <p className="text-sm text-soft">Gérez les forfaits d&apos;abonnement disponibles</p>
         <Button
           onClick={() => {
             resetForm();
             setShowForm(true);
           }}
-          className="bg-[#FF9800] hover:bg-[#F57C00]"
+          className="bg-brand-ink hover:bg-brand-ink-strong"
         >
           <Plus className="w-4 h-4 mr-2" />
           Nouveau forfait
@@ -4506,15 +4475,15 @@ function AdminSubscriptionPlans() {
 
       {/* Form */}
       {showForm && (
-        <Card className="border-0 shadow-sm">
+        <Card className="border border-line shadow-none py-0 gap-0">
           <CardContent className="p-4 space-y-3">
-            <h3 className="font-semibold text-[#212121]">
+            <h3 className="font-semibold text-ink">
               {editingPlan ? 'Modifier le forfait' : 'Nouveau forfait'}
             </h3>
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label className="text-xs text-[#757575]">Nom technique *</Label>
+                <Label className="text-xs text-soft">Nom technique *</Label>
                 <Input
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value.toUpperCase() })}
@@ -4523,7 +4492,7 @@ function AdminSubscriptionPlans() {
                 />
               </div>
               <div>
-                <Label className="text-xs text-[#757575]">Nom affiché *</Label>
+                <Label className="text-xs text-soft">Nom affiché *</Label>
                 <Input
                   value={formData.displayName}
                   onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
@@ -4534,7 +4503,7 @@ function AdminSubscriptionPlans() {
             </div>
 
             <div>
-              <Label className="text-xs text-[#757575]">Description</Label>
+              <Label className="text-xs text-soft">Description</Label>
               <Input
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -4544,7 +4513,7 @@ function AdminSubscriptionPlans() {
             </div>
 
             <div>
-              <Label className="text-xs text-[#757575]">Service associé *</Label>
+              <Label className="text-xs text-soft">Service associé *</Label>
               <Select value={formData.serviceId} onValueChange={(v) => setFormData({ ...formData, serviceId: v })}>
                 <SelectTrigger className="mt-1">
                   <SelectValue placeholder="Sélectionner un service" />
@@ -4561,7 +4530,7 @@ function AdminSubscriptionPlans() {
 
             <div className="grid grid-cols-3 gap-2">
               <div>
-                <Label className="text-xs text-[#757575]">Prix mensuel (F) *</Label>
+                <Label className="text-xs text-soft">Prix mensuel (F) *</Label>
                 <Input
                   type="number"
                   value={formData.price}
@@ -4571,7 +4540,7 @@ function AdminSubscriptionPlans() {
                 />
               </div>
               <div>
-                <Label className="text-xs text-[#757575]">Prix trimestriel (F)</Label>
+                <Label className="text-xs text-soft">Prix trimestriel (F)</Label>
                 <Input
                   type="number"
                   value={formData.quarterlyPrice}
@@ -4581,7 +4550,7 @@ function AdminSubscriptionPlans() {
                 />
               </div>
               <div>
-                <Label className="text-xs text-[#757575]">Prix annuel (F)</Label>
+                <Label className="text-xs text-soft">Prix annuel (F)</Label>
                 <Input
                   type="number"
                   value={formData.yearlyPrice}
@@ -4594,7 +4563,7 @@ function AdminSubscriptionPlans() {
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label className="text-xs text-[#757575]">Nombre de lavages *</Label>
+                <Label className="text-xs text-soft">Nombre de lavages *</Label>
                 <Input
                   type="number"
                   value={formData.washCount}
@@ -4604,7 +4573,7 @@ function AdminSubscriptionPlans() {
                 />
               </div>
               <div>
-                <Label className="text-xs text-[#757575]">Priorité</Label>
+                <Label className="text-xs text-soft">Priorité</Label>
                 <Select value={formData.priority} onValueChange={(v) => setFormData({ ...formData, priority: v })}>
                   <SelectTrigger className="mt-1">
                     <SelectValue />
@@ -4621,7 +4590,7 @@ function AdminSubscriptionPlans() {
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label className="text-xs text-[#757575]">Lavages bonus</Label>
+                <Label className="text-xs text-soft">Lavages bonus</Label>
                 <Input
                   type="number"
                   value={formData.bonusWashes}
@@ -4631,7 +4600,7 @@ function AdminSubscriptionPlans() {
                 />
               </div>
               <div>
-                <Label className="text-xs text-[#757575]">Options gratuites</Label>
+                <Label className="text-xs text-soft">Options gratuites</Label>
                 <Input
                   type="number"
                   value={formData.freeOptions}
@@ -4648,26 +4617,26 @@ function AdminSubscriptionPlans() {
                   checked={formData.includesExpress}
                   onCheckedChange={(v) => setFormData({ ...formData, includesExpress: v })}
                 />
-                <Label className="text-xs text-[#757575]">Service express inclus</Label>
+                <Label className="text-xs text-soft">Service express inclus</Label>
               </div>
               <div className="flex items-center gap-2">
                 <Switch
                   checked={formData.includesVip}
                   onCheckedChange={(v) => setFormData({ ...formData, includesVip: v })}
                 />
-                <Label className="text-xs text-[#757575]">Accès VIP</Label>
+                <Label className="text-xs text-soft">Accès VIP</Label>
               </div>
               <div className="flex items-center gap-2">
                 <Switch
                   checked={formData.isActive}
                   onCheckedChange={(v) => setFormData({ ...formData, isActive: v })}
                 />
-                <Label className="text-xs text-[#757575]">Actif</Label>
+                <Label className="text-xs text-soft">Actif</Label>
               </div>
             </div>
 
             <div className="flex gap-2">
-              <Button onClick={handleSubmit} className="flex-1 bg-[#FF9800] hover:bg-[#F57C00]" disabled={isSaving}>
+              <Button onClick={handleSubmit} className="flex-1 bg-brand-ink hover:bg-brand-ink-strong" disabled={isSaving}>
                 {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                 {editingPlan ? 'Mettre à jour' : 'Créer'}
               </Button>
@@ -4682,69 +4651,49 @@ function AdminSubscriptionPlans() {
       {/* Plans List */}
       {isLoading ? (
         <div className="flex justify-center py-8">
-          <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+          <Loader2 className="w-8 h-8 text-brand-ink animate-spin" />
         </div>
       ) : plans.length > 0 ? (
         <div className="space-y-3">
           {plans.map((plan) => (
-            <Card key={plan.id} className={`border-0 shadow-sm ${!plan.isActive ? 'opacity-60' : ''}`}>
-              <CardContent className="p-4">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-medium text-[#212121]">{plan.displayName}</h3>
-                      <Badge variant="outline" className="text-xs">{plan.name}</Badge>
-                      <Badge className={plan.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
-                        {plan.isActive ? 'Actif' : 'Inactif'}
-                      </Badge>
-                    </div>
-                    {plan.description && (
-                      <p className="text-xs text-[#757575] mt-1">{plan.description}</p>
-                    )}
-                    <div className="flex flex-wrap items-center gap-4 mt-2 text-xs text-[#757575]">
-                      <span><strong>Service:</strong> {plan.service?.name || 'N/A'}</span>
-                      <span><strong>Lavages:</strong> {plan.washCount}</span>
-                      <span><strong>Priorité:</strong> {getPriorityLabel(plan.priority)}</span>
-                      <span><strong>Abonnés:</strong> {plan.subscribersCount}</span>
-                    </div>
-                    {plan.bonusWashes > 0 && (
-                      <span className="text-xs text-[#4CAF50] mt-1 block">+{plan.bonusWashes} lavage(s) bonus</span>
-                    )}
-                    {(plan.includesExpress || plan.includesVip) && (
-                      <div className="flex gap-2 mt-1">
-                        {plan.includesExpress && <Badge className="bg-blue-100 text-blue-800 text-[10px]">Express</Badge>}
-                        {plan.includesVip && <Badge className="bg-purple-100 text-purple-800 text-[10px]">VIP</Badge>}
-                      </div>
-                    )}
-                  </div>
-                  <div className="text-right flex flex-col items-end gap-2">
-                    <div>
-                      <p className="font-bold text-[#FF9800] text-lg">{plan.price.toLocaleString()} XOF<span className="text-xs font-normal text-[#757575]">/mois</span></p>
-                      {plan.quarterlyPrice && (
-                        <p className="text-xs text-[#757575]">{plan.quarterlyPrice.toLocaleString()} XOF /trimestre</p>
-                      )}
-                      {plan.yearlyPrice && (
-                        <p className="text-xs text-[#757575]">{plan.yearlyPrice.toLocaleString()} XOF /an</p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Button size="sm" variant="ghost" onClick={() => handleEdit(plan)}>
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => handleToggleActive(plan)}>
-                        {plan.isActive ? (
-                          <XCircle className="w-4 h-4 text-red-500" />
-                        ) : (
-                          <CheckCircle className="w-4 h-4 text-green-500" />
-                        )}
-                      </Button>
-                      {plan.subscribersCount === 0 && (
-                        <Button size="sm" variant="ghost" onClick={() => setDeleteConfirm(plan)}>
-                          <Trash2 className="w-4 h-4 text-red-500" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
+            <Card key={plan.id} className={`border border-line shadow-none py-0 gap-0 ${!plan.isActive ? 'opacity-60' : ''}`}>
+              <CardContent className="p-4 space-y-2">
+                {/* Ligne 1 : nom + prix mensuel */}
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="font-semibold text-ink leading-snug min-w-0">{plan.displayName}</h3>
+                  <p className="font-bold text-ink whitespace-nowrap tabular-nums">
+                    {plan.price.toLocaleString('fr-FR')} F<span className="text-xs font-normal text-soft"> /mois</span>
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                  <span className="rounded-full border border-line px-2 py-0.5 text-soft">{plan.name}</span>
+                  <span className={`rounded-full px-2 py-0.5 font-medium ${plan.isActive ? 'bg-success/10 text-success' : 'bg-app text-soft'}`}>
+                    {plan.isActive ? 'Actif' : 'Inactif'}
+                  </span>
+                  {plan.includesExpress && <span className="rounded-full border border-line px-2 py-0.5 text-soft">Express</span>}
+                  {plan.includesVip && <span className="rounded-full border border-line px-2 py-0.5 text-soft">VIP</span>}
+                </div>
+                {plan.description && <p className="text-xs text-soft leading-relaxed">{plan.description}</p>}
+                <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                  <div className="flex gap-1"><dt className="text-soft">Service :</dt><dd className="text-ink truncate">{plan.service?.name || '—'}</dd></div>
+                  <div className="flex gap-1"><dt className="text-soft">Lavages :</dt><dd className="text-ink">{plan.washCount}{plan.bonusWashes > 0 ? ` (+${plan.bonusWashes} bonus)` : ''}</dd></div>
+                  <div className="flex gap-1"><dt className="text-soft">Priorité :</dt><dd className="text-ink">{getPriorityLabel(plan.priority)}</dd></div>
+                  <div className="flex gap-1"><dt className="text-soft">Abonnés :</dt><dd className="text-ink">{plan.subscribersCount}</dd></div>
+                  {plan.quarterlyPrice ? <div className="flex gap-1"><dt className="text-soft">Trimestre :</dt><dd className="text-ink">{plan.quarterlyPrice.toLocaleString('fr-FR')} F</dd></div> : null}
+                  {plan.yearlyPrice ? <div className="flex gap-1"><dt className="text-soft">Année :</dt><dd className="text-ink">{plan.yearlyPrice.toLocaleString('fr-FR')} F</dd></div> : null}
+                </dl>
+                <div className="flex items-center justify-end gap-2 pt-1">
+                  <Button size="sm" variant="outline" className="h-9 border-line text-ink" onClick={() => handleEdit(plan)}>
+                    <Edit className="w-3.5 h-3.5 mr-1.5" /> Modifier
+                  </Button>
+                  <Button size="sm" variant="outline" className="h-9 border-line text-ink" onClick={() => handleToggleActive(plan)}>
+                    {plan.isActive ? 'Désactiver' : 'Activer'}
+                  </Button>
+                  {plan.subscribersCount === 0 && (
+                    <Button size="sm" variant="ghost" className="h-9 w-9 p-0 text-soft hover:text-red-600" onClick={() => setDeleteConfirm(plan)} aria-label="Supprimer le forfait">
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -4754,7 +4703,7 @@ function AdminSubscriptionPlans() {
         <div className="text-center py-8 bg-white rounded-lg">
           <Tag className="w-12 h-12 mx-auto text-gray-400" />
           <p className="mt-4 text-gray-500">Aucun forfait configuré</p>
-          <Button className="mt-4 bg-[#FF9800] hover:bg-[#F57C00]" onClick={() => setShowForm(true)}>
+          <Button className="mt-4 bg-brand-ink hover:bg-brand-ink-strong" onClick={() => setShowForm(true)}>
             Créer un forfait
           </Button>
         </div>
@@ -4767,10 +4716,10 @@ function AdminSubscriptionPlans() {
             <DialogTitle>Supprimer le forfait ?</DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <p className="text-sm text-[#757575]">
+            <p className="text-sm text-soft">
               Êtes-vous sûr de vouloir supprimer le forfait <strong>{deleteConfirm?.displayName}</strong> ?
             </p>
-            <p className="text-xs text-red-500 mt-2">Cette action est irréversible.</p>
+            <p className="text-xs text-red-600 mt-2">Cette action est irréversible.</p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteConfirm(null)}>
@@ -4929,9 +4878,9 @@ function AdminSubscriptions() {
 
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
-      PENDING: 'bg-yellow-100 text-yellow-800',
-      VALIDATED: 'bg-green-100 text-green-800',
-      CANCELLED: 'bg-red-100 text-red-800',
+      PENDING: 'bg-amber-50 text-amber-800',
+      VALIDATED: 'bg-success/10 text-success',
+      CANCELLED: 'bg-red-50 text-red-700',
     };
     const labels: Record<string, string> = {
       PENDING: 'En attente',
@@ -4944,13 +4893,13 @@ function AdminSubscriptions() {
   return (
     <div className="p-4 space-y-4">
       {/* Toggle View */}
-      <div className="flex bg-[#F5F5F5] rounded-lg p-1">
+      <div className="flex bg-app rounded-lg p-1">
         <button
           onClick={() => setViewMode('validations')}
           className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
             viewMode === 'validations'
-              ? 'bg-white text-[#FF9800] shadow-sm'
-              : 'text-[#757575]'
+              ? 'bg-white text-brand-ink shadow-sm'
+              : 'text-soft'
           }`}
         >
           Validations ({usageStats.pending})
@@ -4959,8 +4908,8 @@ function AdminSubscriptions() {
           onClick={() => setViewMode('list')}
           className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
             viewMode === 'list'
-              ? 'bg-white text-[#FF9800] shadow-sm'
-              : 'text-[#757575]'
+              ? 'bg-white text-brand-ink shadow-sm'
+              : 'text-soft'
           }`}
         >
           Abonnements ({stats.totalActive})
@@ -4972,36 +4921,36 @@ function AdminSubscriptions() {
           {/* Pending Validations */}
           {isLoading ? (
             <div className="flex justify-center py-8">
-              <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+              <Loader2 className="w-8 h-8 text-brand-ink animate-spin" />
             </div>
           ) : usages.length > 0 ? (
             <div className="space-y-3">
               {usages.map((usage) => (
-                <Card key={usage.id} className="border-0 shadow-sm">
+                <Card key={usage.id} className="border border-line shadow-none py-0 gap-0">
                   <CardContent className="p-4">
                     <div className="flex justify-between items-start mb-3">
                       <div>
-                        <p className="font-semibold text-[#212121]">
+                        <p className="font-semibold text-ink">
                           {usage.subscription.user.name || 'Client'}
                         </p>
-                        <p className="text-sm text-[#757575]">
+                        <p className="text-sm text-soft">
                           +228 {usage.subscription.user.phone}
                         </p>
                       </div>
                       {getStatusBadge(usage.status)}
                     </div>
                     
-                    <div className="bg-[#F5F5F5] rounded-lg p-3 space-y-2 mb-3">
+                    <div className="bg-app rounded-lg p-3 space-y-2 mb-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-[#757575]">Plan</span>
+                        <span className="text-sm text-soft">Plan</span>
                         <span className="text-sm font-medium">{usage.subscription.plan.displayName}</span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-[#757575]">Service</span>
+                        <span className="text-sm text-soft">Service</span>
                         <span className="text-sm font-medium">{usage.serviceName}</span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-[#757575]">Date</span>
+                        <span className="text-sm text-soft">Date</span>
                         <span className="text-sm font-medium">
                           {new Date(usage.usedAt).toLocaleString('fr-FR', {
                             day: 'numeric',
@@ -5013,7 +4962,7 @@ function AdminSubscriptions() {
                       </div>
                       {usage.order?.washer && (
                         <div className="flex items-center justify-between">
-                          <span className="text-sm text-[#757575]">Laveur</span>
+                          <span className="text-sm text-soft">Laveur</span>
                           <span className="text-sm font-medium">{usage.order.washer.user.name}</span>
                         </div>
                       )}
@@ -5022,7 +4971,7 @@ function AdminSubscriptions() {
                     {usage.status === 'PENDING' && (
                       <div className="flex gap-2">
                         <Button
-                          className="flex-1 bg-green-600 hover:bg-green-700"
+                          className="flex-1 bg-brand-ink hover:bg-brand-ink-strong"
                           onClick={() => handleValidateUsage(usage.id, 'VALIDATE')}
                         >
                           <CheckCircle className="w-4 h-4 mr-2" />
@@ -5044,8 +4993,8 @@ function AdminSubscriptions() {
             </div>
           ) : (
             <div className="bg-white rounded-2xl p-8 text-center">
-              <CheckCircle className="w-12 h-12 text-[#4CAF50] mx-auto mb-3" />
-              <p className="text-[#757575]">Aucune séance en attente de validation</p>
+              <CheckCircle className="w-12 h-12 text-success mx-auto mb-3" />
+              <p className="text-soft">Aucune séance en attente de validation</p>
             </div>
           )}
         </>
@@ -5065,16 +5014,16 @@ function AdminSubscriptions() {
 
           {/* Stats Cards */}
           <div className="grid grid-cols-2 gap-3">
-            <Card className="border-0 shadow-sm">
+            <Card className="border border-line shadow-none py-0 gap-0">
               <CardContent className="p-4 text-center">
-                <p className="text-2xl font-bold text-[#4CAF50]">{stats.totalActive}</p>
-                <p className="text-xs text-[#757575]">Abonnements actifs</p>
+                <p className="text-2xl font-bold text-success">{stats.totalActive}</p>
+                <p className="text-xs text-soft">Abonnements actifs</p>
               </CardContent>
             </Card>
-            <Card className="border-0 shadow-sm">
+            <Card className="border border-line shadow-none py-0 gap-0">
               <CardContent className="p-4 text-center">
-                <p className="text-2xl font-bold text-[#FF9800]">{stats.pendingValidations}</p>
-                <p className="text-xs text-[#757575]">En attente</p>
+                <p className="text-2xl font-bold text-brand-ink">{stats.pendingValidations}</p>
+                <p className="text-xs text-soft">En attente</p>
               </CardContent>
             </Card>
           </div>
@@ -5082,41 +5031,41 @@ function AdminSubscriptions() {
           {/* Subscriptions List */}
           {isLoading ? (
             <div className="flex justify-center py-8">
-              <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+              <Loader2 className="w-8 h-8 text-brand-ink animate-spin" />
             </div>
           ) : subscriptions.length > 0 ? (
             <div className="space-y-3 max-h-[50vh] overflow-y-auto">
               {subscriptions.map((sub) => (
-                <Card key={sub.id} className="border-0 shadow-sm">
+                <Card key={sub.id} className="border border-line shadow-none py-0 gap-0">
                   <CardContent className="p-4">
                     <div className="flex justify-between items-start mb-2">
                       <div>
-                        <p className="font-semibold text-[#212121]">
+                        <p className="font-semibold text-ink">
                           {sub.user.name || 'Client'}
                         </p>
-                        <p className="text-sm text-[#757575]">+228 {sub.user.phone}</p>
+                        <p className="text-sm text-soft">+228 {sub.user.phone}</p>
                       </div>
-                      <Badge className={sub.isActive && !sub.isExpired ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
+                      <Badge className={sub.isActive && !sub.isExpired ? 'bg-success/10 text-success' : 'bg-gray-100 text-gray-800'}>
                         {sub.plan.displayName}
                       </Badge>
                     </div>
                     
-                    <div className="bg-[#F5F5F5] rounded-lg p-3 space-y-2">
+                    <div className="bg-app rounded-lg p-3 space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-[#757575]">Séances</span>
+                        <span className="text-sm text-soft">Séances</span>
                         <span className="text-sm font-medium">
                           {sub.remainingWashes} / {sub.totalWashes} restantes
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-[#757575]">Expire le</span>
+                        <span className="text-sm text-soft">Expire le</span>
                         <span className="text-sm font-medium">
                           {new Date(sub.endDate).toLocaleDateString('fr-FR')}
                         </span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                         <div
-                          className="bg-[#4CAF50] h-2 rounded-full"
+                          className="bg-brand-ink h-2 rounded-full"
                           style={{ width: `${(sub.remainingWashes / sub.totalWashes) * 100}%` }}
                         />
                       </div>
@@ -5127,8 +5076,8 @@ function AdminSubscriptions() {
             </div>
           ) : (
             <div className="bg-white rounded-2xl p-8 text-center">
-              <Tag className="w-12 h-12 text-[#9E9E9E] mx-auto mb-3" />
-              <p className="text-[#757575]">Aucun abonnement trouvé</p>
+              <Tag className="w-12 h-12 text-soft mx-auto mb-3" />
+              <p className="text-soft">Aucun abonnement trouvé</p>
             </div>
           )}
         </>
@@ -5191,18 +5140,19 @@ function AdminTransactions() {
   }, [fetchTransactions]);
 
   const TYPE_META: Record<string, { label: string; color: string; sign: '+' | '-' | '' }> = {
-    DEPOSIT: { label: 'Rechargement', color: 'bg-green-100 text-green-800', sign: '+' },
-    PAYMENT: { label: 'Paiement', color: 'bg-blue-100 text-blue-800', sign: '-' },
-    WITHDRAWAL: { label: 'Retrait', color: 'bg-purple-100 text-purple-800', sign: '-' },
-    REFUND: { label: 'Remboursement', color: 'bg-orange-100 text-orange-800', sign: '+' },
-    BONUS: { label: 'Bonus', color: 'bg-teal-100 text-teal-800', sign: '+' },
-    COMMISSION_SETTLEMENT: { label: 'Commission espèces', color: 'bg-amber-100 text-amber-800', sign: '' },
+    DEPOSIT: { label: 'Rechargement', color: 'bg-app text-ink', sign: '+' },
+    PAYMENT: { label: 'Paiement', color: 'bg-app text-ink', sign: '-' },
+    WITHDRAWAL: { label: 'Retrait', color: 'bg-app text-ink', sign: '-' },
+    REFUND: { label: 'Remboursement', color: 'bg-app text-ink', sign: '+' },
+    BONUS: { label: 'Bonus', color: 'bg-app text-ink', sign: '+' },
+    COMMISSION_SETTLEMENT: { label: 'Commission espèces', color: 'bg-app text-ink', sign: '' },
+    ACCOUNT_CLOSURE: { label: 'Compte supprimé', color: 'bg-app text-ink', sign: '' },
   };
 
   const STATUS_META: Record<string, { label: string; color: string }> = {
-    PENDING: { label: 'En attente', color: 'bg-yellow-100 text-yellow-800' },
-    COMPLETED: { label: 'Terminé', color: 'bg-green-100 text-green-800' },
-    FAILED: { label: 'Échoué', color: 'bg-red-100 text-red-800' },
+    PENDING: { label: 'En attente', color: 'bg-amber-50 text-amber-800' },
+    COMPLETED: { label: 'Terminé', color: 'bg-success/10 text-success' },
+    FAILED: { label: 'Échoué', color: 'bg-red-50 text-red-700' },
     CANCELLED: { label: 'Annulé', color: 'bg-gray-100 text-gray-800' },
   };
 
@@ -5220,25 +5170,25 @@ function AdminTransactions() {
       {/* Summary chips */}
       {summary && (
         <div className="grid grid-cols-2 gap-2">
-          <div className="bg-green-50 rounded-lg p-3">
-            <p className="text-xs text-green-800">Rechargements</p>
-            <p className="text-lg font-bold text-green-900">{(summary.deposits?.total ?? 0).toLocaleString()} XOF</p>
-            <p className="text-[11px] text-green-700">{summary.deposits?.count ?? 0} transaction(s)</p>
+          <div className="bg-white border border-line rounded-lg p-3">
+            <p className="text-xs text-soft">Rechargements</p>
+            <p className="text-lg font-bold text-ink tabular-nums">{(summary.deposits?.total ?? 0).toLocaleString()} XOF</p>
+            <p className="text-[11px] text-soft">{summary.deposits?.count ?? 0} transaction(s)</p>
           </div>
-          <div className="bg-purple-50 rounded-lg p-3">
-            <p className="text-xs text-purple-800">Retraits payés</p>
-            <p className="text-lg font-bold text-purple-900">{(summary.withdrawals?.total ?? 0).toLocaleString()} XOF</p>
-            <p className="text-[11px] text-purple-700">{summary.withdrawals?.count ?? 0} transaction(s)</p>
+          <div className="bg-white border border-line rounded-lg p-3">
+            <p className="text-xs text-soft">Retraits payés</p>
+            <p className="text-lg font-bold text-ink tabular-nums">{(summary.withdrawals?.total ?? 0).toLocaleString()} XOF</p>
+            <p className="text-[11px] text-soft">{summary.withdrawals?.count ?? 0} transaction(s)</p>
           </div>
-          <div className="bg-blue-50 rounded-lg p-3">
-            <p className="text-xs text-blue-800">Paiements commandes</p>
-            <p className="text-lg font-bold text-blue-900">{(summary.payments?.total ?? 0).toLocaleString()} XOF</p>
-            <p className="text-[11px] text-blue-700">{summary.payments?.count ?? 0} transaction(s)</p>
+          <div className="bg-white border border-line rounded-lg p-3">
+            <p className="text-xs text-soft">Paiements commandes</p>
+            <p className="text-lg font-bold text-ink tabular-nums">{(summary.payments?.total ?? 0).toLocaleString()} XOF</p>
+            <p className="text-[11px] text-soft">{summary.payments?.count ?? 0} transaction(s)</p>
           </div>
-          <div className="bg-amber-50 rounded-lg p-3">
-            <p className="text-xs text-amber-800">Commissions récupérées</p>
-            <p className="text-lg font-bold text-amber-900">{(summary.commissionSettlements?.total ?? 0).toLocaleString()} XOF</p>
-            <p className="text-[11px] text-amber-700">{summary.commissionSettlements?.count ?? 0} règlement(s)</p>
+          <div className="bg-white border border-line rounded-lg p-3">
+            <p className="text-xs text-soft">Commissions récupérées</p>
+            <p className="text-lg font-bold text-ink tabular-nums">{(summary.commissionSettlements?.total ?? 0).toLocaleString()} XOF</p>
+            <p className="text-[11px] text-soft">{summary.commissionSettlements?.count ?? 0} règlement(s)</p>
           </div>
         </div>
       )}
@@ -5246,7 +5196,7 @@ function AdminTransactions() {
       {/* Filters */}
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#9E9E9E]" />
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-soft" />
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -5273,12 +5223,12 @@ function AdminTransactions() {
       {/* List */}
       {isLoading ? (
         <div className="flex justify-center py-8">
-          <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+          <Loader2 className="w-8 h-8 text-brand-ink animate-spin" />
         </div>
       ) : filtered.length === 0 ? (
         <div className="bg-white rounded-2xl p-8 text-center">
-          <Receipt className="w-12 h-12 text-[#9E9E9E] mx-auto mb-3" />
-          <p className="text-[#757575]">Aucune transaction trouvée</p>
+          <Receipt className="w-12 h-12 text-soft mx-auto mb-3" />
+          <p className="text-soft">Aucune transaction trouvée</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -5286,7 +5236,7 @@ function AdminTransactions() {
             const typeMeta = TYPE_META[t.type] ?? { label: t.type, color: 'bg-gray-100 text-gray-800', sign: '' as const };
             const statusMeta = STATUS_META[t.status] ?? { label: t.status, color: 'bg-gray-100 text-gray-800' };
             return (
-              <Card key={t.id} className="border-0 shadow-sm">
+              <Card key={t.id} className="border border-line shadow-none py-0 gap-0">
                 <CardContent className="p-3">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0 flex-1">
@@ -5298,24 +5248,18 @@ function AdminTransactions() {
                           {statusMeta.label}
                         </span>
                       </div>
-                      <p className="text-sm font-medium text-[#212121] mt-1 truncate">
+                      <p className="text-sm font-medium text-ink mt-1 truncate">
                         {t.wallet?.user?.name || 'Utilisateur'}
-                        <span className="text-xs font-normal text-[#9E9E9E]">
+                        <span className="text-xs font-normal text-soft">
                           {' '}• {t.wallet?.user?.phone || '—'}{t.wallet?.user?.role ? ` • ${t.wallet.user.role}` : ''}
                         </span>
                       </p>
-                      <p className="text-[11px] text-[#9E9E9E] truncate">
+                      <p className="text-[11px] text-soft truncate">
                         {t.description || '—'} • {new Date(t.createdAt).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <p className={`font-bold text-sm ${
-                        t.type === 'COMMISSION_SETTLEMENT'
-                          ? 'text-[#E65100]'
-                          : typeMeta.sign === '+'
-                          ? 'text-[#4CAF50]'
-                          : 'text-[#E53935]'
-                      }`}>
+                      <p className={`font-bold text-sm tabular-nums ${typeMeta.sign === '+' ? 'text-success' : 'text-ink'}`}>
                         {typeMeta.sign === '-' ? '−' : typeMeta.sign === '+' ? '+' : ''}
                         {t.amount.toLocaleString()} XOF
                       </p>
@@ -5355,7 +5299,7 @@ function AdminStations({ stations, isLoading, onRefresh, onAction }: {
   if (isLoading) {
     return (
       <div className="flex justify-center py-12">
-        <Loader2 className="w-8 h-8 text-[#FF9800] animate-spin" />
+        <Loader2 className="w-8 h-8 text-brand-ink animate-spin" />
       </div>
     );
   }
@@ -5363,7 +5307,7 @@ function AdminStations({ stations, isLoading, onRefresh, onAction }: {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-[#757575]">
+        <p className="text-sm text-soft">
           {stations.length} station{stations.length > 1 ? 's' : ''} partenaire{stations.length > 1 ? 's' : ''}
         </p>
         <Button variant="outline" size="sm" onClick={onRefresh}>
@@ -5374,7 +5318,7 @@ function AdminStations({ stations, isLoading, onRefresh, onAction }: {
 
       {/* Recherche */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9E9E9E]" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-soft" />
         <Input
           placeholder="Rechercher (nom, adresse, propriétaire, téléphone...)"
           value={search}
@@ -5384,10 +5328,10 @@ function AdminStations({ stations, isLoading, onRefresh, onAction }: {
       </div>
 
       {filtered.length === 0 ? (
-        <Card className="border-0 shadow-sm">
+        <Card className="border border-line shadow-none py-0 gap-0">
           <CardContent className="p-8 text-center">
-            <Building2 className="w-12 h-12 text-[#BDBDBD] mx-auto mb-3" />
-            <p className="text-[#757575]">
+            <Building2 className="w-12 h-12 text-soft mx-auto mb-3" />
+            <p className="text-soft">
               {stations.length === 0
                 ? 'Aucune station enregistrée. Les propriétaires de station s\'inscrivent via « Devenir partenaire laveur » → « Station de Lavage ».'
                 : 'Aucune station ne correspond à votre recherche.'}
@@ -5400,25 +5344,25 @@ function AdminStations({ stations, isLoading, onRefresh, onAction }: {
             const ownerVerified = station.owner?.washer?.isVerified ?? false;
             const services = station.services || [];
             return (
-              <Card key={station.id} className={`border-0 shadow-sm ${!station.isActive ? 'opacity-70' : ''}`}>
+              <Card key={station.id} className={`border border-line shadow-none py-0 gap-0 ${!station.isActive ? 'opacity-70' : ''}`}>
                 <CardContent className="p-4 space-y-3">
                   {/* En-tête : nom + statut */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-start gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-[#E0F2F1] flex items-center justify-center flex-shrink-0">
-                        <Building2 className="w-5 h-5 text-[#00897B]" />
+                      <div className="w-10 h-10 rounded-xl bg-app flex items-center justify-center flex-shrink-0">
+                        <Building2 className="w-5 h-5 text-success" />
                       </div>
                       <div className="min-w-0">
-                        <p className="font-semibold text-[#212121] truncate">{station.name}</p>
-                        <p className="text-xs text-[#757575] flex items-center gap-1 mt-0.5">
+                        <p className="font-semibold text-ink truncate">{station.name}</p>
+                        <p className="text-xs text-soft flex items-center gap-1 mt-0.5">
                           <MapPin className="w-3 h-3 flex-shrink-0" />
                           <span className="truncate">{station.address}</span>
                         </p>
                       </div>
                     </div>
                     <Badge className={station.isActive
-                      ? 'bg-[#E8F5E9] text-[#2E7D32] hover:bg-[#E8F5E9]'
-                      : 'bg-[#FFEBEE] text-[#C62828] hover:bg-[#FFEBEE]'}
+                      ? 'bg-success/10 text-success hover:bg-success/10'
+                      : 'bg-danger/5 text-danger hover:bg-danger/5'}
                     >
                       {station.isActive ? 'Active' : 'Désactivée'}
                     </Badge>
@@ -5426,16 +5370,16 @@ function AdminStations({ stations, isLoading, onRefresh, onAction }: {
 
                   {/* Description */}
                   {station.description && (
-                    <p className="text-xs text-[#757575] line-clamp-2">{station.description}</p>
+                    <p className="text-xs text-soft line-clamp-2">{station.description}</p>
                   )}
 
                   {/* Propriétaire */}
-                  <div className="bg-[#F5F5F5] rounded-lg p-3 space-y-1.5">
-                    <p className="text-xs font-medium text-[#212121]">
+                  <div className="bg-app rounded-lg p-3 space-y-1.5">
+                    <p className="text-xs font-medium text-ink">
                       Propriétaire : {station.owner?.name || 'Aucun (station sans compte rattaché)'}
                     </p>
                     {station.owner?.phone && (
-                      <p className="text-xs text-[#757575] flex items-center gap-1">
+                      <p className="text-xs text-soft flex items-center gap-1">
                         <Phone className="w-3 h-3" />
                         +228 {station.owner.phone}
                       </p>
@@ -5445,19 +5389,19 @@ function AdminStations({ stations, isLoading, onRefresh, onAction }: {
                         <>
                           <Badge className={
                             ownerVerified
-                              ? 'bg-[#E8F5E9] text-[#2E7D32] hover:bg-[#E8F5E9]'
-                              : 'bg-[#FFF3E0] text-[#E65100] hover:bg-[#FFF3E0]'
+                              ? 'bg-success/10 text-success hover:bg-success/10'
+                              : 'bg-brand-wash text-brand-ink hover:bg-brand-wash'
                           }>
                             {ownerVerified ? 'Compte vérifié' : 'En attente de validation'}
                           </Badge>
                           {!station.owner.isActive && (
-                            <Badge className="bg-[#FFEBEE] text-[#C62828] hover:bg-[#FFEBEE]">
+                            <Badge className="bg-danger/5 text-danger hover:bg-danger/5">
                               Compte désactivé
                             </Badge>
                           )}
                         </>
                       ) : (
-                        <Badge className="bg-[#F5F5F5] text-[#757575] hover:bg-[#F5F5F5]">
+                        <Badge className="bg-app text-soft hover:bg-app">
                           Sans propriétaire
                         </Badge>
                       )}
@@ -5465,7 +5409,7 @@ function AdminStations({ stations, isLoading, onRefresh, onAction }: {
                   </div>
 
                   {/* Services + stats */}
-                  <div className="flex items-center gap-4 text-xs text-[#757575]">
+                  <div className="flex items-center gap-4 text-xs text-soft">
                     <span>{station._count?.services ?? services.length} service(s)</span>
                     <span>{station._count?.washers ?? 0} laveur(s)</span>
                     <span>{station._count?.orders ?? 0} commande(s)</span>
@@ -5473,12 +5417,12 @@ function AdminStations({ stations, isLoading, onRefresh, onAction }: {
                   {services.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
                       {services.slice(0, 4).map((svc: any) => (
-                        <span key={svc.id} className="text-[11px] bg-[#FFF8F0] text-[#E65100] border border-[#FFCC80] rounded px-1.5 py-0.5">
+                        <span key={svc.id} className="text-[11px] bg-brand-wash text-brand-ink border border-line rounded px-1.5 py-0.5">
                           {svc.name} · {svc.price.toLocaleString()} F
                         </span>
                       ))}
                       {services.length > 4 && (
-                        <span className="text-[11px] text-[#9E9E9E] px-1 py-0.5">
+                        <span className="text-[11px] text-soft px-1 py-0.5">
                           +{services.length - 4} autre(s)
                         </span>
                       )}
@@ -5493,8 +5437,8 @@ function AdminStations({ stations, isLoading, onRefresh, onAction }: {
                         variant={station.isActive ? 'outline' : 'default'}
                         onClick={() => onAction(station.id, 'toggle-active')}
                         className={`flex-1 h-9 text-xs ${station.isActive
-                          ? 'text-[#C62828] hover:bg-[#FFEBEE]'
-                          : 'bg-[#4CAF50] hover:bg-[#43A047] text-white'}`}
+                          ? 'text-danger hover:bg-danger/5'
+                          : 'bg-brand-ink hover:bg-brand-ink-strong text-white'}`}
                       >
                         {station.isActive ? 'Désactiver la station' : 'Activer la station'}
                       </Button>
@@ -5503,7 +5447,7 @@ function AdminStations({ stations, isLoading, onRefresh, onAction }: {
                         <Button
                           size="sm"
                           onClick={() => onAction(station.id, 'verify-owner')}
-                          className="flex-1 bg-[#4CAF50] hover:bg-[#43A047] text-white h-9 text-xs"
+                          className="flex-1 bg-brand-ink hover:bg-brand-ink-strong text-white h-9 text-xs"
                         >
                           <CheckCircle className="w-4 h-4 mr-1" />
                           Vérifier le propriétaire
@@ -5512,7 +5456,7 @@ function AdminStations({ stations, isLoading, onRefresh, onAction }: {
                           size="sm"
                           variant="outline"
                           onClick={() => onAction(station.id, 'reject-owner')}
-                          className="flex-1 h-9 text-xs text-[#C62828] hover:bg-[#FFEBEE]"
+                          className="flex-1 h-9 text-xs text-danger hover:bg-danger/5"
                         >
                           <XCircle className="w-4 h-4 mr-1" />
                           Rejeter
@@ -5524,8 +5468,8 @@ function AdminStations({ stations, isLoading, onRefresh, onAction }: {
                         variant={station.isActive ? 'outline' : 'default'}
                         onClick={() => onAction(station.id, 'toggle-active')}
                         className={`flex-1 h-9 text-xs ${station.isActive
-                          ? 'text-[#C62828] hover:bg-[#FFEBEE]'
-                          : 'bg-[#4CAF50] hover:bg-[#43A047] text-white'}`}
+                          ? 'text-danger hover:bg-danger/5'
+                          : 'bg-brand-ink hover:bg-brand-ink-strong text-white'}`}
                       >
                         {station.isActive ? 'Désactiver la station' : 'Activer la station'}
                       </Button>

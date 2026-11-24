@@ -151,10 +151,24 @@ export async function GET(request: NextRequest) {
           where: { washerId: washer.id, status: 'COMPLETED' },
         });
 
-        const earnings = await db.order.aggregate({
-          where: { washerId: washer.id, status: 'COMPLETED' },
-          _sum: { totalPrice: true, commission: true },
-        });
+        // Commandes payées par le client (totalPrice) + commandes prépayées
+        // (abonnement / entreprise : totalPrice = 0, valeur = basePrice).
+        const [paidSum, prepaidSum] = await Promise.all([
+          db.order.aggregate({
+            where: { washerId: washer.id, status: 'COMPLETED', isSubscriptionOrder: false, isCompanyOrder: false },
+            _sum: { totalPrice: true, commission: true },
+          }),
+          db.order.aggregate({
+            where: { washerId: washer.id, status: 'COMPLETED', OR: [{ isSubscriptionOrder: true }, { isCompanyOrder: true }] },
+            _sum: { basePrice: true, commission: true },
+          }),
+        ]);
+        const earnings = {
+          _sum: {
+            totalPrice: (paidSum._sum.totalPrice || 0) + (prepaidSum._sum.basePrice || 0),
+            commission: (paidSum._sum.commission || 0) + (prepaidSum._sum.commission || 0),
+          },
+        };
 
         return {
           id: washer.id,

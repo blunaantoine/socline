@@ -131,18 +131,15 @@ export function AdminCompanies() {
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="font-semibold text-lg text-[#212121]">Entreprises</h2>
-          <p className="text-sm text-[#757575]">Flottes prises en charge au forfait mensuel</p>
-        </div>
-        <Button onClick={() => setCreateOpen(true)} className="bg-[#C2410C] hover:bg-[#9A3412] text-white h-11">
+        <p className="text-sm text-soft">Flottes prises en charge au forfait mensuel</p>
+        <Button onClick={() => setCreateOpen(true)} className="bg-brand-ink hover:bg-brand-ink-strong text-white h-11">
           <Plus className="w-4 h-4 mr-1" /> Nouvelle
         </Button>
       </div>
 
-      {companies === null && <Loader2 className="w-6 h-6 animate-spin mx-auto text-[#C2410C]" />}
+      {companies === null && <Loader2 className="w-6 h-6 animate-spin mx-auto text-brand-ink" />}
       {companies?.length === 0 && (
-        <div className="bg-white rounded-xl border border-[#E0E0E0] p-6 text-center text-sm text-[#757575]">
+        <div className="bg-white rounded-xl border border-line p-6 text-center text-sm text-soft">
           Aucune entreprise. Créez la première avec son contrat et le numéro de son gestionnaire.
         </div>
       )}
@@ -151,21 +148,21 @@ export function AdminCompanies() {
         <button
           key={c.id}
           onClick={() => setSelectedId(c.id)}
-          className="w-full text-left bg-white rounded-xl border border-[#E0E0E0] p-4 hover:border-[#FF9800] active:scale-[0.99] transition-all"
+          className="w-full text-left bg-white rounded-xl border border-line p-4 hover:border-brand-ink active:scale-[0.99] transition-all"
         >
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-full bg-[#FFF3E0] flex items-center justify-center flex-shrink-0">
-                <Building2 className="w-5 h-5 text-[#C2410C]" />
+              <div className="w-10 h-10 rounded-full bg-brand-wash flex items-center justify-center flex-shrink-0">
+                <Building2 className="w-5 h-5 text-brand-ink" />
               </div>
               <div className="min-w-0">
-                <p className="font-semibold text-[#212121] truncate">{c.name}</p>
-                <p className="text-xs text-[#757575]">
+                <p className="font-semibold text-ink truncate">{c.name}</p>
+                <p className="text-xs text-soft">
                   {c.sector || 'Entreprise'} · gestionnaire {c.manager ? c.manager.name || c.manager.phone : `${c.managerPhone} (invité)`}
                 </p>
               </div>
             </div>
-            {!c.isActive && <span className="text-xs rounded-full bg-[#F5F5F5] px-2 py-0.5 text-[#757575]">Inactive</span>}
+            {!c.isActive && <span className="text-xs rounded-full bg-app px-2 py-0.5 text-soft">Inactive</span>}
           </div>
           <div className="mt-3 grid grid-cols-3 gap-2 text-center">
             <Stat label="Voitures" value={`${c.activeVehicles}${c.contract ? `/${c.contract.maxVehicles}` : ''}`} />
@@ -191,9 +188,9 @@ export function AdminCompanies() {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-[#FAFAFA] rounded-lg py-2">
-      <p className="font-bold text-[#212121] text-sm tabular-nums">{value}</p>
-      <p className="text-[11px] text-[#757575]">{label}</p>
+    <div className="bg-app rounded-lg py-2">
+      <p className="font-bold text-ink text-sm tabular-nums">{value}</p>
+      <p className="text-[11px] text-soft">{label}</p>
     </div>
   );
 }
@@ -269,8 +266,8 @@ function CreateCompanyDialog({ open, onOpenChange, services, onCreated }: {
             <Field id="c-email" label="E-mail" value={f.email} onChange={set('email')} type="email" />
           </div>
           <Field id="c-manager" label="Téléphone du gestionnaire *" value={f.managerPhone} onChange={set('managerPhone')} placeholder="90 12 34 56" />
-          <div className="h-px bg-[#EEEEEE]" />
-          <p className="text-sm font-semibold text-[#212121]">Contrat (forfait mensuel)</p>
+          <div className="h-px bg-line" />
+          <p className="text-sm font-semibold text-ink">Contrat (forfait mensuel)</p>
           <ServiceSelect value={f.serviceId} onChange={set('serviceId')} services={services} />
           <div className="grid grid-cols-3 gap-3">
             <Field id="c-washes" label="Lavages / voiture" value={f.washesPerVehicle} onChange={set('washesPerVehicle')} type="number" />
@@ -278,12 +275,12 @@ function CreateCompanyDialog({ open, onOpenChange, services, onCreated }: {
             <Field id="c-max" label="Voitures max" value={f.maxVehicles} onChange={set('maxVehicles')} type="number" />
           </div>
           {selected && (
-            <p className="text-xs text-[#757575]">
+            <p className="text-xs text-soft">
               Repère : {f.washesPerVehicle} × {selected.name} au prix public = {fmt(fullPrice)} par voiture et par mois.
             </p>
           )}
         </div>
-        <Button onClick={() => void submit()} disabled={saving} className="w-full h-12 bg-[#C2410C] hover:bg-[#9A3412] text-white font-semibold">
+        <Button onClick={() => void submit()} disabled={saving} className="w-full h-12 bg-brand-ink hover:bg-brand-ink-strong text-white font-semibold">
           {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : "Créer l'entreprise"}
         </Button>
       </DialogContent>
@@ -311,7 +308,7 @@ function CompanyDetailView({ id, services, onBack }: { id: string; services: Ser
     void load();
   }, [load]);
 
-  if (!d) return <div className="p-6"><Loader2 className="w-6 h-6 animate-spin mx-auto text-[#C2410C]" /></div>;
+  if (!d) return <div className="p-6"><Loader2 className="w-6 h-6 animate-spin mx-auto text-brand-ink" /></div>;
 
   const saveVehicle = async () => {
     setBusy(true);
@@ -371,17 +368,17 @@ function CompanyDetailView({ id, services, onBack }: { id: string; services: Ser
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center gap-2">
-        <button onClick={onBack} className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full hover:bg-[#F5F5F5]" aria-label="Retour">
+        <button onClick={onBack} className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full hover:bg-app" aria-label="Retour">
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div className="min-w-0 flex-1">
-          <h2 className="font-semibold text-lg text-[#212121] truncate">{d.company.name}</h2>
-          <p className="text-xs text-[#757575]">
+          <h2 className="font-semibold text-lg text-ink truncate">{d.company.name}</h2>
+          <p className="text-xs text-soft">
             Gestionnaire : {d.manager ? `${d.manager.name || ''} ${d.manager.phone}` : `${d.company.managerPhone} (invité, pas encore de compte)`}
           </p>
         </div>
-        <button onClick={() => void load()} className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full hover:bg-[#F5F5F5]" aria-label="Rafraîchir">
-          <RefreshCw className="w-5 h-5 text-[#C2410C]" />
+        <button onClick={() => void load()} className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full hover:bg-app" aria-label="Rafraîchir">
+          <RefreshCw className="w-5 h-5 text-brand-ink" />
         </button>
       </div>
 
@@ -392,9 +389,9 @@ function CompanyDetailView({ id, services, onBack }: { id: string; services: Ser
       </div>
 
       {/* Contrat */}
-      <section className="bg-white rounded-xl border border-[#E0E0E0] p-4 space-y-2">
+      <section className="bg-white rounded-xl border border-line p-4 space-y-2">
         <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-[#212121]">Contrat</h3>
+          <h3 className="font-semibold text-ink">Contrat</h3>
           <Button variant="outline" size="sm" className="h-9" onClick={() => {
             setCf({
               serviceId: d.contract?.serviceId || '',
@@ -409,13 +406,13 @@ function CompanyDetailView({ id, services, onBack }: { id: string; services: Ser
           </Button>
         </div>
         {d.contract ? (
-          <p className="text-sm text-[#616161]">
+          <p className="text-sm text-soft">
             {d.contract.service.name} · {d.contract.washesPerVehicle} lavages par voiture et par mois · {fmt(d.contract.pricePerVehicle)} par voiture · {d.contract.maxVehicles} voitures max
           </p>
         ) : (
           <p className="text-sm text-red-600">Aucun contrat actif : les conducteurs ne peuvent pas commander.</p>
         )}
-        <button onClick={() => void toggleCompany()} className={`text-sm font-semibold ${d.company.isActive ? 'text-red-600' : 'text-[#2E7D32]'}`}>
+        <button onClick={() => void toggleCompany()} className={`text-sm font-semibold ${d.company.isActive ? 'text-red-600' : 'text-success'}`}>
           {d.company.isActive ? "Suspendre l'entreprise" : "Réactiver l'entreprise"}
         </button>
       </section>
@@ -423,32 +420,32 @@ function CompanyDetailView({ id, services, onBack }: { id: string; services: Ser
       {/* Véhicules */}
       <section className="space-y-2">
         <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-[#212121] flex items-center gap-2"><Car className="w-4 h-4" /> Véhicules</h3>
-          <Button size="sm" className="h-9 bg-[#C2410C] hover:bg-[#9A3412] text-white" onClick={() => { setEditingVehicle(null); setVf(EMPTY_VEHICLE); setVehicleOpen(true); }}>
+          <h3 className="font-semibold text-ink flex items-center gap-2"><Car className="w-4 h-4" /> Véhicules</h3>
+          <Button size="sm" className="h-9 bg-brand-ink hover:bg-brand-ink-strong text-white" onClick={() => { setEditingVehicle(null); setVf(EMPTY_VEHICLE); setVehicleOpen(true); }}>
             <Plus className="w-4 h-4 mr-1" /> Ajouter
           </Button>
         </div>
-        {d.vehicles.length === 0 && <p className="text-sm text-[#757575]">Aucun véhicule.</p>}
+        {d.vehicles.length === 0 && <p className="text-sm text-soft">Aucun véhicule.</p>}
         {d.vehicles.map((v) => (
-          <div key={v.id} className={`bg-white rounded-xl border border-[#E0E0E0] p-3 ${v.isActive ? '' : 'opacity-60'}`}>
+          <div key={v.id} className={`bg-white rounded-xl border border-line p-3 ${v.isActive ? '' : 'opacity-60'}`}>
             <div className="flex items-center justify-between gap-2">
-              <span className="font-mono font-bold text-[#212121]">{v.plateNumber}</span>
-              <span className="text-xs font-semibold text-[#616161] tabular-nums">{v.washesUsed}/{v.washesIncluded} ce mois</span>
+              <span className="font-mono font-bold text-ink">{v.plateNumber}</span>
+              <span className="text-xs font-semibold text-soft tabular-nums">{v.washesUsed}/{v.washesIncluded} ce mois</span>
             </div>
-            <p className="text-xs text-[#757575]">{[v.brand, v.model].filter(Boolean).join(' ') || 'Véhicule'} · {v.color}</p>
-            <p className="text-xs mt-1 flex items-center gap-1 text-[#424242]">
+            <p className="text-xs text-soft">{[v.brand, v.model].filter(Boolean).join(' ') || 'Véhicule'} · {v.color}</p>
+            <p className="text-xs mt-1 flex items-center gap-1 text-ink">
               <UserRound className="w-3.5 h-3.5" /> {v.driverName || 'Conducteur'} · {v.driverPhone}
               {v.driverStatus === 'ACTIVE'
-                ? <span className="ml-auto inline-flex items-center gap-1 text-[#2E7D32]"><CheckCircle className="w-3.5 h-3.5" /> actif</span>
-                : <span className="ml-auto inline-flex items-center gap-1 text-[#757575]"><Clock className="w-3.5 h-3.5" /> invité</span>}
+                ? <span className="ml-auto inline-flex items-center gap-1 text-success"><CheckCircle className="w-3.5 h-3.5" /> actif</span>
+                : <span className="ml-auto inline-flex items-center gap-1 text-soft"><Clock className="w-3.5 h-3.5" /> invité</span>}
             </p>
             <div className="flex gap-3 mt-2 text-sm">
-              <button className="text-[#C2410C] font-semibold" onClick={() => {
+              <button className="text-brand-ink font-semibold" onClick={() => {
                 setEditingVehicle(v);
                 setVf({ plateNumber: v.plateNumber, brand: v.brand || '', model: v.model || '', color: v.color, driverName: v.driverName || '', driverPhone: v.driverPhone });
                 setVehicleOpen(true);
               }}>Modifier</button>
-              <button className={v.isActive ? 'text-red-600 font-semibold' : 'text-[#2E7D32] font-semibold'} onClick={() => void toggleVehicle(v)}>
+              <button className={v.isActive ? 'text-red-600 font-semibold' : 'text-success font-semibold'} onClick={() => void toggleVehicle(v)}>
                 {v.isActive ? 'Retirer' : 'Réactiver'}
               </button>
             </div>
@@ -459,27 +456,27 @@ function CompanyDetailView({ id, services, onBack }: { id: string; services: Ser
       {/* Factures */}
       <section className="space-y-2">
         <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-[#212121] flex items-center gap-2"><FileText className="w-4 h-4" /> Factures</h3>
+          <h3 className="font-semibold text-ink flex items-center gap-2"><FileText className="w-4 h-4" /> Factures</h3>
           <Button size="sm" variant="outline" className="h-9" onClick={() => void generateInvoice()} disabled={!d.contract}>
             Facturer le mois
           </Button>
         </div>
-        {d.invoices.length === 0 && <p className="text-sm text-[#757575]">Aucune facture.</p>}
+        {d.invoices.length === 0 && <p className="text-sm text-soft">Aucune facture.</p>}
         {d.invoices.map((inv) => (
-          <div key={inv.id} className="bg-white rounded-xl border border-[#E0E0E0] p-3">
+          <div key={inv.id} className="bg-white rounded-xl border border-line p-3">
             <div className="flex items-center justify-between gap-2">
-              <span className="font-semibold text-[#212121]">{inv.period} · {fmt(inv.amount)}</span>
-              <span className={`text-xs rounded-full px-2 py-0.5 font-semibold ${inv.status === 'PAID' ? 'bg-[#E8F5E9] text-[#2E7D32]' : inv.status === 'CANCELLED' ? 'bg-[#F5F5F5] text-[#757575]' : 'bg-[#FFF3E0] text-[#E65100]'}`}>
+              <span className="font-semibold text-ink">{inv.period} · {fmt(inv.amount)}</span>
+              <span className={`text-xs rounded-full px-2 py-0.5 font-semibold ${inv.status === 'PAID' ? 'bg-success/10 text-success' : inv.status === 'CANCELLED' ? 'bg-app text-soft' : 'bg-brand-wash text-brand-ink'}`}>
                 {inv.status === 'PAID' ? 'Payée' : inv.status === 'CANCELLED' ? 'Annulée' : 'À payer'}
               </span>
             </div>
-            <p className="text-xs text-[#757575] font-mono">{inv.invoiceNumber} · {inv.vehicleCount} voiture(s) · {inv.washesDone}/{inv.washesIncluded} lavages</p>
-            {inv.paymentReference && <p className="text-xs text-[#757575]">Réf. : {inv.paymentReference}</p>}
+            <p className="text-xs text-soft font-mono">{inv.invoiceNumber} · {inv.vehicleCount} voiture(s) · {inv.washesDone}/{inv.washesIncluded} lavages</p>
+            {inv.paymentReference && <p className="text-xs text-soft">Réf. : {inv.paymentReference}</p>}
             <div className="mt-2 text-sm">
               {inv.status === 'PAID' ? (
-                <button className="text-[#757575] font-semibold" onClick={() => void setInvoiceStatus(inv, 'PENDING')}>Annuler le paiement</button>
+                <button className="text-soft font-semibold" onClick={() => void setInvoiceStatus(inv, 'PENDING')}>Annuler le paiement</button>
               ) : (
-                <button className="text-[#2E7D32] font-semibold" onClick={() => void setInvoiceStatus(inv, 'PAID')}>Marquer payée</button>
+                <button className="text-success font-semibold" onClick={() => void setInvoiceStatus(inv, 'PAID')}>Marquer payée</button>
               )}
             </div>
           </div>
@@ -488,17 +485,17 @@ function CompanyDetailView({ id, services, onBack }: { id: string; services: Ser
 
       {/* Derniers lavages */}
       <section className="space-y-2">
-        <h3 className="font-semibold text-[#212121]">Derniers lavages</h3>
-        {d.orders.length === 0 && <p className="text-sm text-[#757575]">Aucun lavage.</p>}
+        <h3 className="font-semibold text-ink">Derniers lavages</h3>
+        {d.orders.length === 0 && <p className="text-sm text-soft">Aucun lavage.</p>}
         {d.orders.map((o) => (
-          <div key={o.id} className="bg-white rounded-xl border border-[#E0E0E0] p-3 text-sm flex justify-between gap-2">
+          <div key={o.id} className="bg-white rounded-xl border border-line p-3 text-sm flex justify-between gap-2">
             <div className="min-w-0">
-              <p className="font-mono font-semibold text-[#212121]">{o.fleetVehicle?.plateNumber || '—'} <span className="font-sans font-normal text-[#757575]">#{o.orderNumber}</span></p>
-              <p className="text-xs text-[#757575] truncate">{o.client.name || o.client.phone} · {o.washer?.user.name || 'sans laveur'}</p>
+              <p className="font-mono font-semibold text-ink">{o.fleetVehicle?.plateNumber || '—'} <span className="font-sans font-normal text-soft">#{o.orderNumber}</span></p>
+              <p className="text-xs text-soft truncate">{o.client.name || o.client.phone} · {o.washer?.user.name || 'sans laveur'}</p>
             </div>
             <div className="text-right flex-shrink-0">
-              <p className="text-xs font-semibold text-[#424242]">{o.status}</p>
-              <p className="text-xs text-[#757575]">{new Date(o.createdAt).toLocaleDateString('fr-FR')}</p>
+              <p className="text-xs font-semibold text-ink">{o.status}</p>
+              <p className="text-xs text-soft">{new Date(o.createdAt).toLocaleDateString('fr-FR')}</p>
             </div>
           </div>
         ))}
@@ -520,7 +517,7 @@ function CompanyDetailView({ id, services, onBack }: { id: string; services: Ser
             <Field id="v-dname" label="Nom du conducteur" value={vf.driverName} onChange={(v) => setVf({ ...vf, driverName: v })} />
             <Field id="v-dphone" label="Téléphone du conducteur *" value={vf.driverPhone} onChange={(v) => setVf({ ...vf, driverPhone: v })} />
           </div>
-          <Button onClick={() => void saveVehicle()} disabled={busy} className="w-full h-12 bg-[#C2410C] hover:bg-[#9A3412] text-white font-semibold">
+          <Button onClick={() => void saveVehicle()} disabled={busy} className="w-full h-12 bg-brand-ink hover:bg-brand-ink-strong text-white font-semibold">
             {busy ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Enregistrer'}
           </Button>
         </DialogContent>
@@ -541,7 +538,7 @@ function CompanyDetailView({ id, services, onBack }: { id: string; services: Ser
             </div>
             <Field id="k-manager" label="Téléphone du gestionnaire" value={cf.managerPhone} onChange={(v) => setCf({ ...cf, managerPhone: v })} />
           </div>
-          <Button onClick={() => void saveContract()} disabled={busy} className="w-full h-12 bg-[#C2410C] hover:bg-[#9A3412] text-white font-semibold">
+          <Button onClick={() => void saveContract()} disabled={busy} className="w-full h-12 bg-brand-ink hover:bg-brand-ink-strong text-white font-semibold">
             {busy ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Enregistrer'}
           </Button>
         </DialogContent>

@@ -93,18 +93,18 @@ export function AdminNotificationCenter() {
   const getIcon = (type: string) => {
     switch (type) {
       case 'payment':
-        return <Banknote className="w-5 h-5 text-[#4CAF50]" />;
+        return <Banknote className="w-5 h-5 text-success" />;
       case 'order':
       case 'NEW_ORDER':
-        return <Car className="w-5 h-5 text-[#FF9800]" />;
+        return <Car className="w-5 h-5 text-brand-ink" />;
       case 'message':
-        return <MessageCircle className="w-5 h-5 text-[#2196F3]" />;
+        return <MessageCircle className="w-5 h-5 text-soft" />;
       case 'promo':
         return <Star className="w-5 h-5 text-[#FFC107]" />;
       case 'system':
-        return <Wrench className="w-5 h-5 text-[#9C27B0]" />;
+        return <Wrench className="w-5 h-5 text-soft" />;
       default:
-        return <AlertCircle className="w-5 h-5 text-[#757575]" />;
+        return <AlertCircle className="w-5 h-5 text-soft" />;
     }
   };
 
@@ -125,9 +125,9 @@ export function AdminNotificationCenter() {
       <SheetTrigger asChild>
         <button
           aria-label="Notifications"
-          className="relative w-10 h-10 bg-[#FFF3E0] rounded-full flex items-center justify-center hover:bg-[#FFE0B2] transition-colors"
+          className="relative w-10 h-10 bg-white border border-line rounded-md flex items-center justify-center hover:bg-app transition-colors"
         >
-          <Bell className="w-5 h-5 text-[#FF9800]" />
+          <Bell className="w-5 h-5 text-ink" />
           {unreadCount > 0 && (
             <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
               {unreadCount > 9 ? '9+' : unreadCount}
@@ -137,13 +137,13 @@ export function AdminNotificationCenter() {
       </SheetTrigger>
       <SheetContent side="right" className="w-full sm:max-w-md p-0">
         <div className="flex flex-col h-full">
-          <SheetHeader className="p-4 border-b border-[#F5F5F5]">
+          <SheetHeader className="p-4 border-b border-line">
             <div className="flex items-center justify-between">
-              <SheetTitle className="text-lg font-bold text-[#212121]">
+              <SheetTitle className="text-lg font-bold text-ink">
                 Notifications admin
               </SheetTitle>
               {unreadCount > 0 && (
-                <Button variant="ghost" size="sm" onClick={markAllAsRead} className="text-[#FF9800] text-xs">
+                <Button variant="ghost" size="sm" onClick={markAllAsRead} className="text-brand-ink text-xs">
                   Tout marquer lu
                 </Button>
               )}
@@ -153,32 +153,32 @@ export function AdminNotificationCenter() {
           <div className="flex-1 overflow-y-auto max-h-[80vh]">
             {notifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full p-8">
-                <div className="w-16 h-16 bg-[#FFF3E0] rounded-full flex items-center justify-center mb-4">
-                  <Bell className="w-8 h-8 text-[#FF9800]" />
+                <div className="w-16 h-16 bg-brand-wash rounded-full flex items-center justify-center mb-4">
+                  <Bell className="w-8 h-8 text-brand-ink" />
                 </div>
-                <p className="text-[#757575] text-center">Aucune notification</p>
+                <p className="text-soft text-center">Aucune notification</p>
               </div>
             ) : (
               <div className="divide-y divide-[#F5F5F5]">
                 {notifications.map((n) => (
                   <div
                     key={n.id}
-                    className={`p-4 cursor-pointer ${!n.isRead ? 'bg-[#FFF8F0]' : 'bg-white'}`}
+                    className={`p-4 cursor-pointer ${!n.isRead ? 'bg-brand-wash' : 'bg-white'}`}
                     onClick={() => !n.isRead && markAsRead(n.id)}
                   >
                     <div className="flex gap-3">
-                      <div className="w-10 h-10 bg-[#FFF3E0] rounded-full flex items-center justify-center flex-shrink-0">
+                      <div className="w-10 h-10 bg-brand-wash rounded-full flex items-center justify-center flex-shrink-0">
                         {getIcon(n.type)}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
-                          <p className={`text-sm ${!n.isRead ? 'font-semibold text-[#212121]' : 'text-[#424242]'}`}>
+                          <p className={`text-sm ${!n.isRead ? 'font-semibold text-ink' : 'text-ink'}`}>
                             {n.title}
                           </p>
-                          {!n.isRead && <div className="w-2 h-2 bg-[#FF9800] rounded-full flex-shrink-0 mt-1.5" />}
+                          {!n.isRead && <div className="w-2 h-2 bg-brand-ink rounded-full flex-shrink-0 mt-1.5" />}
                         </div>
-                        <p className="text-xs text-[#757575] mt-1">{n.message}</p>
-                        <p className="text-xs text-[#9E9E9E] mt-2">{formatTime(n.createdAt)}</p>
+                        <p className="text-xs text-soft mt-1">{n.message}</p>
+                        <p className="text-xs text-soft mt-2">{formatTime(n.createdAt)}</p>
                       </div>
                     </div>
                   </div>
@@ -188,16 +188,16 @@ export function AdminNotificationCenter() {
           </div>
 
           {/* Notifications system footer (in-app + realtime + SMS) */}
-          <div className="p-4 border-t border-[#F5F5F5] bg-[#FFF8F0]">
+          <div className="p-4 border-t border-line bg-brand-wash">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center flex-shrink-0">
-                <BellRing className="w-5 h-5 text-[#4CAF50]" />
+                <BellRing className="w-5 h-5 text-success" />
               </div>
               <div className="min-w-0">
-                <p className="font-medium text-[#212121] text-sm">
+                <p className="font-medium text-ink text-sm">
                   Notifications temps réel actives ✅
                 </p>
-                <p className="text-xs text-[#757575]">
+                <p className="text-xs text-soft">
                   Retraits, dépôts et demandes — instantanés + SMS
                 </p>
               </div>

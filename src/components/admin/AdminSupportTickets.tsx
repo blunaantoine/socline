@@ -26,9 +26,9 @@ interface SupportTicket {
 }
 
 const STATUS_META: Record<string, { label: string; classes: string; icon: typeof Clock }> = {
-  OPEN: { label: 'Ouvert', classes: 'bg-red-100 text-red-700 border-red-200', icon: AlertCircle },
-  IN_PROGRESS: { label: 'En cours', classes: 'bg-amber-100 text-amber-700 border-amber-200', icon: Clock },
-  RESOLVED: { label: 'Résolu', classes: 'bg-green-100 text-green-700 border-green-200', icon: CheckCircle },
+  OPEN: { label: 'Ouvert', classes: 'bg-red-50 text-red-700 border-red-200', icon: AlertCircle },
+  IN_PROGRESS: { label: 'En cours', classes: 'bg-amber-50 text-amber-800 border-amber-200', icon: Clock },
+  RESOLVED: { label: 'Résolu', classes: 'bg-success/10 text-success border-success/30', icon: CheckCircle },
 };
 
 function formatDate(iso: string): string {
@@ -91,8 +91,8 @@ export function AdminSupportTickets() {
               onClick={() => setStatusFilter(s)}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
                 statusFilter === s
-                  ? 'bg-[#FF9800] text-white border-[#FF9800]'
-                  : 'bg-white text-[#616161] border-[#E0E0E0] hover:border-[#FF9800]'
+                  ? 'bg-brand-ink text-white border-brand-ink'
+                  : 'bg-white text-soft border-line hover:border-brand-ink'
               }`}
             >
               {s === 'ALL' ? 'Tous' : STATUS_META[s].label}
@@ -107,10 +107,10 @@ export function AdminSupportTickets() {
           )}
           <button
             onClick={fetchTickets}
-            className="p-2 rounded-full bg-white border border-[#E0E0E0] hover:border-[#FF9800] transition-all active:scale-95"
+            className="p-2 rounded-full bg-white border border-line hover:border-brand-ink transition-all active:scale-95"
             aria-label="Actualiser"
           >
-            <RefreshCw className={`w-4 h-4 text-[#616161] ${isLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 text-soft ${isLoading ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
@@ -118,13 +118,13 @@ export function AdminSupportTickets() {
       {/* Liste */}
       {isLoading && tickets.length === 0 ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-6 h-6 animate-spin text-[#FF9800]" />
+          <Loader2 className="w-6 h-6 animate-spin text-brand-ink" />
         </div>
       ) : tickets.length === 0 ? (
-        <div className="bg-white rounded-xl border border-[#E0E0E0] p-10 text-center">
-          <Headphones className="w-10 h-10 text-[#BDBDBD] mx-auto mb-3" />
-          <p className="text-[#616161] text-sm">Aucune demande de support pour le moment.</p>
-          <p className="text-[#9E9E9E] text-xs mt-1">
+        <div className="bg-white rounded-xl border border-line p-10 text-center">
+          <Headphones className="w-10 h-10 text-soft mx-auto mb-3" />
+          <p className="text-soft text-sm">Aucune demande de support pour le moment.</p>
+          <p className="text-soft text-xs mt-1">
             Les demandes envoyées via l&apos;assistant Soco apparaîtront ici.
           </p>
         </div>
@@ -138,19 +138,19 @@ export function AdminSupportTickets() {
             const isExpanded = expandedId === ticket.id;
 
             return (
-              <div key={ticket.id} className="bg-white rounded-xl border border-[#E0E0E0] overflow-hidden">
+              <div key={ticket.id} className="bg-white rounded-xl border border-line overflow-hidden">
                 {/* En-tête du ticket */}
                 <button
                   onClick={() => setExpandedId(isExpanded ? null : ticket.id)}
                   className="w-full text-left p-4 flex items-start gap-3"
                 >
-                  <div className="w-10 h-10 rounded-full bg-[#FF9800]/10 grid place-items-center flex-shrink-0">
-                    <Headphones className="w-5 h-5 text-[#FF9800]" />
+                  <div className="w-10 h-10 rounded-full bg-brand-ink/10 grid place-items-center flex-shrink-0">
+                    <Headphones className="w-5 h-5 text-brand-ink" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-[#212121] text-sm truncate">{displayName}</span>
-                      <span className="text-xs text-[#9E9E9E]">
+                      <span className="font-semibold text-ink text-sm truncate">{displayName}</span>
+                      <span className="text-xs text-soft">
                         {ticket.role === 'GUEST' ? '· invité' : `· ${ticket.role.toLowerCase()}`}
                       </span>
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${meta.classes}`}>
@@ -158,28 +158,28 @@ export function AdminSupportTickets() {
                         {meta.label}
                       </span>
                     </div>
-                    <p className="text-sm text-[#424242] mt-1 line-clamp-2">{ticket.subject}</p>
-                    <p className="text-xs text-[#9E9E9E] mt-0.5">
+                    <p className="text-sm text-ink mt-1 line-clamp-2">{ticket.subject}</p>
+                    <p className="text-xs text-soft mt-0.5">
                       {displayPhone} · {formatDate(ticket.createdAt)}
                     </p>
                   </div>
                   <ChevronDown
-                    className={`w-5 h-5 text-[#9E9E9E] flex-shrink-0 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                    className={`w-5 h-5 text-soft flex-shrink-0 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                   />
                 </button>
 
                 {/* Détail déplié */}
                 {isExpanded && (
-                  <div className="px-4 pb-4 space-y-3 border-t border-[#F0F0F0] pt-3">
-                    <div className="bg-[#FAFAFA] rounded-lg p-3">
-                      <p className="text-xs font-semibold text-[#616161] mb-1.5">Conversation avec Soco</p>
-                      <p className="text-sm text-[#424242] whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto">
+                  <div className="px-4 pb-4 space-y-3 border-t border-line pt-3">
+                    <div className="bg-app rounded-lg p-3">
+                      <p className="text-xs font-semibold text-soft mb-1.5">Conversation avec Soco</p>
+                      <p className="text-sm text-ink whitespace-pre-wrap leading-relaxed max-h-56 overflow-y-auto">
                         {ticket.message}
                       </p>
                     </div>
 
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs text-[#9E9E9E]">Changer le statut :</span>
+                      <span className="text-xs text-soft">Changer le statut :</span>
                       {(['OPEN', 'IN_PROGRESS', 'RESOLVED'] as const).map((s) => (
                         <button
                           key={s}
@@ -188,14 +188,14 @@ export function AdminSupportTickets() {
                           className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all active:scale-95 disabled:opacity-50 ${
                             ticket.status === s
                               ? STATUS_META[s].classes
-                              : 'bg-white text-[#616161] border-[#E0E0E0] hover:border-[#FF9800]'
+                              : 'bg-white text-soft border-line hover:border-brand-ink'
                           }`}
                         >
                           {STATUS_META[s].label}
                         </button>
                       ))}
                       {updatingId === ticket.id && (
-                        <Loader2 className="w-4 h-4 animate-spin text-[#FF9800]" />
+                        <Loader2 className="w-4 h-4 animate-spin text-brand-ink" />
                       )}
                     </div>
 
@@ -203,7 +203,7 @@ export function AdminSupportTickets() {
                       <div className="flex gap-2">
                         <a
                           href={`tel:+228${displayPhone}`}
-                          className="flex-1 flex items-center justify-center gap-1.5 border border-[#E0E0E0] rounded-lg py-2 text-xs font-semibold text-[#424242] hover:border-[#FF9800] transition-all active:scale-95"
+                          className="flex-1 flex items-center justify-center gap-1.5 border border-line rounded-lg py-2 text-xs font-semibold text-ink hover:border-brand-ink transition-all active:scale-95"
                         >
                           <Phone className="w-3.5 h-3.5" />
                           Appeler
