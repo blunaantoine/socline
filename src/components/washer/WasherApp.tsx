@@ -14,8 +14,9 @@ import {
   Navigation, Phone, MessageCircle, MessageSquare, Car, AlertCircle,
   Wallet, TrendingUp, Calendar, LogOut, Settings, Home,
   RefreshCw, Loader2, ArrowLeft, Crown, Edit, Bell, Banknote,
-  Camera
+  Camera, Share2,
 } from 'lucide-react';
+import { sharePartnerLink } from '@/lib/share';
 import { HideableBalanceDark, HideableBalanceLight } from '@/components/ui/hideable-balance';
 import type { Order, OrderStatus, Conversation, User, Washer as WasherType } from '@/types';
 import type { Socket } from 'socket.io-client';
@@ -2546,6 +2547,19 @@ function WasherProfile({ user, stats, onLogout, onBack, onNavigate }: {
           </button>
         ))}
       </Card>
+
+      {/* Parrainage : partage du lien public /partenaire */}
+      <button
+        onClick={() => void sharePartnerLink()}
+        className="w-full flex items-center gap-3 rounded-xl bg-[#E8F5E9] px-4 min-h-[56px] text-left active:scale-[0.98] transition-transform"
+      >
+        <Share2 className="w-5 h-5 text-[#2E7D32] shrink-0" aria-hidden="true" />
+        <span className="flex-1">
+          <span className="block text-sm font-semibold text-[#212121]">Inviter un laveur ou une station</span>
+          <span className="block text-xs text-[#6B6B6B]">Partagez le lien « Devenir partenaire »</span>
+        </span>
+        <span className="text-[#6B6B6B]" aria-hidden="true">›</span>
+      </button>
 
       {/* Données personnelles — politique de confidentialité (page publique) */}
       <a

@@ -298,7 +298,7 @@ export async function POST(request: NextRequest) {
         commission: useSubscription
           ? 0
           // Default commission at level 1 (Contrat de Partenariat, Article 5 :
-          // part du Partenaire 60 %). Recalculated at ACCEPTED based on the
+          // part du Partenaire 70 %). Recalculated at ACCEPTED based on the
           // washer's actual level (see PATCH below).
           : commissionForLevel(DEFAULT_PARTNER_LEVEL, totalPrice),
         status: 'PENDING',
@@ -578,7 +578,7 @@ export async function PATCH(request: NextRequest) {
 
     // Contrat de Partenariat SOCLINE, Article 5 : when the order is accepted,
     // freeze the commission according to the accepting washer's progressive
-    // level (60 % -> 80 % partner share). The rate applied at ACCEPTED is the
+    // level (70 % -> 80 % partner share). The rate applied at ACCEPTED is the
     // one kept for the whole order ("Le taux n'est jamais modifié pour les
     // prestations déjà réalisées").
     if (updateData.washerId && existingOrder.status === 'PENDING' && status === 'ACCEPTED') {

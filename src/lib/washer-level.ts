@@ -5,10 +5,10 @@
  * et payée par le client. Cette commission augmente au fur et à mesure que le
  * Partenaire fait preuve de régularité et de qualité de travail :
  *
- * Niveau 1 – Départ    : dès la signature du contrat                          → 60 %
- * Niveau 2 – Confirmé  : 30 prestations, note moyenne ≥ 4,0/5                → 65 %
- * Niveau 3 – Expert    : 80 prestations, note ≥ 4,3/5, < 10 % d'annulations  → 70 %
- * Niveau 4 – Référent  : 150 prestations, note ≥ 4,5/5, < 7 % d'annulations  → 75 %
+ * Niveau 1 – Départ    : dès la signature du contrat                          → 70 %
+ * Niveau 2 – Confirmé  : 30 prestations, note moyenne ≥ 4,0/5                → 72 %
+ * Niveau 3 – Expert    : 80 prestations, note ≥ 4,3/5, < 10 % d'annulations  → 75 %
+ * Niveau 4 – Référent  : 150 prestations, note ≥ 4,5/5, < 7 % d'annulations  → 78 %
  * Niveau 5 – Excellence: 300 prestations, note ≥ 4,7/5, < 5 % d'annulations  → 80 %
  *
  * Conformité à l'Article 5 du contrat :
@@ -44,8 +44,8 @@ export const PARTNER_LEVELS: PartnerLevel[] = [
   {
     level: 1,
     name: 'Départ',
-    share: 60,
-    commissionRate: 0.4,
+    share: 70,
+    commissionRate: 0.3,
     minJobs: 0,
     minRating: 0,
     maxCancellationRate: null,
@@ -54,8 +54,8 @@ export const PARTNER_LEVELS: PartnerLevel[] = [
   {
     level: 2,
     name: 'Confirmé',
-    share: 65,
-    commissionRate: 0.35,
+    share: 72,
+    commissionRate: 0.28,
     minJobs: 30,
     minRating: 4.0,
     maxCancellationRate: null,
@@ -64,8 +64,8 @@ export const PARTNER_LEVELS: PartnerLevel[] = [
   {
     level: 3,
     name: 'Expert',
-    share: 70,
-    commissionRate: 0.3,
+    share: 75,
+    commissionRate: 0.25,
     minJobs: 80,
     minRating: 4.3,
     maxCancellationRate: 10,
@@ -74,8 +74,8 @@ export const PARTNER_LEVELS: PartnerLevel[] = [
   {
     level: 4,
     name: 'Référent',
-    share: 75,
-    commissionRate: 0.25,
+    share: 78,
+    commissionRate: 0.22,
     minJobs: 150,
     minRating: 4.5,
     maxCancellationRate: 7,

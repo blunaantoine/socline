@@ -3,7 +3,7 @@ import { SITE_URL } from '@/lib/site';
 
 /**
  * Sitemap pour les moteurs de recherche (Google Search Console, Bing…).
- * L'application est une SPA mono-page : la seule URL indexable est la racine.
+ * L'application est une SPA : racine, page partenaire et confidentialité.
  * Sert https://socline.oquitogo.com/sitemap.xml
  */
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -13,6 +13,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: new Date(),
       changeFrequency: 'daily',
       priority: 1,
+    },
+    {
+      url: `${SITE_URL}/partenaire`,
+      lastModified: new Date('2026-11-24'),
+      changeFrequency: 'monthly',
+      priority: 0.8,
     },
     {
       url: `${SITE_URL}/confidentialite`,

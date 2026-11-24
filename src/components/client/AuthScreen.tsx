@@ -10,8 +10,9 @@ import {
   Car, Phone, User, Lock, Palette, ArrowLeft,
   Eye, EyeOff, CheckCircle, Loader2, AlertCircle, Check, MessageCircle,
   FileText, Download, IdCard, CreditCard, ChevronRight,
-  MapPin, Building, Info, TrendingUp
+  MapPin, Building, Info, TrendingUp, Share2
 } from 'lucide-react';
+import { sharePartnerLink } from '@/lib/share';
 import { useAuthStore } from '@/store';
 
 type WasherType = 'INDEPENDENT' | 'STATION_OWNER';
@@ -31,6 +32,8 @@ async function serverErrorMessage(res: Response, fallback: string): Promise<stri
 
 interface AuthScreenProps {
   onComplete: () => void;
+  /** Écran affiché à l'ouverture : 'washer-info' pour le lien partageable /partenaire. */
+  initialMode?: 'welcome' | 'washer-info';
 }
 
 const CAR_COLORS = [
@@ -319,10 +322,10 @@ function OtpBoxes({
 function WasherRegistrationInfo({ onBack, onContinue }: { onBack: () => void; onContinue: () => void }) {
   // Contrat de Partenariat SOCLINE (Article 5) — barème de rémunération progressive
   const partnerLevels = [
-    { level: 1, name: 'Départ', share: '60 %', conditions: 'Dès la signature du contrat' },
-    { level: 2, name: 'Confirmé', share: '65 %', conditions: '30 prestations, note ≥ 4,0/5' },
-    { level: 3, name: 'Expert', share: '70 %', conditions: '80 prestations, note ≥ 4,3/5, < 10 % annulations' },
-    { level: 4, name: 'Référent', share: '75 %', conditions: '150 prestations, note ≥ 4,5/5, < 7 % annulations' },
+    { level: 1, name: 'Départ', share: '70 %', conditions: 'Dès la signature du contrat' },
+    { level: 2, name: 'Confirmé', share: '72 %', conditions: '30 prestations, note ≥ 4,0/5' },
+    { level: 3, name: 'Expert', share: '75 %', conditions: '80 prestations, note ≥ 4,3/5, < 10 % annulations' },
+    { level: 4, name: 'Référent', share: '78 %', conditions: '150 prestations, note ≥ 4,5/5, < 7 % annulations' },
     { level: 5, name: 'Excellence', share: '80 %', conditions: '300 prestations, note ≥ 4,7/5, < 5 % annulations' },
   ];
 
@@ -330,9 +333,18 @@ function WasherRegistrationInfo({ onBack, onContinue }: { onBack: () => void; on
     <div className="flex-1 flex flex-col bg-[#FFF8F0]">
       {/* Header */}
       <div className="bg-[#4CAF50] p-4 pt-[calc(1.5rem+max(env(safe-area-inset-top),var(--safe-area-inset-top,0px)))] pb-12 rounded-b-3xl">
-        <button onClick={onBack} className="text-white mb-4">
-          <ArrowLeft className="w-6 h-6" />
-        </button>
+        <div className="flex items-center justify-between mb-4 -mx-2">
+          <button onClick={onBack} aria-label="Retour" className="text-white min-h-[44px] min-w-[44px] flex items-center justify-center">
+            <ArrowLeft className="w-6 h-6" />
+          </button>
+          <button
+            onClick={() => void sharePartnerLink()}
+            className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 min-h-[44px] text-sm font-semibold text-white active:scale-[0.97] transition-transform"
+          >
+            <Share2 className="w-4 h-4" aria-hidden="true" />
+            Partager
+          </button>
+        </div>
         <h1 className="text-2xl font-bold text-white">Devenir Laveur</h1>
         <p className="text-white/90 mt-1">Rejoignez notre équipe de partenaires</p>
       </div>
@@ -347,7 +359,7 @@ function WasherRegistrationInfo({ onBack, onContinue }: { onBack: () => void; on
             </div>
             <h2 className="font-bold text-[#212121] text-lg">Avantages du partenaire</h2>
             <ul className="text-sm text-[#757575] mt-2 space-y-1">
-              <li>✓ Revenus progressifs : de 60 % jusqu&apos;à 80 % par prestation</li>
+              <li>✓ Revenus progressifs : de 70 % jusqu&apos;à 80 % par prestation</li>
               <li>✓ Horaires libres, vous choisissez vos missions</li>
               <li>✓ Paiements chaque semaine</li>
               <li>✓ Récapitulatif clair de vos gains dans l&apos;Application</li>
@@ -532,9 +544,9 @@ function WasherRegistrationInfo({ onBack, onContinue }: { onBack: () => void; on
   );
 }
 
-export function AuthScreen({ onComplete }: AuthScreenProps) {
+export function AuthScreen({ onComplete, initialMode = 'welcome' }: AuthScreenProps) {
   type AuthMode = 'welcome' | 'login' | 'register' | 'verify-otp' | 'washer-info' | 'washer-type' | 'register-independent' | 'register-station';
-  const [mode, setMode] = useState<AuthMode>('welcome');
+  const [mode, setMode] = useState<AuthMode>(initialMode);
   // Option B : la page « conditions du partenariat » s'affiche AVANT le choix du type.
   // On mémorise l'écran d'origine pour que la flèche retour ramène au bon endroit.
   const [infoOrigin, setInfoOrigin] = useState<AuthMode>('welcome');
