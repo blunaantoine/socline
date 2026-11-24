@@ -105,7 +105,7 @@ export default function ConfidentialitePage() {
               ['Messages échangés entre client et laveur', 'Organiser le lavage (arrivée, accès, consignes)', 'Clients et laveurs'],
               ['Notes et avis', 'Informer les autres clients et améliorer la qualité du service', 'Clients'],
               ['Identifiant de notifications de l’appareil', 'Vous envoyer les notifications de suivi de commande', 'Tous'],
-              ['Questions posées à l’assistant « Soco »', 'Répondre à vos questions sur l’application', 'Tous'],
+              ['Conversation avec l’assistant « Soco » (facultatif) et, si vous êtes connecté, votre prénom, votre solde, le numéro et le statut de votre commande en cours et votre abonnement', 'Répondre à vos questions sur l’application de façon personnalisée', 'Tous'],
             ]}
           />
           <p>
@@ -132,7 +132,7 @@ export default function ConfidentialitePage() {
             <li><strong>Le prestataire d&apos;envoi de SMS</strong> (Africa&apos;s Talking), pour les codes de vérification.</li>
             <li><strong>Google Firebase</strong>, pour l&apos;envoi des notifications sur votre téléphone.</li>
             <li><strong>OpenStreetMap / Nominatim</strong>, pour afficher les cartes et retrouver une adresse à partir d&apos;une position.</li>
-            <li><strong>Z.ai</strong>, le service d&apos;intelligence artificielle qui fait fonctionner l&apos;assistant « Soco » : il reçoit les questions que vous lui posez. N&apos;y écrivez pas d&apos;informations sensibles.</li>
+            <li><strong>Z.ai</strong>, le service d&apos;intelligence artificielle qui fait fonctionner l&apos;assistant « Soco », dont l&apos;usage est facultatif. Il reçoit uniquement les derniers messages de votre conversation avec Soco et, si vous êtes connecté, votre nom, le solde de votre portefeuille, le numéro et le statut de votre commande en cours et votre abonnement, pour vous répondre de façon personnalisée. Il ne reçoit ni votre numéro de téléphone, ni votre code PIN, ni votre position, ni vos photos, ni vos numéros Mobile Money. Ce traitement a lieu hors du Togo : n&apos;écrivez pas d&apos;informations sensibles à Soco.</li>
             <li><strong>Notre hébergeur</strong>, qui héberge le serveur de l&apos;application.</li>
             <li><strong>Les autorités</strong>, uniquement si la loi nous y oblige.</li>
           </ul>

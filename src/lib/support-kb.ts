@@ -137,10 +137,9 @@ export function buildSystemPrompt(
         '',
         'CONTEXTE DU COMPTE CONNECTÉ (données réelles, ne les divulgue qu\'à ce compte) :',
         `- Nom : ${user.name || 'non renseigné'}`,
-        `- Téléphone : ${user.phone || 'non renseigné'}`,
         user.walletBalance != null ? `- Solde du portefeuille : ${formatFc(user.walletBalance)}` : null,
         user.activeOrder
-          ? `- Commande en cours : n°${user.activeOrder.orderNumber} — ${user.activeOrder.statusLabel}${user.activeOrder.address ? ` — ${user.activeOrder.address}` : ''}`
+          ? `- Commande en cours : n°${user.activeOrder.orderNumber} — ${user.activeOrder.statusLabel}`
           : '- Aucune commande en cours.',
         user.activeSubscription
           ? `- Abonnement actif : ${user.activeSubscription.planName} — ${user.activeSubscription.remainingWashes} lavage(s) restant(s), expire le ${user.activeSubscription.endDate.toLocaleDateString('fr-FR')}`
